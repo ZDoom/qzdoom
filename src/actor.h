@@ -385,6 +385,7 @@ enum ActorFlag7
 	MF7_USEKILLSCRIPTS	= 0x00800000,	// [JM] Use "KILL" Script on death if not forced by GameInfo.
 	MF7_NOKILLSCRIPTS	= 0x01000000,	// [JM] No "KILL" Script on death whatsoever, even if forced by GameInfo.
 	MF7_SPRITEANGLE		= 0x02000000,	// [MC] Utilize the SpriteAngle property and lock the rotation to the degrees specified.
+	MF7_ISPLAYER		= 0x04000000,	// [SP] Interacts w/ level like a player does
 };
 
 // --- mobj.renderflags ---

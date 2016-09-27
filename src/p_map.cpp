@@ -475,7 +475,7 @@ void P_PlayerStartStomp(AActor *actor, bool mononly)
 			continue;
 
 		// only kill monsters and other players
-		if (th->player == NULL && !(th->flags3 & MF3_ISMONSTER))
+		if (th->player == NULL && !(th->flags3 & MF3_ISMONSTER) && !(th->flags7 & MF7_ISPLAYER))
 			continue;
 
 		if (th->player != NULL && mononly)
@@ -771,7 +771,7 @@ bool PIT_CheckLine(FMultiBlockLinesIterator &mit, FMultiBlockLinesIterator::Chec
 		}
 		else if ((ld->flags & (ML_BLOCKING | ML_BLOCKEVERYTHING)) || 				// explicitly blocking everything
 			(!(NotBlocked) && (ld->flags & ML_BLOCKMONSTERS)) || 				// block monsters only
-			(tm.thing->player != NULL && (ld->flags & ML_BLOCK_PLAYERS)) ||		// block players
+			((tm.thing->flags7 & MF7_ISPLAYER) && (ld->flags & ML_BLOCK_PLAYERS)) ||	// block players
 			((Projectile) && (ld->flags & ML_BLOCKPROJECTILE)) ||				// block projectiles
 			((tm.thing->flags & MF_FLOAT) && (ld->flags & ML_BLOCK_FLOATERS)))	// block floaters
 		{
@@ -2366,7 +2366,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 				{
 					P_PredictLine(ld, thing, oldside, SPAC_Cross);
 				}
-				else if (thing->player)
+				else if (thing->flags7 & MF7_ISPLAYER)
 				{
 					P_ActivateLine(ld, thing, oldside, SPAC_Cross);
 				}
@@ -2791,7 +2791,7 @@ void FSlide::SlideTraverse(const DVector2 &start, const DVector2 &end)
 		{
 			goto isblocking;
 		}
-		if (li->flags & ML_BLOCK_PLAYERS && slidemo->player != NULL)
+		if (li->flags & ML_BLOCK_PLAYERS && (slidemo->flags7 & MF7_ISPLAYER) != NULL)
 		{
 			goto isblocking;
 		}
