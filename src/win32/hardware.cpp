@@ -62,6 +62,7 @@ CVAR(Int, win_y, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 extern HWND Window;
 
 bool ForceWindowed;
+bool vid_renderer_changed;
 
 IVideo *Video;
 
@@ -99,8 +100,8 @@ CUSTOM_CVAR (Int, vid_renderer, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINI
 		NewWidth = screen->GetWidth();
 		NewHeight = screen->GetHeight();
 		NewBits = DisplayBits;
-		setmodeneeded=true;
-		I_CreateRenderer();
+		setmodeneeded = true;
+		vid_renderer_changed = true;
 		//Printf("You must restart " GAMENAME " to switch the renderer\n");
 	}
 }
