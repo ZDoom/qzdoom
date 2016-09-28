@@ -54,6 +54,8 @@ EXTERN_CVAR (Bool, fullscreen)
 EXTERN_CVAR (Bool, swtruecolor)
 EXTERN_CVAR (Float, vid_winscale)
 
+extern int NewWidth, NewHeight, NewBits, DisplayBits;
+
 CVAR(Int, win_x, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, win_y, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
@@ -71,6 +73,8 @@ void I_RestartRenderer();
 int currentrenderer = -1;
 bool changerenderer;
 
+
+static void I_DeleteRenderer();
 // [ZDoomGL]
 CUSTOM_CVAR (Int, vid_renderer, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
@@ -92,8 +96,12 @@ CUSTOM_CVAR (Int, vid_renderer, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINI
 			self = 0; // make sure to actually switch to the software renderer
 			break;
 		}
-		//changerenderer = true;
-		Printf("You must restart " GAMENAME " to switch the renderer\n");
+		NewWidth = screen->GetWidth();
+		NewHeight = screen->GetHeight();
+		NewBits = DisplayBits;
+		setmodeneeded=true;
+		I_CreateRenderer();
+		//Printf("You must restart " GAMENAME " to switch the renderer\n");
 	}
 }
 
@@ -156,7 +164,15 @@ static void I_DeleteRenderer()
 
 void I_CreateRenderer()
 {
-	currentrenderer = vid_renderer;
+	if (currentrenderer != vid_renderer)
+	{
+		currentrenderer = vid_renderer;
+		if (Renderer != NULL)
+		{
+			delete Renderer;
+			Renderer = NULL;
+		}
+	}
 	if (Renderer == NULL)
 	{
 		if (currentrenderer==1) Renderer = gl_CreateInterface();
@@ -355,8 +371,6 @@ void I_RestoreWindowedPos ()
 	}
 	MoveWindow (Window, winx, winy, winw, winh, TRUE);
 }
-
-extern int NewWidth, NewHeight, NewBits, DisplayBits;
 
 CUSTOM_CVAR(Bool, swtruecolor, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOINITCALL)
 {
