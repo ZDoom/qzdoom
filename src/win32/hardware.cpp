@@ -54,12 +54,15 @@ EXTERN_CVAR (Bool, fullscreen)
 EXTERN_CVAR (Bool, swtruecolor)
 EXTERN_CVAR (Float, vid_winscale)
 
+extern int NewWidth, NewHeight, NewBits, DisplayBits;
+
 CVAR(Int, win_x, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, win_y, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 extern HWND Window;
 
 bool ForceWindowed;
+bool vid_renderer_changed;
 
 IVideo *Video;
 
@@ -72,6 +75,8 @@ int currentrenderer = -1;
 int currentcanvas = -1;
 bool changerenderer;
 
+
+static void I_DeleteRenderer();
 // Software OpenGL canvas
 CUSTOM_CVAR(Bool, vid_used3d, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
@@ -100,8 +105,12 @@ CUSTOM_CVAR (Int, vid_renderer, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINI
 			self = 0; // make sure to actually switch to the software renderer
 			break;
 		}
-		//changerenderer = true;
-		Printf("You must restart " GAMENAME " to switch the renderer\n");
+		NewWidth = screen->GetWidth();
+		NewHeight = screen->GetHeight();
+		NewBits = DisplayBits;
+		setmodeneeded = true;
+		vid_renderer_changed = true;
+		//Printf("You must restart " GAMENAME " to switch the renderer\n");
 	}
 }
 
@@ -168,7 +177,15 @@ static void I_DeleteRenderer()
 
 void I_CreateRenderer()
 {
-	currentrenderer = vid_renderer;
+	if (currentrenderer != vid_renderer)
+	{
+		currentrenderer = vid_renderer;
+		if (Renderer != NULL)
+		{
+			delete Renderer;
+			Renderer = NULL;
+		}
+	}
 	currentcanvas = vid_used3d;
 	if (Renderer == NULL)
 	{
@@ -368,8 +385,6 @@ void I_RestoreWindowedPos ()
 	}
 	MoveWindow (Window, winx, winy, winw, winh, TRUE);
 }
-
-extern int NewWidth, NewHeight, NewBits, DisplayBits;
 
 CUSTOM_CVAR(Bool, swtruecolor, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOINITCALL)
 {

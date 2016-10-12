@@ -73,6 +73,8 @@ IMPLEMENT_ABSTRACT_CLASS (DCanvas)
 IMPLEMENT_ABSTRACT_CLASS (DFrameBuffer)
 EXTERN_CVAR (Bool, swtruecolor)
 
+extern bool vid_renderer_changed;
+
 #if defined(_DEBUG) && defined(_M_IX86)
 #define DBGBREAK	{ __asm int 3 }
 #else
@@ -1382,6 +1384,16 @@ CCMD(clean)
 bool V_DoModeSetup (int width, int height, int bits)
 {
 	DFrameBuffer *buff = I_SetMode (width, height, screen);
+
+	if (vid_renderer_changed)
+	{
+		vid_renderer_changed = false;
+		delete screen;
+		screen = nullptr;
+		delete Renderer;
+		Renderer = nullptr;
+		I_CreateRenderer();
+	}
 
 	if (buff == NULL)
 	{
