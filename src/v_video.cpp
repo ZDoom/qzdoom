@@ -1386,7 +1386,7 @@ bool V_DoModeSetup (int width, int height, int bits)
 	DFrameBuffer *buff = I_SetMode (width, height, screen);
 
 	if (vid_renderer_changed)
-	{
+	{	// Dragons. We call them Dargons for short. Except it's the same number of letters.
 		vid_renderer_changed = false;
 		delete screen;
 		screen = nullptr;

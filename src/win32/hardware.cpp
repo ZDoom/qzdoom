@@ -71,12 +71,13 @@ IVideo *gl_CreateVideo();
 FRenderer *gl_CreateInterface();
 
 void I_RestartRenderer();
+
 int currentrenderer = -1;
 int currentcanvas = -1;
 bool changerenderer;
 
-
 static void I_DeleteRenderer();
+
 // Software OpenGL canvas
 CUSTOM_CVAR(Bool, vid_used3d, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
@@ -105,12 +106,16 @@ CUSTOM_CVAR (Int, vid_renderer, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINI
 			self = 0; // make sure to actually switch to the software renderer
 			break;
 		}
-		NewWidth = screen->GetWidth();
-		NewHeight = screen->GetHeight();
-		NewBits = DisplayBits;
-		setmodeneeded = true;
-		vid_renderer_changed = true;
-		//Printf("You must restart " GAMENAME " to switch the renderer\n");
+		if ( currentcanvas )	// Still on Direct3D. Here be dragons. We don't touch these dragons.
+			Printf("You must restart " GAMENAME " to switch the renderer\n");
+		else
+		{	// Using the new OpenGL canvas. Here still be dragons. These ones burn.
+			NewWidth = screen->GetWidth();
+			NewHeight = screen->GetHeight();
+			NewBits = DisplayBits;
+			setmodeneeded = true;
+			vid_renderer_changed = true;
+		}
 	}
 }
 
@@ -178,7 +183,7 @@ static void I_DeleteRenderer()
 void I_CreateRenderer()
 {
 	if (currentrenderer != vid_renderer)
-	{
+	{	// I like dragons. Don't you?
 		currentrenderer = vid_renderer;
 		if (Renderer != NULL)
 		{
@@ -186,7 +191,8 @@ void I_CreateRenderer()
 			Renderer = NULL;
 		}
 	}
-	currentcanvas = vid_used3d;
+	if (currentcanvas == -1) // On startup, only
+		currentcanvas = vid_used3d;
 	if (Renderer == NULL)
 	{
 		if (currentrenderer==1) Renderer = gl_CreateInterface();
