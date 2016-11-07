@@ -25,7 +25,7 @@
 #include "gi.h"
 #include "p_pspr.h"
 #include "templates.h"
-#include "thingdef/thingdef.h"
+#include "vm.h"
 #include "g_level.h"
 #include "d_player.h"
 #include "serializer.h"
@@ -742,8 +742,8 @@ void DoReadyWeapon(AActor *self)
 
 DEFINE_ACTION_FUNCTION_PARAMS(AInventory, A_WeaponReady)
 {
-	PARAM_ACTION_PROLOGUE;
-	PARAM_INT_OPT(flags)	{ flags = 0; }
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT_DEF(flags);
 
 													DoReadyWeaponToSwitch(self, !(flags & WRF_NoSwitch));
 	if ((flags & WRF_NoFire) != WRF_NoFire)			DoReadyWeaponToFire(self, !(flags & WRF_NoPrimary), !(flags & WRF_NoSecondary));
@@ -874,8 +874,8 @@ static void P_CheckWeaponButtons (player_t *player)
 
 DEFINE_ACTION_FUNCTION_PARAMS(AInventory, A_ReFire)
 {
-	PARAM_ACTION_PROLOGUE;
-	PARAM_STATE_OPT(state)	{ state = NULL; }
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_STATE_DEF(state);
 	A_ReFire(self, state);
 	return 0;
 }
@@ -912,7 +912,7 @@ void A_ReFire(AActor *self, FState *state)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_ClearReFire)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 	player_t *player = self->player;
 
 	if (NULL != player)
@@ -934,7 +934,7 @@ DEFINE_ACTION_FUNCTION(AInventory, A_ClearReFire)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_CheckReload)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	if (self->player != NULL)
 	{
@@ -1001,21 +1001,21 @@ void A_OverlayOffset(AActor *self, int layer, double wx, double wy, int flags)
 
 DEFINE_ACTION_FUNCTION(AActor, A_OverlayOffset)
 {
-	PARAM_ACTION_PROLOGUE;
-	PARAM_INT_OPT(layer)	{ layer = PSP_WEAPON; }
-	PARAM_FLOAT_OPT(wx)		{ wx = 0.; }
-	PARAM_FLOAT_OPT(wy)		{ wy = 32.; }
-	PARAM_INT_OPT(flags)	{ flags = 0; }
+	PARAM_ACTION_PROLOGUE(AActor);
+	PARAM_INT_DEF(layer)
+	PARAM_FLOAT_DEF(wx)	
+	PARAM_FLOAT_DEF(wy)	
+	PARAM_INT_DEF(flags)
 	A_OverlayOffset(self, ((layer != 0) ? layer : stateinfo->mPSPIndex), wx, wy, flags);
 	return 0;
 }
 
 DEFINE_ACTION_FUNCTION(AActor, A_WeaponOffset)
 {
-	PARAM_ACTION_PROLOGUE;
-	PARAM_FLOAT_OPT(wx) { wx = 0.; }
-	PARAM_FLOAT_OPT(wy) { wy = 32.; }
-	PARAM_INT_OPT(flags) { flags = 0; }
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT_DEF(wx)	
+	PARAM_FLOAT_DEF(wy)	
+	PARAM_INT_DEF(flags)
 	A_OverlayOffset(self, PSP_WEAPON, wx, wy, flags);
 	return 0;
 }
@@ -1028,7 +1028,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_WeaponOffset)
 
 DEFINE_ACTION_FUNCTION(AActor, A_OverlayFlags)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_ACTION_PROLOGUE(AActor);
 	PARAM_INT(layer);
 	PARAM_INT(flags);
 	PARAM_BOOL(set);
@@ -1071,8 +1071,8 @@ static double GetOverlayPosition(AActor *self, int layer, bool gety)
 
 DEFINE_ACTION_FUNCTION(AActor, OverlayX)
 {
-	PARAM_ACTION_PROLOGUE;
-	PARAM_INT_OPT(layer) { layer = 0; }
+	PARAM_ACTION_PROLOGUE(AActor);
+	PARAM_INT_DEF(layer);
 
 	if (ACTION_CALL_FROM_PSPRITE())
 	{
@@ -1084,8 +1084,8 @@ DEFINE_ACTION_FUNCTION(AActor, OverlayX)
 
 DEFINE_ACTION_FUNCTION(AActor, OverlayY)
 {
-	PARAM_ACTION_PROLOGUE;
-	PARAM_INT_OPT(layer) { layer = 0; }
+	PARAM_ACTION_PROLOGUE(AActor);
+	PARAM_INT_DEF(layer);
 
 	if (ACTION_CALL_FROM_PSPRITE())
 	{
@@ -1103,7 +1103,7 @@ DEFINE_ACTION_FUNCTION(AActor, OverlayY)
 
 DEFINE_ACTION_FUNCTION(AActor, OverlayID)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_ACTION_PROLOGUE(AActor);
 
 	if (ACTION_CALL_FROM_PSPRITE())
 	{
@@ -1122,7 +1122,7 @@ DEFINE_ACTION_FUNCTION(AActor, OverlayID)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_Lower)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	player_t *player = self->player;
 	DPSprite *psp;
@@ -1170,7 +1170,7 @@ DEFINE_ACTION_FUNCTION(AInventory, A_Lower)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_Raise)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	if (self == nullptr)
 	{
@@ -1211,10 +1211,10 @@ DEFINE_ACTION_FUNCTION(AInventory, A_Raise)
 
 DEFINE_ACTION_FUNCTION_PARAMS(AActor, A_Overlay)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_ACTION_PROLOGUE(AActor);
 	PARAM_INT		(layer);
-	PARAM_STATE_OPT	(state) { state = nullptr; }
-	PARAM_BOOL_OPT	(dontoverride)	{ dontoverride = false; }
+	PARAM_STATE_DEF(state);
+	PARAM_BOOL_DEF(dontoverride);
 
 	player_t *player = self->player;
 
@@ -1231,10 +1231,10 @@ DEFINE_ACTION_FUNCTION_PARAMS(AActor, A_Overlay)
 
 DEFINE_ACTION_FUNCTION_PARAMS(AActor, A_ClearOverlays)
 {
-	PARAM_ACTION_PROLOGUE;
-	PARAM_INT_OPT(start) { start = 0; }
-	PARAM_INT_OPT(stop) { stop = 0; }
-	PARAM_BOOL_OPT(safety) { safety = true; }
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT_DEF(start);
+	PARAM_INT_DEF(stop);
+	PARAM_BOOL_DEF(safety)
 
 	if (self->player == nullptr)
 		ACTION_RETURN_INT(0);
@@ -1282,9 +1282,9 @@ enum GF_Flags
 
 DEFINE_ACTION_FUNCTION_PARAMS(AInventory, A_GunFlash)
 {
-	PARAM_ACTION_PROLOGUE;
-	PARAM_STATE_OPT(flash)	{ flash = nullptr; }
-	PARAM_INT_OPT  (flags)	{ flags = 0; }
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_STATE_DEF(flash);
+	PARAM_INT_DEF(flags);
 
 	player_t *player = self->player;
 
@@ -1372,7 +1372,7 @@ void P_GunShot (AActor *mo, bool accurate, PClassActor *pufftype, DAngle pitch)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_Light0)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	if (self->player != NULL)
 	{
@@ -1383,7 +1383,7 @@ DEFINE_ACTION_FUNCTION(AInventory, A_Light0)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_Light1)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	if (self->player != NULL)
 	{
@@ -1394,7 +1394,7 @@ DEFINE_ACTION_FUNCTION(AInventory, A_Light1)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_Light2)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	if (self->player != NULL)
 	{
@@ -1405,7 +1405,7 @@ DEFINE_ACTION_FUNCTION(AInventory, A_Light2)
 
 DEFINE_ACTION_FUNCTION_PARAMS(AInventory, A_Light)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(light);
 
 	if (self->player != NULL)

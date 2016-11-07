@@ -14,11 +14,23 @@ typedef std::pair<const class PType *, unsigned> FTypeAndOffset;
 // Making all these different storage types use a common set of flags seems
 // like the simplest thing to do.
 
-#define VARF_Optional		(1<<0)	// func param is optional
-#define VARF_Method			(1<<1)	// func has an implied self parameter
-#define VARF_Action			(1<<2)	// func has implied owner and state parameters
-#define VARF_Native			(1<<3)	// func is native code/don't auto serialize field
-#define VARF_ReadOnly		(1<<4)	// field is read only, do not write to it
+enum
+{
+	VARF_Optional		= (1<<0),	// func param is optional
+	VARF_Method			= (1<<1),	// func has an implied self parameter
+	VARF_Action			= (1<<2),	// func has implied owner and state parameters
+	VARF_Native			= (1<<3),	// func is native code/don't auto serialize field
+	VARF_ReadOnly		= (1<<4),	// field is read only, do not write to it
+	VARF_Private		= (1<<5),	// field is private to containing class
+	VARF_Protected		= (1<<6),	// field is only accessible by containing class and children.
+	VARF_Deprecated		= (1<<7),	// Deprecated fields should output warnings when used.
+	VARF_Virtual		= (1<<8),	// function is virtual
+	VARF_Final			= (1<<9),	// Function may not be overridden in subclasses
+	VARF_In				= (1<<10),
+	VARF_Out			= (1<<11),
+	VARF_Implicit		= (1<<12),	// implicitly created parameters (i.e. do not compare types when checking function signatures)
+	VARF_Static			= (1<<13),	// static class data (by necessity read only.)
+};
 
 // Symbol information -------------------------------------------------------
 
@@ -57,7 +69,6 @@ struct StateCallData;
 class VMFrameStack;
 struct VMValue;
 struct VMReturn;
-typedef int (*actionf_p)(VMFrameStack *stack, VMValue *param, int numparam, VMReturn *ret, int numret);/*(VM_ARGS)*/
 class VMFunction;
 
 // A VM function ------------------------------------------------------------
@@ -86,18 +97,6 @@ public:
 	PSymbolType() : PSymbol(NAME_None) {}
 };
 
-// A symbol for a compiler tree node ----------------------------------------
-
-class PSymbolTreeNode : public PSymbol
-{
-	DECLARE_CLASS(PSymbolTreeNode, PSymbol);
-public:
-	struct ZCC_NamedNode *Node;
-
-	PSymbolTreeNode(FName name, struct ZCC_NamedNode *node) : PSymbol(name), Node(node) {}
-	PSymbolTreeNode() : PSymbol(NAME_None) {}
-};
-
 // A symbol table -----------------------------------------------------------
 
 struct PSymbolTable
@@ -111,6 +110,10 @@ struct PSymbolTable
 	// Sets the table to use for searches if this one doesn't contain the
 	// requested symbol.
 	void SetParentTable (PSymbolTable *parent);
+	PSymbolTable *GetParentTable() const
+	{
+		return ParentSymbolTable;
+	}
 
 	// Finds a symbol in the table, optionally searching parent tables
 	// as well.
@@ -119,6 +122,7 @@ struct PSymbolTable
 	// Like FindSymbol with searchparents set true, but also returns the
 	// specific symbol table the symbol was found in.
 	PSymbol *FindSymbolInTable(FName symname, PSymbolTable *&symtable);
+
 
 	// Places the symbol in the table and returns a pointer to it or NULL if
 	// a symbol with the same name is already in the table. This symbol is
@@ -132,6 +136,15 @@ struct PSymbolTable
 	// Frees all symbols from this table.
 	void ReleaseSymbols();
 
+	// add a name to help debugging.
+#ifdef _DEBUG
+	FString name;
+	void SetName(const char *nm) { name = nm; }
+#else
+	void SetName(const char *) {}
+#endif
+
+
 private:
 	typedef TMap<FName, PSymbol *> MapType;
 
@@ -139,6 +152,18 @@ private:
 	MapType Symbols;
 
 	friend class DObject;
+};
+
+// A symbol for a compiler tree node ----------------------------------------
+
+class PSymbolTreeNode : public PSymbol
+{
+	DECLARE_CLASS(PSymbolTreeNode, PSymbol);
+public:
+	struct ZCC_TreeNode *Node;
+
+	PSymbolTreeNode(FName name, struct ZCC_TreeNode *node) : PSymbol(name), Node(node) {}
+	PSymbolTreeNode() : PSymbol(NAME_None) {}
 };
 
 extern PSymbolTable		 GlobalSymbols;
@@ -179,6 +204,7 @@ class PType : public PTypeBase
 	HAS_OBJECT_POINTERS;
 protected:
 	enum { MetaClassNum = CLASSREG_PClassType };
+
 public:
 	typedef PClassType MetaClass;
 	MetaClass *GetClass() const;
@@ -196,9 +222,11 @@ public:
 	unsigned int	Align;			// this type's preferred alignment
 	PType			*HashNext;		// next type in this type table
 	PSymbolTable	Symbols;
+	bool			MemberOnly = false;		// type may only be used as a struct/class member but not as a local variable or function argument.
+	FString			mDescriptiveName;
+	BYTE loadOp, storeOp, moveOp, RegType, RegCount;
 
-	PType();
-	PType(unsigned int size, unsigned int align);
+	PType(unsigned int size = 1, unsigned int align = 1);
 	virtual ~PType();
 
 	bool AddConversion(PType *target, void (*convertconst)(ZCC_ExprConstant *, class FSharedStringArena &));
@@ -240,14 +268,33 @@ public:
 	virtual double GetValueFloat(void *addr) const;
 
 	// Gets the opcode to store from a register to memory
-	virtual int GetStoreOp() const;
+	int GetStoreOp() const
+	{
+		return storeOp;
+	}
 
 	// Gets the opcode to load from memory to a register
-	virtual int GetLoadOp() const;
+	int GetLoadOp() const
+	{
+		return loadOp;
+	}
+
+	// Gets the opcode to move from register to another register
+	int GetMoveOp() const
+	{
+		return moveOp;
+	}
 
 	// Gets the register type for this type
-	virtual int GetRegType() const;
+	int GetRegType() const
+	{
+		return RegType;
+	}
 
+	int GetRegCount() const
+	{
+		return RegCount;
+	}
 	// Returns true if this type matches the two identifiers. Referring to the
 	// above table, any type is identified by at most two characteristics. Each
 	// type that implements this function will cast these to the appropriate type.
@@ -258,6 +305,8 @@ public:
 
 	// Get the type IDs used by IsMatch
 	virtual void GetTypeIDs(intptr_t &id1, intptr_t &id2) const;
+
+	const char *DescriptiveName() const;
 
 	size_t PropagateMark();
 
@@ -351,8 +400,12 @@ public:
 	PTypeBase		*Outer;			// object this type is contained within
 	FName			TypeName;		// this type's name
 
-	PNamedType() : Outer(NULL) {}
-	PNamedType(FName name, PTypeBase *outer) : Outer(outer), TypeName(name) {}
+	PNamedType() : Outer(NULL) {
+		mDescriptiveName = "NamedType";
+	}
+	PNamedType(FName name, PTypeBase *outer) : Outer(outer), TypeName(name) {
+		mDescriptiveName = name.GetChars();
+	}
 
 	virtual bool IsMatch(intptr_t id1, intptr_t id2) const;
 	virtual void GetTypeIDs(intptr_t &id1, intptr_t &id2) const;
@@ -374,13 +427,11 @@ public:
 	virtual void SetValue(void *addr, double val);
 	virtual int GetValueInt(void *addr) const;
 	virtual double GetValueFloat(void *addr) const;
-	virtual int GetStoreOp() const;
-	virtual int GetLoadOp() const;
-	virtual int GetRegType() const;
 
 	bool Unsigned;
 protected:
 	PInt();
+	void SetOps();
 };
 
 class PBool : public PInt
@@ -403,11 +454,9 @@ public:
 	virtual void SetValue(void *addr, double val);
 	virtual int GetValueInt(void *addr) const;
 	virtual double GetValueFloat(void *addr) const;
-	virtual int GetStoreOp() const;
-	virtual int GetLoadOp() const;
-	virtual int GetRegType() const;
 protected:
 	PFloat();
+	void SetOps();
 private:
 	struct SymbolInitF
 	{
@@ -431,8 +480,6 @@ class PString : public PBasicType
 	DECLARE_CLASS(PString, PBasicType);
 public:
 	PString();
-
-	virtual int GetRegType() const;
 
 	void WriteValue(FSerializer &ar, const char *key,const void *addr) const override;
 	bool ReadValue(FSerializer &ar, const char *key,void *addr) const override;
@@ -480,10 +527,6 @@ public:
 
 	void WriteValue(FSerializer &ar, const char *key,const void *addr) const override;
 	bool ReadValue(FSerializer &ar, const char *key,void *addr) const override;
-
-	virtual int GetStoreOp() const;
-	virtual int GetLoadOp() const;
-	virtual int GetRegType() const;
 };
 
 class PPointer : public PBasicType
@@ -491,13 +534,11 @@ class PPointer : public PBasicType
 	DECLARE_CLASS(PPointer, PBasicType);
 	HAS_OBJECT_POINTERS;
 public:
-	PPointer(PType *pointsat);
+	PPointer();
+	PPointer(PType *pointsat, bool isconst = false);
 
 	PType *PointedType;
-
-	virtual int GetStoreOp() const;
-	virtual int GetLoadOp() const;
-	virtual int GetRegType() const;
+	bool IsConst;
 
 	virtual bool IsMatch(intptr_t id1, intptr_t id2) const;
 	virtual void GetTypeIDs(intptr_t &id1, intptr_t &id2) const;
@@ -506,7 +547,7 @@ public:
 	bool ReadValue(FSerializer &ar, const char *key,void *addr) const override;
 
 protected:
-	PPointer();
+	void SetOps();
 };
 
 class PClassPointer : public PPointer
@@ -532,13 +573,12 @@ class PField : public PSymbol
 	DECLARE_CLASS(PField, PSymbol);
 	HAS_OBJECT_POINTERS
 public:
-	PField(FName name, PType *type) : PSymbol(name), Offset(0), Type(type), Flags(0) {}
-	PField(FName name, PType *type, DWORD flags) : PSymbol(name), Offset(0), Type(type), Flags(flags) {}
-	PField(FName name, PType *type, DWORD flags, unsigned offset) : PSymbol(name), Offset(offset), Type(type), Flags(flags) {}
+	PField(FName name, PType *type, DWORD flags = 0, size_t offset = 0, int bitvalue = -1);
 
-	unsigned int Offset;
+	size_t Offset;
 	PType *Type;
 	DWORD Flags;
+	int BitValue;
 protected:
 	PField();
 };
@@ -630,8 +670,10 @@ public:
 	PStruct(FName name, PTypeBase *outer);
 
 	TArray<PField *> Fields;
+	bool HasNativeFields;
 
 	virtual PField *AddField(FName name, PType *type, DWORD flags=0);
+	virtual PField *AddNativeField(FName name, PType *type, size_t address, DWORD flags = 0, int bitvalue = -1);
 
 	size_t PropagateMark();
 
@@ -668,19 +710,27 @@ class PFunction : public PSymbol
 public:
 	struct Variant
 	{
-		//PPrototype *Proto;
+		PPrototype *Proto;
 		VMFunction *Implementation;
 		TArray<DWORD> ArgFlags;		// Should be the same length as Proto->ArgumentTypes
+		TArray<FName> ArgNames;		// we need the names to access them later when the function gets compiled.
+		DWORD Flags;
+		PClass *SelfClass;
 	};
 	TArray<Variant> Variants;
-	DWORD Flags;
+	PClass *OwningClass = nullptr;
 
-	unsigned AddVariant(PPrototype *proto, TArray<DWORD> &argflags, VMFunction *impl);
+	unsigned AddVariant(PPrototype *proto, TArray<DWORD> &argflags, TArray<FName> &argnames, VMFunction *impl, int flags);
+	int GetImplicitArgs()
+	{
+		if (Variants[0].Flags & VARF_Action) return 3;
+		else if (Variants[0].Flags & VARF_Method) return 1;
+		return 0;
+	}
 
 	size_t PropagateMark();
 
-	PFunction(FName name) : PSymbol(name), Flags(0) {}
-	PFunction() : PSymbol(NAME_None), Flags(0) {}
+	PFunction(PClass *owner = nullptr, FName name = NAME_None) : PSymbol(name), OwningClass(owner) {}
 };
 
 // Meta-info for every class derived from DObject ---------------------------
@@ -701,6 +751,7 @@ protected:
 	TArray<FTypeAndOffset> SpecialInits;
 	virtual void Derive(PClass *newclass);
 	void InitializeSpecials(void *addr) const;
+	void SetSuper();
 public:
 	typedef PClassClass MetaClass;
 	MetaClass *GetClass() const;
@@ -721,6 +772,7 @@ public:
 	const size_t		*FlatPointers;	// object pointers defined by this class and all its superclasses; not initialized by default
 	BYTE				*Defaults;
 	bool				 bRuntimeClass;	// class was defined at run-time, not compile-time
+	bool				 bExported;		// This type has been declared in a script
 
 	void (*ConstructNative)(void *);
 
@@ -799,17 +851,6 @@ inline PClass::MetaClass *PClass::GetClass() const
 	return static_cast<MetaClass *>(DObject::GetClass());
 }
 
-// A class that hasn't had its parent class defined yet ---------------------
-
-class PClassWaitingForParent : public PClass
-{
-	DECLARE_CLASS(PClassWaitingForParent, PClass);
-public:
-	PClassWaitingForParent(FName myname, FName parentname);
-
-	FName ParentName;
-};
-
 // Type tables --------------------------------------------------------------
 
 struct FTypeTable
@@ -836,9 +877,8 @@ PVector *NewVector(unsigned int size);
 PMap *NewMap(PType *keytype, PType *valuetype);
 PArray *NewArray(PType *type, unsigned int count);
 PDynArray *NewDynArray(PType *type);
-PPointer *NewPointer(PType *type);
+PPointer *NewPointer(PType *type, bool isconst = false);
 PClassPointer *NewClassPointer(PClass *restrict);
-PClassWaitingForParent *NewUnknownClass(FName myname, FName parentname);
 PEnum *NewEnum(FName name, PTypeBase *outer);
 PStruct *NewStruct(FName name, PTypeBase *outer);
 PPrototype *NewPrototype(const TArray<PType *> &rettypes, const TArray<PType *> &argtypes);
@@ -856,7 +896,10 @@ extern PString *TypeString;
 extern PName *TypeName;
 extern PSound *TypeSound;
 extern PColor *TypeColor;
+extern PStruct *TypeVector2;
+extern PStruct *TypeVector3;
 extern PStatePointer *TypeState;
+extern PPointer *TypeNullPtr;
 
 // A constant value ---------------------------------------------------------
 

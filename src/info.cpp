@@ -52,8 +52,10 @@
 #include "cmdlib.h"
 #include "g_level.h"
 #include "stats.h"
-#include "thingdef/thingdef.h"
+#include "vm.h"
+#include "thingdef.h"
 #include "d_player.h"
+#include "doomerrors.h"
 
 extern void LoadActors ();
 extern void InitBotStuff();
@@ -66,7 +68,7 @@ cycle_t ActionCycles;
 
 void FState::SetAction(const char *name)
 {
-	ActionFunc = FindGlobalActionFunction(name)->Variants[0].Implementation;
+	ActionFunc = FindVMFunction(RUNTIME_CLASS(AActor), name);
 }
 
 bool FState::CallAction(AActor *self, AActor *stateowner, FStateParamInfo *info, FState **stateret)
@@ -75,8 +77,8 @@ bool FState::CallAction(AActor *self, AActor *stateowner, FStateParamInfo *info,
 	{
 		ActionCycles.Clock();
 
-		static VMFrameStack stack;
-		VMValue params[3] = { self, stateowner, VMValue(info, ATAG_STATEINFO) };
+		VMFrameStack stack;
+		VMValue params[3] = { self, stateowner, VMValue(info, ATAG_GENERIC) };
 		// If the function returns a state, store it at *stateret.
 		// If it doesn't return a state but stateret is non-NULL, we need
 		// to set *stateret to NULL.
@@ -92,13 +94,13 @@ bool FState::CallAction(AActor *self, AActor *stateowner, FStateParamInfo *info,
 		}
 		if (stateret == NULL)
 		{
-			stack.Call(ActionFunc, params, countof(params), NULL, 0, NULL);
+			stack.Call(ActionFunc, params, ActionFunc->ImplicitArgs, NULL, 0, NULL);
 		}
 		else
 		{
 			VMReturn ret;
 			ret.PointerAt((void **)stateret);
-			stack.Call(ActionFunc, params, countof(params), &ret, 1, NULL);
+			stack.Call(ActionFunc, params, ActionFunc->ImplicitArgs, &ret, 1, NULL);
 		}
 		ActionCycles.Unclock();
 		return true;
@@ -361,7 +363,6 @@ size_t PClassActor::PropagateMark()
 
 void PClassActor::InitializeNativeDefaults()
 {
-	Symbols.SetParentTable(&ParentClass->Symbols);
 	assert(Defaults == NULL);
 	Defaults = (BYTE *)M_Malloc(Size);
 	if (ParentClass->Defaults != NULL) 
@@ -379,6 +380,75 @@ void PClassActor::InitializeNativeDefaults()
 		((AActor*)Defaults)->DamageMultiply = 1.;	// fixme: Make this a DECORATE property.
 		((AActor*)Defaults)->ConversationRoot = -1;
 	}
+}
+
+//==========================================================================
+//
+// PClassActor :: SetReplacement
+//
+// Sets as a replacement class for another class.
+//
+//==========================================================================
+
+bool PClassActor::SetReplacement(FName replaceName)
+{
+	// Check for "replaces"
+	if (replaceName != NAME_None)
+	{
+		// Get actor name
+		PClassActor *replacee = PClass::FindActor(replaceName);
+
+		if (replacee == nullptr)
+		{
+			return false;
+		}
+		if (replacee != nullptr)
+		{
+			replacee->Replacement = this;
+			Replacee = replacee;
+		}
+	}
+	return true;
+}
+
+//==========================================================================
+//
+// PClassActor :: SetDropItems
+//
+// Sets a new drop item list
+//
+//==========================================================================
+
+void PClassActor::SetDropItems(DDropItem *drops)
+{
+	DropItems = drops;
+	GC::WriteBarrier(this, DropItems);
+}
+
+
+//==========================================================================
+//
+// PClassActor :: Finalize
+//
+// Installs the parsed states and does some sanity checking
+//
+//==========================================================================
+
+void PClassActor::Finalize(FStateDefinitions &statedef)
+{
+	AActor *defaults = (AActor*)Defaults;
+
+	try
+	{
+		statedef.FinishStates(this, defaults);
+	}
+	catch (CRecoverableError &)
+	{
+		statedef.MakeStateDefines(NULL);
+		throw;
+	}
+	statedef.InstallStates(this, defaults);
+	statedef.MakeStateDefines(NULL);
 }
 
 //==========================================================================
@@ -746,4 +816,44 @@ int DamageTypeDefinition::ApplyMobjDamageFactor(int damage, FName type, DmgFacto
 {
 	double factor = GetMobjDamageFactor(type, factors);
 	return int(damage * factor);
+}
+
+//==========================================================================
+//
+// Reads a damage definition
+//
+//==========================================================================
+
+void FMapInfoParser::ParseDamageDefinition()
+{
+	sc.MustGetString();
+	FName damageType = sc.String;
+
+	DamageTypeDefinition dtd;
+
+	ParseOpenBrace();
+	while (sc.MustGetAnyToken(), sc.TokenType != '}')
+	{
+		if (sc.Compare("FACTOR"))
+		{
+			sc.MustGetStringName("=");
+			sc.MustGetFloat();
+			dtd.DefaultFactor = sc.Float;
+			if (dtd.DefaultFactor == 0) dtd.ReplaceFactor = true;
+		}
+		else if (sc.Compare("REPLACEFACTOR"))
+		{
+			dtd.ReplaceFactor = true;
+		}
+		else if (sc.Compare("NOARMOR"))
+		{
+			dtd.NoArmor = true;
+		}
+		else
+		{
+			sc.ScriptError("Unexpected data (%s) in damagetype definition.", sc.String);
+		}
+	}
+
+	dtd.Apply(damageType);
 }

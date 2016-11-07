@@ -139,7 +139,9 @@ enum
 
 struct FScriptPosition
 {
+	static int WarnCounter;
 	static int ErrorCounter;
+	static bool StrictErrors;
 	FString FileName;
 	int ScriptLine;
 
@@ -154,6 +156,7 @@ struct FScriptPosition
 	void Message(int severity, const char *message,...) const;
 	static void ResetErrorCounter()
 	{
+		WarnCounter = 0;
 		ErrorCounter = 0;
 	}
 };

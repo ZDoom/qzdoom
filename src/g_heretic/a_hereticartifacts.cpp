@@ -5,7 +5,7 @@
 #include "gstrings.h"
 #include "p_local.h"
 #include "s_sound.h"
-#include "thingdef/thingdef.h"
+#include "vm.h"
 */
 
 // Tome of power ------------------------------------------------------------
@@ -47,7 +47,7 @@ bool AArtiTomeOfPower::Use (bool pickup)
 
 DEFINE_ACTION_FUNCTION(AActor, A_TimeBomb)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	self->AddZ(32, false);
 	self->RenderStyle = STYLE_Add;

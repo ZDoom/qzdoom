@@ -1006,6 +1006,8 @@ void FScanner::CheckOpen()
 //
 //==========================================================================
 int FScriptPosition::ErrorCounter;
+int FScriptPosition::WarnCounter;
+bool FScriptPosition::StrictErrors;	// makes all OPTERRPR messages real errors.
 
 FScriptPosition::FScriptPosition(const FScriptPosition &other)
 {
@@ -1047,7 +1049,7 @@ void FScriptPosition::Message (int severity, const char *message, ...) const
 	if ((severity == MSG_DEBUG || severity == MSG_DEBUGLOG) && developer < DMSG_NOTIFY) return;
 	if (severity == MSG_OPTERROR)
 	{
-		severity = strictdecorate ? MSG_ERROR : MSG_WARNING;
+		severity = StrictErrors || strictdecorate ? MSG_ERROR : MSG_WARNING;
 	}
 
 	if (message == NULL)
@@ -1071,6 +1073,7 @@ void FScriptPosition::Message (int severity, const char *message, ...) const
 		return;
 
 	case MSG_WARNING:
+		WarnCounter++;
 		type = "warning";
 		color = TEXTCOLOR_YELLOW;
 		break;

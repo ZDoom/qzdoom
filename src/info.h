@@ -53,8 +53,21 @@ struct Baggage;
 class FScanner;
 struct FActorInfo;
 class FIntCVar;
+class FStateDefinitions;
 
-enum EStateType
+enum EStateDefineFlags
+{
+	SDF_NEXT = 0,
+	SDF_STATE = 1,
+	SDF_STOP = 2,
+	SDF_WAIT = 3,
+	SDF_LABEL = 4,
+	SDF_INDEX = 5,
+	SDF_MASK = 7,
+	SDF_DEHACKED = 8,	// Identify a state as having been modified by a dehacked lump
+};
+
+enum EStateType : int // this must ensure proper alignment.
 {
 	STATE_Actor,
 	STATE_Psprite,
@@ -222,6 +235,9 @@ public:
 	void SetPainChance(FName type, int chance);
 	size_t PropagateMark();
 	void InitializeNativeDefaults();
+	bool SetReplacement(FName replaceName);
+	void SetDropItems(DDropItem *drops);
+	virtual void Finalize(FStateDefinitions &statedef);
 
 	FState *FindState(int numnames, FName *names, bool exact=false) const;
 	FState *FindStateByString(const char *name, bool exact=false);
@@ -339,24 +355,5 @@ void InitActorNumsFromMapinfo();
 int GetSpriteIndex(const char * spritename, bool add = true);
 TArray<FName> &MakeStateNameList(const char * fname);
 void AddStateLight(FState *state, const char *lname);
-
-// Standard parameters for all action functons
-//   self         - Actor this action is to operate on (player if a weapon)
-//   stateowner   - Actor this action really belongs to (may be an item)
-//   callingstate - State this action was called from
-#define PARAM_ACTION_PROLOGUE_TYPE(type) \
-	PARAM_PROLOGUE; \
-	PARAM_OBJECT	 (self, type); \
-	PARAM_OBJECT_OPT (stateowner, AActor) { stateowner = self; } \
-	PARAM_STATEINFO_OPT  (stateinfo) { stateinfo = nullptr; } \
-
-#define PARAM_ACTION_PROLOGUE	PARAM_ACTION_PROLOGUE_TYPE(AActor)
-
-// Number of action paramaters
-#define NAP 3
-
-#define PARAM_SELF_PROLOGUE(type) \
-	PARAM_PROLOGUE; \
-	PARAM_OBJECT(self, type);
 
 #endif	// __INFO_H__

@@ -13,7 +13,7 @@
 #include "cmdlib.h"
 #include "templates.h"
 #include "sbar.h"
-#include "thingdef/thingdef.h"
+#include "vm.h"
 #include "doomstat.h"
 #include "g_level.h"
 #include "d_net.h"
@@ -66,6 +66,38 @@ void PClassWeapon::ReplaceClassRef(PClass *oldclass, PClass *newclass)
 		if (def->SisterWeaponType == oldclass) def->SisterWeaponType = static_cast<PClassWeapon *>(newclass);
 	}
 }
+
+void PClassWeapon::Finalize(FStateDefinitions &statedef)
+{
+	Super::Finalize(statedef);
+	FState *ready = FindState(NAME_Ready);
+	FState *select = FindState(NAME_Select);
+	FState *deselect = FindState(NAME_Deselect);
+	FState *fire = FindState(NAME_Fire);
+
+	// Consider any weapon without any valid state abstract and don't output a warning
+	// This is for creating base classes for weapon groups that only set up some properties.
+	if (ready || select || deselect || fire)
+	{
+		if (!ready)
+		{
+			I_Error("Weapon %s doesn't define a ready state.", TypeName.GetChars());
+		}
+		if (!select)
+		{
+			I_Error("Weapon %s doesn't define a select state.", TypeName.GetChars());
+		}
+		if (!deselect)
+		{
+			I_Error("Weapon %s doesn't define a deselect state.", TypeName.GetChars());
+		}
+		if (!fire)
+		{
+			I_Error("Weapon %s doesn't define a fire state.", TypeName.GetChars());
+		}
+	}
+}
+
 
 //===========================================================================
 //
@@ -1891,9 +1923,9 @@ PClassWeapon *Net_ReadWeapon(BYTE **stream)
 
 DEFINE_ACTION_FUNCTION_PARAMS(AWeapon, A_ZoomFactor)
 {
-	PARAM_ACTION_PROLOGUE;
-	PARAM_FLOAT_OPT	(zoom)	{ zoom = 1; }
-	PARAM_INT_OPT	(flags)	{ flags = 0; }
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT_DEF(zoom);
+	PARAM_INT_DEF(flags);
 
 	if (self->player != NULL && self->player->ReadyWeapon != NULL)
 	{
@@ -1919,7 +1951,7 @@ DEFINE_ACTION_FUNCTION_PARAMS(AWeapon, A_ZoomFactor)
 
 DEFINE_ACTION_FUNCTION_PARAMS(AWeapon, A_SetCrosshair)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(xhair);
 
 	if (self->player != NULL && self->player->ReadyWeapon != NULL)

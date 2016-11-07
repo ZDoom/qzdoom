@@ -3,7 +3,7 @@
 #include "p_enemy.h"
 #include "a_action.h"
 #include "m_random.h"
-#include "thingdef/thingdef.h"
+#include "vm.h"
 */
 
 static FRandom pr_centaurdefend ("CentaurDefend");
@@ -16,7 +16,7 @@ static FRandom pr_centaurdefend ("CentaurDefend");
 
 DEFINE_ACTION_FUNCTION(AActor, A_CentaurDefend)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	A_FaceTarget (self);
 	if (self->CheckMeleeRange() && pr_centaurdefend() < 32)

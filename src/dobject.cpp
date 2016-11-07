@@ -62,6 +62,7 @@ ClassReg DObject::RegistrationInfo =
 	NULL,							// ParentType
 	NULL,							// Pointers
 	&DObject::InPlaceConstructor,	// ConstructNative
+	&DObject::InitNativeFields,
 	sizeof(DObject),				// SizeOf
 	CLASSREG_PClass,				// MetaClassNum
 };
@@ -344,9 +345,34 @@ DObject::~DObject ()
 //
 //==========================================================================
 
+void DObject::InitNativeFields()
+{
+	auto meta = RUNTIME_CLASS(DObject);
+	meta->AddNativeField("bDestroyed", TypeSInt32, myoffsetof(DObject, ObjectFlags), VARF_ReadOnly, OF_EuthanizeMe);
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
 void DObject::Destroy ()
 {
 	ObjectFlags = (ObjectFlags & ~OF_Fixed) | OF_EuthanizeMe;
+}
+
+DEFINE_ACTION_FUNCTION(DObject, Destroy)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	self->Destroy();
+	return 0;	
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetClass)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	ACTION_RETURN_OBJECT(self->GetClass());
 }
 
 //==========================================================================

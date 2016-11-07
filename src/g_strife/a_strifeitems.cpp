@@ -13,7 +13,7 @@
 #include "a_keys.h"
 #include "c_console.h"
 #include "templates.h"
-#include "thingdef/thingdef.h"
+#include "vm.h"
 #include "g_level.h"
 #include "doomstat.h"
 */
@@ -23,7 +23,7 @@ IMPLEMENT_CLASS(ADegninOre)
 
 DEFINE_ACTION_FUNCTION(AActor, A_RemoveForceField)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	self->flags &= ~MF_SPECIAL;
 

@@ -8,12 +8,13 @@
 #include "a_action.h"
 #include "gi.h"
 #include "w_wad.h"
-#include "thingdef/thingdef.h"
+#include "vm.h"
 #include "g_level.h"
 #include "doomstat.h"
 #include "a_pickups.h"
 #include "d_player.h"
 #include "serializer.h"
+#include "vm.h"
 
 #define MAULATORTICS (25*35)
 
@@ -134,7 +135,7 @@ bool AMinotaurFriend::OkayToSwitchTarget (AActor *other)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MinotaurDeath)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	if (Wads.CheckNumForName ("MNTRF1", ns_sprites) < 0 &&
 		Wads.CheckNumForName ("MNTRF0", ns_sprites) < 0)
@@ -144,7 +145,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_MinotaurDeath)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MinotaurAtk1)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	player_t *player;
 
@@ -179,7 +180,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_MinotaurAtk1)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MinotaurDecide)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	bool friendly = !!(self->flags5 & MF5_SUMMONEDMONSTER);
 	AActor *target;
@@ -236,7 +237,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_MinotaurDecide)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MinotaurCharge)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	AActor *puff;
 
@@ -279,7 +280,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_MinotaurCharge)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MinotaurAtk2)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	AActor *mo;
 	DAngle angle;
@@ -329,7 +330,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_MinotaurAtk2)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MinotaurAtk3)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	AActor *mo;
 	player_t *player;
@@ -385,7 +386,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_MinotaurAtk3)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MntrFloorFire)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	AActor *mo;
 
@@ -414,7 +415,7 @@ void P_MinotaurSlam (AActor *source, AActor *target)
 
 	angle = source->AngleTo(target);
 	thrust = 16 + pr_minotaurslam() / 64.;
-	target->VelFromAngle(angle, thrust);
+	target->VelFromAngle(thrust, angle);
 	damage = pr_minotaurslam.HitDice (static_cast<AMinotaur *>(source) ? 4 : 6);
 	int newdam = P_DamageMobj (target, NULL, NULL, damage, NAME_Melee);
 	P_TraceBleed (newdam > 0 ? newdam : damage, target, angle, 0.);
@@ -442,7 +443,7 @@ void P_MinotaurSlam (AActor *source, AActor *target)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MinotaurRoam)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	// In case pain caused him to skip his fade in.
 	self->RenderStyle = STYLE_Normal;
@@ -490,7 +491,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_MinotaurRoam)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MinotaurLook)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	if (!self->IsKindOf(RUNTIME_CLASS(AMinotaurFriend)))
 	{
@@ -561,7 +562,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_MinotaurLook)
 
 DEFINE_ACTION_FUNCTION(AActor, A_MinotaurChase)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	if (!self->IsKindOf(RUNTIME_CLASS(AMinotaurFriend)))
 	{

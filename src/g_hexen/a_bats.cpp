@@ -4,7 +4,7 @@
 #include "m_random.h"
 #include "p_local.h"
 #include "s_sound.h"
-#include "thingdef/thingdef.h"
+#include "vm.h"
 */
 
 static FRandom pr_batspawn ("BatSpawn");
@@ -27,7 +27,7 @@ static FRandom pr_batmove ("BatMove");
 
 DEFINE_ACTION_FUNCTION(AActor, A_BatSpawnInit)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	self->special1 = 0;	// Frequency count
 	return 0;
@@ -35,7 +35,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_BatSpawnInit)
 
 DEFINE_ACTION_FUNCTION(AActor, A_BatSpawn)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	AActor *mo;
 	int delta;
@@ -64,7 +64,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_BatSpawn)
 
 DEFINE_ACTION_FUNCTION(AActor, A_BatMove)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	DAngle newangle;
 
@@ -84,7 +84,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_BatMove)
 	}
 
 	// Adjust velocity vector to new direction
-	self->VelFromAngle(newangle, self->Speed);
+	self->VelFromAngle(self->Speed, newangle);
 
 	if (pr_batmove()<15)
 	{

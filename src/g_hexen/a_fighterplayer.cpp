@@ -8,7 +8,7 @@
 #include "p_local.h"
 #include "a_action.h"
 #include "a_hexenglobal.h"
-#include "thingdef/thingdef.h"
+#include "vm.h"
 */
 
 IMPLEMENT_CLASS (AFighterWeapon)
@@ -99,7 +99,7 @@ static bool TryPunch(APlayerPawn *pmo, DAngle angle, int damage, int power)
 
 DEFINE_ACTION_FUNCTION(AActor, A_FPunchAttack)
 {
-	PARAM_ACTION_PROLOGUE;
+	PARAM_SELF_PROLOGUE(AActor);
 
 	int damage;
 	int i;
