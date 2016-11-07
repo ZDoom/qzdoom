@@ -62,7 +62,7 @@
 #include "p_local.h"
 #include "c_dispatch.h"
 #include "g_level.h"
-#include "thingdef/thingdef.h"
+#include "scripting/thingdef.h"
 #include "i_system.h"
 #include "templates.h"
 #include "doomdata.h"
