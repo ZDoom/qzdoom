@@ -106,10 +106,10 @@ DEFINE_CLASS_PROPERTY(type, S, DynamicLight)
 // which is controlled by flags
 //
 //==========================================================================
-IMPLEMENT_CLASS (ADynamicLight)
-IMPLEMENT_CLASS (AVavoomLight)
-IMPLEMENT_CLASS (AVavoomLightWhite)
-IMPLEMENT_CLASS (AVavoomLightColor)
+IMPLEMENT_CLASS (ADynamicLight, false, false, false, false)
+IMPLEMENT_CLASS (AVavoomLight, false, false, false, false)
+IMPLEMENT_CLASS (AVavoomLightWhite, false, false, false, false)
+IMPLEMENT_CLASS (AVavoomLightColor, false, false, false, false)
 
 void AVavoomLight::BeginPlay ()
 {
