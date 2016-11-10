@@ -153,9 +153,11 @@ int GetSpriteIndex(const char * spritename, bool add)
 	return (lastindex = (int)sprites.Push (temp));
 }
 
-IMPLEMENT_POINTY_CLASS(PClassActor)
- DECLARE_POINTER(DropItems)
-END_POINTERS
+IMPLEMENT_CLASS(PClassActor, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PClassActor)
+	IMPLEMENT_POINTER(DropItems)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //

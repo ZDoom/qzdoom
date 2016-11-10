@@ -31,9 +31,11 @@ public:
 	TObjPtr<AActor> DirtClump;
 };
 
-IMPLEMENT_POINTY_CLASS (AThrustFloor)
- DECLARE_POINTER (DirtClump)
-END_POINTERS
+IMPLEMENT_CLASS(AThrustFloor, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(AThrustFloor)
+	IMPLEMENT_POINTER(DirtClump)
+IMPLEMENT_POINTERS_END
 
 void AThrustFloor::Serialize(FSerializer &arc)
 {

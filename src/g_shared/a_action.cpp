@@ -29,7 +29,7 @@ public:
 	void Deactivate (AActor *activator);
 };
 
-IMPLEMENT_CLASS (ASwitchableDecoration)
+IMPLEMENT_CLASS(ASwitchableDecoration, false, false, false, false)
 
 void ASwitchableDecoration::Activate (AActor *activator)
 {
@@ -50,7 +50,7 @@ public:
 	void Deactivate (AActor *activator) {}
 };
 
-IMPLEMENT_CLASS (ASwitchingDecoration)
+IMPLEMENT_CLASS(ASwitchingDecoration, false, false, false, false)
 
 //----------------------------------------------------------------------------
 //
@@ -304,9 +304,11 @@ private:
 	DCorpsePointer () {}
 };
 
-IMPLEMENT_POINTY_CLASS(DCorpsePointer)
- DECLARE_POINTER(Corpse)
-END_POINTERS
+IMPLEMENT_CLASS(DCorpsePointer, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(DCorpsePointer)
+	IMPLEMENT_POINTER(Corpse)
+IMPLEMENT_POINTERS_END
 
 CUSTOM_CVAR(Int, sv_corpsequeuesize, 64, CVAR_ARCHIVE|CVAR_SERVERINFO)
 {

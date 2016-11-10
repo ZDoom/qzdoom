@@ -1427,6 +1427,10 @@ public:
 	size_t PropagateMark();
 };
 
+VMEXPORT_NATIVES_START(AActor, DThinker)
+	VMEXPORT_NATIVES_FUNC(DropInventory)
+VMEXPORT_NATIVES_END(AActor)
+
 class FActorIterator
 {
 public:

@@ -109,6 +109,7 @@ struct ClassReg
 	PClass *MyClass;
 	const char *Name;
 	ClassReg *ParentType;
+	ClassReg *VMExport;
 	const size_t *Pointers;
 	void (*ConstructNative)(void *);
 	void(*InitNatives)();
@@ -125,8 +126,8 @@ enum EInPlace { EC_InPlace };
 public: \
 	virtual PClass *StaticType() const; \
 	static ClassReg RegistrationInfo, * const RegistrationInfoPtr; \
-private: \
 	typedef parent Super; \
+private: \
 	typedef cls ThisClass;
 
 #define DECLARE_ABSTRACT_CLASS_WITH_META(cls,parent,meta) \
@@ -151,10 +152,33 @@ protected: \
 #define HAS_FIELDS \
 	static void InitNativeFields();
 
-// Taking the address of a field in an object at address 1 instead of
-// address 0 keeps GCC from complaining about possible misuse of offsetof.
-#define DECLARE_POINTER(field)	(size_t)&((ThisClass*)1)->field - 1,
-#define END_POINTERS			~(size_t)0 };
+// Templates really are powerful
+#define VMEXPORTED_NATIVES_START \
+	template<class owner> class ExportedNatives : public ExportedNatives<typename owner::Super> {}; \
+	template<> class ExportedNatives<void> { \
+		protected: ExportedNatives<void>() {} \
+		public: \
+		static ExportedNatives<void> *Get() { static ExportedNatives<void> *Instance = nullptr; if (Instance == nullptr) Instance = new ExportedNatives<void>; return Instance; } \
+		ExportedNatives<void>(const ExportedNatives<void>&) = delete; \
+		ExportedNatives<void>(ExportedNatives<void>&&) = delete;
+
+#define VMEXPORTED_NATIVES_FUNC(func) \
+		template<class ret, class object, class ... args> ret func(void *ptr, args ... arglist) { return ret(); }
+
+#define VMEXPORTED_NATIVES_END };
+
+#define VMEXPORT_NATIVES_START(cls, parent) \
+	template<> class ExportedNatives<cls> : public ExportedNatives<parent> { \
+		protected: ExportedNatives<cls>() {} \
+		public: \
+		static ExportedNatives<cls> *Get() { static ExportedNatives<cls> *Instance = nullptr; if (Instance == nullptr) Instance = new ExportedNatives<cls>; return Instance; } \
+		ExportedNatives<cls>(const ExportedNatives<cls>&) = delete; \
+		ExportedNatives<cls>(ExportedNatives<cls>&&) = delete;
+
+#define VMEXPORT_NATIVES_FUNC(func) \
+		template<class ret, class object, class ... args> ret func(void *ptr, args ... arglist) { return static_cast<object *>(ptr)->object::##func(arglist...); }
+
+#define VMEXPORT_NATIVES_END(cls) };
 
 #if defined(_MSC_VER)
 #	pragma section(".creg$u",read)
@@ -163,11 +187,12 @@ protected: \
 #	define _DECLARE_TI(cls) ClassReg * const cls::RegistrationInfoPtr __attribute__((section(SECTION_CREG))) = &cls::RegistrationInfo;
 #endif
 
-#define _IMP_PCLASS(cls,ptrs,create, initn) \
+#define _IMP_PCLASS(cls, ptrs, create, initn, vmexport) \
 	ClassReg cls::RegistrationInfo = {\
-		NULL, \
+		nullptr, \
 		#cls, \
 		&cls::Super::RegistrationInfo, \
+		vmexport, \
 		ptrs, \
 		create, \
 		initn, \
@@ -176,33 +201,27 @@ protected: \
 	_DECLARE_TI(cls) \
 	PClass *cls::StaticType() const { return RegistrationInfo.MyClass; }
 
-#define _IMP_CREATE_OBJ(cls) \
-	void cls::InPlaceConstructor(void *mem) { new((EInPlace *)mem) cls; }
+#define IMPLEMENT_CLASS(cls, isabstract, ptrs, fields, vmexport) \
+	_X_CONSTRUCTOR_##isabstract##(cls) \
+	_IMP_PCLASS(cls, _X_POINTERS_##ptrs##(cls), _X_ABSTRACT_##isabstract##(cls), _X_FIELDS_##fields##(cls), _X_VMEXPORT_##vmexport##(cls)) 
 
-#define IMPLEMENT_POINTY_CLASS(cls) \
-	_IMP_CREATE_OBJ(cls) \
-	_IMP_PCLASS(cls,cls::PointerOffsets,cls::InPlaceConstructor, nullptr) \
-	const size_t cls::PointerOffsets[] = {
+// Taking the address of a field in an object at address 1 instead of
+// address 0 keeps GCC from complaining about possible misuse of offsetof.
+#define IMPLEMENT_POINTERS_START(cls)	const size_t cls::PointerOffsets[] = {
+#define IMPLEMENT_POINTER(field)		(size_t)&((ThisClass*)1)->field - 1,
+#define IMPLEMENT_POINTERS_END			~(size_t)0 };
 
-#define IMPLEMENT_POINTY_CLASS_WITH_FIELDS(cls) \
-	_IMP_CREATE_OBJ(cls) \
-	_IMP_PCLASS(cls,cls::PointerOffsets,cls::InPlaceConstructor, cls::InitNativeFields) \
-	const size_t cls::PointerOffsets[] = {
-
-#define IMPLEMENT_CLASS(cls) \
-	_IMP_CREATE_OBJ(cls) \
-	_IMP_PCLASS(cls,nullptr,cls::InPlaceConstructor, nullptr) 
-
-#define IMPLEMENT_CLASS_WITH_FIELDS(cls) \
-	_IMP_CREATE_OBJ(cls) \
-	_IMP_PCLASS(cls,nullptr,cls::InPlaceConstructor, cls::InitNativeFields) 
-
-#define IMPLEMENT_ABSTRACT_CLASS(cls) \
-	_IMP_PCLASS(cls,nullptr,nullptr,nullptr)
-
-#define IMPLEMENT_ABSTRACT_POINTY_CLASS(cls) \
-	_IMP_PCLASS(cls,cls::PointerOffsets,nullptr,nullptr) \
-	const size_t cls::PointerOffsets[] = {
+// Possible arguments for the IMPLEMENT_CLASS macro
+#define _X_POINTERS_true(cls)		cls::PointerOffsets
+#define _X_POINTERS_false(cls)		nullptr
+#define _X_FIELDS_true(cls)			cls::InitNativeFields
+#define _X_FIELDS_false(cls)		nullptr
+#define _X_CONSTRUCTOR_true(cls)
+#define _X_CONSTRUCTOR_false(cls)	void cls::InPlaceConstructor(void *mem) { new((EInPlace *)mem) cls; }
+#define _X_ABSTRACT_true(cls)		nullptr
+#define _X_ABSTRACT_false(cls)		cls::InPlaceConstructor
+#define _X_VMEXPORT_true(cls)		&DVMObject<cls>::RegistrationInfo
+#define _X_VMEXPORT_false(cls)		nullptr
 
 enum EObjectFlags
 {
@@ -588,6 +607,83 @@ protected:
 		M_Free (mem);
 	}
 };
+
+class AInventory;//
+
+template<class T>
+class DVMObject : public T
+{
+public:
+	static char *FormatClassName()
+	{
+		static char *name = nullptr;
+		if (name == nullptr)
+		{
+			name = new char[64];
+			mysnprintf(name, 64, "DVMObject<%s>", Super::RegistrationInfo.Name);
+			atterm([]{ delete[] DVMObject<T>::RegistrationInfo.Name; });
+		}
+		return name;
+	}
+
+	virtual PClass *StaticType() const
+	{
+		return RegistrationInfo.MyClass;
+	}
+	static ClassReg RegistrationInfo;
+	static ClassReg * const RegistrationInfoPtr;
+	typedef T Super;
+
+private:
+	typedef DVMObject<T> ThisClass;
+	static void InPlaceConstructor(void *mem)
+	{
+		new((EInPlace *)mem) DVMObject<T>;
+	}
+
+public:
+	void Destroy()
+	{
+		Printf("Destroy\n");
+		ExportedNatives<T>::Get()->Destroy<void, T>(this);
+	}
+	void Tick()
+	{
+		Printf("Tick\n");
+		ExportedNatives<T>::Get()->Tick<void, T>(this);
+	}
+	AInventory *DropInventory(AInventory *item)
+	{
+		Printf("DropInventory\n");
+		return ExportedNatives<T>::Get()->DropInventory<AInventory *, T>(this, item);
+	}
+};
+
+template<class T>
+ClassReg DVMObject<T>::RegistrationInfo =
+{
+	nullptr,
+	DVMObject<T>::FormatClassName(),
+	&DVMObject<T>::Super::RegistrationInfo,
+	nullptr,
+	nullptr,
+	DVMObject<T>::InPlaceConstructor,
+	nullptr,
+	sizeof(DVMObject<T>),
+	DVMObject<T>::MetaClassNum
+};
+template<class T> _DECLARE_TI(DVMObject<T>)
+
+//Initial list
+VMEXPORTED_NATIVES_START
+	VMEXPORTED_NATIVES_FUNC(Destroy)
+	VMEXPORTED_NATIVES_FUNC(Tick)
+	VMEXPORTED_NATIVES_FUNC(DropInventory)
+VMEXPORTED_NATIVES_END
+
+VMEXPORT_NATIVES_START(DObject, void)
+	VMEXPORT_NATIVES_FUNC(Destroy)
+VMEXPORT_NATIVES_END(DObject)
 
 // When you write to a pointer to an Object, you must call this for
 // proper bookkeeping in case the Object holding this pointer has

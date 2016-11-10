@@ -34,12 +34,15 @@
 #include <new>
 #include "vm.h"
 
-IMPLEMENT_CLASS(VMException)
-IMPLEMENT_ABSTRACT_POINTY_CLASS(VMFunction)
- DECLARE_POINTER(Proto)
-END_POINTERS
-IMPLEMENT_CLASS(VMScriptFunction)
-IMPLEMENT_CLASS(VMNativeFunction)
+IMPLEMENT_CLASS(VMException, false, false, false, false)
+IMPLEMENT_CLASS(VMFunction, true, true, false, false)
+
+IMPLEMENT_POINTERS_START(VMFunction)
+	IMPLEMENT_POINTER(Proto)
+IMPLEMENT_POINTERS_END
+
+IMPLEMENT_CLASS(VMScriptFunction, false, false, false, false)
+IMPLEMENT_CLASS(VMNativeFunction, false, false, false, false)
 
 VMScriptFunction::VMScriptFunction(FName name)
 {

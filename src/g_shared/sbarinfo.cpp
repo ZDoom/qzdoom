@@ -1531,11 +1531,13 @@ private:
 	SBarInfoMainBlock *lastPopup;
 };
 
-IMPLEMENT_POINTY_CLASS(DSBarInfo)
- DECLARE_POINTER(ammo1)
- DECLARE_POINTER(ammo2)
- DECLARE_POINTER(armor)
-END_POINTERS
+IMPLEMENT_CLASS(DSBarInfo, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(DSBarInfo)
+	IMPLEMENT_POINTER(ammo1)
+	IMPLEMENT_POINTER(ammo2)
+	IMPLEMENT_POINTER(armor)
+IMPLEMENT_POINTERS_END
 
 DBaseStatusBar *CreateCustomStatusBar (int script)
 {

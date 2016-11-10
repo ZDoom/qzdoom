@@ -93,8 +93,8 @@ static const size_t TheEnd = ~(size_t)0;
 
 // CODE --------------------------------------------------------------------
 
-IMPLEMENT_CLASS(PErrorType)
-IMPLEMENT_CLASS(PVoidType)
+IMPLEMENT_CLASS(PErrorType, false, false, false, false)
+IMPLEMENT_CLASS(PVoidType, false, false, false, false)
 
 void DumpTypeTable()
 {
@@ -141,7 +141,7 @@ void DumpTypeTable()
 
 /* PClassType *************************************************************/
 
-IMPLEMENT_CLASS(PClassType)
+IMPLEMENT_CLASS(PClassType, false, false, false, false)
 
 //==========================================================================
 //
@@ -169,7 +169,7 @@ void PClassType::Derive(PClass *newclass)
 
 /* PClassClass ************************************************************/
 
-IMPLEMENT_CLASS(PClassClass)
+IMPLEMENT_CLASS(PClassClass, false, false, false, false)
 
 //==========================================================================
 //
@@ -187,9 +187,11 @@ PClassClass::PClassClass()
 
 /* PType ******************************************************************/
 
-IMPLEMENT_ABSTRACT_POINTY_CLASS(PType)
- DECLARE_POINTER(HashNext)
-END_POINTERS
+IMPLEMENT_CLASS(PType, true, true, false, false)
+
+IMPLEMENT_POINTERS_START(PType)
+	IMPLEMENT_POINTER(HashNext)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
@@ -612,7 +614,7 @@ void PType::StaticInit()
 
 /* PBasicType *************************************************************/
 
-IMPLEMENT_ABSTRACT_CLASS(PBasicType)
+IMPLEMENT_CLASS(PBasicType, true, false, false, false)
 
 //==========================================================================
 //
@@ -638,13 +640,15 @@ PBasicType::PBasicType(unsigned int size, unsigned int align)
 
 /* PCompoundType **********************************************************/
 
-IMPLEMENT_ABSTRACT_CLASS(PCompoundType)
+IMPLEMENT_CLASS(PCompoundType, true, false, false, false)
 
 /* PNamedType *************************************************************/
 
-IMPLEMENT_ABSTRACT_POINTY_CLASS(PNamedType)
- DECLARE_POINTER(Outer)
-END_POINTERS
+IMPLEMENT_CLASS(PNamedType, true, true, false, false)
+
+IMPLEMENT_POINTERS_START(PNamedType)
+	IMPLEMENT_POINTER(Outer)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
@@ -688,7 +692,7 @@ FString PNamedType::QualifiedName() const
 
 /* PInt *******************************************************************/
 
-IMPLEMENT_CLASS(PInt)
+IMPLEMENT_CLASS(PInt, false, false, false, false)
 
 //==========================================================================
 //
@@ -927,7 +931,7 @@ double PInt::GetValueFloat(void *addr) const
 
 /* PBool ******************************************************************/
 
-IMPLEMENT_CLASS(PBool)
+IMPLEMENT_CLASS(PBool, false, false, false, false)
 
 //==========================================================================
 //
@@ -948,7 +952,7 @@ PBool::PBool()
 
 /* PFloat *****************************************************************/
 
-IMPLEMENT_CLASS(PFloat)
+IMPLEMENT_CLASS(PFloat, false, false, false, false)
 
 //==========================================================================
 //
@@ -1198,7 +1202,7 @@ void PFloat::SetOps()
 
 /* PString ****************************************************************/
 
-IMPLEMENT_CLASS(PString)
+IMPLEMENT_CLASS(PString, false, false, false, false)
 
 //==========================================================================
 //
@@ -1295,7 +1299,7 @@ void PString::DestroyValue(void *addr) const
 
 /* PName ******************************************************************/
 
-IMPLEMENT_CLASS(PName)
+IMPLEMENT_CLASS(PName, false, false, false, false)
 
 //==========================================================================
 //
@@ -1345,7 +1349,7 @@ bool PName::ReadValue(FSerializer &ar, const char *key, void *addr) const
 
 /* PSound *****************************************************************/
 
-IMPLEMENT_CLASS(PSound)
+IMPLEMENT_CLASS(PSound, false, false, false, false)
 
 //==========================================================================
 //
@@ -1395,7 +1399,7 @@ bool PSound::ReadValue(FSerializer &ar, const char *key, void *addr) const
 
 /* PColor *****************************************************************/
 
-IMPLEMENT_CLASS(PColor)
+IMPLEMENT_CLASS(PColor, false, false, false, false)
 
 //==========================================================================
 //
@@ -1412,7 +1416,7 @@ PColor::PColor()
 
 /* PStatePointer **********************************************************/
 
-IMPLEMENT_CLASS(PStatePointer)
+IMPLEMENT_CLASS(PStatePointer, false, false, false, false)
 
 //==========================================================================
 //
@@ -1456,9 +1460,11 @@ bool PStatePointer::ReadValue(FSerializer &ar, const char *key, void *addr) cons
 
 /* PPointer ***************************************************************/
 
-IMPLEMENT_POINTY_CLASS(PPointer)
- DECLARE_POINTER(PointedType)
-END_POINTERS
+IMPLEMENT_CLASS(PPointer, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PPointer)
+	IMPLEMENT_POINTER(PointedType)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
@@ -1585,9 +1591,11 @@ PPointer *NewPointer(PType *type, bool isconst)
 
 /* PClassPointer **********************************************************/
 
-IMPLEMENT_POINTY_CLASS(PClassPointer)
- DECLARE_POINTER(ClassRestriction)
-END_POINTERS
+IMPLEMENT_CLASS(PClassPointer, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PClassPointer)
+	IMPLEMENT_POINTER(ClassRestriction)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
@@ -1664,9 +1672,11 @@ PClassPointer *NewClassPointer(PClass *restrict)
 
 /* PEnum ******************************************************************/
 
-IMPLEMENT_POINTY_CLASS(PEnum)
- DECLARE_POINTER(ValueType)
-END_POINTERS
+IMPLEMENT_CLASS(PEnum, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PEnum)
+	IMPLEMENT_POINTER(ValueType)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
@@ -1715,9 +1725,11 @@ PEnum *NewEnum(FName name, PTypeBase *outer)
 
 /* PArray *****************************************************************/
 
-IMPLEMENT_POINTY_CLASS(PArray)
- DECLARE_POINTER(ElementType)
-END_POINTERS
+IMPLEMENT_CLASS(PArray, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PArray)
+	IMPLEMENT_POINTER(ElementType)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
@@ -1862,7 +1874,7 @@ PArray *NewArray(PType *type, unsigned int count)
 
 /* PVector ****************************************************************/
 
-IMPLEMENT_CLASS(PVector)
+IMPLEMENT_CLASS(PVector, false, false, false, false)
 
 //==========================================================================
 //
@@ -1912,9 +1924,11 @@ PVector *NewVector(unsigned int size)
 
 /* PDynArray **************************************************************/
 
-IMPLEMENT_POINTY_CLASS(PDynArray)
- DECLARE_POINTER(ElementType)
-END_POINTERS
+IMPLEMENT_CLASS(PDynArray, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PDynArray)
+	IMPLEMENT_POINTER(ElementType)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
@@ -1993,10 +2007,12 @@ PDynArray *NewDynArray(PType *type)
 
 /* PMap *******************************************************************/
 
-IMPLEMENT_POINTY_CLASS(PMap)
- DECLARE_POINTER(KeyType)
- DECLARE_POINTER(ValueType)
-END_POINTERS
+IMPLEMENT_CLASS(PMap, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PMap)
+	IMPLEMENT_POINTER(KeyType)
+	IMPLEMENT_POINTER(ValueType)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
@@ -2075,7 +2091,7 @@ PMap *NewMap(PType *keytype, PType *valuetype)
 
 /* PStruct ****************************************************************/
 
-IMPLEMENT_CLASS(PStruct)
+IMPLEMENT_CLASS(PStruct, false, false, false, false)
 
 //==========================================================================
 //
@@ -2296,7 +2312,7 @@ PStruct *NewStruct(FName name, PTypeBase *outer)
 
 /* PField *****************************************************************/
 
-IMPLEMENT_CLASS(PField)
+IMPLEMENT_CLASS(PField, false, false, false, false)
 
 //==========================================================================
 //
@@ -2341,7 +2357,7 @@ PField::PField(FName name, PType *type, DWORD flags, size_t offset, int bitvalue
 
 /* PPrototype *************************************************************/
 
-IMPLEMENT_CLASS(PPrototype)
+IMPLEMENT_CLASS(PPrototype, false, false, false, false)
 
 //==========================================================================
 //
@@ -2427,7 +2443,7 @@ PPrototype *NewPrototype(const TArray<PType *> &rettypes, const TArray<PType *> 
 
 /* PFunction **************************************************************/
 
-IMPLEMENT_CLASS(PFunction)
+IMPLEMENT_CLASS(PFunction, false, false, false, false)
 
 //==========================================================================
 //
@@ -2485,9 +2501,11 @@ unsigned PFunction::AddVariant(PPrototype *proto, TArray<DWORD> &argflags, TArra
 
 /* PClass *****************************************************************/
 
-IMPLEMENT_POINTY_CLASS(PClass)
- DECLARE_POINTER(ParentClass)
-END_POINTERS
+IMPLEMENT_CLASS(PClass, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PClass)
+	IMPLEMENT_POINTER(ParentClass)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
@@ -2829,7 +2847,7 @@ PClass *ClassReg::RegisterClass()
 		assert(0 && "Class registry has an invalid meta class identifier");
 	}
 
-	if (metaclasses[MetaClassNum]->MyClass == NULL)
+	if (metaclasses[MetaClassNum]->MyClass == nullptr)
 	{ // Make sure the meta class is already registered before registering this one
 		metaclasses[MetaClassNum]->RegisterClass();
 	}
@@ -2837,9 +2855,13 @@ PClass *ClassReg::RegisterClass()
 
 	SetupClass(cls);
 	cls->InsertIntoHash();
-	if (ParentType != NULL)
+	if (ParentType != nullptr)
 	{
 		cls->ParentClass = ParentType->RegisterClass();
+	}
+	if (VMExport != nullptr)
+	{
+		cls->VMExported = VMExport->RegisterClass();
 	}
 	return cls;
 }
@@ -3402,18 +3424,23 @@ CCMD(typetable)
 
 // Symbol tables ------------------------------------------------------------
 
-IMPLEMENT_ABSTRACT_CLASS(PTypeBase);
-IMPLEMENT_ABSTRACT_CLASS(PSymbol);
-IMPLEMENT_CLASS(PSymbolConst);
-IMPLEMENT_CLASS(PSymbolConstNumeric);
-IMPLEMENT_CLASS(PSymbolConstString);
-IMPLEMENT_POINTY_CLASS(PSymbolType)
- DECLARE_POINTER(Type)
-END_POINTERS
-IMPLEMENT_POINTY_CLASS(PSymbolVMFunction)
- DECLARE_POINTER(Function)
-END_POINTERS
-IMPLEMENT_CLASS(PSymbolTreeNode)
+IMPLEMENT_CLASS(PTypeBase, true, false, false, false);
+IMPLEMENT_CLASS(PSymbol, true, false, false, false);
+IMPLEMENT_CLASS(PSymbolConst, false, false, false, false);
+IMPLEMENT_CLASS(PSymbolConstNumeric, false, false, false, false);
+IMPLEMENT_CLASS(PSymbolConstString, false, false, false, false);
+IMPLEMENT_CLASS(PSymbolTreeNode, false, false, false, false)
+IMPLEMENT_CLASS(PSymbolType, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PSymbolType)
+	IMPLEMENT_POINTER(Type)
+IMPLEMENT_POINTERS_END
+
+IMPLEMENT_CLASS(PSymbolVMFunction, false, true, false, false)
+
+IMPLEMENT_POINTERS_START(PSymbolVMFunction)
+	IMPLEMENT_POINTER(Function)
+IMPLEMENT_POINTERS_END
 
 //==========================================================================
 //
