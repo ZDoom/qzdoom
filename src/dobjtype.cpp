@@ -2495,6 +2495,10 @@ unsigned PFunction::AddVariant(PPrototype *proto, TArray<DWORD> &argflags, TArra
 		variant.SelfClass = dyn_cast<PClass>(selftypeptr->PointedType);
 		assert(variant.SelfClass != nullptr);
 	}
+	else
+	{
+		variant.SelfClass = nullptr;
+	}
 
 	return Variants.Push(variant);
 }
@@ -2731,9 +2735,11 @@ void PClass::StaticShutdown ()
 
 	FAutoSegIterator probe(CRegHead, CRegTail);
 
-	while (*++probe != NULL)
+	while (*++probe != nullptr)
 	{
-		((ClassReg *)*probe)->MyClass = NULL;
+		auto cr = ((ClassReg *)*probe);
+		cr->MyClass = nullptr;
+		if (cr->VMExport != nullptr) cr->VMExport->MyClass = nullptr;
 	}
 
 }
@@ -3118,12 +3124,19 @@ PClass *PClass::CreateDerivedClass(FName name, unsigned int size)
 	{
 		if (existclass->Size == TentativeClass)
 		{
-			type = const_cast<PClass*>(existclass);
-			if (!IsDescendantOf(type->ParentClass))
+			if (!IsDescendantOf(existclass->ParentClass))
 			{
-				I_Error("%s must inherit from %s but doesn't.", name.GetChars(), type->ParentClass->TypeName.GetChars());
+				I_Error("%s must inherit from %s but doesn't.", name.GetChars(), existclass->ParentClass->TypeName.GetChars());
 			}
-			DPrintf(DMSG_SPAMMY, "Defining placeholder class %s\n", name.GetChars());
+
+			if (size == TentativeClass)
+			{
+				// see if we can reuse the existing class. This is only possible if the inheritance is identical. Otherwise it needs to be replaced.
+				if (this == existclass->ParentClass)
+				{
+					return existclass;
+				}
+			}
 			notnew = true;
 		}
 		else
@@ -3140,11 +3153,14 @@ PClass *PClass::CreateDerivedClass(FName name, unsigned int size)
 	// Create a new type object of the same type as us. (We may be a derived class of PClass.)
 	type = static_cast<PClass *>(GetClass()->CreateNew());
 
-	type->Size = size;
 	Derive(type, name);
-	type->InitializeDefaults();
-	type->Virtuals = Virtuals;
-	DeriveData(type);
+	type->Size = size;
+	if (size != TentativeClass)
+	{
+		type->InitializeDefaults();
+		type->Virtuals = Virtuals;
+		DeriveData(type);
+	}
 	if (!notnew)
 	{
 		type->InsertIntoHash();
@@ -3195,7 +3211,7 @@ PField *PClass::AddField(FName name, PType *type, DWORD flags)
 //
 //==========================================================================
 
-PClass *PClass::FindClassTentative(FName name, bool fatal)
+PClass *PClass::FindClassTentative(FName name)
 {
 	if (name == NAME_None)
 	{
