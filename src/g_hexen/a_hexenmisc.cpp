@@ -27,10 +27,8 @@
 #include "vm.h"
 
 // Include all the Hexen stuff here to reduce compile time
-#include "a_bishop.cpp"
 #include "a_blastradius.cpp"
 #include "a_boostarmor.cpp"
-#include "a_centaur.cpp"
 #include "a_clericflame.cpp"
 #include "a_clericholy.cpp"
 #include "a_clericmace.cpp"
@@ -40,7 +38,6 @@
 #include "a_fighterhammer.cpp"
 #include "a_fighterplayer.cpp"
 #include "a_fighterquietus.cpp"
-#include "a_firedemon.cpp"
 #include "a_flechette.cpp"
 #include "a_flies.cpp"
 #include "a_fog.cpp"

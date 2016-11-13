@@ -3327,6 +3327,13 @@ void AActor::PlayActiveSound ()
 	}
 }
 
+DEFINE_ACTION_FUNCTION(AActor, PlayActiveSound)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->PlayActiveSound();
+	return 0;
+}
+
 bool AActor::IsOkayToAttack (AActor *link)
 {
 	if (!(player							// Original AActor::IsOkayToAttack was only for players
@@ -6877,6 +6884,13 @@ DEFINE_ACTION_FUNCTION(AActor, deltaangle)	// should this be global?
 	ACTION_RETURN_FLOAT(deltaangle(DAngle(a1), DAngle(a2)).Degrees);
 }
 
+DEFINE_ACTION_FUNCTION(AActor, Distance2D)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(other, AActor);
+	ACTION_RETURN_FLOAT(self->Distance2D(other));
+}
+
 DEFINE_ACTION_FUNCTION(AActor, AddZ)
 {
 	PARAM_SELF_PROLOGUE(AActor);
@@ -6934,6 +6948,30 @@ DEFINE_ACTION_FUNCTION(AActor, VelFromAngle)
 		{
 			PARAM_ANGLE(angle);
 			self->VelFromAngle(speed, angle);
+		}
+	}
+	return 0;
+}
+
+// This combines all 3 variations of the internal function
+DEFINE_ACTION_FUNCTION(AActor, Thrust)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	if (numparam == 1)
+	{
+		self->Thrust();
+	}
+	else
+	{
+		PARAM_FLOAT(speed);
+		if (numparam == 2)
+		{
+			self->Thrust(speed);
+		}
+		else
+		{
+			PARAM_ANGLE(angle);
+			self->Thrust(angle, speed);
 		}
 	}
 	return 0;

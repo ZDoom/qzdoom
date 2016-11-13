@@ -936,10 +936,8 @@ set( NOT_COMPILED_SOURCE_FILES
 	g_heretic/a_hereticartifacts.cpp
 	g_heretic/a_hereticweaps.cpp
 	g_heretic/a_ironlich.cpp
-	g_hexen/a_bishop.cpp
 	g_hexen/a_blastradius.cpp
 	g_hexen/a_boostarmor.cpp
-	g_hexen/a_centaur.cpp
 	g_hexen/a_clericflame.cpp
 	g_hexen/a_clericholy.cpp
 	g_hexen/a_clericmace.cpp
@@ -949,7 +947,6 @@ set( NOT_COMPILED_SOURCE_FILES
 	g_hexen/a_fighterhammer.cpp
 	g_hexen/a_fighterplayer.cpp
 	g_hexen/a_fighterquietus.cpp
-	g_hexen/a_firedemon.cpp
 	g_hexen/a_flechette.cpp
 	g_hexen/a_flies.cpp
 	g_hexen/a_fog.cpp
