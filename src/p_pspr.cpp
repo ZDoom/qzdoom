@@ -29,6 +29,7 @@
 #include "g_level.h"
 #include "d_player.h"
 #include "serializer.h"
+#include "v_text.h"
 
 
 // MACROS ------------------------------------------------------------------
@@ -337,6 +338,14 @@ void DPSprite::SetState(FState *newstate, bool pending)
 		{
 			FState *nextstate;
 			FStateParamInfo stp = { newstate, STATE_Psprite, ID };
+			if (newstate->ActionFunc != nullptr && newstate->ActionFunc->Unsafe)
+			{
+				// If an unsafe function (i.e. one that accesses user variables) is being detected, print a warning once and remove the bogus function. We may not call it because that would inevitably crash.
+				auto owner = FState::StaticFindStateOwner(newstate);
+				Printf(TEXTCOLOR_RED "Unsafe state call in state %s.%d to %s which accesses user variables. The action function has been removed from this state\n",
+					owner->TypeName.GetChars(), newstate - owner->OwnedStates, static_cast<VMScriptFunction *>(newstate->ActionFunc)->PrintableName.GetChars());
+				newstate->ActionFunc = nullptr;
+			}
 			if (newstate->CallAction(Owner->mo, Caller, &stp, &nextstate))
 			{
 				// It's possible this call resulted in this very layer being replaced.
@@ -744,7 +753,7 @@ void DoReadyWeapon(AActor *self)
 
 DEFINE_ACTION_FUNCTION_PARAMS(AInventory, A_WeaponReady)
 {
-	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_ACTION_PROLOGUE(AActor);
 	PARAM_INT_DEF(flags);
 
 													DoReadyWeaponToSwitch(self, !(flags & WRF_NoSwitch));
@@ -876,7 +885,7 @@ static void P_CheckWeaponButtons (player_t *player)
 
 DEFINE_ACTION_FUNCTION_PARAMS(AInventory, A_ReFire)
 {
-	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_ACTION_PROLOGUE(AActor);
 	PARAM_STATE_DEF(state);
 	A_ReFire(self, state);
 	return 0;
@@ -914,7 +923,7 @@ void A_ReFire(AActor *self, FState *state)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_ClearReFire)
 {
-	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_ACTION_PROLOGUE(AActor);
 	player_t *player = self->player;
 
 	if (NULL != player)
@@ -936,7 +945,7 @@ DEFINE_ACTION_FUNCTION(AInventory, A_ClearReFire)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_CheckReload)
 {
-	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_ACTION_PROLOGUE(AActor);
 
 	if (self->player != NULL)
 	{
@@ -1124,7 +1133,7 @@ DEFINE_ACTION_FUNCTION(AActor, OverlayID)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_Lower)
 {
-	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_ACTION_PROLOGUE(AActor);
 
 	player_t *player = self->player;
 	DPSprite *psp;
@@ -1172,7 +1181,7 @@ DEFINE_ACTION_FUNCTION(AInventory, A_Lower)
 
 DEFINE_ACTION_FUNCTION(AInventory, A_Raise)
 {
-	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_ACTION_PROLOGUE(AActor);
 
 	if (self == nullptr)
 	{
@@ -1284,7 +1293,7 @@ enum GF_Flags
 
 DEFINE_ACTION_FUNCTION_PARAMS(AInventory, A_GunFlash)
 {
-	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_ACTION_PROLOGUE(AActor);
 	PARAM_STATE_DEF(flash);
 	PARAM_INT_DEF(flags);
 
@@ -1372,42 +1381,9 @@ void P_GunShot (AActor *mo, bool accurate, PClassActor *pufftype, DAngle pitch)
 	P_LineAttack (mo, angle, PLAYERMISSILERANGE, pitch, damage, NAME_Hitscan, pufftype);
 }
 
-DEFINE_ACTION_FUNCTION(AInventory, A_Light0)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-
-	if (self->player != NULL)
-	{
-		self->player->extralight = 0;
-	}
-	return 0;
-}
-
-DEFINE_ACTION_FUNCTION(AInventory, A_Light1)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-
-	if (self->player != NULL)
-	{
-		self->player->extralight = 1;
-	}
-	return 0;
-}
-
-DEFINE_ACTION_FUNCTION(AInventory, A_Light2)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-
-	if (self->player != NULL)
-	{
-		self->player->extralight = 2;
-	}
-	return 0;
-}
-
 DEFINE_ACTION_FUNCTION_PARAMS(AInventory, A_Light)
 {
-	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_ACTION_PROLOGUE(AActor);
 	PARAM_INT(light);
 
 	if (self->player != NULL)
