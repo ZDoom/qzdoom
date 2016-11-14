@@ -67,6 +67,14 @@ enum EStateDefineFlags
 	SDF_DEHACKED = 8,	// Identify a state as having been modified by a dehacked lump
 };
 
+enum EStateUseFlags
+{
+	SUF_ACTOR = 1,
+	SUF_OVERLAY = 2,
+	SUF_WEAPON = 4,
+	SUF_ITEM = 8,
+};
+
 enum EStateType : int // this must ensure proper alignment.
 {
 	STATE_Actor,
@@ -97,11 +105,12 @@ struct FState
 	WORD		sprite;
 	SWORD		Tics;
 	WORD		TicRange;
+	short		Light;
 	BYTE		Frame;
+	BYTE		UseFlags;		
 	BYTE		DefineFlags;	// Unused byte so let's use it during state creation.
 	int			Misc1;			// Was changed to SBYTE, reverted to long for MBF compat
 	int			Misc2;			// Was changed to BYTE, reverted to long for MBF compat
-	short		Light;
 	BYTE		Fullbright:1;	// State is fullbright
 	BYTE		SameFrame:1;	// Ignore Frame (except when spawning actor)
 	BYTE		Fast:1;
@@ -152,6 +161,10 @@ struct FState
 	inline void SetFrame(BYTE frame)
 	{
 		Frame = frame - 'A';
+	}
+	inline bool CheckUse(int usetype)
+	{
+		return !!(UseFlags & usetype);
 	}
 	void SetAction(VMFunction *func) { ActionFunc = func; }
 	void ClearAction() { ActionFunc = NULL; }
@@ -258,6 +271,7 @@ public:
 	PClassActor *Replacee;
 	int NumOwnedStates;
 	BYTE GameFilter;
+	uint8_t DefaultStateUsage; // state flag defaults for blocks without a qualifier.
 	WORD SpawnID;
 	WORD ConversationID;
 	SWORD DoomEdNum;
@@ -312,6 +326,44 @@ struct FDoomEdEntry
 	signed char ArgsDefined;
 	int Args[5];
 };
+
+struct FStateLabelStorage
+{
+	TArray<uint8_t> Storage;
+
+	int AddPointer(FState *ptr)
+	{
+		if (ptr != nullptr)
+		{
+			int pos = Storage.Reserve(sizeof(ptr) + sizeof(int));
+			memset(&Storage[pos], 0, sizeof(int));
+			memcpy(&Storage[pos + sizeof(int)], &ptr, sizeof(ptr));
+			return pos / 4 + 1;
+		}
+		else return 0;
+	}
+
+	int AddNames(TArray<FName> &names)
+	{
+		int siz = names.Size();
+		if (siz > 1)
+		{
+			int pos = Storage.Reserve(sizeof(int) + sizeof(FName) * names.Size());
+			memcpy(&Storage[pos], &siz, sizeof(int));
+			memcpy(&Storage[pos + sizeof(int)], &names[0], sizeof(FName) * names.Size());
+			return pos / 4 + 1;
+		}
+		else
+		{
+			// don't store single name states in the array.
+			return names[0].GetIndex() + 0x10000000;
+		}
+	}
+
+	FState *GetState(int pos, PClassActor *cls);
+};
+
+extern FStateLabelStorage StateLabels;
 
 enum ESpecialMapthings
 {
