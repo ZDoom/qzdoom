@@ -848,7 +848,7 @@ FxExpression *FxIntCast::Resolve(FCompileContext &ctx)
 		}
 		else if (!NoWarn)
 		{
-			ScriptPosition.Message(MSG_WARNING, "Truncation of floating point value");
+			ScriptPosition.Message(MSG_DEBUGWARN, "Truncation of floating point value");
 		}
 
 		return this;
@@ -1847,8 +1847,8 @@ FxExpression *FxUnaryNotBoolean::Resolve(FCompileContext& ctx)
 
 ExpEmit FxUnaryNotBoolean::Emit(VMFunctionBuilder *build)
 {
-	assert(Operand->ValueType == ValueType);
-	assert(ValueType == TypeBool);
+	assert(Operand->ValueType == TypeBool);
+	assert(ValueType == TypeBool || IsInteger());	// this may have been changed by an int cast.
 	ExpEmit from = Operand->Emit(build);
 	assert(!from.Konst);
 	// boolean not is the same as XOR-ing the lowest bit
@@ -5119,13 +5119,14 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			delete this;
 			return newex->Resolve(ctx);
 		}
-		else if (ctx.FromDecorate && ctx.Class->IsDescendantOf(RUNTIME_CLASS(AStateProvider)) && sym->IsKindOf(RUNTIME_CLASS(PField)))
+		// Do this check for ZScript as well, so that a clearer error message can be printed. MSG_OPTERROR will default to MSG_ERROR there.
+		else if (ctx.Function->Variants[0].SelfClass != ctx.Class && sym->IsKindOf(RUNTIME_CLASS(PField)))
 		{
 			FxExpression *self = new FxSelf(ScriptPosition, true);
 			self = self->Resolve(ctx);
 			newex = ResolveMember(ctx, ctx.Class, self, ctx.Class);
 			ABORT(newex);
-			ScriptPosition.Message(MSG_DEBUGWARN, "Self pointer used in ambiguous context; VM execution may abort!");
+			ScriptPosition.Message(MSG_OPTERROR, "Self pointer used in ambiguous context; VM execution may abort!");
 			ctx.Unsafe = true;
 		}
 		else
@@ -8068,11 +8069,10 @@ FxExpression *FxClassTypeCast::Resolve(FCompileContext &ctx)
 			{
 				if (!cls->IsDescendantOf(desttype))
 				{
-					ScriptPosition.Message(MSG_ERROR, "class '%s' is not compatible with '%s'", clsname.GetChars(), desttype->TypeName.GetChars());
-					delete this;
-					return nullptr;
+					ScriptPosition.Message(MSG_OPTERROR, "class '%s' is not compatible with '%s'", clsname.GetChars(), desttype->TypeName.GetChars());
+					cls = nullptr;
 				}
-				ScriptPosition.Message(MSG_DEBUGLOG, "resolving '%s' as class name", clsname.GetChars());
+				else ScriptPosition.Message(MSG_DEBUGLOG, "resolving '%s' as class name", clsname.GetChars());
 			}
 		}
 		FxExpression *x = new FxConstant(cls, to, ScriptPosition);
