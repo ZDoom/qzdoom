@@ -2498,6 +2498,14 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 	return P_TryMove(thing, pos, dropoff, onfloor, tm);
 }
 
+DEFINE_ACTION_FUNCTION(AActor, TryMove)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_INT(dropoff);
+	ACTION_RETURN_BOOL(P_TryMove(self, DVector2(x, y), dropoff));
+}
 
 
 //==========================================================================
