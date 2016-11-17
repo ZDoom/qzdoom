@@ -29,6 +29,7 @@
 #include "gl/data/gl_data.h"
 
 CVAR(Bool, r_debug_cull, 0, 0)
+void InitGLRMapinfoData();
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -67,14 +68,12 @@ void RenderPolyScene::ClearBuffers()
 
 void RenderPolyScene::SetupPerspectiveMatrix()
 {
-	// [SP] This didn't work, but I am leaving it here for now so it can be fixed later.
-
-	//static bool bDidSetup = false;
-	//if (!bDidSetup)
-	//{
-	//	FGLROptions->InitGLRMapinfoData();
-	//	bDidSetup = true;
-	//}
+	static bool bDidSetup = false;
+	if (!bDidSetup)
+	{
+		InitGLRMapinfoData();
+		bDidSetup = true;
+	}
 
 	float pixelstretch = (glset.pixelstretch) ? glset.pixelstretch : 1.2;
 
