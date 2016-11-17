@@ -26,6 +26,7 @@
 #include "sbar.h"
 #include "r_data/r_translate.h"
 #include "r_poly.h"
+#include "gl/data/gl_data.h"
 
 CVAR(Bool, r_debug_cull, 0, 0)
 
@@ -66,9 +67,22 @@ void RenderPolyScene::ClearBuffers()
 
 void RenderPolyScene::SetupPerspectiveMatrix()
 {
-	float ratio = WidescreenRatio;
+	// [SP] This didn't work, but I am leaving it here for now so it can be fixed later.
+
+	//static bool bDidSetup = false;
+	//if (!bDidSetup)
+	//{
+	//	FGLROptions->InitGLRMapinfoData();
+	//	bDidSetup = true;
+	//}
+
+	float pixelstretch = (glset.pixelstretch) ? glset.pixelstretch : 1.2;
+
+	pixelstretch = cos(ViewPitch.Radians()) * pixelstretch + 1 - cos(ViewPitch.Radians());
+
+	float ratio = WidescreenRatio * pixelstretch;
 	float fovratio = (WidescreenRatio >= 1.3f) ? 1.333333f : ratio;
-	float fovy = (float)(2 * DAngle::ToDegrees(atan(tan(FieldOfView.Radians() / 2) / fovratio)).Degrees);
+	float fovy = (float)(2 * DAngle::ToDegrees(atan(tan(FieldOfView.Radians() / 2) / fovratio / pixelstretch)).Degrees);
 	TriMatrix worldToView =
 		TriMatrix::scale(1.0f, (float)YaspectMul, 1.0f) *
 		TriMatrix::rotate((float)ViewPitch.Radians(), 1.0f, 0.0f, 0.0f) *
