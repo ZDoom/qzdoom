@@ -68,7 +68,6 @@ void RenderPolyScene::ClearBuffers()
 
 void RenderPolyScene::SetupPerspectiveMatrix()
 {
-	const float dospixelsize = 1.2f;
 	static bool bDidSetup = false;
 
 	if (!bDidSetup)
@@ -79,16 +78,14 @@ void RenderPolyScene::SetupPerspectiveMatrix()
 
 	float pixelstretch = (glset.pixelstretch) ? glset.pixelstretch : 1.2;
 
-	float tweenfactor = 1 - abs(1 - abs(1 - sin(ViewPitch.Radians())));
-	pixelstretch = (tweenfactor * pixelstretch + 1 - tweenfactor) * dospixelsize;
-
 	float ratio = WidescreenRatio;
 	float fovratio = (WidescreenRatio >= 1.3f) ? 1.333333f : ratio;
 	float fovy = (float)(2 * DAngle::ToDegrees(atan(tan(FieldOfView.Radians() / 2) / fovratio)).Degrees);
 	TriMatrix worldToView =
-		TriMatrix::scale(1.0f, pixelstretch, 1.0f) *
+		TriMatrix::scale(1.0f, 1.2f, 1.0f) *
 		TriMatrix::rotate((float)ViewPitch.Radians(), 1.0f, 0.0f, 0.0f) *
 		TriMatrix::rotate((float)(ViewAngle - 90).Radians(), 0.0f, -1.0f, 0.0f) *
+		TriMatrix::scale(1.0f, pixelstretch, 1.0f) *
 		TriMatrix::swapYZ() *
 		TriMatrix::translate((float)-ViewPos.X, (float)-ViewPos.Y, (float)-ViewPos.Z);
 	WorldToClip = TriMatrix::perspective(fovy, ratio, 5.0f, 65535.0f) * worldToView;
