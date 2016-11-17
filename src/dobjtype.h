@@ -5,9 +5,9 @@
 #error You must #include "dobject.h" to get dobjtype.h
 #endif
 
-#include "vm.h"
-
 typedef std::pair<const class PType *, unsigned> FTypeAndOffset;
+
+#include "vm.h"
 
 // Variable/parameter/field flags -------------------------------------------
 
@@ -252,6 +252,7 @@ public:
 	// initialization when the object is created and destruction when the
 	// object is destroyed.
 	virtual void SetDefaultValue(void *base, unsigned offset, TArray<FTypeAndOffset> *special=NULL) const;
+	virtual void SetPointer(void *base, unsigned offset, TArray<size_t> *ptrofs = NULL) const;
 
 	// Initialize the value, if needed (e.g. strings)
 	virtual void InitializeValue(void *addr, const void *def) const;
@@ -552,6 +553,7 @@ public:
 
 	virtual bool IsMatch(intptr_t id1, intptr_t id2) const;
 	virtual void GetTypeIDs(intptr_t &id1, intptr_t &id2) const;
+	void SetPointer(void *base, unsigned offset, TArray<size_t> *special = NULL) const override;
 
 	void WriteValue(FSerializer &ar, const char *key,const void *addr) const override;
 	bool ReadValue(FSerializer &ar, const char *key,void *addr) const override;
@@ -568,6 +570,9 @@ public:
 	PClassPointer(class PClass *restrict);
 
 	class PClass *ClassRestriction;
+
+	// this is only here to block PPointer's implementation
+	void SetPointer(void *base, unsigned offset, TArray<size_t> *special = NULL) const override {}
 
 	virtual bool IsMatch(intptr_t id1, intptr_t id2) const;
 	virtual void GetTypeIDs(intptr_t &id1, intptr_t &id2) const;
@@ -626,20 +631,10 @@ public:
 	bool ReadValue(FSerializer &ar, const char *key,void *addr) const override;
 
 	void SetDefaultValue(void *base, unsigned offset, TArray<FTypeAndOffset> *special) const override;
+	void SetPointer(void *base, unsigned offset, TArray<size_t> *special) const override;
 
 protected:
 	PArray();
-};
-
-// A vector is an array with extra operations.
-class PVector : public PArray
-{
-	DECLARE_CLASS(PVector, PArray);
-	HAS_OBJECT_POINTERS;
-public:
-	PVector(unsigned int size);
-protected:
-	PVector();
 };
 
 class PDynArray : public PCompoundType
@@ -690,6 +685,7 @@ public:
 	void WriteValue(FSerializer &ar, const char *key,const void *addr) const override;
 	bool ReadValue(FSerializer &ar, const char *key,void *addr) const override;
 	void SetDefaultValue(void *base, unsigned offset, TArray<FTypeAndOffset> *specials) const override;
+	void SetPointer(void *base, unsigned offset, TArray<size_t> *specials) const override;
 
 	static void WriteFields(FSerializer &ar, const void *addr, const TArray<PField *> &fields);
 	bool ReadFields(FSerializer &ar, void *addr) const;
@@ -889,7 +885,6 @@ struct FTypeTable
 extern FTypeTable TypeTable;
 
 // Returns a type from the TypeTable. Will create one if it isn't present.
-PVector *NewVector(unsigned int size);
 PMap *NewMap(PType *keytype, PType *valuetype);
 PArray *NewArray(PType *type, unsigned int count);
 PDynArray *NewDynArray(PType *type);

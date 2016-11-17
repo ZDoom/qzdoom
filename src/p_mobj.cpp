@@ -53,7 +53,6 @@
 #include "a_action.h"
 #include "a_keys.h"
 #include "p_conversation.h"
-#include "vm.h"
 #include "g_game.h"
 #include "teaminfo.h"
 #include "r_data/r_translate.h"
@@ -6828,6 +6827,13 @@ const char *AActor::GetTag(const char *def) const
 	{
 		return GetClass()->TypeName.GetChars();
 	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, GetTag)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_STRING(def);
+	ACTION_RETURN_STRING(self->GetTag(def.Len() == 0? nullptr : def.GetChars()));
 }
 
 void AActor::SetTag(const char *def)

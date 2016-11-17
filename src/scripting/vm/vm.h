@@ -2,7 +2,6 @@
 #define VM_H
 
 #include "zstring.h"
-#include "dobject.h"
 #include "autosegs.h"
 #include "vectors.h"
 
@@ -815,6 +814,11 @@ public:
 	VM_UHALF MaxParam;		// Maximum number of parameters this function has on the stack at once
 	VM_UBYTE NumArgs;		// Number of arguments this function takes
 	FString PrintableName;	// so that the VM can print meaningful info if something in this function goes wrong.
+	TArray<FTypeAndOffset> SpecialInits;	// list of all contents on the extra stack which require construction and destruction
+
+	void InitExtra(void *addr);
+	void DestroyExtra(void *addr);
+	int AllocExtraStack(PType *type);
 };
 
 class VMFrameStack
@@ -822,7 +826,6 @@ class VMFrameStack
 public:
 	VMFrameStack();
 	~VMFrameStack();
-	VMFrame *AllocFrame(int numregd, int numregf, int numregs, int numrega);
 	VMFrame *AllocFrame(VMScriptFunction *func);
 	VMFrame *PopFrame();
 	VMFrame *TopFrame()
@@ -1043,6 +1046,7 @@ void CallAction(VMFrameStack *stack, VMFunction *vmfunc, AActor *self);
 #define ACTION_RETURN_VEC3(v) do { DVector3 u = v; if (numret > 0) { assert(ret != nullptr); ret[0].SetVector(u); return 1; } return 0; } while(0)
 #define ACTION_RETURN_INT(v) do { int u = v; if (numret > 0) { assert(ret != NULL); ret->SetInt(u); return 1; } return 0; } while(0)
 #define ACTION_RETURN_BOOL(v) ACTION_RETURN_INT(v)
+#define ACTION_RETURN_STRING(v) do { FString u = v; if (numret > 0) { assert(ret != NULL); ret->SetString(u); return 1; } return 0; } while(0)
 
 // Checks to see what called the current action function
 #define ACTION_CALL_FROM_ACTOR() (stateinfo == nullptr || stateinfo->mStateType == STATE_Actor)

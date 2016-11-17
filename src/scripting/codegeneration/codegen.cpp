@@ -3884,7 +3884,6 @@ int BuiltinTypeCheck(VMFrameStack *stack, VMValue *param, TArray<VMValue> &defau
 
 ExpEmit FxTypeCheck::Emit(VMFunctionBuilder *build)
 {
-	ExpEmit out(build, REGT_INT);
 	EmitParameter(build, left, ScriptPosition);
 	EmitParameter(build, right, ScriptPosition);
 
@@ -3905,6 +3904,7 @@ ExpEmit FxTypeCheck::Emit(VMFunctionBuilder *build)
 		return call;
 	}
 
+	ExpEmit out(build, REGT_INT);
 	build->Emit(OP_RESULT, 0, REGT_INT, out.RegNum);
 	return out;
 }
@@ -3963,11 +3963,13 @@ FxExpression *FxDynamicCast::Resolve(FCompileContext& ctx)
 
 ExpEmit FxDynamicCast::Emit(VMFunctionBuilder *build)
 {
-	ExpEmit out = expr->Emit(build);
+	ExpEmit in = expr->Emit(build);
+	ExpEmit out = in.Fixed ? ExpEmit(build, in.RegType) : in;
 	ExpEmit check(build, REGT_INT);
 	assert(out.RegType == REGT_POINTER);
 
-	build->Emit(OP_PARAM, 0, REGT_POINTER, out.RegNum);
+	if (in.Fixed) build->Emit(OP_MOVEA, out.RegNum, in.RegNum);
+	build->Emit(OP_PARAM, 0, REGT_POINTER, in.RegNum);
 	build->Emit(OP_PARAM, 0, REGT_POINTER | REGT_KONST, build->GetConstantAddress(CastType, ATAG_OBJECT));
 
 	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinTypeCheck, BuiltinTypeCheck);
@@ -5084,9 +5086,18 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 	FxLocalVariableDeclaration *local = ctx.FindLocalVariable(Identifier);
 	if (local != nullptr)
 	{
-		auto x = new FxLocalVariable(local, ScriptPosition);
-		delete this;
-		return x->Resolve(ctx);
+		if (local->ValueType->GetRegType() != REGT_NIL)
+		{
+			auto x = new FxLocalVariable(local, ScriptPosition);
+			delete this;
+			return x->Resolve(ctx);
+		}
+		else
+		{
+			auto x = new FxStackVariable(local->ValueType, local->StackOffset, ScriptPosition);
+			delete this;
+			return x->Resolve(ctx);
+		}
 	}
 
 	if (Identifier == NAME_Default)
@@ -5590,6 +5601,109 @@ ExpEmit FxGlobalVariable::Emit(VMFunctionBuilder *build)
 //
 //==========================================================================
 
+FxStackVariable::FxStackVariable(PType *type, int offset, const FScriptPosition &pos)
+	: FxExpression(EFX_StackVariable, pos)
+{
+	membervar = new PField(NAME_None, type, 0, offset);
+	AddressRequested = false;
+	AddressWritable = true;	// must be true unless classx tells us otherwise if requested.
+}
+
+//==========================================================================
+//
+// force delete the PField because we know we won't need it anymore
+// and it won't get GC'd until the compiler finishes.
+//
+//==========================================================================
+
+FxStackVariable::~FxStackVariable()
+{
+	// Q: Is this good or bad? Needs testing if this is fine or better left to the GC anyway. DObject's destructor is anything but cheap.
+	membervar->ObjectFlags |= OF_YesReallyDelete;
+	delete membervar;
+}
+
+//==========================================================================
+//
+//
+//==========================================================================
+
+void FxStackVariable::ReplaceField(PField *newfield)
+{
+	membervar->ObjectFlags |= OF_YesReallyDelete;
+	delete membervar;
+	membervar = newfield;
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+bool FxStackVariable::RequestAddress(FCompileContext &ctx, bool *writable)
+{
+	AddressRequested = true;
+	if (writable != nullptr) *writable = AddressWritable && !ctx.CheckReadOnly(membervar->Flags);
+	return true;
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+FxExpression *FxStackVariable::Resolve(FCompileContext &ctx)
+{
+	CHECKRESOLVED();
+	ValueType = membervar->Type;
+	return this;
+}
+
+ExpEmit FxStackVariable::Emit(VMFunctionBuilder *build)
+{
+	int offsetreg = -1;
+	
+	if (membervar->Offset != 0) offsetreg = build->GetConstantInt((int)membervar->Offset);
+
+	if (AddressRequested)
+	{
+		if (offsetreg >= 0)
+		{
+			ExpEmit obj(build, REGT_POINTER);
+			build->Emit(OP_ADDA_RK, obj.RegNum, build->FramePointer.RegNum, offsetreg);
+			return obj;
+		}
+		else
+		{
+			return build->FramePointer;
+		}
+	}
+	ExpEmit loc(build, membervar->Type->GetRegType(), membervar->Type->GetRegCount());
+
+	if (membervar->BitValue == -1)
+	{
+		if (offsetreg == -1) offsetreg = build->GetConstantInt(0);
+		build->Emit(membervar->Type->GetLoadOp(), loc.RegNum, build->FramePointer.RegNum, offsetreg);
+	}
+	else
+	{
+		ExpEmit obj(build, REGT_POINTER);
+		if (offsetreg >= 0) build->Emit(OP_ADDA_RK, obj.RegNum, build->FramePointer.RegNum, offsetreg);
+		obj.Free(build);
+		build->Emit(OP_LBIT, loc.RegNum, obj.RegNum, 1 << membervar->BitValue);
+	}
+	return loc;
+}
+
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
 FxStructMember::FxStructMember(FxExpression *x, PField* mem, const FScriptPosition &pos)
 	: FxExpression(EFX_StructMember, pos)
 {
@@ -5679,6 +5793,16 @@ FxExpression *FxStructMember::Resolve(FCompileContext &ctx)
 			auto parentfield = static_cast<FxGlobalVariable *>(classx)->membervar;
 			auto newfield = new PField(membervar->SymbolName, membervar->Type, membervar->Flags | parentfield->Flags, membervar->Offset + parentfield->Offset, membervar->BitValue);
 			static_cast<FxGlobalVariable *>(classx)->membervar = newfield;
+			classx->isresolved = false;	// re-resolve the parent so it can also check if it can be optimized away.
+			auto x = classx->Resolve(ctx);
+			classx = nullptr;
+			return x;
+		}
+		else if (classx->ExprType == EFX_StackVariable)
+		{
+			auto parentfield = static_cast<FxStackVariable *>(classx)->membervar;
+			auto newfield = new PField(membervar->SymbolName, membervar->Type, membervar->Flags | parentfield->Flags, membervar->Offset + parentfield->Offset, membervar->BitValue);
+			static_cast<FxStackVariable *>(classx)->ReplaceField(newfield);
 			classx->isresolved = false;	// re-resolve the parent so it can also check if it can be optimized away.
 			auto x = classx->Resolve(ctx);
 			classx = nullptr;
@@ -5831,7 +5955,7 @@ FxExpression *FxArrayElement::Resolve(FCompileContext &ctx)
 			return nullptr;
 		}
 	}
-	if (index->ValueType->GetRegType() != REGT_INT && index->ValueType != TypeName)
+	if (!index->IsInteger())
 	{
 		ScriptPosition.Message(MSG_ERROR, "Array index must be integer");
 		delete this;
@@ -5854,16 +5978,42 @@ FxExpression *FxArrayElement::Resolve(FCompileContext &ctx)
 			delete this;
 			return nullptr;
 		}
+
+		// if this is an array within a class or another struct we can simplify the expression by creating a new PField with a cumulative offset.
+		if (Array->ExprType == EFX_ClassMember || Array->ExprType == EFX_StructMember)
+		{
+			auto parentfield = static_cast<FxStructMember *>(Array)->membervar;
+			// PFields are garbage collected so this will be automatically taken care of later.
+			auto newfield = new PField(NAME_None, arraytype->ElementType, parentfield->Flags, indexval * arraytype->ElementSize + parentfield->Offset);
+			static_cast<FxStructMember *>(Array)->membervar = newfield;
+			Array->isresolved = false;	// re-resolve the parent so it can also check if it can be optimized away.
+			auto x = Array->Resolve(ctx);
+			Array = nullptr;
+			return x;
+		}
+		else if (Array->ExprType == EFX_GlobalVariable)
+		{
+			auto parentfield = static_cast<FxGlobalVariable *>(Array)->membervar;
+			auto newfield = new PField(NAME_None, arraytype->ElementType, parentfield->Flags, indexval * arraytype->ElementSize + parentfield->Offset);
+			static_cast<FxGlobalVariable *>(Array)->membervar = newfield;
+			Array->isresolved = false;	// re-resolve the parent so it can also check if it can be optimized away.
+			auto x = Array->Resolve(ctx);
+			Array = nullptr;
+			return x;
+		}
+		else if (Array->ExprType == EFX_StackVariable)
+		{
+			auto parentfield = static_cast<FxStackVariable *>(Array)->membervar;
+			auto newfield = new PField(NAME_None, arraytype->ElementType, parentfield->Flags, indexval * arraytype->ElementSize + parentfield->Offset);
+			static_cast<FxStackVariable *>(Array)->ReplaceField(newfield);
+			Array->isresolved = false;	// re-resolve the parent so it can also check if it can be optimized away.
+			auto x = Array->Resolve(ctx);
+			Array = nullptr;
+			return x;
+		}
 	}
 
 	ValueType = arraytype->ElementType;
-	if (ValueType->GetRegType() != REGT_INT && ValueType->GetRegType() != REGT_FLOAT)
-	{
-		// int arrays only for now
-		ScriptPosition.Message(MSG_ERROR, "Only numeric arrays are supported.");
-		delete this;
-		return nullptr;
-	}
 	if (!Array->RequestAddress(ctx, &AddressWritable))
 	{
 		ScriptPosition.Message(MSG_ERROR, "Unable to dereference array.");
@@ -5883,7 +6033,6 @@ ExpEmit FxArrayElement::Emit(VMFunctionBuilder *build)
 {
 	ExpEmit start = Array->Emit(build);
 	PArray *const arraytype = static_cast<PArray*>(Array->ValueType);
-	ExpEmit dest(build, arraytype->ElementType->GetRegType());
 
 	if (start.Konst)
 	{
@@ -5902,50 +6051,79 @@ ExpEmit FxArrayElement::Emit(VMFunctionBuilder *build)
 		{
 			if (indexval != 0)
 			{
-				build->Emit(OP_ADDA_RK, start.RegNum, start.RegNum, build->GetConstantInt(indexval));
+				if (!start.Fixed)
+				{
+					build->Emit(OP_ADDA_RK, start.RegNum, start.RegNum, build->GetConstantInt(indexval));
+				}
+				else
+				{
+					// do not clobber local variables.
+					ExpEmit temp(build, start.RegType);
+					build->Emit(OP_ADDA_RK, temp.RegNum, start.RegNum, build->GetConstantInt(indexval));
+					start.Free(build);
+					start = temp;
+				}
 			}
+			return start;
 		}
 		else
 		{
-			build->Emit(arraytype->ElementType->GetLoadOp(), dest.RegNum,
-				start.RegNum, build->GetConstantInt(indexval));
+			start.Free(build);
+			ExpEmit dest(build, ValueType->GetRegType());
+			build->Emit(arraytype->ElementType->GetLoadOp(), dest.RegNum, start.RegNum, build->GetConstantInt(indexval));
+			return dest;
 		}
 	}
 	else
 	{
 		ExpEmit indexv(index->Emit(build));
 		ExpEmit indexwork = indexv.Fixed ? ExpEmit(build, indexv.RegType) : indexv;
+		build->Emit(OP_BOUND, indexv.RegNum, arraytype->ElementCount);
+
 		int shiftbits = 0;
 		while (1u << shiftbits < arraytype->ElementSize)
 		{ 
 			shiftbits++;
 		}
-		assert(1u << shiftbits == arraytype->ElementSize && "Element sizes other than power of 2 are not implemented");
-		build->Emit(OP_BOUND, indexv.RegNum, arraytype->ElementCount);
-		if (shiftbits > 0)
+		if (1u << shiftbits == arraytype->ElementSize)
 		{
-			build->Emit(OP_SLL_RI, indexwork.RegNum, indexv.RegNum, shiftbits);
-		}
-
-		if (AddressRequested)
-		{
-			build->Emit(OP_ADDA_RR, start.RegNum, start.RegNum, indexwork.RegNum);
+			if (shiftbits > 0)
+			{
+				build->Emit(OP_SLL_RI, indexwork.RegNum, indexv.RegNum, shiftbits);
+			}
 		}
 		else
 		{
-			build->Emit(arraytype->ElementType->GetLoadOp() + 1,	// added 1 to use the *_R version that
-				dest.RegNum, start.RegNum, indexwork.RegNum);			// takes the offset from a register
+			// A shift won't do, so use a multiplication
+			build->Emit(OP_MUL_RK, indexwork.RegNum, indexv.RegNum, build->GetConstantInt(arraytype->ElementSize));
 		}
+
 		indexwork.Free(build);
+		if (AddressRequested)
+		{
+			if (!start.Fixed)
+			{
+				build->Emit(OP_ADDA_RR, start.RegNum, start.RegNum, indexwork.RegNum);
+			}
+			else
+			{
+				start.Free(build);
+				// do not clobber local variables.
+				ExpEmit temp(build, start.RegType);
+				build->Emit(OP_ADDA_RR, temp.RegNum, start.RegNum, indexwork.RegNum);
+				start = temp;
+			}
+			return start;
+		}
+		else
+		{
+			start.Free(build);
+			ExpEmit dest(build, ValueType->GetRegType());
+			// added 1 to use the *_R version that takes the offset from a register
+			build->Emit(arraytype->ElementType->GetLoadOp() + 1, dest.RegNum, start.RegNum, indexwork.RegNum);
+			return dest;
+		}
 	}
-	if (AddressRequested)
-	{
-		dest.Free(build);
-		return start;
-	}
-	
-	start.Free(build);
-	return dest;
 }
 
 //==========================================================================
@@ -8206,6 +8384,107 @@ ExpEmit FxClassTypeCast::Emit(VMFunctionBuilder *build)
 
 //==========================================================================
 //
+//==========================================================================
+
+FxClassPtrCast::FxClassPtrCast(PClass *dtype, FxExpression *x)
+	: FxExpression(EFX_ClassPtrCast, x->ScriptPosition)
+{
+	ValueType = NewClassPointer(dtype);
+	desttype = dtype;
+	basex = x;
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+FxClassPtrCast::~FxClassPtrCast()
+{
+	SAFE_DELETE(basex);
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+FxExpression *FxClassPtrCast::Resolve(FCompileContext &ctx)
+{
+	CHECKRESOLVED();
+	SAFE_RESOLVE(basex, ctx);
+
+	if (basex->ValueType == TypeNullPtr)
+	{
+		basex->ValueType = ValueType;
+		auto x = basex;
+		basex = nullptr;
+		delete this;
+		return x;
+	}
+	auto to = static_cast<PClassPointer *>(ValueType);
+	if (basex->ValueType->GetClass() == RUNTIME_CLASS(PClassPointer))
+	{
+		auto from = static_cast<PClassPointer *>(basex->ValueType);
+		// Downcast is always ok.
+		if (from->ClassRestriction->IsDescendantOf(to->ClassRestriction))
+		{
+			basex->ValueType = to;
+			auto x = basex;
+			basex = nullptr;
+			delete this;
+			return x;
+		}
+		// Upcast needs a runtime check.
+		else if (to->ClassRestriction->IsDescendantOf(from->ClassRestriction))
+		{
+			return this;
+		}
+	}
+	// Everything else is an error.
+	ScriptPosition.Message(MSG_ERROR, "Cannot cast %s to %s. The types are incompatible.", basex->ValueType->DescriptiveName(), to->DescriptiveName());
+	delete this;
+	return nullptr;
+}
+
+//==========================================================================
+//
+// 
+//
+//==========================================================================
+
+int BuiltinClassCast(VMFrameStack *stack, VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
+{
+	PARAM_PROLOGUE;
+	PARAM_CLASS(from, DObject);
+	PARAM_CLASS(to, DObject);
+	ACTION_RETURN_OBJECT(from->IsDescendantOf(to) ? from : nullptr);
+}
+
+ExpEmit FxClassPtrCast::Emit(VMFunctionBuilder *build)
+{
+	ExpEmit clsname = basex->Emit(build);
+
+	build->Emit(OP_PARAM, 0, clsname.RegType, clsname.RegNum);
+	build->Emit(OP_PARAM, 0, REGT_POINTER | REGT_KONST, build->GetConstantAddress(desttype, ATAG_OBJECT));
+
+	VMFunction *callfunc;
+	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinClassCast, BuiltinClassCast);
+
+	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
+	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
+	callfunc = ((PSymbolVMFunction *)sym)->Function;
+	clsname.Free(build);
+	ExpEmit dest(build, REGT_POINTER);
+	build->Emit(OP_CALL_K, build->GetConstantAddress(callfunc, ATAG_OBJECT), 2, 1);
+	build->Emit(OP_RESULT, 0, REGT_POINTER, dest.RegNum);
+	return dest;
+}
+
+//==========================================================================
+//
 // Symbolic state labels. 
 // Conversion will not happen inside the compiler anymore because it causes
 // just too many problems.
@@ -8413,7 +8692,7 @@ FxLocalVariableDeclaration::FxLocalVariableDeclaration(PType *type, FName name, 
 	VarFlags = varflags;
 	Name = name;
 	RegCount = type == TypeVector2 ? 2 : type == TypeVector3 ? 3 : 1;
-	Init = initval == nullptr? nullptr : new FxTypeCast(initval, type, false);
+	Init = initval;
 }
 
 FxLocalVariableDeclaration::~FxLocalVariableDeclaration()
@@ -8424,12 +8703,22 @@ FxLocalVariableDeclaration::~FxLocalVariableDeclaration()
 FxExpression *FxLocalVariableDeclaration::Resolve(FCompileContext &ctx)
 {
 	CHECKRESOLVED();
-	SAFE_RESOLVE_OPT(Init, ctx);
 	if (ctx.Block == nullptr)
 	{
 		ScriptPosition.Message(MSG_ERROR, "Variable declaration outside compound statement");
 		delete this;
 		return nullptr;
+	}
+	if (ValueType->RegType == REGT_NIL)
+	{
+		auto sfunc = static_cast<VMScriptFunction *>(ctx.Function->Variants[0].Implementation);
+		StackOffset = sfunc->AllocExtraStack(ValueType);
+		// Todo: Process the compound initializer once implemented.
+	}
+	else
+	{
+		if (Init) Init = new FxTypeCast(Init, ValueType, false);
+		SAFE_RESOLVE_OPT(Init, ctx);
 	}
 	ctx.Block->LocalVars.Push(this);
 	return this;
@@ -8437,55 +8726,62 @@ FxExpression *FxLocalVariableDeclaration::Resolve(FCompileContext &ctx)
 
 ExpEmit FxLocalVariableDeclaration::Emit(VMFunctionBuilder *build)
 {
-	if (Init == nullptr)
+	if (ValueType->RegType != REGT_NIL)
 	{
-		RegNum = build->Registers[ValueType->GetRegType()].Get(RegCount);
-	}
-	else
-	{
-		ExpEmit emitval = Init->Emit(build);
-
-		int regtype = emitval.RegType;
-		if (regtype < REGT_INT || regtype > REGT_TYPE)
+		if (Init == nullptr)
 		{
-			ScriptPosition.Message(MSG_ERROR, "Attempted to assign a non-value");
-			return ExpEmit();
-		}
-		if (emitval.Konst)
-		{
-			auto constval = static_cast<FxConstant *>(Init);
-			RegNum = build->Registers[regtype].Get(1);
-			switch (regtype)
-			{
-			default:
-			case REGT_INT:
-				build->Emit(OP_LK, RegNum, build->GetConstantInt(constval->GetValue().GetInt()));
-				break;
-
-			case REGT_FLOAT:
-				build->Emit(OP_LKF, RegNum, build->GetConstantFloat(constval->GetValue().GetFloat()));
-				break;
-
-			case REGT_POINTER:
-				build->Emit(OP_LKP, RegNum, build->GetConstantAddress(constval->GetValue().GetPointer(), ATAG_GENERIC));
-				break;
-
-			case REGT_STRING:
-				build->Emit(OP_LKS, RegNum, build->GetConstantString(constval->GetValue().GetString()));
-			}
-			emitval.Free(build);
-		}
-		else if (Init->ExprType != EFX_LocalVariable)
-		{
-			// take over the register that got allocated while emitting the Init expression.
-			RegNum = emitval.RegNum;
+			RegNum = build->Registers[ValueType->GetRegType()].Get(RegCount);
 		}
 		else
 		{
-			ExpEmit out(build, emitval.RegType, emitval.RegCount);
-			build->Emit(ValueType->GetMoveOp(), out.RegNum, emitval.RegNum);
-			RegNum = out.RegNum;
+			ExpEmit emitval = Init->Emit(build);
+
+			int regtype = emitval.RegType;
+			if (regtype < REGT_INT || regtype > REGT_TYPE)
+			{
+				ScriptPosition.Message(MSG_ERROR, "Attempted to assign a non-value");
+				return ExpEmit();
+			}
+			if (emitval.Konst)
+			{
+				auto constval = static_cast<FxConstant *>(Init);
+				RegNum = build->Registers[regtype].Get(1);
+				switch (regtype)
+				{
+				default:
+				case REGT_INT:
+					build->Emit(OP_LK, RegNum, build->GetConstantInt(constval->GetValue().GetInt()));
+					break;
+
+				case REGT_FLOAT:
+					build->Emit(OP_LKF, RegNum, build->GetConstantFloat(constval->GetValue().GetFloat()));
+					break;
+
+				case REGT_POINTER:
+					build->Emit(OP_LKP, RegNum, build->GetConstantAddress(constval->GetValue().GetPointer(), ATAG_GENERIC));
+					break;
+
+				case REGT_STRING:
+					build->Emit(OP_LKS, RegNum, build->GetConstantString(constval->GetValue().GetString()));
+				}
+				emitval.Free(build);
+			}
+			else if (Init->ExprType != EFX_LocalVariable)
+			{
+				// take over the register that got allocated while emitting the Init expression.
+				RegNum = emitval.RegNum;
+			}
+			else
+			{
+				ExpEmit out(build, emitval.RegType, emitval.RegCount);
+				build->Emit(ValueType->GetMoveOp(), out.RegNum, emitval.RegNum);
+				RegNum = out.RegNum;
+			}
 		}
+	}
+	else
+	{
+		// Init arrays and structs.
 	}
 	return ExpEmit();
 }
@@ -8493,6 +8789,10 @@ ExpEmit FxLocalVariableDeclaration::Emit(VMFunctionBuilder *build)
 void FxLocalVariableDeclaration::Release(VMFunctionBuilder *build)
 {
 	// Release the register after the containing block gets closed
-	assert(RegNum != -1);
-	build->Registers[ValueType->GetRegType()].Return(RegNum, RegCount);
+	if(RegNum != -1)
+	{
+		build->Registers[ValueType->GetRegType()].Return(RegNum, RegCount);
+	}
+	// Stack space will not be released because that would make controlled destruction impossible.
+	// For that all local stack variables need to live for the entire execution of a function.
 }
