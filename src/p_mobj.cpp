@@ -3608,11 +3608,14 @@ void AActor::Tick ()
 			}
 		}
 
-		UnlinkFromWorld ();
-		flags |= MF_NOBLOCKMAP;
-		SetXYZ(Vec3Offset(Vel));
-		CheckPortalTransition(false);
-		LinkToWorld ();
+		if (!Vel.isZero() || !(flags & MF_NOBLOCKMAP))
+		{
+			UnlinkFromWorld();
+			flags |= MF_NOBLOCKMAP;
+			SetXYZ(Vec3Offset(Vel));
+			CheckPortalTransition(false);
+			LinkToWorld();
+		}
 	}
 	else
 	{
