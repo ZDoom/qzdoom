@@ -1035,6 +1035,14 @@ AInventory *AActor::FindInventory (FName type)
 	return FindInventory(PClass::FindActor(type));
 }
 
+DEFINE_ACTION_FUNCTION(AActor, FindInventory)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_CLASS(type, AInventory);
+	PARAM_BOOL_DEF(subclass);
+	ACTION_RETURN_OBJECT(self->FindInventory(type, subclass));
+}
+
 //============================================================================
 //
 // AActor :: GiveInventoryType
@@ -6020,6 +6028,13 @@ bool P_CheckMissileSpawn (AActor* th, double maxdist)
 	}
 	th->ClearInterpolation();
 	return true;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, CheckMissileSpawn)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(add);
+	ACTION_RETURN_BOOL(P_CheckMissileSpawn(self, add));
 }
 
 

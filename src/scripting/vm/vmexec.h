@@ -87,7 +87,7 @@ begin:
 	OP(LFP):
 		ASSERTA(a); assert(sfunc != NULL); assert(sfunc->ExtraSpace > 0);
 		reg.a[a] = f->GetExtra();
-		reg.atag[a] = ATAG_FRAMEPOINTER;
+		reg.atag[a] = ATAG_GENERIC;	// using ATAG_FRAMEPOINTER will cause endless asserts.
 		NEXTOP;
 
 	OP(LB):
@@ -461,7 +461,7 @@ begin:
 					break;
 				case REGT_INT | REGT_ADDROF:
 					assert(C < f->NumRegD);
-					::new(param) VMValue(&reg.d[C], ATAG_DREGISTER);
+					::new(param) VMValue(&reg.d[C], ATAG_GENERIC);
 					break;
 				case REGT_INT | REGT_KONST:
 					assert(C < sfunc->NumKonstD);
@@ -473,7 +473,7 @@ begin:
 					break;
 				case REGT_STRING | REGT_ADDROF:
 					assert(C < f->NumRegS);
-					::new(param) VMValue(&reg.s[C], ATAG_SREGISTER);
+					::new(param) VMValue(&reg.s[C], ATAG_GENERIC);
 					break;
 				case REGT_STRING | REGT_KONST:
 					assert(C < sfunc->NumKonstS);
@@ -485,7 +485,7 @@ begin:
 					break;
 				case REGT_POINTER | REGT_ADDROF:
 					assert(C < f->NumRegA);
-					::new(param) VMValue(&reg.a[C], ATAG_AREGISTER);
+					::new(param) VMValue(&reg.a[C], ATAG_GENERIC);
 					break;
 				case REGT_POINTER | REGT_KONST:
 					assert(C < sfunc->NumKonstA);
@@ -512,7 +512,7 @@ begin:
 					break;
 				case REGT_FLOAT | REGT_ADDROF:
 					assert(C < f->NumRegF);
-					::new(param) VMValue(&reg.f[C], ATAG_FREGISTER);
+					::new(param) VMValue(&reg.f[C], ATAG_GENERIC);
 					break;
 				case REGT_FLOAT | REGT_KONST:
 					assert(C < sfunc->NumKonstF);
@@ -704,16 +704,7 @@ begin:
 
 	OP(CONCAT):
 		ASSERTS(a); ASSERTS(B); ASSERTS(C);
-		{
-			FString *rB = &reg.s[B];
-			FString *rC = &reg.s[C];
-			FString concat(*rB);
-			for (++rB; rB <= rC; ++rB)
-			{
-				concat += *rB;
-			}
-			reg.s[a] = concat;
-		}
+		reg.s[a] = reg.s[B] + reg.s[C];
 		NEXTOP;
 	OP(LENS):
 		ASSERTD(a); ASSERTS(B);
@@ -1658,23 +1649,43 @@ static void DoCast(const VMRegisters &reg, const VMFrame *f, int a, int b, int c
 		ASSERTF(a); ASSERTD(b);
 		reg.f[a] = reg.d[b];
 		break;
+	case CAST_U2F:
+		ASSERTF(a); ASSERTD(b);
+		reg.f[a] = unsigned(reg.d[b]);
+		break;
 	case CAST_I2S:
 		ASSERTS(a); ASSERTD(b);
 		reg.s[a].Format("%d", reg.d[b]);
+		break;
+	case CAST_U2S:
+		ASSERTS(a); ASSERTD(b);
+		reg.s[a].Format("%u", reg.d[b]);
 		break;
 
 	case CAST_F2I:
 		ASSERTD(a); ASSERTF(b);
 		reg.d[a] = (int)reg.f[b];
 		break;
+	case CAST_F2U:
+		ASSERTD(a); ASSERTF(b);
+		reg.d[a] = (int)(unsigned)reg.f[b];
+		break;
 	case CAST_F2S:
-		ASSERTS(a); ASSERTD(b);
-		reg.s[a].Format("%.14g", reg.f[b]);
+		ASSERTS(a); ASSERTF(b);
+		reg.s[a].Format("%.5f", reg.f[b]);	// keep this small. For more precise conversion there should be a conversion function.
+		break;
+	case CAST_V22S:
+		ASSERTS(a); ASSERTF(b+1);
+		reg.s[a].Format("(%.5f, %.5f)", reg.f[b], reg.f[b + 1]);
+		break;
+	case CAST_V32S:
+		ASSERTS(a); ASSERTF(b + 2);
+		reg.s[a].Format("(%.5f, %.5f, %.5f)", reg.f[b], reg.f[b + 1], reg.f[b + 2]);
 		break;
 
 	case CAST_P2S:
 		ASSERTS(a); ASSERTA(b);
-		reg.s[a].Format("%s<%p>", reg.atag[b] == ATAG_OBJECT ? "Object" : "Pointer", reg.a[b]);
+		reg.s[a].Format("%s<%p>", reg.atag[b] == ATAG_OBJECT ? (reg.a[b] == nullptr? "Object" : ((DObject*)reg.a[b])->GetClass()->TypeName.GetChars() ) : "Pointer", reg.a[b]);
 		break;
 
 	case CAST_S2I:

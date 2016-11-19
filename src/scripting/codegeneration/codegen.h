@@ -169,10 +169,16 @@ struct ExpVal
 		return regtype == REGT_INT ? Int : regtype == REGT_FLOAT ? int(Float) : 0;
 	}
 
+	unsigned GetUInt() const
+	{
+		int regtype = Type->GetRegType();
+		return regtype == REGT_INT ? unsigned(Int) : regtype == REGT_FLOAT ? unsigned(Float) : 0;
+	}
+
 	double GetFloat() const
 	{
 		int regtype = Type->GetRegType();
-		return regtype == REGT_INT ? double(Int) : regtype == REGT_FLOAT ? Float : 0;
+		return regtype == REGT_INT ? (Type == TypeUInt32? double(unsigned(Int)) : double(Int)) : regtype == REGT_FLOAT ? Float : 0;
 	}
 
 	void *GetPointer() const
@@ -807,8 +813,7 @@ public:
 
 	FxBinary(int, FxExpression*, FxExpression*);
 	~FxBinary();
-	bool ResolveLR(FCompileContext& ctx, bool castnumeric);
-	void Promote(FCompileContext &ctx);
+	bool Promote(FCompileContext &ctx, bool forceint = false);
 };
 
 //==========================================================================
@@ -864,6 +869,7 @@ public:
 
 class FxCompareRel : public FxBinary
 {
+	PType *CompareType;
 public:
 
 	FxCompareRel(int, FxExpression*, FxExpression*);
@@ -892,11 +898,26 @@ public:
 //
 //==========================================================================
 
-class FxBinaryInt : public FxBinary
+class FxBitOp : public FxBinary
 {
 public:
 
-	FxBinaryInt(int, FxExpression*, FxExpression*);
+	FxBitOp(int, FxExpression*, FxExpression*);
+	FxExpression *Resolve(FCompileContext&);
+	ExpEmit Emit(VMFunctionBuilder *build);
+};
+
+//==========================================================================
+//
+//	FxBinary
+//
+//==========================================================================
+
+class FxShift : public FxBinary
+{
+public:
+
+	FxShift(int, FxExpression*, FxExpression*);
 	FxExpression *Resolve(FCompileContext&);
 	ExpEmit Emit(VMFunctionBuilder *build);
 };
@@ -911,6 +932,21 @@ class FxLtGtEq : public FxBinary
 {
 public:
 	FxLtGtEq(FxExpression*, FxExpression*);
+	FxExpression *Resolve(FCompileContext&);
+
+	ExpEmit Emit(VMFunctionBuilder *build);
+};
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+class FxConcat : public FxBinary
+{
+public:
+	FxConcat(FxExpression*, FxExpression*);
 	FxExpression *Resolve(FCompileContext&);
 
 	ExpEmit Emit(VMFunctionBuilder *build);

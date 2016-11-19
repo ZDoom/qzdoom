@@ -2160,6 +2160,7 @@ void ZCCCompiler::InitFunctions()
 								if ((flags & VARF_Out) || (type != TypeVector2 && type != TypeVector3))
 								{
 									type = NewPointer(type);
+									flags |= VARF_Ref;
 								}
 								else if (type == TypeVector2)
 								{
@@ -2902,10 +2903,12 @@ FxExpression *ZCCCompiler::ConvertNode(ZCC_TreeNode *ast)
 		case PEX_LeftShift:
 		case PEX_RightShift:
 		case PEX_URightShift:
+			return new FxShift(tok, left, right);
+
 		case PEX_BitAnd:
 		case PEX_BitOr:
 		case PEX_BitXor:
-			return new FxBinaryInt(tok, left, right);
+			return new FxBitOp(tok, left, right);
 
 		case PEX_BoolOr:
 		case PEX_BoolAnd:
@@ -2937,10 +2940,12 @@ FxExpression *ZCCCompiler::ConvertNode(ZCC_TreeNode *ast)
 		case PEX_LshAssign:
 		case PEX_RshAssign:
 		case PEX_URshAssign:
+			return ModifyAssign(new FxShift(tok, new FxAssignSelf(*ast), right), left);
+
 		case PEX_AndAssign:
 		case PEX_OrAssign:
 		case PEX_XorAssign:
-			return ModifyAssign(new FxBinaryInt(tok, new FxAssignSelf(*ast), right), left);
+			return ModifyAssign(new FxBitOp(tok, new FxAssignSelf(*ast), right), left);
 
 		case PEX_LTGTEQ:
 			return new FxLtGtEq(left, right);
@@ -2955,8 +2960,8 @@ FxExpression *ZCCCompiler::ConvertNode(ZCC_TreeNode *ast)
 		case PEX_Is:
 			return new FxTypeCheck(left, right);
 
-				// todo: These do not have representations in DECORATE and no implementation exists yet.
 		case PEX_Concat:
+			return new FxConcat(left, right);
 
 		default:
 			I_Error("Binary operator %d not implemented yet", op);

@@ -111,7 +111,10 @@ enum
 {
 	CAST_I2F,
 	CAST_I2S,
+	CAST_U2F,
+	CAST_U2S,
 	CAST_F2I,
+	CAST_F2U,
 	CAST_F2S,
 	CAST_P2S,
 	CAST_S2I,
@@ -122,6 +125,8 @@ enum
 	CAST_S2So,
 	CAST_Co2S,
 	CAST_So2S,
+	CAST_V22S,
+	CAST_V32S,
 };
 
 // Register types for VMParam
@@ -152,13 +157,15 @@ enum
 	ATAG_OBJECT,			// pointer to an object; will be followed by GC
 
 	// The following are all for documentation during debugging and are
-	// functionally no different than ATAG_GENERIC.
+	// functionally no different than ATAG_GENERIC (meaning they are useless because they trigger asserts all over the place.)
 
+	/*
 	ATAG_FRAMEPOINTER,		// pointer to extra stack frame space for this function
 	ATAG_DREGISTER,			// pointer to a data register
 	ATAG_FREGISTER,			// pointer to a float register
 	ATAG_SREGISTER,			// pointer to a string register
 	ATAG_AREGISTER,			// pointer to an address register
+	*/
 
 	ATAG_RNG,				// pointer to FRandom
 	ATAG_STATE  = ATAG_GENERIC,			// pointer to FState (cannot have its own type because there's no means to track inside the VM.)
