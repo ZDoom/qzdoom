@@ -29,6 +29,7 @@
 #include "d_player.h"
 #include "serializer.h"
 #include "v_text.h"
+#include "cmdlib.h"
 
 
 // MACROS ------------------------------------------------------------------
@@ -79,7 +80,6 @@ CVAR(Int, sv_fastweapons, false, CVAR_SERVERINFO);
 // PRIVATE DATA DEFINITIONS ------------------------------------------------
 
 static FRandom pr_wpnreadysnd ("WpnReadySnd");
-static FRandom pr_gunshot ("GunShot");
 
 static const FGenericButtons ButtonChecks[] =
 {
@@ -99,12 +99,19 @@ static const FGenericButtons ButtonChecks[] =
 //
 //------------------------------------------------------------------------
 
-IMPLEMENT_CLASS(DPSprite, false, true, false, false)
+IMPLEMENT_CLASS(DPSprite, false, true, true, false)
 
 IMPLEMENT_POINTERS_START(DPSprite)
 	IMPLEMENT_POINTER(Caller)
 	IMPLEMENT_POINTER(Next)
 IMPLEMENT_POINTERS_END
+
+void DPSprite::InitNativeFields()
+{
+	auto meta = RUNTIME_CLASS(DPSprite);
+
+	meta->AddNativeField("State", TypeState, myoffsetof(DPSprite, State), VARF_ReadOnly);
+}
 
 //------------------------------------------------------------------------
 //
@@ -184,6 +191,16 @@ void P_SetPsprite(player_t *player, PSPLayers id, FState *state, bool pending)
 	player->GetPSprite(id)->SetState(state, pending);
 }
 
+DEFINE_ACTION_FUNCTION(_Player, SetPSprite)	// the underscore is needed to get past the name mangler which removes the first clas name character to match the class representation (needs to be fixed in a later commit)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(player_t);
+	PARAM_INT(id);
+	PARAM_POINTER(state, FState);
+	PARAM_BOOL_DEF(pending);
+	P_SetPsprite(self, (PSPLayers)id, state, pending);
+	return 0;
+}
+
 DPSprite *player_t::GetPSprite(PSPLayers layer)
 {
 	AActor *oldcaller = nullptr;
@@ -244,6 +261,14 @@ DPSprite *player_t::GetPSprite(PSPLayers layer)
 
 	return pspr;
 }
+
+DEFINE_ACTION_FUNCTION(_Player, GetPSprite)	// the underscore is needed to get past the name mangler which removes the first clas name character to match the class representation (needs to be fixed in a later commit)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(player_t);
+	PARAM_INT(id);
+	ACTION_RETURN_OBJECT(self->GetPSprite((PSPLayers)id));
+}
+
 
 //---------------------------------------------------------------------------
 //
@@ -1381,6 +1406,15 @@ DAngle P_BulletSlope (AActor *mo, FTranslatedLineTarget *pLineTarget, int aimfla
 	return pitch;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, BulletSlope)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_POINTER_DEF(t, FTranslatedLineTarget);
+	PARAM_INT_DEF(aimflags);
+	ACTION_RETURN_FLOAT(P_BulletSlope(self, t, aimflags).Degrees);
+}
+
+
 AActor *P_AimTarget(AActor *mo)
 {
 	FTranslatedLineTarget t;
@@ -1394,25 +1428,6 @@ DEFINE_ACTION_FUNCTION(AActor, AimTarget)
 	ACTION_RETURN_OBJECT(P_AimTarget(self));
 }
 
-
-//
-// P_GunShot
-//
-void P_GunShot (AActor *mo, bool accurate, PClassActor *pufftype, DAngle pitch)
-{
-	DAngle 	angle;
-	int 		damage;
-		
-	damage = 5*(pr_gunshot()%3+1);
-	angle = mo->Angles.Yaw;
-
-	if (!accurate)
-	{
-		angle += pr_gunshot.Random2 () * (5.625 / 256);
-	}
-
-	P_LineAttack (mo, angle, PLAYERMISSILERANGE, pitch, damage, NAME_Hitscan, pufftype);
-}
 
 DEFINE_ACTION_FUNCTION(AActor, A_Light)
 {
@@ -1560,6 +1575,63 @@ void player_t::DestroyPSprites()
 		pspr->Destroy();
 		pspr = next;
 	}
+}
+
+//------------------------------------------------------------------------------------
+//
+// Setting a random flash like some of Doom's weapons can easily crash when the
+// definition is overridden incorrectly so let's check that the state actually exists.
+// Be aware though that this will not catch all DEHACKED related problems. But it will
+// find all DECORATE related ones.
+//
+//------------------------------------------------------------------------------------
+
+void P_SetSafeFlash(AWeapon *weapon, player_t *player, FState *flashstate, int index)
+{
+
+	PClassActor *cls = weapon->GetClass();
+	while (cls != RUNTIME_CLASS(AWeapon))
+	{
+		if (flashstate >= cls->OwnedStates && flashstate < cls->OwnedStates + cls->NumOwnedStates)
+		{
+			// The flash state belongs to this class.
+			// Now let's check if the actually wanted state does also
+			if (flashstate + index < cls->OwnedStates + cls->NumOwnedStates)
+			{
+				// we're ok so set the state
+				P_SetPsprite(player, PSP_FLASH, flashstate + index, true);
+				return;
+			}
+			else
+			{
+				// oh, no! The state is beyond the end of the state table so use the original flash state.
+				P_SetPsprite(player, PSP_FLASH, flashstate, true);
+				return;
+			}
+		}
+		// try again with parent class
+		cls = static_cast<PClassActor *>(cls->ParentClass);
+	}
+	// if we get here the state doesn't seem to belong to any class in the inheritance chain
+	// This can happen with Dehacked if the flash states are remapped. 
+	// The only way to check this would be to go through all Dehacked modifiable actors, convert
+	// their states into a single flat array and find the correct one.
+	// Rather than that, just check to make sure it belongs to something.
+	if (FState::StaticFindStateOwner(flashstate + index) == NULL)
+	{ // Invalid state. With no index offset, it should at least be valid.
+		index = 0;
+	}
+	P_SetPsprite(player, PSP_FLASH, flashstate + index, true);
+}
+
+DEFINE_ACTION_FUNCTION(_Player, SetSafeFlash)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(player_t);
+	PARAM_OBJECT(weapon, AWeapon);
+	PARAM_POINTER(state, FState);
+	PARAM_INT(index);
+	P_SetSafeFlash(weapon, self, state, index);
+	return 0;
 }
 
 //------------------------------------------------------------------------

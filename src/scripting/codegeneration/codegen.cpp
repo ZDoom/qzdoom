@@ -101,7 +101,7 @@ FCompileContext::FCompileContext(PFunction *fnc, PPrototype *ret, bool fromdecor
 	if (fnc != nullptr) Class = fnc->OwningClass;
 }
 
-FCompileContext::FCompileContext(PClass *cls, bool fromdecorate) 
+FCompileContext::FCompileContext(PStruct *cls, bool fromdecorate) 
 	: ReturnProto(nullptr), Function(nullptr), Class(cls), FromDecorate(fromdecorate), StateIndex(-1), StateCount(0), Lump(-1)
 {
 }
@@ -1440,8 +1440,8 @@ FxExpression *FxTypeCast::Resolve(FCompileContext &ctx)
 		// Right now this only supports string constants. There should be an option to pass a string variable, too.
 		if (basex->isConstant() && (basex->ValueType == TypeString || basex->ValueType == TypeName))
 		{
-			const char *s = static_cast<FxConstant *>(basex)->GetValue().GetString();
-			if (*s == 0 && !ctx.FromDecorate)	// DECORATE should never get here at all, but let's better be safe.
+			FString s= static_cast<FxConstant *>(basex)->GetValue().GetString();
+			if (s.Len() == 0 && !ctx.FromDecorate)	// DECORATE should never get here at all, but let's better be safe.
 			{
 				ScriptPosition.Message(MSG_ERROR, "State jump to empty label.");
 				delete this;
@@ -5335,7 +5335,7 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			delete this;
 			return nullptr;
 		}
-		if (!ctx.Function->Variants[0].SelfClass->IsDescendantOf(RUNTIME_CLASS(AActor)))
+		if (!ctx.Function->Variants[0].SelfClass->IsKindOf(RUNTIME_CLASS(PClassActor)))
 		{
 			ScriptPosition.Message(MSG_ERROR, "'Default' requires an actor type.");
 			delete this;
@@ -5441,7 +5441,7 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 //
 //==========================================================================
 
-FxExpression *FxIdentifier::ResolveMember(FCompileContext &ctx, PClass *classctx, FxExpression *&object, PStruct *objtype)
+FxExpression *FxIdentifier::ResolveMember(FCompileContext &ctx, PStruct *classctx, FxExpression *&object, PStruct *objtype)
 {
 	PSymbol *sym;
 	PSymbolTable *symtbl;
@@ -6379,7 +6379,15 @@ static bool CheckFunctionCompatiblity(FScriptPosition &ScriptPosition, PFunction
 		{
 			auto callingself = caller->Variants[0].SelfClass;
 			auto calledself = callee->Variants[0].SelfClass;
-			if (!callingself->IsDescendantOf(calledself))
+			bool match = (callingself == calledself);
+			if (!match)
+			{
+				auto callingselfcls = dyn_cast<PClass>(caller->Variants[0].SelfClass);
+				auto calledselfcls = dyn_cast<PClass>(callee->Variants[0].SelfClass);
+				match = callingselfcls != nullptr && calledselfcls != nullptr && callingselfcls->IsDescendantOf(calledselfcls);
+			}
+
+			if (!match)
 			{
 				ScriptPosition.Message(MSG_ERROR, "Call to member function %s with incompatible self pointer.", callee->SymbolName.GetChars());
 				return false;
@@ -6698,7 +6706,7 @@ FxMemberFunctionCall::~FxMemberFunctionCall()
 FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 {
 	ABORT(ctx.Class);
-	PClass *cls;
+	PStruct *cls;
 	bool staticonly = false;
 	bool novirtual = false;
 
@@ -6706,22 +6714,38 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 	{
 		// If the left side is a class name for a static member function call it needs to be resolved manually 
 		// because the resulting value type would cause problems in nearly every other place where identifiers are being used.
-		cls = PClass::FindClass(static_cast<FxIdentifier *>(Self)->Identifier);
-		if (cls != nullptr && cls->bExported)
+		PClass *ccls = PClass::FindClass(static_cast<FxIdentifier *>(Self)->Identifier);
+		if (ccls != nullptr)
 		{
-			staticonly = true;
-			goto isresolved;
+			if (ccls->bExported)
+			{
+				cls = ccls;
+				staticonly = true;
+				goto isresolved;
+			}
+		}
+		else
+		{
+			// Todo: static struct members need to work as well.
 		}
 	}
 	SAFE_RESOLVE(Self, ctx);
 
 	if (Self->ExprType == EFX_Super)
 	{
-		// give the node the proper value type now that we know it's properly used.
-		cls = ctx.Function->Variants[0].SelfClass->ParentClass;
-		Self->ValueType = NewPointer(cls);
-		Self->ExprType = EFX_Self;
-		novirtual = true;	// super calls are always non-virtual
+		auto clstype = dyn_cast<PClass>(ctx.Function->Variants[0].SelfClass);
+		if (clstype != nullptr)
+		{
+			// give the node the proper value type now that we know it's properly used.
+			cls = clstype->ParentClass;
+			Self->ValueType = NewPointer(cls);
+			Self->ExprType = EFX_Self;
+			novirtual = true;	// super calls are always non-virtual
+		}
+		else
+		{
+			ScriptPosition.Message(MSG_ERROR, "Super requires a class type");
+		}
 	}
 
 	if (Self->IsVector())
@@ -6739,9 +6763,9 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 	if (Self->ValueType->IsKindOf(RUNTIME_CLASS(PPointer)))
 	{
 		auto ptype = static_cast<PPointer *>(Self->ValueType)->PointedType;
-		if (ptype->IsKindOf(RUNTIME_CLASS(PClass)))
+		if (ptype->IsKindOf(RUNTIME_CLASS(PStruct)))
 		{
-			cls = static_cast<PClass *>(ptype);
+			cls = static_cast<PStruct *>(ptype);
 		}
 		else
 		{
@@ -6756,6 +6780,8 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 		delete this;
 		return nullptr;
 	}
+
+	// Todo: handle member calls from instantiated structs.
 
 isresolved:
 	bool error = false;
@@ -6775,7 +6801,9 @@ isresolved:
 
 	if (staticonly && (afd->Variants[0].Flags & VARF_Method))
 	{
-		if (!ctx.Class->IsDescendantOf(cls))
+		auto clstype = dyn_cast<PClass>(ctx.Class);
+		auto ccls = dyn_cast<PClass>(cls);
+		if (clstype == nullptr || ccls == nullptr || !clstype->IsDescendantOf(ccls))
 		{
 			ScriptPosition.Message(MSG_ERROR, "Cannot call non-static function %s::%s from here\n", cls->TypeName.GetChars(), MethodName.GetChars());
 			delete this;
@@ -7049,6 +7077,8 @@ VMFunction *FxVMFunctionCall::GetDirectFunction()
 	// it inside VM code.
 	if (ArgList.Size() == 0 && !(Function->Variants[0].Flags & VARF_Virtual))
 	{
+		unsigned imp = Function->GetImplicitArgs();
+		if (Function->Variants[0].ArgFlags.Size() > imp && !(Function->Variants[0].ArgFlags[imp] & VARF_Optional)) return nullptr;
 		return Function->Variants[0].Implementation;
 	}
 	
@@ -7165,6 +7195,12 @@ FxExpression *FxVMFunctionCall::Resolve(FCompileContext& ctx)
 	else
 	{
 		ValueType = TypeVoid;
+	}
+	// If self is a struct, it will be a value type, not a reference, so we need to make an addresss request.
+	if (Self != nullptr && Self->ValueType->IsKindOf(RUNTIME_CLASS(PStruct)) && !Self->ValueType->IsKindOf(RUNTIME_CLASS(PClass)))
+	{
+		bool writable;
+		Self->RequestAddress(ctx, &writable);
 	}
 
 	return this;
@@ -7910,7 +7946,8 @@ FxExpression *FxIfStatement::Resolve(FCompileContext &ctx)
 	if (WhenTrue == nullptr && WhenFalse == nullptr)
 	{ // We don't do anything either way, so disappear
 		delete this;
-		return nullptr;
+		ScriptPosition.Message(MSG_WARNING, "empty if statement");
+		return new FxNop(ScriptPosition);
 	}
 
 	SAFE_RESOLVE(Condition, ctx);
@@ -8876,14 +8913,22 @@ FxExpression *FxMultiNameState::Resolve(FCompileContext &ctx)
 	CHECKRESOLVED();
 	ABORT(ctx.Class);
 	int symlabel;
+	auto clstype = dyn_cast<PClassActor>(ctx.Class);
 
 	if (names[0] == NAME_None)
 	{
 		scope = nullptr;
 	}
+	else if (clstype == nullptr)
+	{
+		// not in an actor, so any further checks are pointless.
+		ScriptPosition.Message(MSG_ERROR, "'%s' is not an ancestor of '%s'", names[0].GetChars(), ctx.Class->TypeName.GetChars());
+		delete this;
+		return nullptr;
+	}
 	else if (names[0] == NAME_Super)
 	{
-		scope = dyn_cast<PClassActor>(ctx.Class->ParentClass);
+		scope = dyn_cast<PClassActor>(clstype->ParentClass);
 	}
 	else
 	{
@@ -8894,7 +8939,7 @@ FxExpression *FxMultiNameState::Resolve(FCompileContext &ctx)
 			delete this;
 			return nullptr;
 		}
-		else if (!scope->IsAncestorOf(ctx.Class))
+		else if (!scope->IsAncestorOf(clstype))
 		{
 			ScriptPosition.Message(MSG_ERROR, "'%s' is not an ancestor of '%s'", names[0].GetChars(), ctx.Class->TypeName.GetChars());
 			delete this;

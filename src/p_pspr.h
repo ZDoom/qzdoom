@@ -59,6 +59,7 @@ enum PSPFlags
 class DPSprite : public DObject
 {
 	DECLARE_CLASS (DPSprite, DObject)
+	HAS_FIELDS
 	HAS_OBJECT_POINTERS
 public:
 	DPSprite(player_t *owner, AActor *caller, int id);
@@ -111,8 +112,6 @@ void P_DropWeapon (player_t *player);
 void P_BobWeapon (player_t *player, float *x, float *y, double ticfrac);
 DAngle P_BulletSlope (AActor *mo, FTranslatedLineTarget *pLineTarget = NULL, int aimflags = 0);
 AActor *P_AimTarget(AActor *mo);
-
-void P_GunShot (AActor *mo, bool accurate, PClassActor *pufftype, DAngle pitch);
 
 void DoReadyWeapon(AActor *self);
 void DoReadyWeaponToBob(AActor *self);
