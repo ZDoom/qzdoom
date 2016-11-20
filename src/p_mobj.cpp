@@ -6466,6 +6466,27 @@ AActor *P_SpawnPlayerMissile (AActor *source, double x, double y, double z,
 	return NULL;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, SpawnPlayerMissile)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_CLASS(type, AActor);
+	PARAM_ANGLE_DEF(angle);
+	PARAM_FLOAT_DEF(x);
+	PARAM_FLOAT_DEF(y);
+	PARAM_FLOAT_DEF(z);
+	PARAM_POINTER_DEF(lt, FTranslatedLineTarget);
+	PARAM_BOOL_DEF(nofreeaim);
+	PARAM_BOOL_DEF(noautoaim);
+	PARAM_INT_DEF(aimflags);
+	AActor *missileactor;
+	if (numparam == 2) angle = self->Angles.Yaw;
+	AActor *misl = P_SpawnPlayerMissile(self, x, y, z, type, angle, lt, &missileactor, nofreeaim, noautoaim, aimflags);
+	if (numret > 0) ret[0].SetPointer(misl, ATAG_OBJECT);
+	if (numret > 1) ret[1].SetPointer(missileactor, ATAG_OBJECT), numret = 2;
+	return numret;
+}
+
+
 int AActor::GetTeam()
 {
 	if (player)
@@ -6887,6 +6908,12 @@ void AActor::ClearCounters()
 	}
 }
 
+DEFINE_ACTION_FUNCTION(AActor, ClearCounters)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->ClearCounters();
+	return 0;
+}
 
 int AActor::ApplyDamageFactor(FName damagetype, int damage) const
 {
