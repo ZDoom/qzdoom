@@ -8,7 +8,7 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 #if COMPGOTO
 	static const void * const ops[256] =
 	{
-#define xx(op,sym,mode) &&op
+#define xx(op,sym,mode,alt,kreg,ktype) &&op
 #include "vmops.h"
 	};
 #endif
@@ -84,6 +84,26 @@ begin:
 		reg.a[a] = konsta[BC].v;
 		reg.atag[a] = konstatag[BC];
 		NEXTOP;
+
+	OP(LK_R) :
+		ASSERTD(a); ASSERTD(B);
+		reg.d[a] = konstd[reg.d[B] + C];
+		NEXTOP;
+	OP(LKF_R) :
+		ASSERTF(a); ASSERTD(B);
+		reg.f[a] = konstf[reg.d[B] + C];
+		NEXTOP;
+	OP(LKS_R) :
+		ASSERTS(a); ASSERTD(B);
+		reg.s[a] = konsts[reg.d[B] + C];
+		NEXTOP;
+	OP(LKP_R) :
+		ASSERTA(a); ASSERTD(B);
+		b = reg.d[B] + C;
+		reg.a[a] = konsta[b].v;
+		reg.atag[a] = konstatag[b];
+		NEXTOP;
+
 	OP(LFP):
 		ASSERTA(a); assert(sfunc != NULL); assert(sfunc->ExtraSpace > 0);
 		reg.a[a] = f->GetExtra();
@@ -404,12 +424,6 @@ begin:
 		{
 			DoCast(reg, f, a, B, C);
 		}
-		NEXTOP;
-	OP(DYNCAST_R):
-		// UNDONE
-		NEXTOP;
-	OP(DYNCAST_K):
-		// UNDONE
 		NEXTOP;
 	
 	OP(TEST):
@@ -1295,41 +1309,22 @@ begin:
 	OP(ADDV2_RR):
 		ASSERTF(a+1); ASSERTF(B+1); ASSERTF(C+1);
 		fcp = &reg.f[C];
-	Do_ADDV2:
 		fbp = &reg.f[B];
 		reg.f[a] = fbp[0] + fcp[0];
 		reg.f[a+1] = fbp[1] + fcp[1];
 		NEXTOP;
-	OP(ADDV2_RK):
-		fcp = &konstf[C];
-		goto Do_ADDV2;
 
 	OP(SUBV2_RR):
 		ASSERTF(a+1); ASSERTF(B+1); ASSERTF(C+1);
 		fbp = &reg.f[B];
 		fcp = &reg.f[C];
-	Do_SUBV2:
 		reg.f[a] = fbp[0] - fcp[0];
 		reg.f[a+1] = fbp[1] - fcp[1];
 		NEXTOP;
-	OP(SUBV2_RK):
-		ASSERTF(a+1); ASSERTF(B+1); ASSERTKF(C+1);
-		fbp = &reg.f[B];
-		fcp = &konstf[C];
-		goto Do_SUBV2;
-	OP(SUBV2_KR):
-		ASSERTF(A+1); ASSERTKF(B+1); ASSERTF(C+1);
-		fbp = &konstf[B];
-		fcp = &reg.f[C];
-		goto Do_SUBV2;
 
 	OP(DOTV2_RR):
 		ASSERTF(a); ASSERTF(B+1); ASSERTF(C+1);
 		reg.f[a] = reg.f[B] * reg.f[C] + reg.f[B+1] * reg.f[C+1];
-		NEXTOP;
-	OP(DOTV2_RK):
-		ASSERTF(a); ASSERTF(B+1); ASSERTKF(C+1);
-		reg.f[a] = reg.f[B] * konstf[C] + reg.f[B+1] * konstf[C+1];
 		NEXTOP;
 
 	OP(MULVF2_RR):
@@ -1394,50 +1389,30 @@ begin:
 	OP(ADDV3_RR):
 		ASSERTF(a+2); ASSERTF(B+2); ASSERTF(C+2);
 		fcp = &reg.f[C];
-	Do_ADDV3:
 		fbp = &reg.f[B];
 		reg.f[a] = fbp[0] + fcp[0];
 		reg.f[a+1] = fbp[1] + fcp[1];
 		reg.f[a+2] = fbp[2] + fcp[2];
 		NEXTOP;
-	OP(ADDV3_RK):
-		fcp = &konstf[C];
-		goto Do_ADDV3;
 
 	OP(SUBV3_RR):
 		ASSERTF(a+2); ASSERTF(B+2); ASSERTF(C+2);
 		fbp = &reg.f[B];
 		fcp = &reg.f[C];
-	Do_SUBV3:
 		reg.f[a] = fbp[0] - fcp[0];
 		reg.f[a+1] = fbp[1] - fcp[1];
 		reg.f[a+2] = fbp[2] - fcp[2];
 		NEXTOP;
-	OP(SUBV3_RK):
-		ASSERTF(a+2); ASSERTF(B+2); ASSERTKF(C+2);
-		fbp = &reg.f[B];
-		fcp = &konstf[C];
-		goto Do_SUBV3;
-	OP(SUBV3_KR):
-		ASSERTF(A+2); ASSERTKF(B+2); ASSERTF(C+2);
-		fbp = &konstf[B];
-		fcp = &reg.f[C];
-		goto Do_SUBV3;
 
 	OP(DOTV3_RR):
 		ASSERTF(a); ASSERTF(B+2); ASSERTF(C+2);
 		reg.f[a] = reg.f[B] * reg.f[C] + reg.f[B+1] * reg.f[C+1] + reg.f[B+2] * reg.f[C+2];
-		NEXTOP;
-	OP(DOTV3_RK):
-		ASSERTF(a); ASSERTF(B+2); ASSERTKF(C+2);
-		reg.f[a] = reg.f[B] * konstf[C] + reg.f[B+1] * konstf[C+1] + reg.f[B+2] * konstf[C+2];
 		NEXTOP;
 
 	OP(CROSSV_RR):
 		ASSERTF(a+2); ASSERTF(B+2); ASSERTF(C+2);
 		fbp = &reg.f[B];
 		fcp = &reg.f[C];
-	Do_CROSSV:
 		{
 			double t[3];
 			t[2] = fbp[0] * fcp[1] - fbp[1] * fcp[0];
@@ -1446,16 +1421,6 @@ begin:
 			reg.f[a] = t[0]; reg.f[a+1] = t[1]; reg.f[a+2] = t[2];
 		}
 		NEXTOP;
-	OP(CROSSV_RK):
-		ASSERTF(a+2); ASSERTF(B+2); ASSERTKF(C+2);
-		fbp = &reg.f[B];
-		fcp = &konstf[C];
-		goto Do_CROSSV;
-	OP(CROSSV_KR):
-		ASSERTF(a+2); ASSERTKF(B+2); ASSERTF(C+2);
-		fbp = &reg.f[B];
-		fcp = &konstf[C];
-		goto Do_CROSSV;
 
 	OP(MULVF3_RR):
 		ASSERTF(a+2); ASSERTF(B+2); ASSERTF(C);

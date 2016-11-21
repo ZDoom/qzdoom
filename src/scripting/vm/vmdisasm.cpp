@@ -97,6 +97,9 @@
 
 #define RIRIRI	MODE_AI | MODE_BI | MODE_CI
 #define RIRII8	MODE_AI | MODE_BI | MODE_CIMMZ
+#define RFRII8	MODE_AF | MODE_BI | MODE_CIMMZ
+#define RPRII8	MODE_AP | MODE_BI | MODE_CIMMZ
+#define RSRII8	MODE_AS | MODE_BI | MODE_CIMMZ
 #define RIRIKI	MODE_AI | MODE_BI | MODE_CKI
 #define RIKIRI	MODE_AI | MODE_BKI | MODE_CI
 #define RIKII8	MODE_AI | MODE_BKI | MODE_CIMMZ
@@ -144,7 +147,7 @@
 
 const VMOpInfo OpInfo[NUM_OPS] =
 {
-#define xx(op, name, mode)	{ #name, mode }
+#define xx(op, name, mode, alt, kreg, ktype)	{ #name, mode }
 #include "vmops.h"
 };
 
@@ -323,15 +326,15 @@ void VMDisasm(FILE *out, const VMOP *code, int codesize, const VMScriptFunction 
 
 		case OP_CALL_K:
 		case OP_TAIL_K:
+		{
 			callfunc = (VMFunction *)func->KonstA[code[i].a].o;
-			callname = callfunc->Name != NAME_None ? callfunc->Name : "[anonfunc]";
-			col = printf_wrapper(out, "%.23s,%d", callname, code[i].b);
+			col = printf_wrapper(out, "[%p],%d", callfunc, code[i].b);
 			if (code[i].op == OP_CALL_K)
 			{
 				col += printf_wrapper(out, ",%d", code[i].c);
 			}
 			break;
-
+		}
 		case OP_RET:
 			if (code[i].b != REGT_NIL)
 			{
@@ -494,7 +497,8 @@ void VMDisasm(FILE *out, const VMOP *code, int codesize, const VMScriptFunction 
 			}
 			else if (code[i].op == OP_CALL_K || code[i].op == OP_TAIL_K)
 			{
-				printf_wrapper(out, "  [%p]\n", callfunc);
+				callname = callfunc->IsKindOf(RUNTIME_CLASS(VMScriptFunction)) ? static_cast<VMScriptFunction*>(callfunc)->PrintableName : callfunc->Name != NAME_None ? callfunc->Name : "[anonfunc]";
+				printf_wrapper(out, "  [%s]\n", callname);
 			}
 			else
 			{

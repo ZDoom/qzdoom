@@ -282,6 +282,10 @@ enum EFxType
 	EFX_Super,
 	EFX_StackVariable,
 	EFX_MultiAssign,
+	EFX_StaticArray,
+	EFX_StaticArrayVariable,
+	EFX_CVar,
+	EFX_NamedNode,
 	EFX_COUNT
 };
 
@@ -468,6 +472,31 @@ public:
 		value.pointer = nullptr;
 		ValueType = value.Type = TypeNullPtr;
 		isresolved = true;
+	}
+
+	FxConstant(PType *type, VMValue &vmval, const FScriptPosition &pos) : FxExpression(EFX_Constant, pos)
+	{
+		ValueType = value.Type = type;
+		isresolved = true;
+		switch (vmval.Type)
+		{
+		default:
+		case REGT_INT:
+			value.Int = vmval.i;
+			break;
+
+		case REGT_FLOAT:
+			value.Float = vmval.f;
+			break;
+
+		case REGT_STRING:
+			value = ExpVal(vmval.s());
+			break;
+
+		case REGT_POINTER:
+			value.pointer = vmval.a;
+			break;
+		}
 	}
 	
 	static FxExpression *MakeConstant(PSymbol *sym, const FScriptPosition &pos);
@@ -1234,6 +1263,15 @@ public:
 	ExpEmit Emit(VMFunctionBuilder *build);
 };
 
+class FxCVar : public FxExpression
+{
+	FBaseCVar *CVar;
+public:
+	FxCVar(FBaseCVar*, const FScriptPosition&);
+	FxExpression *Resolve(FCompileContext&);
+	ExpEmit Emit(VMFunctionBuilder *build);
+};
+
 //==========================================================================
 //
 //	FxClassMember
@@ -1303,6 +1341,25 @@ public:
 	FxStackVariable(PType *type, int offset, const FScriptPosition&);
 	~FxStackVariable();
 	void ReplaceField(PField *newfield);
+	FxExpression *Resolve(FCompileContext&);
+	bool RequestAddress(FCompileContext &ctx, bool *writable);
+	ExpEmit Emit(VMFunctionBuilder *build);
+};
+
+//==========================================================================
+//
+//	FxLocalVariable
+//
+//==========================================================================
+class FxStaticArray;
+
+class FxStaticArrayVariable : public FxExpression
+{
+public:
+	FxStaticArray *Variable;
+	bool AddressRequested;
+
+	FxStaticArrayVariable(FxLocalVariableDeclaration*, const FScriptPosition&);
 	FxExpression *Resolve(FCompileContext&);
 	bool RequestAddress(FCompileContext &ctx, bool *writable);
 	ExpEmit Emit(VMFunctionBuilder *build);
@@ -1529,6 +1586,7 @@ class FxCompoundStatement : public FxSequence
 	FxCompoundStatement *Outer = nullptr;
 
 	friend class FxLocalVariableDeclaration;
+	friend class FxStaticArray;
 	friend class FxMultiAssign;
 
 public:
@@ -1841,6 +1899,7 @@ class FxLocalVariableDeclaration : public FxExpression
 {
 	friend class FxCompoundStatement;
 	friend class FxLocalVariable;
+	friend class FxStaticArrayVariable;
 
 	FName Name;
 	FxExpression *Init;
@@ -1857,6 +1916,46 @@ public:
 	void Release(VMFunctionBuilder *build);
 	void SetReg(ExpEmit reginfo);
 
+};
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+class FxStaticArray : public FxLocalVariableDeclaration
+{
+	friend class FxStaticArrayVariable;
+
+	PType *ElementType;
+	FArgumentList values;
+
+public:
+
+	FxStaticArray(PType *type, FName name, FArgumentList &args, const FScriptPosition &pos);
+	FxExpression *Resolve(FCompileContext&);
+	ExpEmit Emit(VMFunctionBuilder *build);
+};
+
+class FxNamedNode : public FxExpression
+{
+public:
+	FName name;
+	FxExpression *value;
+	FxNamedNode(FName n, FxExpression *x, const FScriptPosition &pos)
+		: FxExpression(EFX_NamedNode, pos), name(n), value(x)
+	{
+	}
+
+	FxExpression *Resolve(FCompileContext&)
+	{
+		// This should never reach the backend in a supported context, 
+		// it's just needed to extend argument lists with the skipped parameters and needs to be resolved by the parent node.
+		ScriptPosition.Message(MSG_ERROR, "Named arguments not supported here");
+		delete this;
+		return nullptr;
+	}
 };
 
 #endif

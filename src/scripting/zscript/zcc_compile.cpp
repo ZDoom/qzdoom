@@ -2826,6 +2826,15 @@ FxExpression *ZCCCompiler::ConvertNode(ZCC_TreeNode *ast)
 		return new FxClassPtrCast(cls, ConvertNode(cc->Parameters));
 	}
 
+	case AST_StaticArrayStatement:
+	{
+		auto sas = static_cast<ZCC_StaticArrayStatement *>(ast);
+		PType *ztype = DetermineType(ConvertClass, sas, sas->Id, sas->Type, false, false);
+		FArgumentList args;
+		ConvertNodeList(args, sas->Values);
+		// This has to let the code generator resolve the constants, not the Simplifier, which lacks all the necessary type info.
+		return new FxStaticArray(ztype, sas->Id, args, *ast);
+	}
 
 	case AST_ExprMemberAccess:
 	{
@@ -2836,8 +2845,9 @@ FxExpression *ZCCCompiler::ConvertNode(ZCC_TreeNode *ast)
 	case AST_FuncParm:
 	{
 		auto fparm = static_cast<ZCC_FuncParm *>(ast);
-		// ignore the label for now, that's stuff for far later, when a bit more here is working.
-		return ConvertNode(fparm->Value);
+		auto node = ConvertNode(fparm->Value);
+		if (fparm->Label != NAME_None) node = new FxNamedNode(fparm->Label, node, *ast);
+		return node;
 	}
 
 	case AST_ExprID:
