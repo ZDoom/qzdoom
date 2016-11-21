@@ -191,7 +191,7 @@ void AActor::InitNativeFields()
 	meta->AddNativeField(NAME_MomZ,				TypeFloat64,	myoffsetof(AActor, Vel.Z), VARF_ReadOnly | VARF_Deprecated);
 	meta->AddNativeField(NAME_Speed,			TypeFloat64,	myoffsetof(AActor, Speed));
 	meta->AddNativeField("FloatSpeed",			TypeFloat64,	myoffsetof(AActor, FloatSpeed));
-	meta->AddNativeField("sprite",				TypeSInt32,		myoffsetof(AActor, sprite));	// this is an index, not a name!
+	meta->AddNativeField("sprite",				TypeSpriteID,	myoffsetof(AActor, sprite));
 	meta->AddNativeField("frame",				TypeUInt8,		myoffsetof(AActor, frame));
 	meta->AddNativeField("Scale",				TypeVector2,	myoffsetof(AActor, Scale));
 	meta->AddNativeField(NAME_ScaleX,			TypeFloat64,	myoffsetof(AActor, Scale.X), VARF_Deprecated);
@@ -206,7 +206,7 @@ void AActor::InitNativeFields()
 	meta->AddNativeField(NAME_FloorZ,			TypeFloat64,	myoffsetof(AActor, floorz));
 	meta->AddNativeField("DropoffZ",			TypeFloat64,	myoffsetof(AActor, dropoffz), VARF_ReadOnly);
 	meta->AddNativeField("floorsector",			TypeSector,		myoffsetof(AActor, floorsector));
-	meta->AddNativeField("floorpic",			TypeSInt32,		myoffsetof(AActor, floorpic));	// Do we need a variable type 'texture' to do this?
+	meta->AddNativeField("floorpic",			TypeTextureID,	myoffsetof(AActor, floorpic));
 	meta->AddNativeField("floorterrain",		TypeSInt32,		myoffsetof(AActor, floorterrain));
 	meta->AddNativeField("ceilingsector",		TypeSector,		myoffsetof(AActor, ceilingsector));
 	meta->AddNativeField("ceilingpic",			TypeSInt32,		myoffsetof(AActor, ceilingpic));	// Do we need a variable type 'texture' to do this?
@@ -4115,6 +4115,15 @@ void AActor::Tick ()
 	}
 }
 
+DEFINE_ACTION_FUNCTION(AActor, Tick)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->VMSuperCall();
+	self->Tick();
+	return 0;
+}
+
+
 //==========================================================================
 //
 // AActor :: CheckNoDelay
@@ -4583,6 +4592,15 @@ void AActor::BeginPlay ()
 	}
 }
 
+DEFINE_ACTION_FUNCTION(AActor, BeginPlay)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->VMSuperCall();
+	self->BeginPlay();
+	return 0;
+}
+
+
 void AActor::PostBeginPlay ()
 {
 	if (Renderer != NULL)
@@ -4638,6 +4656,15 @@ void AActor::Activate (AActor *activator)
 	}
 }
 
+DEFINE_ACTION_FUNCTION(AActor, Activate)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(activator, AActor);
+	self->VMSuperCall();
+	self->Activate(activator);
+	return 0;
+}
+
 void AActor::Deactivate (AActor *activator)
 {
 	if ((flags3 & MF3_ISMONSTER) && (health > 0 || (flags & MF_ICECORPSE)))
@@ -4656,6 +4683,15 @@ void AActor::Deactivate (AActor *activator)
 			}
 		}
 	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, Deactivate)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(activator, AActor);
+	self->VMSuperCall();
+	self->Deactivate(activator);
+	return 0;
 }
 
 

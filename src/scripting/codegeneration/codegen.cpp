@@ -3825,6 +3825,8 @@ ExpEmit FxConcat::Emit(VMFunctionBuilder *build)
 		else if (left->ValueType == TypeName) cast = CAST_N2S;
 		else if (left->ValueType == TypeSound) cast = CAST_So2S;
 		else if (left->ValueType == TypeColor) cast = CAST_Co2S;
+		else if (left->ValueType == TypeSpriteID) cast = CAST_SID2S;
+		else if (left->ValueType == TypeTextureID) cast = CAST_TID2S;
 		else if (op1.RegType == REGT_POINTER) cast = CAST_P2S;
 		else if (op1.RegType == REGT_INT) cast = CAST_I2S;
 		else assert(false && "Bad type for string concatenation");
@@ -3856,6 +3858,8 @@ ExpEmit FxConcat::Emit(VMFunctionBuilder *build)
 		else if (right->ValueType == TypeName) cast = CAST_N2S;
 		else if (right->ValueType == TypeSound) cast = CAST_So2S;
 		else if (right->ValueType == TypeColor) cast = CAST_Co2S;
+		else if (right->ValueType == TypeSpriteID) cast = CAST_SID2S;
+		else if (right->ValueType == TypeTextureID) cast = CAST_TID2S;
 		else if (op2.RegType == REGT_POINTER) cast = CAST_P2S;
 		else if (op2.RegType == REGT_INT) cast = CAST_I2S;
 		else assert(false && "Bad type for string concatenation");
@@ -5652,6 +5656,10 @@ FxExpression *FxMemberIdentifier::Resolve(FCompileContext& ctx)
 
 	SAFE_RESOLVE(Object, ctx);
 
+	// allow accessing the color chanels by mapping the type to a matching struct which defines them.
+	if (Object->ValueType == TypeColor) 
+		Object->ValueType = TypeColorStruct;
+
 	if (Object->ValueType->IsKindOf(RUNTIME_CLASS(PPointer)))
 	{
 		auto ptype = static_cast<PPointer *>(Object->ValueType)->PointedType;
@@ -6305,6 +6313,26 @@ FxExpression *FxStructMember::Resolve(FCompileContext &ctx)
 			delete this;
 			return locvar;
 		}
+		else if (classx->ExprType == EFX_LocalVariable && classx->ValueType == TypeColorStruct)
+		{
+			// This needs special treatment because it'd require accessing the register via address.
+			// Fortunately this is the only place where this kind of access is ever needed so an explicit handling is acceptable.
+			int bits;
+			switch (membervar->SymbolName.GetIndex())
+			{
+			case NAME_a: bits = 24; break;
+			case NAME_r: bits = 16; break;
+			case NAME_g: bits = 8; break;
+			case NAME_b: default: bits = 0; break;
+			}
+			classx->ValueType = TypeColor;	// need to set it back.
+			FxExpression *x = classx;
+			if (bits > 0) x = new FxShift(TK_URShift, x, new FxConstant(bits, ScriptPosition));
+			x = new FxBitOp('&', x, new FxConstant(255, ScriptPosition));
+			classx = nullptr;
+			delete this;
+			return x->Resolve(ctx);
+		}
 		else
 		{
 			if (!(classx->RequestAddress(ctx, &AddressWritable)))
@@ -6856,6 +6884,8 @@ FxExpression *FxFunctionCall::Resolve(FCompileContext& ctx)
 	case NAME_Color:
 	case NAME_Sound:
 	case NAME_State:
+	case NAME_SpriteID:
+	case NAME_TextureID:
 		if (CheckArgSize(MethodName, ArgList, 1, 1, ScriptPosition))
 		{
 			PType *type = 
@@ -6865,6 +6895,8 @@ FxExpression *FxFunctionCall::Resolve(FCompileContext& ctx)
 				MethodName == NAME_Float ? TypeFloat64 :
 				MethodName == NAME_Double ? TypeFloat64 :
 				MethodName == NAME_Name ? TypeName :
+				MethodName == NAME_SpriteID ? TypeSpriteID :
+				MethodName == NAME_TextureID ? TypeTextureID :
 				MethodName == NAME_State ? TypeState :
 				MethodName == NAME_Color ? TypeColor : (PType*)TypeSound;
 

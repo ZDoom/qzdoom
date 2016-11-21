@@ -737,6 +737,8 @@ xx(DamageFunction)
 xx(Length)
 xx(Unit)
 xx(StateLabel)
+xx(SpriteID)
+xx(TextureID)
 xx(Overlay)
 
 xx(A_Punch)
@@ -750,3 +752,9 @@ xx(A_FirePlasma)
 xx(A_FireBFG)
 xx(A_FireOldBFG)
 xx(A_FireRailgun)
+
+// color channels
+xx(a)
+xx(r)
+xx(g)
+xx(b)
