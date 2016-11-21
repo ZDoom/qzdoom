@@ -558,6 +558,7 @@ void PType::StaticInit()
 	RUNTIME_CLASS(PDynArray)->TypeTableType = RUNTIME_CLASS(PDynArray);
 	RUNTIME_CLASS(PMap)->TypeTableType = RUNTIME_CLASS(PMap);
 	RUNTIME_CLASS(PStruct)->TypeTableType = RUNTIME_CLASS(PStruct);
+	RUNTIME_CLASS(PNativeStruct)->TypeTableType = RUNTIME_CLASS(PNativeStruct);
 	RUNTIME_CLASS(PPrototype)->TypeTableType = RUNTIME_CLASS(PPrototype);
 	RUNTIME_CLASS(PClass)->TypeTableType = RUNTIME_CLASS(PClass);
 	RUNTIME_CLASS(PStatePointer)->TypeTableType = RUNTIME_CLASS(PStatePointer);
@@ -1547,50 +1548,6 @@ PStateLabel::PStateLabel()
 	mDescriptiveName = "StateLabel";
 }
 
-/* PStatePointer **********************************************************/
-
-IMPLEMENT_CLASS(PStatePointer, false, false, false, false)
-
-//==========================================================================
-//
-// PStatePointer Default Constructor
-//
-//==========================================================================
-
-PStatePointer::PStatePointer()
-: PBasicType(sizeof(FState *), alignof(FState *))
-{
-	mDescriptiveName = "State";
-	storeOp = OP_SP;
-	loadOp = OP_LP;
-	moveOp = OP_MOVEA;
-	RegType = REGT_POINTER;
-}
-
-//==========================================================================
-//
-// PStatePointer :: WriteValue
-//
-//==========================================================================
-
-void PStatePointer::WriteValue(FSerializer &ar, const char *key,const void *addr) const
-{
-	ar(key, *(FState **)addr);
-}
-
-//==========================================================================
-//
-// PStatePointer :: ReadValue
-//
-//==========================================================================
-
-bool PStatePointer::ReadValue(FSerializer &ar, const char *key, void *addr) const
-{
-	bool res = false;
-	::Serialize(ar, key, *(FState **)addr, nullptr, &res);
-	return res;
-}
-
 /* PPointer ***************************************************************/
 
 IMPLEMENT_CLASS(PPointer, false, true, false, false)
@@ -1735,6 +1692,48 @@ PPointer *NewPointer(PType *type, bool isconst)
 	}
 	return static_cast<PPointer *>(ptype);
 }
+
+/* PStatePointer **********************************************************/
+
+IMPLEMENT_CLASS(PStatePointer, false, false, false, false)
+
+//==========================================================================
+//
+// PStatePointer Default Constructor
+//
+//==========================================================================
+
+PStatePointer::PStatePointer()
+{
+	mDescriptiveName = "Pointer<State>";
+	PointedType = NewNativeStruct(NAME_State, nullptr);
+	IsConst = true;
+}
+
+//==========================================================================
+//
+// PStatePointer :: WriteValue
+//
+//==========================================================================
+
+void PStatePointer::WriteValue(FSerializer &ar, const char *key, const void *addr) const
+{
+	ar(key, *(FState **)addr);
+}
+
+//==========================================================================
+//
+// PStatePointer :: ReadValue
+//
+//==========================================================================
+
+bool PStatePointer::ReadValue(FSerializer &ar, const char *key, void *addr) const
+{
+	bool res = false;
+	::Serialize(ar, key, *(FState **)addr, nullptr, &res);
+	return res;
+}
+
 
 
 /* PClassPointer **********************************************************/
@@ -2455,6 +2454,26 @@ PNativeStruct::PNativeStruct(FName name)
 	mDescriptiveName.Format("NativeStruct<%s>", name.GetChars());
 	Size = 0;
 	HasNativeFields = true;
+}
+
+//==========================================================================
+//
+// NewNativeStruct
+// Returns a PNativeStruct for the given name and container, making sure not to
+// create duplicates.
+//
+//==========================================================================
+
+PNativeStruct *NewNativeStruct(FName name, PTypeBase *outer)
+{
+	size_t bucket;
+	PType *stype = TypeTable.FindType(RUNTIME_CLASS(PNativeStruct), (intptr_t)outer, (intptr_t)name, &bucket);
+	if (stype == NULL)
+	{
+		stype = new PNativeStruct(name);
+		TypeTable.AddType(stype, RUNTIME_CLASS(PNativeStruct), (intptr_t)outer, (intptr_t)name, bucket);
+	}
+	return static_cast<PNativeStruct *>(stype);
 }
 
 /* PField *****************************************************************/

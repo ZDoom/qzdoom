@@ -161,8 +161,8 @@ void AActor::InitNativeFields()
 	PType *TypeActor = NewPointer(RUNTIME_CLASS(AActor));
 	PType *TypeActorClass = NewClassPointer(RUNTIME_CLASS(AActor));
 	PType *TypeInventory = NewPointer(RUNTIME_CLASS(AInventory));
-	PType *TypePlayer = NewPointer(NewStruct("Player", nullptr));
-	auto TypeSector = NewPointer(NewStruct("Sector", nullptr));
+	PType *TypePlayer = NewPointer(NewNativeStruct("Player", nullptr));
+	auto TypeSector = NewPointer(NewNativeStruct("Sector", nullptr));
 	PType *array5 = NewArray(TypeSInt32, 5);
 
 	auto meta = RUNTIME_CLASS(AActor);
@@ -315,10 +315,11 @@ void AActor::InitNativeFields()
 	meta->AddNativeField("TelefogDestType",		TypeActorClass,	myoffsetof(AActor, TeleFogDestType));
 	meta->AddNativeField("SpawnState",			TypeState,		myoffsetof(AActor, SpawnState), VARF_ReadOnly);
 	meta->AddNativeField("SeeState",			TypeState,		myoffsetof(AActor, SeeState), VARF_ReadOnly);
-	meta->AddNativeField("MeleeState",			TypeState,		myoffsetof(AActor, MeleeState), VARF_ReadOnly);
-	meta->AddNativeField("MissileState",		TypeState,		myoffsetof(AActor, MissileState), VARF_ReadOnly);
+	meta->AddNativeField("MeleeState",			TypeState,		myoffsetof(AActor, MeleeState));
+	meta->AddNativeField("MissileState",		TypeState,		myoffsetof(AActor, MissileState));
 	//int ConversationRoot;				// THe root of the current dialogue
 	//FStrifeDialogueNode *Conversation;	// [RH] The dialogue to show when this actor is "used."
+	meta->AddNativeField("DecalGenerator", NewPointer(TypeVoid), myoffsetof(AActor, DecalGenerator));
 	//FDecalBase *DecalGenerator;
 
 	// synthesize a symbol for each flag from the flag name tables to avoid redundant declaration of them.
@@ -583,11 +584,11 @@ bool AActor::InStateSequence(FState * newstate, FState * basestate)
 int AActor::GetTics(FState * newstate)
 {
 	int tics = newstate->GetTics();
-	if (isFast() && newstate->Fast)
+	if (isFast() && newstate->GetFast())
 	{
 		return tics - (tics>>1);
 	}
-	else if (isSlow() && newstate->Slow)
+	else if (isSlow() && newstate->GetSlow())
 	{
 		return tics<<1;
 	}

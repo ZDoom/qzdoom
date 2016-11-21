@@ -230,6 +230,7 @@ static PSymbol *FindBuiltinFunction(FName funcname, VMNativeFunction::NativeCall
 	{
 		PSymbolVMFunction *symfunc = new PSymbolVMFunction(funcname);
 		VMNativeFunction *calldec = new VMNativeFunction(func, funcname);
+		calldec->PrintableName = funcname.GetChars();
 		symfunc->Function = calldec;
 		sym = symfunc;
 		GlobalSymbols.AddSymbol(sym);
@@ -1424,6 +1425,14 @@ FxExpression *FxTypeCast::Resolve(FCompileContext &ctx)
 	{
 		FxExpression *x = new FxColorCast(basex);
 		x = x->Resolve(ctx);
+		basex = nullptr;
+		delete this;
+		return x;
+	}
+	else if (ValueType == TypeSpriteID && basex->IsInteger())
+	{
+		basex->ValueType = TypeSpriteID;
+		auto x = basex;
 		basex = nullptr;
 		delete this;
 		return x;
@@ -5670,7 +5679,7 @@ FxExpression *FxMemberIdentifier::Resolve(FCompileContext& ctx)
 			return ret;
 		}
 	}
-	else if (Object->ValueType->IsA(RUNTIME_CLASS(PStruct)))
+	else if (Object->ValueType->IsKindOf(RUNTIME_CLASS(PStruct)))
 	{
 		auto ret = ResolveMember(ctx, ctx.Class, Object, static_cast<PStruct *>(Object->ValueType));
 		delete this;
@@ -6269,7 +6278,7 @@ FxExpression *FxStructMember::Resolve(FCompileContext &ctx)
 			return nullptr;
 		}
 	}
-	else if (classx->ValueType->IsA(RUNTIME_CLASS(PStruct)))	// Classes can never be used as value types so we do not have to consider that case.
+	else if (classx->ValueType->IsKindOf(RUNTIME_CLASS(PStruct)))
 	{
 		// if this is a struct within a class or another struct we can simplify the expression by creating a new PField with a cumulative offset.
 		if (classx->ExprType == EFX_ClassMember || classx->ExprType == EFX_StructMember)
@@ -8241,6 +8250,7 @@ ExpEmit FxSwitchStatement::Emit(VMFunctionBuilder *build)
 	}
 	size_t DefaultAddress = build->Emit(OP_JMP, 0);
 	TArray<size_t> BreakAddresses;
+	bool defaultset = false;
 
 	for (auto line : Content)
 	{
@@ -8261,6 +8271,7 @@ ExpEmit FxSwitchStatement::Emit(VMFunctionBuilder *build)
 			else
 			{
 				build->BackpatchToHere(DefaultAddress);
+				defaultset = true;
 			}
 			break;
 
@@ -8281,6 +8292,7 @@ ExpEmit FxSwitchStatement::Emit(VMFunctionBuilder *build)
 	{
 		build->BackpatchToHere(addr);
 	}
+	if (!defaultset) build->BackpatchToHere(DefaultAddress);
 	Content.Clear();
 	Content.ShrinkToFit();
 	return ExpEmit();
