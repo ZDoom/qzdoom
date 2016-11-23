@@ -2543,7 +2543,15 @@ FxExpression *FxAddSub::Resolve(FCompileContext& ctx)
 		return nullptr;
 	}
 
-	if (left->IsVector() && right->IsVector())
+	if (left->ValueType == TypeState && right->IsInteger() && Operator == '+' && !left->isConstant())
+	{
+		// This is the only special case of pointer addition that will be accepted - because it is used quite often in the existing game code.
+		ValueType = TypeState;
+		right = new FxMulDiv('*', right, new FxConstant((int)sizeof(FState), ScriptPosition));	// multiply by size here, so that constants can be better optimized.
+		right = right->Resolve(ctx);
+		ABORT(right);
+	}
+	else if (left->IsVector() && right->IsVector())
 	{
 		// a vector2 can be added to or subtracted from a vector 3 but it needs to be the right operand.
 		if (left->ValueType == right->ValueType || (left->ValueType == TypeVector3 && right->ValueType == TypeVector2))
@@ -2616,6 +2624,16 @@ ExpEmit FxAddSub::Emit(VMFunctionBuilder *build)
 	ExpEmit op2 = right->Emit(build);
 	if (Operator == '+')
 	{
+		if (op1.RegType == REGT_POINTER)
+		{
+			assert(!op1.Konst);
+			assert(op2.RegType == REGT_INT);
+			op1.Free(build);
+			op2.Free(build);
+			ExpEmit opout(build, REGT_POINTER);
+			build->Emit(op2.Konst? OP_ADDA_RK : OP_ADDA_RR, opout.RegNum, op1.RegNum, op2.RegNum);
+			return opout;
+		}
 		// Since addition is commutative, only the second operand may be a constant.
 		if (op1.Konst)
 		{
@@ -4064,7 +4082,7 @@ ExpEmit FxBinaryLogical::Emit(VMFunctionBuilder *build)
 	build->Emit(OP_JMP, 1);
 	auto ctarget = build->Emit(OP_LI, to.RegNum, (Operator == TK_AndAnd) ? 0 : 1);
 	for (auto addr : patchspots) build->Backpatch(addr, ctarget);
-	list.Clear();
+	list.DeleteAndClear();
 	list.ShrinkToFit();
 	return to;
 }
@@ -5214,6 +5232,8 @@ ExpEmit FxRandomPick::Emit(VMFunctionBuilder *build)
 	// The result register needs to be in-use when we return.
 	// It should have been freed earlier, so restore its in-use flag.
 	resultreg.Reuse(build);
+	choices.DeleteAndClear();
+	choices.ShrinkToFit();
 	return resultreg;
 }
 
@@ -6285,7 +6305,8 @@ FxExpression *FxStructMember::Resolve(FCompileContext &ctx)
 		{
 			auto parentfield = static_cast<FxStructMember *>(classx)->membervar;
 			// PFields are garbage collected so this will be automatically taken care of later.
-			auto newfield = new PField(membervar->SymbolName, membervar->Type, membervar->Flags | parentfield->Flags, membervar->Offset + parentfield->Offset, membervar->BitValue);
+			auto newfield = new PField(membervar->SymbolName, membervar->Type, membervar->Flags | parentfield->Flags, membervar->Offset + parentfield->Offset);
+			newfield->BitValue = membervar->BitValue;
 			static_cast<FxStructMember *>(classx)->membervar = newfield;
 			classx->isresolved = false;	// re-resolve the parent so it can also check if it can be optimized away.
 			auto x = classx->Resolve(ctx);
@@ -6295,7 +6316,8 @@ FxExpression *FxStructMember::Resolve(FCompileContext &ctx)
 		else if (classx->ExprType == EFX_GlobalVariable)
 		{
 			auto parentfield = static_cast<FxGlobalVariable *>(classx)->membervar;
-			auto newfield = new PField(membervar->SymbolName, membervar->Type, membervar->Flags | parentfield->Flags, membervar->Offset + parentfield->Offset, membervar->BitValue);
+			auto newfield = new PField(membervar->SymbolName, membervar->Type, membervar->Flags | parentfield->Flags, membervar->Offset + parentfield->Offset);
+			newfield->BitValue = membervar->BitValue;
 			static_cast<FxGlobalVariable *>(classx)->membervar = newfield;
 			classx->isresolved = false;	// re-resolve the parent so it can also check if it can be optimized away.
 			auto x = classx->Resolve(ctx);
@@ -6305,7 +6327,8 @@ FxExpression *FxStructMember::Resolve(FCompileContext &ctx)
 		else if (classx->ExprType == EFX_StackVariable)
 		{
 			auto parentfield = static_cast<FxStackVariable *>(classx)->membervar;
-			auto newfield = new PField(membervar->SymbolName, membervar->Type, membervar->Flags | parentfield->Flags, membervar->Offset + parentfield->Offset, membervar->BitValue);
+			auto newfield = new PField(membervar->SymbolName, membervar->Type, membervar->Flags | parentfield->Flags, membervar->Offset + parentfield->Offset);
+			newfield->BitValue = membervar->BitValue;
 			static_cast<FxStackVariable *>(classx)->ReplaceField(newfield);
 			classx->isresolved = false;	// re-resolve the parent so it can also check if it can be optimized away.
 			auto x = classx->Resolve(ctx);
@@ -7364,7 +7387,7 @@ ExpEmit FxActionSpecialCall::Emit(VMFunctionBuilder *build)
 	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
-	ArgList.Clear();
+	ArgList.DeleteAndClear();
 	ArgList.ShrinkToFit();
 
 	if (EmitTail)
@@ -7643,7 +7666,7 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 		ExpEmit reg;
 		if (CheckEmitCast(build, EmitTail, reg))
 		{
-			ArgList.Clear();
+			ArgList.DeleteAndClear();
 			ArgList.ShrinkToFit();
 			return reg;
 		}
@@ -7686,7 +7709,7 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 	{
 		count += EmitParameter(build, ArgList[i], ScriptPosition);
 	}
-	ArgList.Clear();
+	ArgList.DeleteAndClear();
 	ArgList.ShrinkToFit();
 
 	// Get a constant register for this function
@@ -7887,7 +7910,7 @@ ExpEmit FxFlopFunctionCall::Emit(VMFunctionBuilder *build)
 	}
 
 	build->Emit(OP_FLOP, to.RegNum, from.RegNum, FxFlops[Index].Flop);
-	ArgList.Clear();
+	ArgList.DeleteAndClear();
 	ArgList.ShrinkToFit();
 	return to;
 }
@@ -8293,7 +8316,7 @@ ExpEmit FxSwitchStatement::Emit(VMFunctionBuilder *build)
 		build->BackpatchToHere(addr);
 	}
 	if (!defaultset) build->BackpatchToHere(DefaultAddress);
-	Content.Clear();
+	Content.DeleteAndClear();
 	Content.ShrinkToFit();
 	return ExpEmit();
 }

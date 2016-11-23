@@ -116,7 +116,7 @@ public:
 	virtual void PlayRunning ();
 	virtual void ThrowPoisonBag ();
 	virtual void TweakSpeeds (double &forwardmove, double &sidemove);
-	virtual void MorphPlayerThink ();
+	void MorphPlayerThink ();
 	virtual void ActivateMorphWeapon ();
 	AWeapon *PickNewWeapon (PClassAmmo *ammotype);
 	AWeapon *BestWeapon (PClassAmmo *ammotype);

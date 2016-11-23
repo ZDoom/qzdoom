@@ -1186,6 +1186,7 @@ void ZCCCompiler::CompileAllFields()
 	// Create copies of the arrays which can be altered
 	auto Classes = this->Classes;
 	auto Structs = this->Structs;
+	TMap<PClass*, bool> HasNativeChildren;
 
 	// first step: Look for native classes with native children.
 	// These may not have any variables added to them because it'd clash with the native definitions.
@@ -1200,8 +1201,8 @@ void ZCCCompiler::CompileAllFields()
 			{
 				if (ac->ParentClass == c->Type() && ac->Size != TentativeClass)
 				{
-					Error(c->cls, "Trying to add fields to class '%s' with native children", c->Type()->TypeName.GetChars());
-					Classes.Delete(i--);
+					// Only set a marker here, so that we can print a better message when the actual fields get added.
+					HasNativeChildren.Insert(ac, true);
 					break;
 				}
 			}
@@ -1236,7 +1237,7 @@ void ZCCCompiler::CompileAllFields()
 					type->Size = Classes[i]->Type()->ParentClass->Size;
 				}
 			}
-			if (CompileFields(type, Classes[i]->Fields, nullptr, &Classes[i]->TreeNodes, false))
+			if (CompileFields(type, Classes[i]->Fields, nullptr, &Classes[i]->TreeNodes, false, !!HasNativeChildren.CheckKey(type)))
 			{
 				// Remove from the list if all fields got compiled.
 				Classes.Delete(i--);
@@ -1263,16 +1264,19 @@ void ZCCCompiler::CompileAllFields()
 //
 //==========================================================================
 
-bool ZCCCompiler::CompileFields(PStruct *type, TArray<ZCC_VarDeclarator *> &Fields, PClass *Outer, PSymbolTable *TreeNodes, bool forstruct)
+bool ZCCCompiler::CompileFields(PStruct *type, TArray<ZCC_VarDeclarator *> &Fields, PClass *Outer, PSymbolTable *TreeNodes, bool forstruct, bool hasnativechildren)
 {
 	while (Fields.Size() > 0)
 	{
 		auto field = Fields[0];
+		FieldDesc *fd = nullptr;
 
 		PType *fieldtype = DetermineType(type, field, field->Names->Name, field->Type, true, true);
 
 		// For structs only allow 'deprecated', for classes exclude function qualifiers.
-		int notallowed = forstruct? ~ZCC_Deprecated : ZCC_Latent | ZCC_Final | ZCC_Action | ZCC_Static | ZCC_FuncConst | ZCC_Abstract | ZCC_Virtual | ZCC_Override; 
+		int notallowed = forstruct? 
+			ZCC_Latent | ZCC_Final | ZCC_Action | ZCC_Static | ZCC_FuncConst | ZCC_Abstract | ZCC_Virtual | ZCC_Override | ZCC_Meta | ZCC_Extension :
+			ZCC_Latent | ZCC_Final | ZCC_Action | ZCC_Static | ZCC_FuncConst | ZCC_Abstract | ZCC_Virtual | ZCC_Override | ZCC_Extension;
 
 		if (field->Flags & notallowed)
 		{
@@ -1289,8 +1293,9 @@ bool ZCCCompiler::CompileFields(PStruct *type, TArray<ZCC_VarDeclarator *> &Fiel
 
 		if (field->Flags & ZCC_Native)
 		{
-			// todo: get the native address of this field.
+			varflags |= VARF_Native | VARF_Transient;
 		}
+
 		if (field->Flags & ZCC_Meta)
 		{
 			varflags |= VARF_ReadOnly;	// metadata implies readonly
@@ -1312,8 +1317,34 @@ bool ZCCCompiler::CompileFields(PStruct *type, TArray<ZCC_VarDeclarator *> &Fiel
 				{
 					thisfieldtype = ResolveArraySize(thisfieldtype, name->ArraySize, &type->Symbols);
 				}
-
-				type->AddField(name->Name, thisfieldtype, varflags);
+				
+				if (varflags & VARF_Native)
+				{
+					fd = FindField(type, FName(name->Name).GetChars());
+					if (fd == nullptr)
+					{
+						Error(field, "The member variable '%s.%s' has not been exported from the executable.", type->TypeName.GetChars(), FName(name->Name).GetChars());
+					}
+					else if (thisfieldtype->Size != fd->FieldSize && fd->BitValue == 0)
+					{
+						Error(field, "The member variable '%s.%s' has mismatching sizes in internal and external declaration. (Internal = %d, External = %d)", type->TypeName.GetChars(), FName(name->Name).GetChars(), fd->FieldSize, thisfieldtype->Size);
+					}
+					// Q: Should we check alignment, too? A mismatch may be an indicator for bad assumptions.
+					else
+					{
+						// for bit fields the type must point to the source variable.
+						if (fd->BitValue != 0) thisfieldtype = fd->FieldSize == 1 ? TypeUInt8 : fd->FieldSize == 2 ? TypeUInt16 : TypeUInt32;
+						type->AddNativeField(name->Name, thisfieldtype, fd->FieldOffset, varflags, fd->BitValue);
+					}
+				}
+				else if (hasnativechildren)
+				{
+					Error(field, "Cannot add field %s to %s. %s has native children which means it size may not change.", type->TypeName.GetChars(), fd->FieldSize, FName(name->Name).GetChars());
+				}
+				else
+				{
+					type->AddField(name->Name, thisfieldtype, varflags);
+				}
 			}
 			name = static_cast<ZCC_VarName*>(name->SiblingNext);
 		} while (name != field->Names);
@@ -1400,6 +1431,7 @@ PType *ZCCCompiler::DetermineType(PType *outertype, ZCC_TreeNode *field, FName n
 
 		case ZCC_FloatAuto:
 			retval = formember ? TypeFloat32 : TypeFloat64;
+			break;
 
 		case ZCC_Float64:
 			retval = TypeFloat64;
@@ -2133,7 +2165,7 @@ void ZCCCompiler::CompileFunction(ZCC_StructWork *c, ZCC_FuncDeclarator *f, bool
 			afd = FindFunction(c->Type(), FName(f->Name).GetChars());
 			if (afd == nullptr)
 			{
-				Error(f, "The function '%s' has not been exported from the executable.", FName(f->Name).GetChars());
+				Error(f, "The function '%s.%s' has not been exported from the executable.", c->Type()->TypeName.GetChars(), FName(f->Name).GetChars());
 			}
 			else
 			{

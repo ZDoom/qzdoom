@@ -15,6 +15,15 @@ IMPLEMENT_CLASS(ABasicArmorPickup, false, false, false, false)
 IMPLEMENT_CLASS(ABasicArmorBonus, false, false, true, false)
 IMPLEMENT_CLASS(AHexenArmor, false, false, false, false)
 
+
+DEFINE_FIELD(ABasicArmor, AbsorbCount)
+DEFINE_FIELD(ABasicArmor, SavePercent)
+DEFINE_FIELD(ABasicArmor, MaxAbsorb)
+DEFINE_FIELD(ABasicArmor, MaxFullAbsorb)
+DEFINE_FIELD(ABasicArmor, BonusCount)
+DEFINE_FIELD(ABasicArmor, ArmorType)
+DEFINE_FIELD(ABasicArmor, ActualSaveAmount)
+
 //===========================================================================
 //
 // ABasicArmor :: Serialize
@@ -193,6 +202,11 @@ void ABasicArmor::AbsorbDamage (int damage, FName damageType, int &newdamage)
 	}
 }
 
+DEFINE_FIELD(ABasicArmorPickup, SavePercent)
+DEFINE_FIELD(ABasicArmorPickup, MaxAbsorb)
+DEFINE_FIELD(ABasicArmorPickup, MaxFullAbsorb)
+DEFINE_FIELD(ABasicArmorPickup, SaveAmount)
+
 //===========================================================================
 //
 // ABasicArmorPickup :: Serialize
@@ -281,16 +295,17 @@ bool ABasicArmorPickup::Use (bool pickup)
 
 //===========================================================================
 //
-// ABasicArmorBonus :: InitNativeFields
+// ABasicArmorBonus
 //
 //===========================================================================
 
-void ABasicArmorBonus::InitNativeFields()
-{
-	auto meta = RUNTIME_CLASS(ABasicArmorBonus);
-	meta->AddNativeField("SaveAmount", TypeSInt32, myoffsetof(ABasicArmorBonus, SaveAmount));
-	meta->AddNativeField("MaxSaveAmount", TypeSInt32, myoffsetof(ABasicArmorBonus, MaxSaveAmount));
-}
+DEFINE_FIELD(ABasicArmorBonus, SavePercent)
+DEFINE_FIELD(ABasicArmorBonus, MaxSaveAmount)
+DEFINE_FIELD(ABasicArmorBonus, MaxAbsorb)
+DEFINE_FIELD(ABasicArmorBonus, MaxFullAbsorb)
+DEFINE_FIELD(ABasicArmorBonus, SaveAmount)
+DEFINE_FIELD(ABasicArmorBonus, BonusCount)
+DEFINE_FIELD(ABasicArmorBonus, BonusMax)
 
 //===========================================================================
 //
@@ -394,6 +409,10 @@ bool ABasicArmorBonus::Use (bool pickup)
 	armor->MaxAmount = MAX (armor->MaxAmount, MaxSaveAmount);
 	return true;
 }
+
+
+DEFINE_FIELD(AHexenArmor, Slots)
+DEFINE_FIELD(AHexenArmor, SlotsIncrement)
 
 //===========================================================================
 //

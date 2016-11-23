@@ -99,19 +99,32 @@ static const FGenericButtons ButtonChecks[] =
 //
 //------------------------------------------------------------------------
 
-IMPLEMENT_CLASS(DPSprite, false, true, true, false)
+IMPLEMENT_CLASS(DPSprite, false, true, false, false)
 
 IMPLEMENT_POINTERS_START(DPSprite)
 	IMPLEMENT_POINTER(Caller)
 	IMPLEMENT_POINTER(Next)
 IMPLEMENT_POINTERS_END
 
-void DPSprite::InitNativeFields()
-{
-	auto meta = RUNTIME_CLASS(DPSprite);
-
-	meta->AddNativeField("State", TypeState, myoffsetof(DPSprite, State), VARF_ReadOnly);
-}
+DEFINE_FIELD_NAMED(DPSprite, State, CurState)	// deconflict with same named type
+DEFINE_FIELD(DPSprite, Caller)
+DEFINE_FIELD(DPSprite, Next)
+DEFINE_FIELD(DPSprite, Owner)
+DEFINE_FIELD(DPSprite, Sprite)
+DEFINE_FIELD(DPSprite, Frame)
+DEFINE_FIELD(DPSprite, ID)
+DEFINE_FIELD(DPSprite, processPending)
+DEFINE_FIELD(DPSprite, x)
+DEFINE_FIELD(DPSprite, y)
+DEFINE_FIELD(DPSprite, oldx)
+DEFINE_FIELD(DPSprite, oldy)
+DEFINE_FIELD(DPSprite, firstTic)
+DEFINE_FIELD(DPSprite, Tics)
+DEFINE_FIELD_BIT(DPSprite, Flags, bAddWeapon, PSPF_ADDWEAPON)
+DEFINE_FIELD_BIT(DPSprite, Flags, bAddBob, PSPF_ADDBOB)
+DEFINE_FIELD_BIT(DPSprite, Flags, bPowDouble, PSPF_POWDOUBLE)
+DEFINE_FIELD_BIT(DPSprite, Flags, bCVarFast, PSPF_CVARFAST)
+DEFINE_FIELD_BIT(DPSprite, Flags, bFlip, PSPF_FLIP)
 
 //------------------------------------------------------------------------
 //
@@ -179,6 +192,14 @@ DPSprite *player_t::FindPSprite(int layer)
 	return pspr;
 }
 
+DEFINE_ACTION_FUNCTION(_PlayerInfo, FindPSprite)	// the underscore is needed to get past the name mangler which removes the first clas name character to match the class representation (needs to be fixed in a later commit)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(player_t);
+	PARAM_INT(id);
+	ACTION_RETURN_OBJECT(self->FindPSprite((PSPLayers)id));
+}
+
+
 //------------------------------------------------------------------------
 //
 //
@@ -191,7 +212,7 @@ void P_SetPsprite(player_t *player, PSPLayers id, FState *state, bool pending)
 	player->GetPSprite(id)->SetState(state, pending);
 }
 
-DEFINE_ACTION_FUNCTION(_Player, SetPSprite)	// the underscore is needed to get past the name mangler which removes the first clas name character to match the class representation (needs to be fixed in a later commit)
+DEFINE_ACTION_FUNCTION(_PlayerInfo, SetPSprite)	// the underscore is needed to get past the name mangler which removes the first clas name character to match the class representation (needs to be fixed in a later commit)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(player_t);
 	PARAM_INT(id);
@@ -262,7 +283,7 @@ DPSprite *player_t::GetPSprite(PSPLayers layer)
 	return pspr;
 }
 
-DEFINE_ACTION_FUNCTION(_Player, GetPSprite)	// the underscore is needed to get past the name mangler which removes the first clas name character to match the class representation (needs to be fixed in a later commit)
+DEFINE_ACTION_FUNCTION(_PlayerInfo, GetPSprite)	// the underscore is needed to get past the name mangler which removes the first clas name character to match the class representation (needs to be fixed in a later commit)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(player_t);
 	PARAM_INT(id);
@@ -1624,7 +1645,7 @@ void P_SetSafeFlash(AWeapon *weapon, player_t *player, FState *flashstate, int i
 	P_SetPsprite(player, PSP_FLASH, flashstate + index, true);
 }
 
-DEFINE_ACTION_FUNCTION(_Player, SetSafeFlash)
+DEFINE_ACTION_FUNCTION(_PlayerInfo, SetSafeFlash)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(player_t);
 	PARAM_OBJECT(weapon, AWeapon);
