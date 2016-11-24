@@ -56,6 +56,13 @@ void PClassPowerupGiver::ReplaceClassRef(PClass *oldclass, PClass *newclass)
 	}
 }
 
+
+DEFINE_FIELD(APowerupGiver, PowerupType)
+DEFINE_FIELD(APowerupGiver, EffectTics)
+DEFINE_FIELD(APowerupGiver, BlendColor)
+DEFINE_FIELD(APowerupGiver, Mode)
+DEFINE_FIELD(APowerupGiver, Strength)
+
 //===========================================================================
 //
 // APowerupGiver :: Use
@@ -113,6 +120,11 @@ void APowerupGiver::Serialize(FSerializer &arc)
 }
 
 // Powerup -------------------------------------------------------------------
+
+DEFINE_FIELD(APowerup, EffectTics)
+DEFINE_FIELD(APowerup, BlendColor)
+DEFINE_FIELD(APowerup, Mode)
+DEFINE_FIELD(APowerup, Strength)
 
 //===========================================================================
 //
@@ -1184,39 +1196,11 @@ void APowerWeaponLevel2::EndEffect ()
 	}
 }
 
-// Player Speed Trail (used by the Speed Powerup) ----------------------------
-
-class APlayerSpeedTrail : public AActor
-{
-	DECLARE_CLASS (APlayerSpeedTrail, AActor)
-public:
-	void Tick ();
-};
-
-IMPLEMENT_CLASS(APlayerSpeedTrail, false, false, false, false)
-
-//===========================================================================
-//
-// APlayerSpeedTrail :: Tick
-//
-//===========================================================================
-
-void APlayerSpeedTrail::Tick ()
-{
-	const double fade = .6 / 8;
-	if (Alpha <= fade)
-	{
-		Destroy ();
-	}
-	else
-	{
-		Alpha -= fade;
-	}
-}
-
 // Speed Powerup -------------------------------------------------------------
 
 IMPLEMENT_CLASS(APowerSpeed, false, false, false, false)
+
+DEFINE_FIELD(APowerSpeed, SpeedFlags)
 
 //===========================================================================
 //
@@ -1280,7 +1264,7 @@ void APowerSpeed::DoEffect ()
 	if (Owner->Vel.LengthSquared() <= 12*12)
 		return;
 
-	AActor *speedMo = Spawn<APlayerSpeedTrail> (Owner->Pos(), NO_REPLACE);
+	AActor *speedMo = Spawn("PlayerSpeedTrail", Owner->Pos(), NO_REPLACE);
 	if (speedMo)
 	{
 		speedMo->Angles.Yaw = Owner->Angles.Yaw;
@@ -1900,6 +1884,13 @@ void APowerDoubleFiringSpeed::EndEffect( )
 
 IMPLEMENT_CLASS(APowerMorph, false, false, false, false)
 
+DEFINE_FIELD(APowerMorph, PlayerClass)
+DEFINE_FIELD(APowerMorph, MorphFlash)
+DEFINE_FIELD(APowerMorph, UnMorphFlash)
+DEFINE_FIELD(APowerMorph, MorphStyle)
+DEFINE_FIELD(APowerMorph, MorphedPlayer)
+DEFINE_FIELD(APowerMorph, bInUndoMorph)
+
 //===========================================================================
 //
 // APowerMorph :: Serialize
@@ -1913,7 +1904,7 @@ void APowerMorph::Serialize(FSerializer &arc)
 		("morphstyle", MorphStyle)
 		("morphflash", MorphFlash)
 		("unmorphflash", UnMorphFlash)
-		("player", Player);
+		("morphedplayer", MorphedPlayer);
 }
 
 //===========================================================================
@@ -1926,17 +1917,14 @@ void APowerMorph::InitEffect( )
 {
 	Super::InitEffect();
 
-	if (Owner != NULL && Owner->player != NULL && PlayerClass != NAME_None)
+	if (Owner != nullptr && Owner->player != nullptr && PlayerClass != nullptr)
 	{
 		player_t *realplayer = Owner->player;	// Remember the identity of the player
-		PClassActor *morph_flash = PClass::FindActor(MorphFlash);
-		PClassActor *unmorph_flash = PClass::FindActor(UnMorphFlash);
-		PClassPlayerPawn *player_class = dyn_cast<PClassPlayerPawn>(PClass::FindClass (PlayerClass));
-		if (P_MorphPlayer(realplayer, realplayer, player_class, -1/*INDEFINITELY*/, MorphStyle, morph_flash, unmorph_flash))
+		if (P_MorphPlayer(realplayer, realplayer, PlayerClass, -1/*INDEFINITELY*/, MorphStyle, MorphFlash, UnMorphFlash))
 		{
 			Owner = realplayer->mo;				// Replace the new owner in our owner; safe because we are not attached to anything yet
 			ItemFlags |= IF_CREATECOPYMOVED;	// Let the caller know the "real" owner has changed (to the morphed actor)
-			Player = realplayer;				// Store the player identity (morphing clears the unmorphed actor's "player" field)
+			MorphedPlayer = realplayer;				// Store the player identity (morphing clears the unmorphed actor's "player" field)
 		}
 		else // morph failed - give the caller an opportunity to fail the pickup completely
 		{
@@ -1958,46 +1946,46 @@ void APowerMorph::EndEffect( )
 	// Abort if owner already destroyed
 	if (Owner == NULL)
 	{
-		assert(Player == NULL);
+		assert(MorphedPlayer == NULL);
 		return;
 	}
 	
 	// Abort if owner already unmorphed
-	if (Player == NULL)
+	if (MorphedPlayer == NULL)
 	{
 		return;
 	}
 
 	// Abort if owner is dead; their Die() method will
 	// take care of any required unmorphing on death.
-	if (Player->health <= 0)
+	if (MorphedPlayer->health <= 0)
 	{
 		return;
 	}
 
 	// Unmorph if possible
-	if (!bNoCallUndoMorph)
+	if (!bInUndoMorph)
 	{
-		int savedMorphTics = Player->morphTics;
-		P_UndoPlayerMorph (Player, Player, 0, !!(Player->MorphStyle & MORPH_UNDOALWAYS));
+		int savedMorphTics = MorphedPlayer->morphTics;
+		P_UndoPlayerMorph (MorphedPlayer, MorphedPlayer, 0, !!(MorphedPlayer->MorphStyle & MORPH_UNDOALWAYS));
 
 		// Abort if unmorph failed; in that case,
 		// set the usual retry timer and return.
-		if (Player != NULL && Player->morphTics)
+		if (MorphedPlayer != NULL && MorphedPlayer->morphTics)
 		{
 			// Transfer retry timeout
 			// to the powerup's timer.
-			EffectTics = Player->morphTics;
+			EffectTics = MorphedPlayer->morphTics;
 			// Reload negative morph tics;
 			// use actual value; it may
 			// be in use for animation.
-			Player->morphTics = savedMorphTics;
+			MorphedPlayer->morphTics = savedMorphTics;
 			// Try again some time later
 			return;
 		}
 	}
 	// Unmorph suceeded
-	Player = NULL;
+	MorphedPlayer = NULL;
 }
 
 // Infinite Ammo Powerup -----------------------------------------------------
