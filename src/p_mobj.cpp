@@ -131,7 +131,7 @@ CVAR (Int, cl_bloodtype, 0, CVAR_ARCHIVE);
 
 // CODE --------------------------------------------------------------------
 
-IMPLEMENT_CLASS(AActor, false, true, false, true)
+IMPLEMENT_CLASS(AActor, false, true)
 
 IMPLEMENT_POINTERS_START(AActor)
 	IMPLEMENT_POINTER(target)
@@ -309,6 +309,28 @@ DEFINE_FIELD(AActor, MissileState)
 DEFINE_FIELD(AActor, ConversationRoot)
 DEFINE_FIELD(AActor, Conversation)
 DEFINE_FIELD(AActor, DecalGenerator)
+
+DEFINE_FIELD(PClassActor, Obituary)
+DEFINE_FIELD(PClassActor, HitObituary)
+DEFINE_FIELD(PClassActor, DeathHeight)
+DEFINE_FIELD(PClassActor, BurnHeight)
+DEFINE_FIELD(PClassActor, BloodColor)
+DEFINE_FIELD(PClassActor, GibHealth)
+DEFINE_FIELD(PClassActor, WoundHealth)
+DEFINE_FIELD(PClassActor, FastSpeed)
+DEFINE_FIELD(PClassActor, RDFactor)
+DEFINE_FIELD(PClassActor, CameraHeight)
+DEFINE_FIELD(PClassActor, HowlSound)
+DEFINE_FIELD(PClassActor, BloodType)
+DEFINE_FIELD(PClassActor, BloodType2)
+DEFINE_FIELD(PClassActor, BloodType3)
+DEFINE_FIELD(PClassActor, DontHurtShooter)
+DEFINE_FIELD(PClassActor, ExplosionRadius)
+DEFINE_FIELD(PClassActor, ExplosionDamage)
+DEFINE_FIELD(PClassActor, MeleeDamage)
+DEFINE_FIELD(PClassActor, MeleeSound)
+DEFINE_FIELD(PClassActor, MissileName)
+DEFINE_FIELD(PClassActor, MissileHeight)
 
 //==========================================================================
 //
@@ -921,7 +943,7 @@ AInventory *AActor::FirstInv ()
 //
 //============================================================================
 
-bool AActor::UseInventory (AInventory *item)
+bool AActor::DoUseInventory (AInventory *item)
 {
 	// No using items if you're dead.
 	if (health <= 0)
@@ -946,6 +968,30 @@ bool AActor::UseInventory (AInventory *item)
 		item->DepleteOrDestroy ();
 	}
 	return true;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, UseInventory)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(item, AInventory);
+	self->VMSuperCall();
+	ACTION_RETURN_BOOL(self->DoUseInventory(item));
+}
+
+bool AActor::UseInventory(AInventory *item)
+{
+	IFVIRTUAL(AActor, UseInventory)
+	{
+		// Without the type cast this picks the 'void *' assignment...
+		VMValue params[2] = { (DObject*)this, (DObject*)item };
+		VMReturn ret;
+		VMFrameStack stack;
+		int retval;
+		ret.IntAt(&retval);
+		stack.Call(func, params, 2, &ret, 1, nullptr);
+		return !!retval;
+	}
+	else return DoUseInventory(item);
 }
 
 //===========================================================================
@@ -2741,7 +2787,10 @@ void P_ZMovement (AActor *mo, double oldfloorz)
 					return;
 				}
 				// Let the actor do something special for hitting the floor
-				mo->HitFloor ();
+				if (mo->flags7 & MF7_SMASHABLE)
+				{
+					P_DamageMobj(mo, nullptr, nullptr, mo->health, NAME_Smash);
+				}
 				if (mo->player)
 				{
 					if (mo->player->jumpTics < 0 || mo->Vel.Z < minvel)
@@ -3228,10 +3277,6 @@ void AActor::Howl ()
 	{
 		S_Sound (this, CHAN_BODY, howl, 1, ATTN_NORM);
 	}
-}
-
-void AActor::HitFloor ()
-{
 }
 
 bool AActor::Slam (AActor *thing)
@@ -4446,7 +4491,7 @@ AActor *AActor::StaticSpawn (PClassActor *type, const DVector3 &pos, replace_t a
 	actor->UpdateWaterLevel (false);
 	if (!SpawningMapThing)
 	{
-		actor->BeginPlay ();
+		actor->CallBeginPlay ();
 		if (actor->ObjectFlags & OF_EuthanizeMe)
 		{
 			return NULL;
@@ -4522,7 +4567,7 @@ void AActor::HandleSpawnFlags ()
 	}
 	if (SpawnFlags & MTF_DORMANT)
 	{
-		Deactivate (NULL);
+		CallDeactivate (NULL);
 	}
 	if (SpawnFlags & MTF_STANDSTILL)
 	{
@@ -4566,16 +4611,27 @@ void AActor::BeginPlay ()
 	if (flags2 & MF2_DORMANT)
 	{
 		flags2 &= ~MF2_DORMANT;
-		Deactivate (NULL);
+		CallDeactivate (NULL);
 	}
 }
 
 DEFINE_ACTION_FUNCTION(AActor, BeginPlay)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	self->VMSuperCall();
 	self->BeginPlay();
 	return 0;
+}
+
+void AActor::CallBeginPlay()
+{
+	IFVIRTUAL(AActor, BeginPlay)
+	{
+		// Without the type cast this picks the 'void *' assignment...
+		VMValue params[1] = { (DObject*)this };
+		VMFrameStack stack;
+		stack.Call(func, params, 1, nullptr, 0, nullptr);
+	}
+	else BeginPlay();
 }
 
 
@@ -4614,6 +4670,12 @@ bool AActor::isSlow()
 	return !!G_SkillProperty(SKILLP_SlowMonsters);
 }
 
+//===========================================================================
+//
+// Activate
+//
+//===========================================================================
+
 void AActor::Activate (AActor *activator)
 {
 	if ((flags3 & MF3_ISMONSTER) && (health > 0 || (flags & MF_ICECORPSE)))
@@ -4642,6 +4704,25 @@ DEFINE_ACTION_FUNCTION(AActor, Activate)
 	self->Activate(activator);
 	return 0;
 }
+
+void AActor::CallActivate(AActor *activator)
+{
+	IFVIRTUAL(AActor, Activate)
+	{
+		// Without the type cast this picks the 'void *' assignment...
+		VMValue params[2] = { (DObject*)this, (DObject*)activator };
+		VMFrameStack stack;
+		stack.Call(func, params, 2, nullptr, 0, nullptr);
+	}
+	else Activate(activator);
+}
+
+
+//===========================================================================
+//
+// Deactivate
+//
+//===========================================================================
 
 void AActor::Deactivate (AActor *activator)
 {
@@ -4672,10 +4753,23 @@ DEFINE_ACTION_FUNCTION(AActor, Deactivate)
 	return 0;
 }
 
+void AActor::CallDeactivate(AActor *activator)
+{
+	IFVIRTUAL(AActor, Deactivate)
+	{
+		// Without the type cast this picks the 'void *' assignment...
+		VMValue params[2] = { (DObject*)this, (DObject*)activator };
+		VMFrameStack stack;
+		stack.Call(func, params, 2, nullptr, 0, nullptr);
+	}
+	else Deactivate(activator);
+}
 
+//===========================================================================
 //
-// P_RemoveMobj
+// Destroy
 //
+//===========================================================================
 
 void AActor::Destroy ()
 {
@@ -5386,7 +5480,7 @@ AActor *P_SpawnMapThing (FMapThing *mthing, int position)
 	if (mthing->fillcolor)
 		mobj->fillcolor = mthing->fillcolor;
 
-	mobj->BeginPlay ();
+	mobj->CallBeginPlay ();
 	if (!(mobj->ObjectFlags & OF_EuthanizeMe))
 	{
 		mobj->LevelSpawned ();
@@ -5943,6 +6037,12 @@ bool P_HitFloor (AActor *thing)
 	}
 
 	return P_HitWater (thing, m->m_sector, pos);
+}
+
+DEFINE_ACTION_FUNCTION(AActor, HitFloor)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_BOOL(P_HitFloor(self));
 }
 
 //---------------------------------------------------------------------------
@@ -6543,6 +6643,13 @@ bool AActor::IsTeammate (AActor *other)
 	return false;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, isTeammate)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(other, AActor);
+	ACTION_RETURN_BOOL(self->IsTeammate(other));
+}
+
 //==========================================================================
 //
 // AActor :: GetSpecies
@@ -6645,6 +6752,14 @@ bool AActor::IsHostile (AActor *other)
 	return true;
 }
 
+//==========================================================================
+//
+// AActor :: DoSpecialDamage
+//
+// override this for special damage effects.
+//
+//==========================================================================
+
 int AActor::DoSpecialDamage (AActor *target, int damage, FName damagetype)
 {
 	if (target->player && target->player->mo == target && damage < 1000 &&
@@ -6678,6 +6793,28 @@ DEFINE_ACTION_FUNCTION(AActor, DoSpecialDamage)
 	ACTION_RETURN_INT(self->DoSpecialDamage(target, damage, damagetype));
 }
 
+int AActor::CallDoSpecialDamage(AActor *target, int damage, FName damagetype)
+{
+	IFVIRTUAL(AActor, DoSpecialDamage)
+	{
+		// Without the type cast this picks the 'void *' assignment...
+		VMValue params[4] = { (DObject*)this, (DObject*)target, damage, damagetype.GetIndex() };
+		VMReturn ret;
+		VMFrameStack stack;
+		int retval;
+		ret.IntAt(&retval);
+		stack.Call(func, params, 4, &ret, 1, nullptr);
+		return retval;
+	}
+	else return DoSpecialDamage(target, damage, damagetype);
+
+}
+
+//==========================================================================
+//
+// AActor :: TakeSpecialDamage
+//
+//==========================================================================
 
 int AActor::TakeSpecialDamage (AActor *inflictor, AActor *source, int damage, FName damagetype)
 {
@@ -6990,7 +7127,7 @@ public:
 	}
 };
 
-IMPLEMENT_CLASS(DActorIterator, false, false, false, false);
+IMPLEMENT_CLASS(DActorIterator, false, false);
 DEFINE_ACTION_FUNCTION(DActorIterator, Create)
 {
 	PARAM_PROLOGUE;
@@ -7210,7 +7347,7 @@ DEFINE_ACTION_FUNCTION(AActor, RestoreDamage)
 //
 //----------------------------------------------------------------------------
 
-IMPLEMENT_CLASS(DDropItem, false, true, true, false)
+IMPLEMENT_CLASS(DDropItem, false, true)
 
 IMPLEMENT_POINTERS_START(DDropItem)
 IMPLEMENT_POINTER(Next)

@@ -278,7 +278,7 @@ class ASectorAction : public AActor
 	DECLARE_CLASS (ASectorAction, AActor)
 public:
 	ASectorAction (bool activatedByUse = false);
-	void Destroy ();
+	void Destroy () override;
 	void BeginPlay ();
 	void Activate (AActor *source);
 	void Deactivate (AActor *source);

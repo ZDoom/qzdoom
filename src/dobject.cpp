@@ -61,7 +61,7 @@ ClassReg DObject::RegistrationInfo =
 	nullptr,								// MyClass
 	"DObject",								// Name
 	nullptr,								// ParentType
-	&DVMObject<DObject>::RegistrationInfo,	// VMExport
+	nullptr,								
 	nullptr,								// Pointers
 	&DObject::InPlaceConstructor,			// ConstructNative
 	nullptr,
@@ -358,15 +358,8 @@ void DObject::Destroy ()
 DEFINE_ACTION_FUNCTION(DObject, Destroy)
 {
 	PARAM_SELF_PROLOGUE(DObject);
-	self->VMSuperCall();
 	self->Destroy();
 	return 0;	
-}
-
-DEFINE_ACTION_FUNCTION(DObject, GetClass)
-{
-	PARAM_SELF_PROLOGUE(DObject);
-	ACTION_RETURN_OBJECT(self->GetClass());
 }
 
 //==========================================================================
