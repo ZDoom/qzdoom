@@ -6820,6 +6820,16 @@ FxExpression *FxFunctionCall::Resolve(FCompileContext& ctx)
 	ABORT(ctx.Class);
 	bool error = false;
 
+	for (auto a : ArgList)
+	{
+		if (a == nullptr)
+		{
+			ScriptPosition.Message(MSG_ERROR, "Empty function argument.");
+			delete this;
+			return nullptr;
+		}
+	}
+
 	PFunction *afd = FindClassMemberFunction(ctx.Class, ctx.Class, MethodName, ScriptPosition, &error);
 
 	if (afd != nullptr)
@@ -7070,6 +7080,16 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 	bool novirtual = false;
 
 	PClass *ccls = nullptr;
+
+	for (auto a : ArgList)
+	{
+		if (a == nullptr)
+		{
+			ScriptPosition.Message(MSG_ERROR, "Empty function argument.");
+			delete this;
+			return nullptr;
+		}
+	}
 
 	if (Self->ExprType == EFX_Identifier)
 	{
@@ -7609,7 +7629,7 @@ FxExpression *FxVMFunctionCall::Resolve(FCompileContext& ctx)
 			{
 				bool writable;
 				ArgList[i] = ArgList[i]->Resolve(ctx);	// nust be resolved before the address is requested.
-				if (ArgList[i]->ValueType != TypeNullPtr)
+				if (ArgList[i] != nullptr && ArgList[i]->ValueType != TypeNullPtr)
 				{
 					ArgList[i]->RequestAddress(ctx, &writable);
 					ArgList[i]->ValueType = NewPointer(ArgList[i]->ValueType);
@@ -9150,15 +9170,19 @@ int BuiltinNameToClass(VMFrameStack *stack, VMValue *param, TArray<VMValue> &def
 	assert(ret->RegType == REGT_POINTER);
 
 	FName clsname = ENamedName(param[0].i);
-	const PClass *cls = PClass::FindClass(clsname);
-	const PClass *desttype = reinterpret_cast<PClass *>(param[1].a);
-
-	if (!cls->IsDescendantOf(desttype))
+	if (clsname != NAME_None)
 	{
-		Printf("class '%s' is not compatible with '%s'", clsname.GetChars(), desttype->TypeName.GetChars());
-		cls = nullptr;
+		const PClass *cls = PClass::FindClass(clsname);
+		const PClass *desttype = reinterpret_cast<PClass *>(param[1].a);
+
+		if (!cls->IsDescendantOf(desttype))
+		{
+			Printf("class '%s' is not compatible with '%s'\n", clsname.GetChars(), desttype->TypeName.GetChars());
+			cls = nullptr;
+		}
+		ret->SetPointer(const_cast<PClass *>(cls), ATAG_OBJECT);
 	}
-	ret->SetPointer(const_cast<PClass *>(cls), ATAG_OBJECT);
+	else ret->SetPointer(nullptr, ATAG_OBJECT);
 	return 1;
 }
 

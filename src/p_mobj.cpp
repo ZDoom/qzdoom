@@ -955,7 +955,7 @@ bool AActor::DoUseInventory (AInventory *item)
 	{
 		return false;
 	}
-	if (!item->Use (false))
+	if (!item->CallUse (false))
 	{
 		return false;
 	}
@@ -974,7 +974,6 @@ DEFINE_ACTION_FUNCTION(AActor, UseInventory)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(item, AInventory);
-	self->VMSuperCall();
 	ACTION_RETURN_BOOL(self->DoUseInventory(item));
 }
 
@@ -1088,6 +1087,14 @@ AInventory *AActor::GiveInventoryType (PClassActor *type)
 	}
 	return item;
 }
+
+DEFINE_ACTION_FUNCTION(AActor, GiveInventoryType)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_CLASS(type, AInventory);
+	ACTION_RETURN_OBJECT(self->GiveInventoryType(type));
+}
+
 
 //============================================================================
 //
@@ -4141,7 +4148,6 @@ void AActor::Tick ()
 DEFINE_ACTION_FUNCTION(AActor, Tick)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	self->VMSuperCall();
 	self->Tick();
 	return 0;
 }
@@ -4700,7 +4706,6 @@ DEFINE_ACTION_FUNCTION(AActor, Activate)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(activator, AActor);
-	self->VMSuperCall();
 	self->Activate(activator);
 	return 0;
 }
@@ -4748,7 +4753,6 @@ DEFINE_ACTION_FUNCTION(AActor, Deactivate)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(activator, AActor);
-	self->VMSuperCall();
 	self->Deactivate(activator);
 	return 0;
 }
@@ -6789,7 +6793,6 @@ DEFINE_ACTION_FUNCTION(AActor, DoSpecialDamage)
 	PARAM_OBJECT(target, AActor);
 	PARAM_INT(damage);
 	PARAM_NAME(damagetype);
-	self->VMSuperCall();
 	ACTION_RETURN_INT(self->DoSpecialDamage(target, damage, damagetype));
 }
 
@@ -7098,9 +7101,10 @@ int AActor::ApplyDamageFactor(FName damagetype, int damage) const
 }
 
 
-void AActor::SetTranslation(const char *trname)
+void AActor::SetTranslation(FName trname)
 {
-	if (*trname == 0)
+	// There is no constant for the empty name...
+	if (trname.GetChars()[0] == 0)
 	{
 		// an empty string resets to the default
 		Translation = GetDefault()->Translation;
@@ -7339,6 +7343,12 @@ DEFINE_ACTION_FUNCTION(AActor, RestoreDamage)
 	PARAM_SELF_PROLOGUE(AActor);
 	self->RestoreDamage();
 	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, PlayerNumber)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_INT(self->player ? int(self->player - players) : 0);
 }
 
 //----------------------------------------------------------------------------

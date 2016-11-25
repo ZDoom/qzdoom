@@ -204,6 +204,7 @@ public:
 	virtual void GoAwayAndDie ();
 	virtual bool HandlePickup (AInventory *item);
 	virtual bool Use (bool pickup);
+	bool CallUse(bool pickup);
 	virtual void Travelled ();
 	virtual void OwnerDied ();
 
@@ -342,6 +343,7 @@ public:
 
 	virtual void PostMorphWeapon ();
 	virtual void EndPowerup ();
+	void CallEndPowerup();
 
 	enum
 	{
