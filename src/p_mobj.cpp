@@ -41,7 +41,6 @@
 #include "c_dispatch.h"
 #include "b_bot.h"	//Added by MC:
 #include "stats.h"
-#include "a_hexenglobal.h"
 #include "a_sharedglobal.h"
 #include "gi.h"
 #include "sbar.h"
@@ -69,6 +68,7 @@
 #include "serializer.h"
 #include "r_utility.h"
 #include "thingdef.h"
+#include "d_player.h"
 #include "virtual.h"
 
 // MACROS ------------------------------------------------------------------
@@ -7158,6 +7158,23 @@ DEFINE_ACTION_FUNCTION(AActor, ClearCounters)
 	return 0;
 }
 
+int AActor::GetModifiedDamage(FName damagetype, int damage, bool passive)
+{
+	if (Inventory != nullptr)
+		Inventory->ModifyDamage(damage, damagetype, damage, false);
+
+	return damage;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, GetModifiedDamage)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_NAME(type);
+	PARAM_INT(damage);
+	PARAM_BOOL(passive);
+	ACTION_RETURN_INT(self->GetModifiedDamage(type, damage, passive));
+}
+
 int AActor::ApplyDamageFactor(FName damagetype, int damage) const
 {
 	damage = int(damage * DamageFactor);
@@ -7166,6 +7183,14 @@ int AActor::ApplyDamageFactor(FName damagetype, int damage) const
 		damage = DamageTypeDefinition::ApplyMobjDamageFactor(damage, damagetype, GetClass()->DamageFactors);
 	}
 	return damage;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, ApplyDamageFactor)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_NAME(type);
+	PARAM_INT(damage);
+	ACTION_RETURN_INT(self->ApplyDamageFactor(type, damage));
 }
 
 
@@ -7436,6 +7461,15 @@ DEFINE_ACTION_FUNCTION(AActor, SetFriendPlayer)
 	self->SetFriendPlayer(player);
 	return 0;
 }
+
+DEFINE_ACTION_FUNCTION(AActor, ClearBounce)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->BounceFlags = 0;
+	return 0;
+}
+
+
 //----------------------------------------------------------------------------
 //
 // DropItem handling

@@ -183,10 +183,6 @@ bool AAmmo::HandlePickup (AInventory *item)
 		}
 		return true;
 	}
-	if (Inventory != NULL)
-	{
-		return Inventory->HandlePickup (item);
-	}
 	return false;
 }
 
@@ -718,12 +714,38 @@ bool AInventory::HandlePickup (AInventory *item)
 		}
 		return true;
 	}
-	if (Inventory != NULL)
+	return false;
+}
+
+DEFINE_ACTION_FUNCTION(AInventory, HandlePickup)
+{
+	PARAM_SELF_PROLOGUE(AInventory);
+	PARAM_OBJECT(item, AInventory);
+	ACTION_RETURN_BOOL(self->HandlePickup(item));
+}
+
+bool AInventory::CallHandlePickup(AInventory *item)
+{
+	auto self = this;
+	while (self != nullptr)
 	{
-		return Inventory->HandlePickup (item);
+		IFVIRTUAL(AInventory, HandlePickup)
+		{
+			// Without the type cast this picks the 'void *' assignment...
+			VMValue params[2] = { (DObject*)self, (DObject*)item };
+			VMReturn ret;
+			VMFrameStack stack;
+			int retval;
+			ret.IntAt(&retval);
+			stack.Call(func, params, 2, &ret, 1, nullptr);
+			if (retval) return true;
+		}
+		else if (self->HandlePickup(item)) return true;
+		self = self->Inventory;
 	}
 	return false;
 }
+
 
 //===========================================================================
 //
@@ -772,6 +794,14 @@ void AInventory::GoAwayAndDie ()
 	}
 }
 
+DEFINE_ACTION_FUNCTION(AInventory, GoAwayAndDie)
+{
+	PARAM_SELF_PROLOGUE(AInventory);
+	self->GoAwayAndDie();
+	return 0;
+}
+
+
 //===========================================================================
 //
 // AInventory :: CreateCopy
@@ -799,6 +829,29 @@ AInventory *AInventory::CreateCopy (AActor *other)
 	}
 	return copy;
 }
+
+DEFINE_ACTION_FUNCTION(AInventory, CreateCopy)
+{
+	PARAM_SELF_PROLOGUE(AInventory);
+	PARAM_OBJECT(other, AActor);
+	ACTION_RETURN_OBJECT(self->CreateCopy(other));
+}
+
+AInventory *AInventory::CallCreateCopy(AActor *other)
+{
+	IFVIRTUAL(AInventory, CreateCopy)
+	{
+		VMValue params[2] = { (DObject*)this, (DObject*)other };
+		VMReturn ret;
+		VMFrameStack stack;
+		AInventory *retval;
+		ret.PointerAt((void**)&retval);
+		stack.Call(func, params, 2, &ret, 1, nullptr);
+		return retval;
+	}
+	else return CreateCopy(other);
+}
+
 
 //===========================================================================
 //
@@ -1480,7 +1533,7 @@ bool AInventory::TryPickup (AActor *&toucher)
 	// picked up, then it leaves the flag cleared.
 
 	ItemFlags &= ~IF_PICKUPGOOD;
-	if (toucher->Inventory != NULL && toucher->Inventory->HandlePickup (this))
+	if (toucher->Inventory != NULL && toucher->Inventory->CallHandlePickup (this))
 	{
 		// Let something else the player is holding intercept the pickup.
 		if (!(ItemFlags & IF_PICKUPGOOD))
@@ -1516,7 +1569,7 @@ bool AInventory::TryPickup (AActor *&toucher)
 	{
 		// Add the item to the inventory. It is not already there, or HandlePickup
 		// would have already taken care of it.
-		AInventory *copy = CreateCopy (toucher);
+		AInventory *copy = CallCreateCopy (toucher);
 		if (copy == NULL)
 		{
 			return false;
@@ -1892,10 +1945,6 @@ bool AHealthPickup::HandlePickup (AInventory *item)
 	{
 		return Super::HandlePickup (item);
 	}
-	if (Inventory != NULL)
-	{
-		return Inventory->HandlePickup (item);
-	}
 	return false;
 }
 
@@ -2044,14 +2093,7 @@ bool ABackpackItem::HandlePickup (AInventory *item)
 		item->ItemFlags |= IF_PICKUPGOOD;
 		return true;
 	}
-	else if (Inventory != NULL)
-	{
-		return Inventory->HandlePickup (item);
-	}
-	else
-	{
-		return false;
-	}
+	return false;
 }
 
 //===========================================================================

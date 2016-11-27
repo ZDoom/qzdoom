@@ -45,6 +45,7 @@
 #include "autosegs.h"
 #include "v_text.h"
 #include "a_pickups.h"
+#include "a_artifacts.h"
 #include "a_weaponpiece.h"
 #include "d_player.h"
 #include "doomerrors.h"
@@ -1687,7 +1688,7 @@ PPointer *NewPointer(PType *type, bool isconst)
 	PType *ptype = TypeTable.FindType(RUNTIME_CLASS(PPointer), (intptr_t)type, isconst ? 1 : 0, &bucket);
 	if (ptype == NULL)
 	{
-		ptype = new PPointer(type);
+		ptype = new PPointer(type, isconst);
 		TypeTable.AddType(ptype, RUNTIME_CLASS(PPointer), (intptr_t)type, isconst ? 1 : 0, bucket);
 	}
 	return static_cast<PPointer *>(ptype);
