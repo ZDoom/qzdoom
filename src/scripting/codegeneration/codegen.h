@@ -72,6 +72,7 @@ typedef TDeletingArray<FxExpression*> FArgumentList;
 
 struct FCompileContext
 {
+	FxExpression *ControlStmt = nullptr;
 	FxLoopStatement *Loop = nullptr;
 	FxCompoundStatement *Block = nullptr;
 	PPrototype *ReturnProto;
@@ -287,6 +288,7 @@ enum EFxType
 	EFX_CVar,
 	EFX_NamedNode,
 	EFX_GetClass,
+	EFX_ColorLiteral,
 	EFX_COUNT
 };
 
@@ -1542,6 +1544,24 @@ public:
 
 //==========================================================================
 //
+//	FxColorLiteral
+//
+//==========================================================================
+
+class FxColorLiteral : public FxExpression
+{
+	FArgumentList ArgList;
+	int constval = 0;
+
+public:
+
+	FxColorLiteral(FArgumentList &args, FScriptPosition &sc);
+	FxExpression *Resolve(FCompileContext&);
+	ExpEmit Emit(VMFunctionBuilder *build);
+};
+
+//==========================================================================
+//
 // FxVMFunctionCall
 //
 //==========================================================================
@@ -1637,6 +1657,8 @@ class FxSwitchStatement : public FxExpression
 	TArray<CaseAddr> CaseAddresses;
 
 public:
+	TArray<FxJumpStatement *> Breaks;
+
 	FxSwitchStatement(FxExpression *cond, FArgumentList &content, const FScriptPosition &pos);
 	~FxSwitchStatement();
 	FxExpression *Resolve(FCompileContext&);

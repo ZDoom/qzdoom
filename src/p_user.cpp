@@ -1207,6 +1207,12 @@ int APlayerPawn::GetMaxHealth() const
 	return MaxHealth > 0? MaxHealth : ((i_compatflags&COMPATF_DEHHEALTH)? 100 : deh.MaxHealth);
 }
 
+DEFINE_ACTION_FUNCTION(APlayerPawn, GetMaxHealth)
+{
+	PARAM_SELF_PROLOGUE(APlayerPawn);
+	ACTION_RETURN_INT(self->GetMaxHealth());
+}
+
 //===========================================================================
 //
 // APlayerPawn :: UpdateWaterLevel
@@ -3168,6 +3174,19 @@ DEFINE_FIELD(APlayerPawn, AirCapacity)
 DEFINE_FIELD(APlayerPawn, FlechetteType)
 DEFINE_FIELD(APlayerPawn, DamageFade)
 DEFINE_FIELD(APlayerPawn, ViewBob)
+
+DEFINE_FIELD(PClassPlayerPawn, HealingRadiusType)
+DEFINE_FIELD(PClassPlayerPawn, DisplayName)
+DEFINE_FIELD(PClassPlayerPawn, SoundClass)
+DEFINE_FIELD(PClassPlayerPawn, Face)
+DEFINE_FIELD(PClassPlayerPawn, Portrait)
+DEFINE_FIELD(PClassPlayerPawn, Slot)
+DEFINE_FIELD(PClassPlayerPawn, InvulMode)
+DEFINE_FIELD(PClassPlayerPawn, HexenArmor)
+DEFINE_FIELD(PClassPlayerPawn, ColorRangeStart)
+DEFINE_FIELD(PClassPlayerPawn, ColorRangeEnd)
+DEFINE_FIELD(PClassPlayerPawn, ColorSets)
+DEFINE_FIELD(PClassPlayerPawn, PainFlashes)
 
 DEFINE_FIELD_X(PlayerInfo, player_t, mo)
 DEFINE_FIELD_X(PlayerInfo, player_t, playerstate)

@@ -22,7 +22,6 @@
 //-----------------------------------------------------------------------------
 
 // HEADER FILES ------------------------------------------------------------
-
 #include <float.h>
 #include "templates.h"
 #include "i_system.h"
@@ -1094,7 +1093,6 @@ DEFINE_ACTION_FUNCTION(AActor, GiveInventoryType)
 	ACTION_RETURN_OBJECT(self->GiveInventoryType(type));
 }
 
-
 //============================================================================
 //
 // AActor :: GiveAmmo
@@ -1121,6 +1119,14 @@ bool AActor::GiveAmmo (PClassAmmo *type, int amount)
 		}
 	}
 	return false;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, GiveAmmo)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_CLASS(type, AAmmo);
+	PARAM_INT(amount);
+	ACTION_RETURN_BOOL(self->GiveAmmo(type, amount));
 }
 
 //============================================================================
@@ -3285,6 +3291,13 @@ void AActor::Howl ()
 	}
 }
 
+DEFINE_ACTION_FUNCTION(AActor, Howl)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->Howl();
+	return 0;
+}
+
 bool AActor::Slam (AActor *thing)
 {
 	flags &= ~MF_SKULLFLY;
@@ -3342,6 +3355,16 @@ bool AActor::SpecialBlastHandling (AActor *source, double strength)
 	return true;
 }
 
+// This only gets called from the script side so we do not need a native wrapper like for the other virtual methods.
+DEFINE_ACTION_FUNCTION(AActor, SpecialBlastHandling)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(source, AActor);
+	PARAM_FLOAT(strength);
+	ACTION_RETURN_BOOL(self->SpecialBlastHandling(source, strength));
+}
+
+
 int AActor::SpecialMissileHit (AActor *victim)
 {
 	return -1;
@@ -3358,8 +3381,7 @@ bool AActor::AdjustReflectionAngle (AActor *thing, DAngle &angle)
 		if (absangle(angle, thing->Angles.Yaw) > 45)
 			return true;	// Let missile explode
 
-		if (thing->IsKindOf (RUNTIME_CLASS(AHolySpirit)))	// shouldn't this be handled by another flag???
-			return true;
+		if (thing->flags7 & MF7_NOSHIELDREFLECT) return true;
 
 		if (pr_reflect () < 128)
 			angle += 45;
@@ -6353,6 +6375,20 @@ AActor *P_SpawnMissileXYZ (DVector3 pos, AActor *source, AActor *dest, PClassAct
 	return (!checkspawn || P_CheckMissileSpawn (th, source->radius)) ? th : NULL;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, SpawnMissileXYZ)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(z);
+	PARAM_OBJECT(dest, AActor);
+	PARAM_CLASS(type, AActor);
+	PARAM_BOOL_DEF(check);
+	PARAM_OBJECT_DEF(owner, AActor);
+	ACTION_RETURN_OBJECT(P_SpawnMissileXYZ(DVector3(x,y,z), self, dest, type, check, owner));
+}
+
+
 AActor *P_OldSpawnMissile(AActor *source, AActor *owner, AActor *dest, PClassActor *type)
 {
 	if (source == NULL)
@@ -7339,6 +7375,16 @@ DEFINE_ACTION_FUNCTION(AActor, SetXYZ)
 	self->SetXYZ(x, y, z);
 	return 0; 
 }
+
+DEFINE_ACTION_FUNCTION(AActor, Vec2Angle)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(length);
+	PARAM_ANGLE(angle);
+	PARAM_BOOL_DEF(absolute);
+	ACTION_RETURN_VEC2(self->Vec2Angle(length, angle, absolute));
+}
+
 
 DEFINE_ACTION_FUNCTION(AActor, Vec3Angle)
 {

@@ -26,6 +26,7 @@ class Inventory : Actor native
 	}
 	
 	virtual native bool Use (bool pickup);
+	virtual native color GetBlend ();
 	
 	
 	// These are regular functions for the item itself.
@@ -528,6 +529,13 @@ class PuzzleItem : Inventory native
 
 class Weapon : StateProvider native
 {
+	enum EFireMode
+	{
+		PrimaryFire,
+		AltFire,
+		EitherFire
+	};
+
 	native uint WeaponFlags;
 	native class<Ammo> AmmoType1, AmmoType2;		// Types of ammo used by this weapon
 	native int AmmoGive1, AmmoGive2;				// Amount of each ammo to get when picking up weapon
@@ -571,6 +579,7 @@ class Weapon : StateProvider native
 		Stop;
 	}
 	
+	native bool CheckAmmo(int fireMode, bool autoSwitch, bool requireAmmo = false, int ammocount = -1);
 	native bool DepleteAmmo(bool altFire, bool checkEnough = true, int ammouse = -1);
 	native virtual void EndPowerup();
 	
@@ -579,6 +588,31 @@ class Weapon : StateProvider native
 		return FindState('Ready');
 	}
 	
+	virtual State GetUpState ()
+	{
+		return FindState('Select');
+	}
+
+	virtual State GetDownState ()
+	{
+		return FindState('Deselect');
+	}
+
+	virtual State GetAtkState (bool hold)
+	{
+		State s = null;
+		if (hold) s = FindState('Hold');
+		if (s == null) s = FindState('Fire');
+		return s;
+	}
+	
+	virtual State GetAltAtkState (bool hold)
+	{
+		State s = null;
+		if (hold) s = FindState('AltHold');
+		if (s == null) s = FindState('AltFire');
+		return s;
+	}
 	
 	native action void A_ZoomFactor(double scale = 1, int flags = 0);
 	native action void A_SetCrosshair(int xhair);
