@@ -21,26 +21,6 @@
 
 IMPLEMENT_CLASS(ADegninOre, false, false)
 
-DEFINE_ACTION_FUNCTION(AActor, A_RemoveForceField)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-
-	self->flags &= ~MF_SPECIAL;
-
-	for (int i = 0; i < self->Sector->linecount; ++i)
-	{
-		line_t *line = self->Sector->lines[i];
-		if (line->backsector != NULL && line->special == ForceField)
-		{
-			line->flags &= ~(ML_BLOCKING|ML_BLOCKEVERYTHING);
-			line->special = 0;
-			line->sidedef[0]->SetTexture(side_t::mid, FNullTextureID());
-			line->sidedef[1]->SetTexture(side_t::mid, FNullTextureID());
-		}
-	}
-	return 0;
-}
-
 bool ADegninOre::Use (bool pickup)
 {
 	if (pickup)
@@ -82,7 +62,7 @@ bool AHealthTraining::TryPickup (AActor *&toucher)
 	if (Super::TryPickup (toucher))
 	{
 		toucher->GiveInventoryType (PClass::FindActor("GunTraining"));
-		AInventory *coin = Spawn<ACoin> ();
+		AInventory *coin = (AInventory*)Spawn("Coin");
 		if (coin != NULL)
 		{
 			coin->Amount = toucher->player->mo->accuracy*5 + 300;
@@ -180,8 +160,18 @@ IMPLEMENT_CLASS(ARaiseAlarm, false, false)
 bool ARaiseAlarm::TryPickup (AActor *&toucher)
 {
 	P_NoiseAlert (toucher, toucher);
-	VMFrameStack stack1, *stack = &stack1;
-	CALL_ACTION(A_WakeOracleSpectre, toucher);
+	/*
+	ThinkerIterator it = ThinkerIterator.Create("AlienSpectre3");
+	Actor spectre = Actor(it.Next());
+
+	if (spectre != NULL && spectre.health > 0 && toucher != spectre)
+	{
+	spectre.CurSector.SoundTarget = spectre.LastHeard = toucher;
+	spectre.target = toucher;
+	spectre.SetState (spectre.SeeState);
+	}
+
+	*/
 	GoAwayAndDie ();
 	return true;
 }

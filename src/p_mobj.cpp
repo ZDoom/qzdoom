@@ -1002,7 +1002,7 @@ bool AActor::UseInventory(AInventory *item)
 
 AInventory *AActor::DropInventory (AInventory *item)
 {
-	AInventory *drop = item->CreateTossable ();
+	AInventory *drop = item->CallCreateTossable ();
 
 	if (drop == NULL)
 	{
@@ -1016,6 +1016,13 @@ AInventory *AActor::DropInventory (AInventory *item)
 	drop->flags &= ~MF_NOGRAVITY;	// Don't float
 	drop->ClearCounters();	// do not count for statistics again
 	return drop;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, DropInventory)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(item, AInventory);
+	ACTION_RETURN_OBJECT(self->DropInventory(item));
 }
 
 //============================================================================
@@ -1438,6 +1445,25 @@ void AActor::ConversationAnimation (int animnum)
 
 void AActor::Touch (AActor *toucher)
 {
+}
+
+DEFINE_ACTION_FUNCTION(AActor, Touch)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(toucher, AActor);
+	self->Touch(toucher);
+	return 0;
+}
+
+void AActor::CallTouch(AActor *toucher)
+{
+	IFVIRTUAL(AActor, Touch)
+	{
+		VMValue params[2] = { (DObject*)this, toucher };
+		VMFrameStack stack;
+		stack.Call(func, params, 2, nullptr, 0, nullptr);
+	}
+	else Touch(toucher);
 }
 
 //============================================================================
@@ -6501,6 +6527,15 @@ AActor *P_SpawnMissileZAimed (AActor *source, double z, AActor *dest, PClassActo
 	return P_SpawnMissileAngleZSpeed (source, z, type, an, vz, speed);
 }
 
+DEFINE_ACTION_FUNCTION(AActor, SpawnMissileZAimed)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(z);
+	PARAM_OBJECT(dest, AActor);
+	PARAM_CLASS(type, AActor);
+	ACTION_RETURN_OBJECT(P_SpawnMissileZAimed(self, z, dest, type));
+}
+
 //---------------------------------------------------------------------------
 //
 // FUNC P_SpawnMissileAngleZSpeed
@@ -6554,6 +6589,48 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnMissileAngleZSpeed)
 	ACTION_RETURN_OBJECT(P_SpawnMissileAngleZSpeed(self, z, type, angle, vz, speed, owner, checkspawn));
 }
 
+
+AActor *P_SpawnSubMissile(AActor *source, PClassActor *type, AActor *target)
+{
+	AActor *other = Spawn(type, source->Pos(), ALLOW_REPLACE);
+
+	if (other == NULL)
+	{
+		return NULL;
+	}
+
+	other->target = target;
+	other->Angles.Yaw = source->Angles.Yaw;
+	other->VelFromAngle();
+
+	if (other->flags4 & MF4_SPECTRAL)
+	{
+		if (source->flags & MF_MISSILE && source->flags4 & MF4_SPECTRAL)
+		{
+			other->FriendPlayer = source->FriendPlayer;
+		}
+		else
+		{
+			other->SetFriendPlayer(target->player);
+		}
+	}
+
+	if (P_CheckMissileSpawn(other, source->radius))
+	{
+		DAngle pitch = P_AimLineAttack(source, source->Angles.Yaw, 1024.);
+		other->Vel.Z = -other->Speed * pitch.Sin();
+		return other;
+	}
+	return NULL;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, SpawnSubMissile)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_CLASS(cls, AActor);
+	PARAM_OBJECT(target, AActor);
+	ACTION_RETURN_OBJECT(P_SpawnSubMissile(self, cls, target));
+}
 /*
 ================
 =
@@ -6939,6 +7016,32 @@ int AActor::TakeSpecialDamage (AActor *inflictor, AActor *source, int damage, FN
 		death = FindState (NAME_Death, damagetype);
 	}
 	return (death == NULL) ? -1 : damage;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, TakeSpecialDamage)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(inflictor, AActor);
+	PARAM_OBJECT(source, AActor);
+	PARAM_INT(damage);
+	PARAM_NAME(damagetype);
+	ACTION_RETURN_INT(self->TakeSpecialDamage(inflictor, source, damage, damagetype));
+}
+
+int AActor::CallTakeSpecialDamage(AActor *inflictor, AActor *source, int damage, FName damagetype)
+{
+	IFVIRTUAL(AActor, TakeSpecialDamage)
+	{
+		VMValue params[5] = { (DObject*)this, inflictor, source, damage, damagetype.GetIndex() };
+		VMReturn ret;
+		VMFrameStack stack;
+		int retval;
+		ret.IntAt(&retval);
+		stack.Call(func, params, 5, &ret, 1, nullptr);
+		return retval;
+	}
+	else return TakeSpecialDamage(inflictor, source, damage, damagetype);
+
 }
 
 void AActor::Crash()
@@ -7439,13 +7542,20 @@ DEFINE_ACTION_FUNCTION(AActor, Vec2Angle)
 }
 
 
+DEFINE_ACTION_FUNCTION(AActor, Vec3To)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(t, AActor)
+	ACTION_RETURN_VEC3(self->Vec3To(t));
+}
+
 DEFINE_ACTION_FUNCTION(AActor, Vec3Angle)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_FLOAT(length)
-	PARAM_ANGLE(angle);
+		PARAM_ANGLE(angle);
 	PARAM_FLOAT(z);
-	PARAM_BOOL_DEF(absolute); 
+	PARAM_BOOL_DEF(absolute);
 	ACTION_RETURN_VEC3(self->Vec3Angle(length, angle, z, absolute));
 }
 

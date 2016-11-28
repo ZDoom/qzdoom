@@ -859,6 +859,7 @@ public:
 	static PClassActor *FindActor(const FString &name)	{ return FindActor(FName(name, true)); }
 	static PClassActor *FindActor(ENamedName name)		{ return FindActor(FName(name)); }
 	static PClassActor *FindActor(FName name);
+	static VMFunction *FindFunction(FName cls, FName func);
 	PClass *FindClassTentative(FName name);
 
 	static TArray<PClass *> AllClasses;
@@ -944,6 +945,7 @@ extern PSpriteID *TypeSpriteID;
 extern PStruct *TypeVector2;
 extern PStruct *TypeVector3;
 extern PStruct *TypeColorStruct;
+extern PStruct *TypeStringStruct;
 extern PStatePointer *TypeState;
 extern PStateLabel *TypeStateLabel;
 extern PPointer *TypeNullPtr;

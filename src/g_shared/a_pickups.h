@@ -168,11 +168,13 @@ public:
 	bool CallTryPickup (AActor *toucher, AActor **toucher_return = NULL);
 	virtual void DoPickupSpecial (AActor *toucher);
 	virtual bool SpecialDropAction (AActor *dropper);
+	bool CallSpecialDropAction(AActor *dropper);
 	virtual bool DrawPowerup (int x, int y);
 	virtual void DoEffect ();
 	virtual bool Grind(bool items);
 
-	virtual const char *PickupMessage ();
+	virtual FString PickupMessage ();
+	FString GetPickupMessage();
 	virtual void PlayPickupSound (AActor *toucher);
 
 	bool DoRespawn ();
@@ -194,13 +196,14 @@ public:
 
 	FSoundIDNoInit PickupSound;
 
-	virtual void BecomeItem ();
-	virtual void BecomePickup ();
+	void BecomeItem ();
+	void BecomePickup ();
 	virtual void AttachToOwner (AActor *other);
 	virtual void DetachFromOwner ();
 	virtual AInventory *CreateCopy (AActor *other);
 	AInventory *CallCreateCopy(AActor *other);
 	virtual AInventory *CreateTossable ();
+	AInventory *CallCreateTossable();
 	virtual bool GoAway ();
 	virtual void GoAwayAndDie ();
 	virtual bool HandlePickup (AInventory *item);
@@ -227,7 +230,7 @@ protected:
 
 private:
 	static int StaticLastMessageTic;
-	static const char *StaticLastMessage;
+	static FString StaticLastMessage;
 };
 
 class AStateProvider : public AInventory
@@ -437,7 +440,7 @@ class AHealth : public AInventory
 public:
 	int PrevHealth;
 	virtual bool TryPickup (AActor *&other);
-	virtual const char *PickupMessage ();
+	virtual FString PickupMessage ();
 };
 
 // HealthPickup is some item that gives the player health when used.

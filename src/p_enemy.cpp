@@ -265,10 +265,11 @@ void P_NoiseAlert (AActor *target, AActor *emitter, bool splash, double maxdist)
 DEFINE_ACTION_FUNCTION(AActor, NoiseAlert)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_OBJECT(emitter, AActor);
+	PARAM_OBJECT(target, AActor);
 	PARAM_BOOL_DEF(splash);
 	PARAM_FLOAT_DEF(maxdist);
-	P_NoiseAlert(self, emitter, splash, maxdist);
+	// Note that the emitter is self, not the target of the alert! Target can be NULL.
+	P_NoiseAlert(target, self, splash, maxdist);
 	return 0;
 }
 
@@ -3209,7 +3210,7 @@ AInventory *P_DropItem (AActor *source, PClassActor *type, int dropamount, int c
 				AInventory *inv = static_cast<AInventory *>(mo);
 				ModifyDropAmount(inv, dropamount);
 				inv->ItemFlags |= IF_TOSSED;
-				if (inv->SpecialDropAction (source))
+				if (inv->CallSpecialDropAction (source))
 				{
 					// The special action indicates that the item should not spawn
 					inv->Destroy();
@@ -3221,6 +3222,15 @@ AInventory *P_DropItem (AActor *source, PClassActor *type, int dropamount, int c
 		}
 	}
 	return NULL;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, DoDropItem)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_CLASS(cls, AActor);
+	PARAM_INT(amt);
+	PARAM_INT(chance);
+	ACTION_RETURN_OBJECT(P_DropItem(self, cls, amt, chance));
 }
 
 //============================================================================
@@ -3337,6 +3347,12 @@ bool CheckBossDeath (AActor *actor)
 	}
 	// The boss death is good
 	return true;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, CheckBossDeath)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_BOOL(CheckBossDeath(self));
 }
 
 //

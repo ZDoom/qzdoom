@@ -105,8 +105,7 @@ void P_TouchSpecialThing (AActor *special, AActor *toucher)
 		toucher->player->Bot->prev = toucher->player->Bot->dest;
 		toucher->player->Bot->dest = NULL;
 	}
-
-	special->Touch (toucher);
+	special->CallTouch (toucher);
 }
 
 
@@ -767,7 +766,7 @@ DEFINE_ACTION_FUNCTION(AActor, Die)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(source, AActor);
 	PARAM_OBJECT(inflictor, AActor);
-	PARAM_INT(dmgflags);
+	PARAM_INT_DEF(dmgflags);
 	self->Die(source, inflictor, dmgflags);
 	return 0;
 }
@@ -1122,7 +1121,7 @@ int P_DamageMobj (AActor *target, AActor *inflictor, AActor *source, int damage,
 
 			if (damage >= 0)
 			{
-				damage = target->TakeSpecialDamage(inflictor, source, damage, mod);
+				damage = target->CallTakeSpecialDamage(inflictor, source, damage, mod);
 			}
 
 			// '<0' is handled below. This only handles the case where damage gets reduced to 0.

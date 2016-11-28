@@ -638,6 +638,7 @@ public:
 
 	// Like DoSpecialDamage, but called on the actor receiving the damage.
 	virtual int TakeSpecialDamage (AActor *inflictor, AActor *source, int damage, FName damagetype);
+	int CallTakeSpecialDamage(AActor *inflictor, AActor *source, int damage, FName damagetype);
 
 	// Centaurs and ettins squeal when electrocuted, poisoned, or "holy"-ed
 	// Made a metadata property so no longer virtual
@@ -674,6 +675,7 @@ public:
 
 	// Something just touched this actor.
 	virtual void Touch (AActor *toucher);
+	void CallTouch(AActor *toucher);
 
 	// Adds the item to this actor's inventory and sets its Owner.
 	virtual void AddInventory (AInventory *item);
@@ -695,7 +697,7 @@ public:
 	bool UseInventory(AInventory *item);
 
 	// Tosses an item out of the inventory.
-	virtual AInventory *DropInventory (AInventory *item);
+	AInventory *DropInventory (AInventory *item);
 
 	// Removes all items from the inventory.
 	void ClearInventory();

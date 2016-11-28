@@ -46,6 +46,8 @@
 #include "p_maputl.h"
 #include "gi.h"
 #include "p_terrain.h"
+#include "gstrings.h"
+#include "zstring.h"
 
 static TArray<FPropertyInfo*> properties;
 static TArray<AFuncDesc> AFTable;
@@ -741,6 +743,12 @@ void InitThingdef()
 	playerf = new PField("playeringame", parray, VARF_Native | VARF_Static | VARF_ReadOnly, (intptr_t)&playeringame);
 	GlobalSymbols.AddSymbol(playerf);
 
+	// Argh. It sucks when bad hacks need to be supported. WP_NOCHANGE is just a bogus pointer but it used everywhere as a special flag.
+	// It cannot be defined as constant because constants can either be numbers or strings but nothing else, so the only 'solution'
+	// is to create a static variable from it and reference that in the script. Yuck!!!
+	static AWeapon *wpnochg = WP_NOCHANGE;
+	playerf = new PField("WP_NOCHANGE", NewPointer(RUNTIME_CLASS(AWeapon), false), VARF_Native | VARF_Static | VARF_ReadOnly, (intptr_t)&wpnochg);
+	GlobalSymbols.AddSymbol(playerf);
 
 	// this needs to be done manually until it can be given a proper type.
 	RUNTIME_CLASS(AActor)->AddNativeField("DecalGenerator", NewPointer(TypeVoid), myoffsetof(AActor, DecalGenerator));
@@ -825,4 +833,20 @@ DEFINE_ACTION_FUNCTION(DObject, GameType)
 {
 	PARAM_PROLOGUE;
 	ACTION_RETURN_INT(gameinfo.gametype);
+}
+
+DEFINE_ACTION_FUNCTION(FStringTable, Localize)
+{
+	PARAM_PROLOGUE;
+	PARAM_STRING(label);
+	ACTION_RETURN_STRING(GStrings(label));
+}
+
+DEFINE_ACTION_FUNCTION(FString, Replace)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_STRING(s1);
+	PARAM_STRING(s2);
+	self->Substitute(*s1, *s2);
+	return 0;
 }

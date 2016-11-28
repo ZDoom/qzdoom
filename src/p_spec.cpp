@@ -1609,3 +1609,4 @@ void sector_t::AdjustFloorClip () const
 		}
 	}
 }
+

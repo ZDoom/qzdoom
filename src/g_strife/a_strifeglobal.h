@@ -13,16 +13,6 @@ public:
 	bool Use (bool pickup);
 };
 
-class ACoin : public AInventory
-{
-	DECLARE_CLASS (ACoin, AInventory)
-public:
-	const char *PickupMessage ();
-	bool HandlePickup (AInventory *item);
-	AInventory *CreateTossable ();
-	AInventory *CreateCopy (AActor *other);
-};
-
 class ADummyStrifeItem : public AInventory
 {
 	DECLARE_CLASS (ADummyStrifeItem, AInventory)
@@ -49,20 +39,6 @@ public:
 	bool TryPickup (AActor *&toucher);
 };
 
-class ASigil : public AWeapon
-{
-	DECLARE_CLASS (ASigil, AWeapon)
-public:
-	bool HandlePickup (AInventory *item);
-	AInventory *CreateCopy (AActor *other);
-	
-	void Serialize(FSerializer &arc);
-	bool SpecialDropAction (AActor *dropper);
-	static int GiveSigilPiece (AActor *daPlayer);
-	void BeginPlay();
-
-	int NumPieces, DownPieces;
-};
 
 extern PClassActor *QuestItemClasses[31];
 

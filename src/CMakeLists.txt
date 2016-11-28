@@ -922,23 +922,8 @@ set( NOT_COMPILED_SOURCE_FILES
 	sc_man_scanner.re
 	g_hexen/a_heresiarch.cpp
 	g_hexen/a_spike.cpp
-	g_strife/a_alienspectres.cpp
-	g_strife/a_coin.cpp
-	g_strife/a_crusader.cpp
-	g_strife/a_entityboss.cpp
-	g_strife/a_inquisitor.cpp
-	g_strife/a_loremaster.cpp
-	g_strife/a_oracle.cpp
-	g_strife/a_programmer.cpp
-	g_strife/a_reaver.cpp
-	g_strife/a_rebels.cpp
-	g_strife/a_sentinel.cpp
-	g_strife/a_spectral.cpp
-	g_strife/a_stalker.cpp
 	g_strife/a_strifeitems.cpp
 	g_strife/a_strifeweapons.cpp
-	g_strife/a_templar.cpp
-	g_strife/a_thingstoblowup.cpp
 	g_shared/sbarinfo_commands.cpp
 	xlat/xlat_parser.y
 	xlat_parser.c
