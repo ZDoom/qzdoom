@@ -154,6 +154,7 @@ AActor::~AActor ()
 extern FFlagDef InternalActorFlagDefs[];
 extern FFlagDef ActorFlagDefs[];
 
+DEFINE_FIELD(AActor, snext)
 DEFINE_FIELD(AActor, player)
 DEFINE_FIELD_NAMED(AActor, __Pos, pos)
 DEFINE_FIELD_NAMED(AActor, __Pos.X, x)
@@ -1748,6 +1749,15 @@ void P_ExplodeMissile (AActor *mo, line_t *line, AActor *target)
 		mo->flags &= ~MF_MISSILE;
 
 	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, ExplodeMissile)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_POINTER_DEF(line, line_t);
+	PARAM_OBJECT_DEF(target, AActor);
+	P_ExplodeMissile(self, line, target);
+	return 0;
 }
 
 
@@ -3356,6 +3366,7 @@ bool AActor::SpecialBlastHandling (AActor *source, double strength)
 }
 
 // This only gets called from the script side so we do not need a native wrapper like for the other virtual methods.
+// This will be removed, once all actors overriding this method are exported.
 DEFINE_ACTION_FUNCTION(AActor, SpecialBlastHandling)
 {
 	PARAM_SELF_PROLOGUE(AActor);
@@ -3364,10 +3375,20 @@ DEFINE_ACTION_FUNCTION(AActor, SpecialBlastHandling)
 	ACTION_RETURN_BOOL(self->SpecialBlastHandling(source, strength));
 }
 
-
+// This virtual method only exists on the script side.
 int AActor::SpecialMissileHit (AActor *victim)
 {
-	return -1;
+	IFVIRTUAL(AActor, SpecialMissileHit)
+	{
+		VMValue params[2] = { (DObject*)this, victim };
+		VMReturn ret;
+		int retval;
+		VMFrameStack stack;
+		ret.IntAt(&retval);
+		stack.Call(func, params, 2, &ret, 1, nullptr);
+		return retval;
+	}
+	else return -1;
 }
 
 bool AActor::AdjustReflectionAngle (AActor *thing, DAngle &angle)
@@ -5886,6 +5907,13 @@ int P_GetThingFloorType (AActor *thing)
 		return thing->Sector->GetTerrain(sector_t::floor);
 	}
 }
+
+DEFINE_ACTION_FUNCTION(AActor, GetFloorTerrain)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_POINTER(&Terrains[P_GetThingFloorType(self)]);
+}
+
 
 //---------------------------------------------------------------------------
 //

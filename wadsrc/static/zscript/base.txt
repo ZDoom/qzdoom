@@ -92,6 +92,7 @@ struct LevelLocals native
 	native bool monsterfallingdamage;
 	native bool checkswitchrange;
 	native bool polygrind;
+	native bool nomonsters;
 // level_info_t *info cannot be done yet.
 }
 
@@ -129,6 +130,23 @@ struct F3DFloor native
 {
 }
 
+struct Line native
+{
+	//native readonly vertex		v1, v2;		// vertices, from v1 to v2
+	native readonly Vector2			delta;		// precalculated v2 - v1 for side checking
+	native uint						flags;
+	native uint						activation;	// activation type
+	native int						special;
+	native int						args[5];	// <--- hexen-style arguments (expanded to ZDoom's full width)
+	native double					alpha;		// <--- translucency (0=invisibile, FRACUNIT=opaque)
+	//native Side					sidedef[2];
+	native readonly double			bbox[4];	// bounding box, for the extent of the LineDef.
+	native readonly Sector			frontsector, backsector;
+	native int 						validcount;	// if == validcount, already checked
+	native int						locknumber;	// [Dusk] lock number for special
+	native readonly uint			portalindex;
+}
+
 struct Sector native
 {
 	//secplane_t	floorplane, ceilingplane;
@@ -145,7 +163,7 @@ struct Sector native
 
 	native readonly Vector2		centerspot;	
 	native int 			validcount;	
-	//AActor* 	thinglist;	
+	native Actor		thinglist;	
 
 	native double		friction, movefactor;
 	native int			terrainnum[2];
@@ -170,7 +188,7 @@ struct Sector native
 	native int	 		nextsec;
 
 	native readonly int16 		linecount;
-	//line_t **lines;
+	//line_t **lines; // this is defined internally to avoid exposing some overly complicated type to the parser
 
 	native readonly Sector		heightsec;
 
@@ -229,4 +247,29 @@ struct Wads
 	}
 
 	native static int CheckNumForName(string name, int ns, int wadnum = -1, bool exact = false);
+}
+
+struct TerrainDef native
+{
+	native Name TerrainName;
+	native int Splash;
+	native int DamageAmount;
+	native Name DamageMOD;
+	native int DamageTimeMask;
+	native double FootClip;
+	native float StepVolume;
+	native int WalkStepTics;
+	native int RunStepTics;
+	native Sound LeftStepSound;
+	native Sound RightStepSound;
+	native bool IsLiquid;
+	native bool AllowProtection;
+	native double Friction;
+	native double MoveFactor;
+};
+
+enum EPickStart
+{
+	PPS_FORCERANDOM			= 1,
+	PPS_NOBLOCKINGCHECK		= 2,
 }
