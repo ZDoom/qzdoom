@@ -901,7 +901,7 @@ void APlayerPawn::RemoveInventory (AInventory *item)
 //
 //===========================================================================
 
-bool APlayerPawn::DoUseInventory (AInventory *item)
+bool APlayerPawn::UseInventory (AInventory *item)
 {
 	const PClass *itemtype = item->GetClass();
 
@@ -915,7 +915,7 @@ bool APlayerPawn::DoUseInventory (AInventory *item)
 		return false;
 	}
 
-	if (!Super::DoUseInventory (item))
+	if (!Super::UseInventory (item))
 	{
 		// Heretic and Hexen advance the inventory cursor if the use failed.
 		// Should this behavior be retained?
@@ -1285,6 +1285,13 @@ bool APlayerPawn::ResetAirSupply (bool playgasp)
 	return wasdrowning;
 }
 
+DEFINE_ACTION_FUNCTION(APlayerPawn, ResetAirSupply)
+{
+	PARAM_SELF_PROLOGUE(APlayerPawn);
+	PARAM_BOOL_DEF(playgasp);
+	ACTION_RETURN_BOOL(self->ResetAirSupply(playgasp));
+}
+
 //===========================================================================
 //
 // Animations
@@ -1293,14 +1300,22 @@ bool APlayerPawn::ResetAirSupply (bool playgasp)
 
 void APlayerPawn::PlayIdle ()
 {
-	if (InStateSequence(state, SeeState))
-		SetState (SpawnState);
+	IFVIRTUAL(APlayerPawn, PlayIdle)
+	{
+		VMValue params[1] = { (DObject*)this };
+		VMFrameStack stack;
+		stack.Call(func, params, 1, nullptr, 0, nullptr);
+	}
 }
 
 void APlayerPawn::PlayRunning ()
 {
-	if (InStateSequence(state, SpawnState) && SeeState != NULL)
-		SetState (SeeState);
+	IFVIRTUAL(APlayerPawn, PlayRunning)
+	{
+		VMValue params[1] = { (DObject*)this };
+		VMFrameStack stack;
+		stack.Call(func, params, 1, nullptr, 0, nullptr);
+	}
 }
 
 void APlayerPawn::PlayAttacking ()
@@ -1321,10 +1336,6 @@ void APlayerPawn::PlayAttacking2 ()
 		VMFrameStack stack;
 		stack.Call(func, params, 1, nullptr, 0, nullptr);
 	}
-}
-
-void APlayerPawn::ThrowPoisonBag ()
-{
 }
 
 //===========================================================================

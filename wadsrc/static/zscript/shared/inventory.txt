@@ -41,7 +41,8 @@ class Inventory : Actor native
 	private native void A_RestoreSpecialDoomThing();
 	private native void A_RestoreSpecialThing1();
 	private native void A_RestoreSpecialThing2();
-	
+
+	virtual native bool TryPickup(in out Actor toucher);
 	native bool, Actor CallTryPickup(Actor toucher);
 
 	States(Actor, Overlay, Weapon, Item)
@@ -82,7 +83,6 @@ class StateProvider : Inventory native
 	action native void A_ClearReFire();
 	action native void A_CheckReload();
 	action native void A_GunFlash(statelabel flash = null, int flags = 0);
-	action native void A_FireAssaultGun();
 	action native state A_CheckForReload(int counter, statelabel label, bool dontincrement = false);
 	action native void A_ResetReloadCounter();
 }

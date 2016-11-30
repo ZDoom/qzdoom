@@ -42,7 +42,6 @@
 #include "c_cvars.h"
 #include "p_enemy.h"
 #include "a_sharedglobal.h"
-#include "a_action.h"
 #include "d_dehacked.h"
 #include "g_level.h"
 #include "r_utility.h"
@@ -270,6 +269,70 @@ DEFINE_ACTION_FUNCTION(AActor, NoiseAlert)
 	PARAM_FLOAT_DEF(maxdist);
 	// Note that the emitter is self, not the target of the alert! Target can be NULL.
 	P_NoiseAlert(target, self, splash, maxdist);
+	return 0;
+}
+
+//============================================================================
+//
+// P_DaggerAlert
+//
+//============================================================================
+
+void P_DaggerAlert(AActor *target, AActor *emitter)
+{
+	AActor *looker;
+	sector_t *sec = emitter->Sector;
+
+	if (emitter->LastHeard != NULL)
+		return;
+	if (emitter->health <= 0)
+		return;
+	if (!(emitter->flags3 & MF3_ISMONSTER))
+		return;
+	if (emitter->flags4 & MF4_INCOMBAT)
+		return;
+	emitter->flags4 |= MF4_INCOMBAT;
+
+	emitter->target = target;
+	FState *painstate = emitter->FindState(NAME_Pain, NAME_Dagger);
+	if (painstate != NULL)
+	{
+		emitter->SetState(painstate);
+	}
+
+	for (looker = sec->thinglist; looker != NULL; looker = looker->snext)
+	{
+		if (looker == emitter || looker == target)
+			continue;
+
+		if (looker->health <= 0)
+			continue;
+
+		if (!(looker->flags4 & MF4_SEESDAGGERS))
+			continue;
+
+		if (!(looker->flags4 & MF4_INCOMBAT))
+		{
+			if (!P_CheckSight(looker, target) && !P_CheckSight(looker, emitter))
+				continue;
+
+			looker->target = target;
+			if (looker->SeeSound)
+			{
+				S_Sound(looker, CHAN_VOICE, looker->SeeSound, 1, ATTN_NORM);
+			}
+			looker->SetState(looker->SeeState);
+			looker->flags4 |= MF4_INCOMBAT;
+		}
+	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, DaggerAlert)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(target, AActor);
+	// Note that the emitter is self, not the target of the alert! Target can be NULL.
+	P_DaggerAlert(target, self);
 	return 0;
 }
 
@@ -1220,6 +1283,14 @@ void P_RandomChaseDir (AActor *actor)
 	actor->movedir = DI_NODIR;	// cannot move
 }
 
+DEFINE_ACTION_FUNCTION(AActor, RandomChaseDir)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	P_RandomChaseDir(self);
+	return 0;
+}
+
+
 //---------------------------------------------------------------------------
 //
 // P_IsVisible
@@ -1270,6 +1341,15 @@ bool P_IsVisible(AActor *lookee, AActor *other, INTBOOL allaround, FLookExParams
 
 	// P_CheckSight is by far the most expensive operation in here so let's do it last.
 	return P_CheckSight(lookee, other, SF_SEEPASTSHOOTABLELINES);
+}
+
+DEFINE_ACTION_FUNCTION(AActor, IsVisible)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(other, AActor);
+	PARAM_BOOL(allaround);
+	PARAM_POINTER_DEF(params, FLookExParams);
+	ACTION_RETURN_BOOL(P_IsVisible(self, other, allaround, params));
 }
 
 //---------------------------------------------------------------------------
@@ -1323,6 +1403,12 @@ bool P_LookForMonsters (AActor *actor)
 		return true;
 	}
 	return false;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, LookForMonsters)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_BOOL(P_LookForMonsters(self));
 }
 
 //============================================================================
@@ -1497,6 +1583,14 @@ bool P_LookForTID (AActor *actor, INTBOOL allaround, FLookExParams *params)
 	return false;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, LookForTID)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_BOOL(allaround);
+	PARAM_POINTER_DEF(params, FLookExParams);
+	ACTION_RETURN_BOOL(P_LookForTID(self, allaround, params));
+}
+
 //============================================================================
 //
 // LookForEnemiesinBlock
@@ -1635,6 +1729,15 @@ bool P_LookForEnemies (AActor *actor, INTBOOL allaround, FLookExParams *params)
 	}
 	return false;
 }
+
+DEFINE_ACTION_FUNCTION(AActor, LookForEnemies)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_BOOL(allaround);
+	PARAM_POINTER_DEF(params, FLookExParams);
+	ACTION_RETURN_BOOL(P_LookForEnemies(self, allaround, params));
+}
+
 
 /*
 ================
@@ -1823,7 +1926,8 @@ DEFINE_ACTION_FUNCTION(AActor, LookForPlayers)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL(allaround);
-	ACTION_RETURN_BOOL(P_LookForPlayers(self, allaround, nullptr));
+	PARAM_POINTER_DEF(params, FLookExParams);
+	ACTION_RETURN_BOOL(P_LookForPlayers(self, allaround, params));
 }
 
 //

@@ -48,6 +48,7 @@
 #include "p_terrain.h"
 #include "gstrings.h"
 #include "zstring.h"
+#include "d_event.h"
 
 static TArray<FPropertyInfo*> properties;
 static TArray<AFuncDesc> AFTable;
@@ -743,6 +744,12 @@ void InitThingdef()
 	playerf = new PField("playeringame", parray, VARF_Native | VARF_Static | VARF_ReadOnly, (intptr_t)&playeringame);
 	GlobalSymbols.AddSymbol(playerf);
 
+	playerf = new PField("gameaction", TypeUInt8, VARF_Native | VARF_Static, (intptr_t)&gameaction);
+	GlobalSymbols.AddSymbol(playerf);
+
+	playerf = new PField("consoleplayer", TypeSInt32, VARF_Native | VARF_Static | VARF_ReadOnly, (intptr_t)&consoleplayer);
+	GlobalSymbols.AddSymbol(playerf);
+
 	// Argh. It sucks when bad hacks need to be supported. WP_NOCHANGE is just a bogus pointer but it used everywhere as a special flag.
 	// It cannot be defined as constant because constants can either be numbers or strings but nothing else, so the only 'solution'
 	// is to create a static variable from it and reference that in the script. Yuck!!!
@@ -835,6 +842,13 @@ DEFINE_ACTION_FUNCTION(DObject, GameType)
 	ACTION_RETURN_INT(gameinfo.gametype);
 }
 
+DEFINE_ACTION_FUNCTION(DObject, BAM)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(ang);
+	ACTION_RETURN_INT(DAngle(ang).BAMs());
+}
+
 DEFINE_ACTION_FUNCTION(FStringTable, Localize)
 {
 	PARAM_PROLOGUE;
@@ -850,3 +864,4 @@ DEFINE_ACTION_FUNCTION(FString, Replace)
 	self->Substitute(*s1, *s2);
 	return 0;
 }
+

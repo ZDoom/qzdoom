@@ -874,7 +874,6 @@ endif()
 file( GLOB HEADER_FILES
 	${EXTRA_HEADER_DIRS}
 	fragglescript/*.h
-	g_hexen/*.h
 	g_shared/*.h
 	g_strife/*.h
 	intermission/*.h
@@ -920,10 +919,6 @@ set( NOT_COMPILED_SOURCE_FILES
 	${OTHER_SYSTEM_SOURCES}
 	sc_man_scanner.h
 	sc_man_scanner.re
-	g_hexen/a_heresiarch.cpp
-	g_hexen/a_spike.cpp
-	g_strife/a_strifeitems.cpp
-	g_strife/a_strifeweapons.cpp
 	g_shared/sbarinfo_commands.cpp
 	xlat/xlat_parser.y
 	xlat_parser.c
@@ -1256,38 +1251,28 @@ set (PCH_SOURCES
 	w_wad.cpp
 	wi_stuff.cpp
 	zstrformat.cpp
-	g_hexen/a_hexenmisc.cpp
-	g_strife/a_strifestuff.cpp
 	g_strife/strife_sbar.cpp
 	g_shared/a_action.cpp
 	g_shared/a_armor.cpp
 	g_shared/a_artifacts.cpp
 	g_shared/a_bridge.cpp
-	g_shared/a_camera.cpp
-	g_shared/a_debris.cpp
 	g_shared/a_decals.cpp
 	g_shared/a_fastprojectile.cpp
 	g_shared/a_flashfader.cpp
 	g_shared/a_fountain.cpp
-	g_shared/a_hatetarget.cpp
 	g_shared/a_keys.cpp
 	g_shared/a_lightning.cpp
-	g_shared/a_mapmarker.cpp
 	g_shared/a_morph.cpp
 	g_shared/a_movingcamera.cpp
 	g_shared/a_pickups.cpp
 	g_shared/a_puzzleitems.cpp
 	g_shared/a_quake.cpp
 	g_shared/a_randomspawner.cpp
-	g_shared/a_secrettrigger.cpp
 	g_shared/a_sectoraction.cpp
-	g_shared/a_setcolor.cpp
 	g_shared/a_skies.cpp
 	g_shared/a_soundenvironment.cpp
 	g_shared/a_soundsequence.cpp
-	g_shared/a_spark.cpp
 	g_shared/a_specialspot.cpp
-	g_shared/a_waterzone.cpp
 	g_shared/a_weaponpiece.cpp
 	g_shared/a_weapons.cpp
 	g_shared/hudmessages.cpp
@@ -1408,7 +1393,6 @@ endif()
 
 target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma )
 include_directories( .
-	g_hexen
 	g_strife
 	g_shared
 	oplsynth
@@ -1539,7 +1523,6 @@ source_group("External\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/m
 source_group("External\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/.+")
 source_group("Externak\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sfmt/.+")
 source_group("FraggleScript" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/fragglescript/.+")
-source_group("Games\\Hexen Game" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/g_hexen/.+")
 source_group("Games\\Strife Game" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/g_strife/.+")
 source_group("Intermission" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/intermission/.+")
 source_group("Menu" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/menu/.+")

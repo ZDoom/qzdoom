@@ -47,7 +47,6 @@
 #include "p_acs.h"
 #include "cmdlib.h"
 #include "decallib.h"
-#include "a_action.h"
 #include "a_keys.h"
 #include "p_conversation.h"
 #include "g_game.h"
@@ -569,6 +568,13 @@ bool AActor::InStateSequence(FState * newstate, FState * basestate)
 	return false;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, InStateSequence)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_POINTER(newstate, FState);
+	PARAM_POINTER(basestate, FState);
+	ACTION_RETURN_BOOL(self->InStateSequence(newstate, basestate));
+}
 //==========================================================================
 //
 // AActor::GetTics
@@ -737,6 +743,15 @@ void AActor::AddInventory (AInventory *item)
 	Inventory->InventoryID = InventoryID++;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, AddInventory)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(item, AInventory);
+	self->AddInventory(item);
+	return 0;
+}
+
+
 //============================================================================
 //
 // AActor :: GiveInventory
@@ -796,6 +811,14 @@ bool AActor::GiveInventory(PClassInventory *type, int amount, bool givecheat)
 	return result;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, Inventory)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(item, AInventory);
+	ACTION_RETURN_BOOL(self->UseInventory(item));
+}
+
+
 //============================================================================
 //
 // AActor :: RemoveInventory
@@ -822,6 +845,15 @@ void AActor::RemoveInventory(AInventory *item)
 		}
 	}
 }
+
+DEFINE_ACTION_FUNCTION(AActor, RemoveInventory)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(item, AInventory);
+	self->RemoveInventory(item);
+	return 0;
+}
+
 
 //============================================================================
 //
@@ -942,7 +974,7 @@ AInventory *AActor::FirstInv ()
 //
 //============================================================================
 
-bool AActor::DoUseInventory (AInventory *item)
+bool AActor::UseInventory (AInventory *item)
 {
 	// No using items if you're dead.
 	if (health <= 0)
@@ -973,23 +1005,7 @@ DEFINE_ACTION_FUNCTION(AActor, UseInventory)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(item, AInventory);
-	ACTION_RETURN_BOOL(self->DoUseInventory(item));
-}
-
-bool AActor::UseInventory(AInventory *item)
-{
-	IFVIRTUAL(AActor, UseInventory)
-	{
-		// Without the type cast this picks the 'void *' assignment...
-		VMValue params[2] = { (DObject*)this, (DObject*)item };
-		VMReturn ret;
-		VMFrameStack stack;
-		int retval;
-		ret.IntAt(&retval);
-		stack.Call(func, params, 2, &ret, 1, nullptr);
-		return !!retval;
-	}
-	else return DoUseInventory(item);
+	ACTION_RETURN_BOOL(self->UseInventory(item));
 }
 
 //===========================================================================
@@ -1203,6 +1219,14 @@ void AActor::ClearInventory()
 	}
 }
 
+DEFINE_ACTION_FUNCTION(AActor, ClearInventory)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->ClearInventory();
+	return 0;
+}
+
+
 //============================================================================
 //
 // AActor :: CopyFriendliness
@@ -1302,6 +1326,13 @@ bool AActor::CheckLocalView (int playernum) const
 		return true;
 	}
 	return false;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, CheckLocalView)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT(cp);
+	ACTION_RETURN_BOOL(self->CheckLocalView(cp));
 }
 
 //============================================================================
@@ -3186,6 +3217,18 @@ DEFINE_ACTION_FUNCTION(AActor, RemoveFromHash)
 	return 0;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, ChangeTid)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT(tid);
+	self->RemoveFromHash();
+	self->tid = tid;
+	self->AddToHash();
+	return 0;
+}
+
+
+
 //==========================================================================
 //
 // P_IsTIDUsed
@@ -3267,6 +3310,17 @@ int P_FindUniqueTID(int start_tid, int limit)
 	// Nothing free found.
 	return 0;
 }
+
+DEFINE_ACTION_FUNCTION(AActor, FindUniqueTid)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT_DEF(start);
+	PARAM_INT_DEF(limit);
+	ACTION_RETURN_INT(P_FindUniqueTID(start, limit));
+}
+
+
+
 
 CCMD(utid)
 {
@@ -3385,21 +3439,6 @@ bool AActor::CallSlam(AActor *thing)
 }
 
 
-
-bool AActor::SpecialBlastHandling (AActor *source, double strength)
-{
-	return true;
-}
-
-// This only gets called from the script side so we do not need a native wrapper like for the other virtual methods.
-// This will be removed, once all actors overriding this method are exported.
-DEFINE_ACTION_FUNCTION(AActor, SpecialBlastHandling)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_OBJECT(source, AActor);
-	PARAM_FLOAT(strength);
-	ACTION_RETURN_BOOL(self->SpecialBlastHandling(source, strength));
-}
 
 // This virtual method only exists on the script side.
 int AActor::SpecialMissileHit (AActor *victim)
@@ -3545,6 +3584,14 @@ void AActor::SetShade (DWORD rgb)
 void AActor::SetShade (int r, int g, int b)
 {
 	fillcolor = MAKEARGB(ColorMatcher.Pick (r, g, b), r, g, b);
+}
+
+DEFINE_ACTION_FUNCTION(AActor, SetShade)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT(color);
+	self->SetShade(color);
+	return 0;
 }
 
 void AActor::SetPitch(DAngle p, bool interpolate, bool forceclamp)
@@ -5787,6 +5834,19 @@ void P_SpawnBlood (const DVector3 &pos1, DAngle dir, int damage, AActor *origina
 		P_DrawSplash2 (40, pos, dir, 2, bloodcolor);
 }
 
+DEFINE_ACTION_FUNCTION(AActor, SpawnBlood)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(z);
+	PARAM_ANGLE(dir);
+	PARAM_INT(damage);
+	P_SpawnBlood(DVector3(x, y, z), dir, damage, self);
+	return 0;
+}
+
+
 //---------------------------------------------------------------------------
 //
 // PROC P_BloodSplatter
@@ -5868,6 +5928,20 @@ void P_BloodSplatter2 (const DVector3 &pos, AActor *originator, DAngle hitangle)
 		P_DrawSplash2(40, pos + add, hitangle - 180., 2, bloodcolor);
 	}
 }
+
+DEFINE_ACTION_FUNCTION(AActor, BloodSplatter)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(z);
+	PARAM_ANGLE(dir);
+	PARAM_BOOL_DEF(axe);
+	if (axe) P_BloodSplatter2(DVector3(x, y, z), self, dir);
+	else P_BloodSplatter(DVector3(x, y, z), self, dir);
+	return 0;
+}
+
 
 //---------------------------------------------------------------------------
 //
@@ -6088,6 +6162,20 @@ foundone:
 	return plane == &sec->floorplane ? Terrains[terrainnum].IsLiquid : false;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, HitWater)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_POINTER(sec, sector_t);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(z);
+	PARAM_BOOL_DEF(checkabove);
+	PARAM_BOOL_DEF(alert);
+	PARAM_BOOL_DEF(force);
+	ACTION_RETURN_BOOL(P_HitWater(self, sec, DVector3(x, y, z), checkabove, alert, force));
+}
+
+
 //---------------------------------------------------------------------------
 //
 // FUNC P_HitFloor
@@ -6293,6 +6381,15 @@ void P_PlaySpawnSound(AActor *missile, AActor *spawner)
 		}
 	}
 }
+
+DEFINE_ACTION_FUNCTION(AActor, PlaySpawnSound)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(missile, AActor);
+	P_PlaySpawnSound(missile, self);
+	return 0;
+}
+
 
 static double GetDefaultSpeed(PClassActor *type)
 {
@@ -6921,6 +7018,14 @@ bool AActor::IsHostile (AActor *other)
 	return true;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, isHostile)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(other, AActor);
+	ACTION_RETURN_BOOL(self->IsHostile(other));
+}
+
+
 //==========================================================================
 //
 // AActor :: DoSpecialDamage
@@ -7189,6 +7294,13 @@ double AActor::GetCameraHeight() const
 	return GetClass()->CameraHeight == INT_MIN ? Height / 2 : GetClass()->CameraHeight;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, GetCameraHeight)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_FLOAT(self->GetCameraHeight());
+}
+
+
 DDropItem *AActor::GetDropItems() const
 {
 	return GetClass()->DropItems;
@@ -7205,6 +7317,13 @@ double AActor::GetGravity() const
 	if (flags & MF_NOGRAVITY) return 0;
 	return level.gravity * Sector->gravity * Gravity * 0.00125;
 }
+
+DEFINE_ACTION_FUNCTION(AActor, GetGravity)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_FLOAT(self->GetGravity());
+}
+
 
 // killough 11/98:
 // Whether an object is "sentient" or not. Used for environmental influences.
@@ -7250,14 +7369,17 @@ DEFINE_ACTION_FUNCTION(AActor, GetTag)
 
 void AActor::SetTag(const char *def)
 {
-	if (def == NULL || *def == 0) 
-	{
-		Tag = NULL;
-	}
-	else 
-	{
-		Tag = mStringPropertyData.Alloc(def);
-	}
+	if (def == NULL || *def == 0) Tag = nullptr;
+	else Tag = mStringPropertyData.Alloc(def);
+}
+
+DEFINE_ACTION_FUNCTION(AActor, SetTag)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_STRING(def);
+	if (def.IsEmpty()) self->Tag = nullptr;
+	else self->Tag = self->mStringPropertyData.Alloc(def);
+	return 0;
 }
 
 
@@ -7402,6 +7524,13 @@ DEFINE_ACTION_FUNCTION(AActor, Distance2D)
 	ACTION_RETURN_FLOAT(self->Distance2D(other));
 }
 
+DEFINE_ACTION_FUNCTION(AActor, Distance3D)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(other, AActor);
+	ACTION_RETURN_FLOAT(self->Distance3D(other));
+}
+
 DEFINE_ACTION_FUNCTION(AActor, AddZ)
 {
 	PARAM_SELF_PROLOGUE(AActor);
@@ -7462,6 +7591,17 @@ DEFINE_ACTION_FUNCTION(AActor, VelFromAngle)
 			self->VelFromAngle(speed, angle);
 		}
 	}
+	return 0;
+}
+
+// This combines all 3 variations of the internal function
+DEFINE_ACTION_FUNCTION(AActor, Vel3DFromAngle)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(speed);
+	PARAM_ANGLE(angle);
+	PARAM_ANGLE(pitch);
+	self->Vel3DFromAngle(pitch, angle, speed);
 	return 0;
 }
 
@@ -7549,6 +7689,13 @@ DEFINE_ACTION_FUNCTION(AActor, Vec3To)
 	ACTION_RETURN_VEC3(self->Vec3To(t));
 }
 
+DEFINE_ACTION_FUNCTION(AActor, Vec2To)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(t, AActor)
+		ACTION_RETURN_VEC2(self->Vec2To(t));
+}
+
 DEFINE_ACTION_FUNCTION(AActor, Vec3Angle)
 {
 	PARAM_SELF_PROLOGUE(AActor);
@@ -7567,6 +7714,15 @@ DEFINE_ACTION_FUNCTION(AActor, Vec2OffsetZ)
 	PARAM_FLOAT(z);
 	PARAM_BOOL_DEF(absolute);
 	ACTION_RETURN_VEC3(self->Vec2OffsetZ(x, y, z, absolute));
+}
+
+DEFINE_ACTION_FUNCTION(AActor, Vec2Offset)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_BOOL_DEF(absolute);
+	ACTION_RETURN_VEC2(self->Vec2Offset(x, y, absolute));
 }
 
 DEFINE_ACTION_FUNCTION(AActor, Vec3Offset)
@@ -7607,6 +7763,17 @@ DEFINE_ACTION_FUNCTION(AActor, ClearBounce)
 	return 0;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, AccuracyFactor)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_FLOAT(self->AccuracyFactor());
+}
+
+DEFINE_ACTION_FUNCTION(AActor, CountsAsKill)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_FLOAT(self->CountsAsKill());
+}
 
 //----------------------------------------------------------------------------
 //

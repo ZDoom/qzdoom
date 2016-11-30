@@ -297,6 +297,14 @@ void P_FindFloorCeiling(AActor *actor, int flags)
 	}
 }
 
+DEFINE_ACTION_FUNCTION(AActor, FindFloorCeiling)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT_DEF(flags); 
+	P_FindFloorCeiling(self, flags);
+	return 0;
+}
+
 // Debug CCMD for checking errors in the MultiBlockLinesIterator (needs to be removed when this code is complete)
 CCMD(ffcf)
 {
@@ -661,6 +669,21 @@ double P_GetMoveFactor(const AActor *mo, double *frictionp)
 	return movefactor;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, GetFriction)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	double friction, movefactor = P_GetMoveFactor(self, &friction);
+	if (numret > 1)
+	{
+		numret = 2;
+		ret[1].SetFloat(movefactor);
+	}
+	if (numret > 0)
+	{
+		ret[0].SetFloat(friction);
+	}
+	return numret;
+}
 
 //==========================================================================
 //
@@ -1884,6 +1907,26 @@ bool P_TestMobjZ(AActor *actor, bool quick, AActor **pOnmobj)
 	if (pOnmobj) *pOnmobj = onmobj;
 	return onmobj == NULL;
 }
+
+DEFINE_ACTION_FUNCTION(AActor, TestMobjZ)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_BOOL_DEF(quick);
+	
+	AActor *on = nullptr;;
+	bool retv = P_TestMobjZ(self, quick, &on);
+	if (numret > 1)
+	{
+		numret = 2;
+		ret[1].SetPointer(on, ATAG_OBJECT);
+	}
+	if (numret > 0)
+	{
+		ret[0].SetInt(retv);
+	}
+	return numret;
+}
+
 
 //=============================================================================
 //
@@ -4652,16 +4695,6 @@ void P_TraceBleed(int damage, AActor *target, AActor *missile)
 	P_TraceBleed(damage, target->PosPlusZ(target->Height/2), target, missile->AngleTo(target), pitch);
 }
 
-DEFINE_ACTION_FUNCTION(AActor, TraceBleed)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT(damage);
-	PARAM_OBJECT(missile, AActor);
-
-	P_TraceBleed(damage, self, missile);
-	return 0;
-}
-
 //==========================================================================
 //
 //
@@ -4705,6 +4738,18 @@ void P_TraceBleed(int damage, AActor *target)
 		P_TraceBleed(damage, target->PosPlusZ(target->Height / 2), target, angle, pitch);
 	}
 }
+
+DEFINE_ACTION_FUNCTION(AActor, TraceBleed)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT(damage);
+	PARAM_OBJECT(missile, AActor);
+
+	if (missile) P_TraceBleed(damage, self, missile);
+	else P_TraceBleed(damage, self);
+	return 0;
+}
+
 
 //==========================================================================
 //

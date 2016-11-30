@@ -2169,17 +2169,16 @@ void ZCCCompiler::CompileFunction(ZCC_StructWork *c, ZCC_FuncDeclarator *f, bool
 				{
 					auto type = DetermineType(c->Type(), p, f->Name, p->Type, false, false);
 					int flags = 0;
-					if (p->Flags & ZCC_In) flags |= VARF_In;
-					if (p->Flags & ZCC_Out) flags |= VARF_Out;
-					if ((type->IsA(RUNTIME_CLASS(PStruct))) || (flags & VARF_Out))
+					if (type->IsA(RUNTIME_CLASS(PStruct)) && type != TypeVector2 && type != TypeVector3)
 					{
-						// 'out' parameters and all structs except vectors are passed by reference
-						if ((flags & VARF_Out) || (type != TypeVector2 && type != TypeVector3))
-						{
-							type = NewPointer(type);
-							flags |= VARF_Ref;
-						}
-						else if (type == TypeVector2)
+						// Structs are being passed by pointer, but unless marked 'out' that pointer must be readonly.
+						type = NewPointer(type /*, !(p->Flags & ZCC_Out)*/);
+						flags |= VARF_Ref;
+					}
+					else if (type->GetRegType() != REGT_NIL)
+					{
+						if (p->Flags & ZCC_Out)	flags |= VARF_Out;
+						if (type == TypeVector2)
 						{
 							elementcount = 2;
 						}
@@ -2285,6 +2284,25 @@ void ZCCCompiler::CompileFunction(ZCC_StructWork *c, ZCC_FuncDeclarator *f, bool
 		PFunction *sym = new PFunction(c->Type(), f->Name);
 		sym->AddVariant(NewPrototype(rets, args), argflags, argnames, afd == nullptr ? nullptr : *(afd->VMPointer), varflags, useflags);
 		c->Type()->Symbols.ReplaceSymbol(sym);
+
+		auto cls = dyn_cast<PClass>(c->Type());
+		PFunction *virtsym = nullptr;
+		if (cls != nullptr && cls->ParentClass != nullptr) virtsym = dyn_cast<PFunction>(cls->ParentClass->Symbols.FindSymbol(FName(f->Name), true));
+		unsigned vindex = ~0u;
+		if (virtsym != nullptr) vindex = virtsym->Variants[0].Implementation->VirtualIndex;
+
+		if (vindex != ~0u || (varflags & VARF_Virtual))
+		{
+			// Todo: Check if the declaration is legal. 
+
+			// First step: compare prototypes - if they do not match the virtual base method does not apply.
+
+			// Second step: Check flags. Possible cases:
+			// 1. Base method is final: Error.
+			// 2. This method is override: Base virtual method must exist
+			// 3. This method is virtual but not override: Base may not have a virtual method with the same prototype.
+		}
+
 
 		if (!(f->Flags & ZCC_Native))
 		{
