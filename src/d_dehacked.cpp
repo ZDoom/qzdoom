@@ -74,6 +74,9 @@
 #include "info.h"
 #include "v_text.h"
 #include "vmbuilder.h"
+#include "a_armor.h"
+#include "a_ammo.h"
+#include "a_health.h"
 
 // [SO] Just the way Randy said to do it :)
 // [RH] Made this CVAR_SERVERINFO
@@ -170,8 +173,6 @@ struct AmmoPerAttack
 	int ammocount;
 	VMFunction *ptr;
 };
-
-DECLARE_ACTION(A_Punch)
 
 // Default ammo use of the various weapon attacks
 static AmmoPerAttack AmmoPerAttacks[] = {
@@ -3154,7 +3155,7 @@ FString ADehackedPickup::PickupMessage ()
 bool ADehackedPickup::ShouldStay ()
 {
 	if (RealPickup != nullptr)
-		return RealPickup->ShouldStay ();
+		return RealPickup->CallShouldStay ();
 	else return true;
 }
 

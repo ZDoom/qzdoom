@@ -45,6 +45,7 @@
 #include "st_stuff.h"
 #include "m_swap.h"
 #include "a_keys.h"
+#include "a_armor.h"
 #include "templates.h"
 #include "i_system.h"
 #include "sbarinfo.h"
@@ -58,6 +59,7 @@
 #include "gstrings.h"
 #include "version.h"
 #include "cmdlib.h"
+#include "a_ammo.h"
 
 #define ARTIFLASH_OFFSET (statusBar->invBarOffset+6)
 enum

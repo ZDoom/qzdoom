@@ -46,6 +46,7 @@
 #include "templates.h"
 #include "r_defs.h"
 #include "a_pickups.h"
+#include "a_armor.h"
 #include "s_sound.h"
 #include "cmdlib.h"
 #include "p_lnspec.h"
@@ -69,6 +70,9 @@
 #include "r_data/colormaps.h"
 #include "a_weaponpiece.h"
 #include "vmbuilder.h"
+#include "a_ammo.h"
+#include "a_health.h"
+#include "a_keys.h"
 
 extern TArray<PClassActor **> OptionalClassPtrs;
 

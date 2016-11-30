@@ -573,7 +573,7 @@ begin:
 			FillReturns(reg, f, returns, pc+1, C);
 			if (call->Native)
 			{
-				numret = static_cast<VMNativeFunction *>(call)->NativeCall(stack, reg.param + f->NumParam - B, call->DefaultArgs, B, returns, C);
+				numret = static_cast<VMNativeFunction *>(call)->NativeCall(reg.param + f->NumParam - B, call->DefaultArgs, B, returns, C);
 			}
 			else
 			{
@@ -617,7 +617,7 @@ begin:
 
 			if (call->Native)
 			{
-				return static_cast<VMNativeFunction *>(call)->NativeCall(stack, reg.param + f->NumParam - B, call->DefaultArgs, B, ret, numret);
+				return static_cast<VMNativeFunction *>(call)->NativeCall(reg.param + f->NumParam - B, call->DefaultArgs, B, ret, numret);
 			}
 			else
 			{ // FIXME: Not a true tail call
@@ -1827,12 +1827,12 @@ static void SetReturn(const VMRegisters &reg, VMFrame *frame, VMReturn *ret, VM_
 	case REGT_FLOAT:
 		if (regtype & REGT_KONST)
 		{
-			assert(regnum + ((regtype & REGT_KONST) ? 2u : 0u) < func->NumKonstF);
+			assert(regnum < func->NumKonstF);
 			src = &func->KonstF[regnum];
 		}
 		else
 		{
-			assert(regnum + ((regtype & REGT_KONST) ? 2u : 0u) < frame->NumRegF);
+			assert(regnum < frame->NumRegF);
 			src = &reg.f[regnum];
 		}
 		if (regtype & REGT_MULTIREG3)

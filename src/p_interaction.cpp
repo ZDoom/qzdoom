@@ -59,6 +59,7 @@
 #include "d_netinf.h"
 #include "a_morph.h"
 #include "virtual.h"
+#include "a_health.h"
 
 static FRandom pr_obituary ("Obituary");
 static FRandom pr_botrespawn ("BotRespawn");
@@ -776,8 +777,7 @@ void AActor::CallDie(AActor *source, AActor *inflictor, int dmgflags)
 	IFVIRTUAL(AActor, Die)
 	{
 		VMValue params[4] = { (DObject*)this, source, inflictor, dmgflags };
-		VMFrameStack stack;
-		stack.Call(func, params, 4, nullptr, 0, nullptr);
+		GlobalVMStack.Call(func, params, 4, nullptr, 0, nullptr);
 	}
 	else return Die(source, inflictor, dmgflags);
 }

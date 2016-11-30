@@ -40,6 +40,7 @@ static FRandom pr_torch ("Torch");
 #define	TIMEFREEZE_TICS	( 12 * TICRATE )
 */
 
+
 IMPLEMENT_CLASS(APowerup, false, false)
 
 // Powerup-Giver -------------------------------------------------------------
@@ -56,6 +57,7 @@ void PClassPowerupGiver::ReplaceClassRef(PClass *oldclass, PClass *newclass)
 	}
 }
 
+IMPLEMENT_CLASS(APowerupGiver, false, false)
 
 DEFINE_FIELD(APowerupGiver, PowerupType)
 DEFINE_FIELD(APowerupGiver, EffectTics)
@@ -369,18 +371,6 @@ AInventory *APowerup::CreateTossable ()
 void APowerup::OwnerDied ()
 {
 	Destroy ();
-}
-
-//===========================================================================
-//
-// AInventory :: GetNoTeleportFreeze
-//
-//===========================================================================
-
-bool APowerup::GetNoTeleportFreeze ()
-{
-	if (ItemFlags & IF_NOTELEPORTFREEZE) return true;
-	return Super::GetNoTeleportFreeze();
 }
 
 // Invulnerability Powerup ---------------------------------------------------
@@ -1209,20 +1199,6 @@ void APowerSpeed::Serialize(FSerializer &arc)
 {
 	Super::Serialize (arc);
 	arc("speedflags", SpeedFlags);
-}
-
-//===========================================================================
-//
-// APowerSpeed :: GetSpeedFactor
-//
-//===========================================================================
-
-double APowerSpeed ::GetSpeedFactor ()
-{
-	if (Inventory != NULL)
-		return Speed * Inventory->GetSpeedFactor();
-	else
-		return Speed;
 }
 
 //===========================================================================

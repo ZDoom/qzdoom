@@ -59,6 +59,8 @@
 #include "a_morph.h"
 #include "p_spec.h"
 #include "virtual.h"
+#include "a_armor.h"
+#include "a_ammo.h"
 
 static FRandom pr_skullpop ("SkullPop");
 
@@ -1303,8 +1305,7 @@ void APlayerPawn::PlayIdle ()
 	IFVIRTUAL(APlayerPawn, PlayIdle)
 	{
 		VMValue params[1] = { (DObject*)this };
-		VMFrameStack stack;
-		stack.Call(func, params, 1, nullptr, 0, nullptr);
+		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
 	}
 }
 
@@ -1313,8 +1314,7 @@ void APlayerPawn::PlayRunning ()
 	IFVIRTUAL(APlayerPawn, PlayRunning)
 	{
 		VMValue params[1] = { (DObject*)this };
-		VMFrameStack stack;
-		stack.Call(func, params, 1, nullptr, 0, nullptr);
+		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
 	}
 }
 
@@ -1323,8 +1323,7 @@ void APlayerPawn::PlayAttacking ()
 	IFVIRTUAL(APlayerPawn, PlayAttacking)
 	{
 		VMValue params[1] = { (DObject*)this };
-		VMFrameStack stack;
-		stack.Call(func, params, 1, nullptr, 0, nullptr);
+		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
 	}
 }
 
@@ -1333,8 +1332,7 @@ void APlayerPawn::PlayAttacking2 ()
 	IFVIRTUAL(APlayerPawn, PlayAttacking2)
 	{
 		VMValue params[1] = { (DObject*)this };
-		VMFrameStack stack;
-		stack.Call(func, params, 1, nullptr, 0, nullptr);
+		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
 	}
 }
 
@@ -1424,8 +1422,7 @@ void APlayerPawn::MorphPlayerThink ()
 	IFVIRTUAL(APlayerPawn, MorphPlayerThink)
 	{
 		VMValue params[1] = { (DObject*)this };
-		VMFrameStack stack;
-		stack.Call(func, params, 1, nullptr, 0, nullptr);
+		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
 	}
 }
 

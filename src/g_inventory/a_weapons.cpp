@@ -1,3 +1,38 @@
+/*
+** a_weapons.cpp
+** Implements weapon handling
+**
+**---------------------------------------------------------------------------
+** Copyright 2000-2016 Randy Heit
+** Copyright 2006-2016 Cheistoph Oelckers
+** All rights reserved.
+**
+** Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions
+** are met:
+**
+** 1. Redistributions of source code must retain the above copyright
+**    notice, this list of conditions and the following disclaimer.
+** 2. Redistributions in binary form must reproduce the above copyright
+**    notice, this list of conditions and the following disclaimer in the
+**    documentation and/or other materials provided with the distribution.
+** 3. The name of the author may not be used to endorse or promote products
+**    derived from this software without specific prior written permission.
+**
+** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**---------------------------------------------------------------------------
+**
+*/
+
 #include <string.h>
 
 #include "a_pickups.h"
@@ -19,6 +54,7 @@
 #include "serializer.h"
 #include "thingdef.h"
 #include "virtual.h"
+#include "a_ammo.h"
 
 #define BONUSADD 6
 
@@ -239,7 +275,7 @@ void AWeapon::MarkPrecacheSounds() const
 bool AWeapon::TryPickupRestricted (AActor *&toucher)
 {
 	// Wrong class, but try to pick up for ammo
-	if (ShouldStay())
+	if (CallShouldStay())
 	{ // Can't pick up weapons for other classes in coop netplay
 		return false;
 	}
@@ -362,7 +398,7 @@ bool AWeapon::PickupForAmmo (AWeapon *ownedWeapon)
 	bool gotstuff = false;
 
 	// Don't take ammo if the weapon sticks around.
-	if (!ShouldStay ())
+	if (!CallShouldStay ())
 	{
 		int oldamount1 = 0;
 		int oldamount2 = 0;
@@ -809,8 +845,7 @@ void AWeapon::CallEndPowerup()
 	{
 		// Without the type cast this picks the 'void *' assignment...
 		VMValue params[1] = { (DObject*)this };
-		VMFrameStack stack;
-		stack.Call(func, params, 1, nullptr, 0, nullptr);
+		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
 	}
 	else EndPowerup();
 }
@@ -828,10 +863,9 @@ FState *AWeapon::GetUpState ()
 	{
 		VMValue params[1] = { (DObject*)this };
 		VMReturn ret;
-		VMFrameStack stack;
 		FState *retval;
 		ret.PointerAt((void**)&retval);
-		stack.Call(func, params, 1, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
 		return retval;
 	}
 	return nullptr;
@@ -849,10 +883,9 @@ FState *AWeapon::GetDownState ()
 	{
 		VMValue params[1] = { (DObject*)this };
 		VMReturn ret;
-		VMFrameStack stack;
 		FState *retval;
 		ret.PointerAt((void**)&retval);
-		stack.Call(func, params, 1, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
 		return retval;
 	}
 	return nullptr;
@@ -870,10 +903,9 @@ FState *AWeapon::GetReadyState ()
 	{
 		VMValue params[1] = { (DObject*)this };
 		VMReturn ret;
-		VMFrameStack stack;
 		FState *retval;
 		ret.PointerAt((void**)&retval);
-		stack.Call(func, params, 1, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
 		return retval;
 	}
 	return nullptr;
@@ -891,10 +923,9 @@ FState *AWeapon::GetAtkState (bool hold)
 	{
 		VMValue params[2] = { (DObject*)this, hold };
 		VMReturn ret;
-		VMFrameStack stack;
 		FState *retval;
 		ret.PointerAt((void**)&retval);
-		stack.Call(func, params, 2, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
 		return retval;
 	}
 	return nullptr;
@@ -912,10 +943,9 @@ FState *AWeapon::GetAltAtkState (bool hold)
 	{
 		VMValue params[2] = { (DObject*)this, hold };
 		VMReturn ret;
-		VMFrameStack stack;
 		FState *retval;
 		ret.PointerAt((void**)&retval);
-		stack.Call(func, params, 2, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
 		return retval;
 	}
 	return nullptr;

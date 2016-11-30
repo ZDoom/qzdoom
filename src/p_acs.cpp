@@ -82,8 +82,9 @@
 #include "i_music.h"
 #include "serializer.h"
 #include "thingdef.h"
-
-#include "g_shared/a_pickups.h"
+#include "a_pickups.h"
+#include "a_armor.h"
+#include "a_ammo.h"
 
 extern FILE *Logfile;
 
@@ -6115,8 +6116,7 @@ static void SetMarineWeapon(AActor *marine, int weapon)
 	if (smw)
 	{
 		VMValue params[2] = { marine, weapon };
-		VMFrameStack stack;
-		stack.Call(smw, params, 2, nullptr, 0, nullptr);
+		GlobalVMStack.Call(smw, params, 2, nullptr, 0, nullptr);
 	}
 }
 
@@ -6127,8 +6127,7 @@ static void SetMarineSprite(AActor *marine, PClassActor *source)
 	if (sms)
 	{
 		VMValue params[2] = { marine, source };
-		VMFrameStack stack;
-		stack.Call(sms, params, 2, nullptr, 0, nullptr);
+		GlobalVMStack.Call(sms, params, 2, nullptr, 0, nullptr);
 	}
 }
 

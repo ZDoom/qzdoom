@@ -14,6 +14,7 @@
 #include "serializer.h"
 #include "p_enemy.h"
 #include "d_player.h"
+#include "a_armor.h"
 #include "r_data/sprites.h"
 
 static FRandom pr_morphmonst ("MorphMonster");
@@ -137,20 +138,7 @@ bool P_MorphPlayer (player_t *activator, player_t *p, PClassPlayerPawn *spawntyp
 		AInventory *next = item->Inventory;
 		if (item->IsKindOf (RUNTIME_CLASS(AArmor)))
 		{
-			if (item->IsKindOf (RUNTIME_CLASS(AHexenArmor)))
-			{
-				// Set the HexenArmor slots to 0, except the class slot.
-				AHexenArmor *hxarmor = static_cast<AHexenArmor *>(item);
-				hxarmor->Slots[0] = 0;
-				hxarmor->Slots[1] = 0;
-				hxarmor->Slots[2] = 0;
-				hxarmor->Slots[3] = 0;
-				hxarmor->Slots[4] = spawntype->HexenArmor[0];
-			}
-			else
-			{
-				item->DepleteOrDestroy();
-			}
+			item->DepleteOrDestroy();
 		}
 		item = next;
 	}

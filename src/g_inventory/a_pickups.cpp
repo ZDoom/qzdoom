@@ -20,8 +20,9 @@
 #include "p_spec.h"
 #include "serializer.h"
 #include "virtual.h"
+#include "a_ammo.h"
 
-static FRandom pr_restore ("RestorePos");
+EXTERN_CVAR(Bool, sv_unlimited_pickup)
 
 IMPLEMENT_CLASS(PClassInventory, false, false)
 
@@ -68,287 +69,6 @@ void PClassInventory::Finalize(FStateDefinitions &statedef)
 {
 	Super::Finalize(statedef);
 	((AActor*)Defaults)->flags |= MF_SPECIAL;
-}
-
-IMPLEMENT_CLASS(PClassAmmo, false, false)
-
-PClassAmmo::PClassAmmo()
-{
-	DropAmount = 0;
-}
-
-void PClassAmmo::DeriveData(PClass *newclass)
-{
-	assert(newclass->IsKindOf(RUNTIME_CLASS(PClassAmmo)));
-	Super::DeriveData(newclass);
-	PClassAmmo *newc = static_cast<PClassAmmo *>(newclass);
-
-	newc->DropAmount = DropAmount;
-}
-
-IMPLEMENT_CLASS(AAmmo, false, false)
-
-DEFINE_FIELD(AAmmo, BackpackAmount)
-DEFINE_FIELD(AAmmo, BackpackMaxAmount)
-
-//===========================================================================
-//
-// AAmmo :: Serialize
-//
-//===========================================================================
-
-void AAmmo::Serialize(FSerializer &arc)
-{
-	Super::Serialize (arc);
-	auto def = (AAmmo*)GetDefault();
-	arc("backpackamount", BackpackAmount, def->BackpackAmount)
-		("backpackmaxamount", BackpackMaxAmount, def->BackpackMaxAmount);
-}
-
-//===========================================================================
-//
-// AAmmo :: GetParentAmmo
-//
-// Returns the least-derived ammo type that this ammo is a descendant of.
-// That is, if this ammo is an immediate subclass of Ammo, then this ammo's
-// type is returned. If this ammo's superclass is not Ammo, then this
-// function travels up the inheritance chain until it finds a type that is
-// an immediate subclass of Ammo and returns that.
-//
-// The intent of this is that all unique ammo types will be immediate
-// subclasses of Ammo. To make different pickups with different ammo amounts,
-// you subclass the type of ammo you want a different amount for and edit
-// that.
-//
-//===========================================================================
-
-PClassActor *AAmmo::GetParentAmmo () const
-{
-	PClass *type = GetClass();
-
-	while (type->ParentClass != RUNTIME_CLASS(AAmmo) && type->ParentClass != NULL)
-	{
-		type = type->ParentClass;
-	}
-	return static_cast<PClassActor *>(type);
-}
-
-//===========================================================================
-//
-// AAmmo :: HandlePickup
-//
-//===========================================================================
-EXTERN_CVAR(Bool, sv_unlimited_pickup)
-
-bool AAmmo::HandlePickup (AInventory *item)
-{
-	if (GetClass() == item->GetClass() ||
-		(item->IsKindOf (RUNTIME_CLASS(AAmmo)) && static_cast<AAmmo*>(item)->GetParentAmmo() == GetClass()))
-	{
-		if (Amount < MaxAmount || sv_unlimited_pickup)
-		{
-			int receiving = item->Amount;
-
-			if (!(item->ItemFlags & IF_IGNORESKILL))
-			{ // extra ammo in baby mode and nightmare mode
-				receiving = int(receiving * G_SkillProperty(SKILLP_AmmoFactor));
-			}
-			int oldamount = Amount;
-
-			if (Amount > 0 && Amount + receiving < 0)
-			{
-				Amount = 0x7fffffff;
-			}
-			else
-			{
-				Amount += receiving;
-			}
-			if (Amount > MaxAmount && !sv_unlimited_pickup)
-			{
-				Amount = MaxAmount;
-			}
-			item->ItemFlags |= IF_PICKUPGOOD;
-
-			// If the player previously had this ammo but ran out, possibly switch
-			// to a weapon that uses it, but only if the player doesn't already
-			// have a weapon pending.
-
-			assert (Owner != NULL);
-
-			if (oldamount == 0 && Owner != NULL && Owner->player != NULL)
-			{
-				barrier_cast<APlayerPawn *>(Owner)->CheckWeaponSwitch(GetClass());
-			}
-		}
-		return true;
-	}
-	return false;
-}
-
-//===========================================================================
-//
-// AAmmo :: CreateCopy
-//
-//===========================================================================
-
-AInventory *AAmmo::CreateCopy (AActor *other)
-{
-	AInventory *copy;
-	int amount = Amount;
-
-	// extra ammo in baby mode and nightmare mode
-	if (!(ItemFlags&IF_IGNORESKILL))
-	{
-		amount = int(amount * G_SkillProperty(SKILLP_AmmoFactor));
-	}
-
-	if (GetClass()->ParentClass != RUNTIME_CLASS(AAmmo) && GetClass() != RUNTIME_CLASS(AAmmo))
-	{
-		PClassActor *type = GetParentAmmo();
-		if (!GoAway ())
-		{
-			Destroy ();
-		}
-
-		copy = static_cast<AInventory *>(Spawn (type));
-		copy->Amount = amount;
-		copy->BecomeItem ();
-	}
-	else
-	{
-		copy = Super::CreateCopy (other);
-		copy->Amount = amount;
-	}
-	if (copy->Amount > copy->MaxAmount)
-	{ // Don't pick up more ammo than you're supposed to be able to carry.
-		copy->Amount = copy->MaxAmount;
-	}
-	return copy;
-}
-
-//===========================================================================
-//
-// AAmmo :: CreateTossable
-//
-//===========================================================================
-
-AInventory *AAmmo::CreateTossable()
-{
-	AInventory *copy = Super::CreateTossable();
-	if (copy != NULL)
-	{ // Do not increase ammo by dropping it and picking it back up at
-	  // certain skill levels.
-		copy->ItemFlags |= IF_IGNORESKILL;
-	}
-	return copy;
-}
-
-//---------------------------------------------------------------------------
-//
-// FUNC P_GiveBody
-//
-// Returns false if the body isn't needed at all.
-//
-//---------------------------------------------------------------------------
-
-bool P_GiveBody (AActor *actor, int num, int max)
-{
-	if (actor->health <= 0 || (actor->player != NULL && actor->player->playerstate == PST_DEAD))
-	{ // Do not heal dead things.
-		return false;
-	}
-
-	player_t *player = actor->player;
-
-	num = clamp(num, -65536, 65536);	// prevent overflows for bad values
-	if (player != NULL)
-	{
-		// Max is 0 by default, preserving default behavior for P_GiveBody()
-		// calls while supporting AHealth.
-		if (max <= 0)
-		{
-			max = static_cast<APlayerPawn*>(actor)->GetMaxHealth() + player->mo->stamina;
-			// [MH] First step in predictable generic morph effects
- 			if (player->morphTics)
- 			{
-				if (player->MorphStyle & MORPH_FULLHEALTH)
-				{
-					if (!(player->MorphStyle & MORPH_ADDSTAMINA))
-					{
-						max -= player->mo->stamina;
-					}
-				}
-				else // old health behaviour
-				{
-					max = MAXMORPHHEALTH;
-					if (player->MorphStyle & MORPH_ADDSTAMINA)
-					{
-						max += player->mo->stamina;
-					}
-				}
- 			}
-		}
-		// [RH] For Strife: A negative body sets you up with a percentage
-		// of your full health.
-		if (num < 0)
-		{
-			num = max * -num / 100;
-			if (player->health < num)
-			{
-				player->health = num;
-				actor->health = num;
-				return true;
-			}
-		}
-		else if (num > 0)
-		{
-			if (player->health < max)
-			{
-				num = int(num * G_SkillProperty(SKILLP_HealthFactor));
-				if (num < 1) num = 1;
-				player->health += num;
-				if (player->health > max)
-				{
-					player->health = max;
-				}
-				actor->health = player->health;
-				return true;
-			}
-		}
-	}
-	else
-	{
-		// Parameter value for max is ignored on monsters, preserving original
-		// behaviour on AHealth as well as on existing calls to P_GiveBody().
-		max = actor->SpawnHealth();
-		if (num < 0)
-		{
-			num = max * -num / 100;
-			if (actor->health < num)
-			{
-				actor->health = num;
-				return true;
-			}
-		}
-		else if (actor->health < max)
-		{
-			actor->health += num;
-			if (actor->health > max)
-			{
-				actor->health = max;
-			}
-			return true;
-		}
-	}
-	return false;
-}
-
-DEFINE_ACTION_FUNCTION(AActor, GiveBody)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT(num);
-	PARAM_INT_DEF(max);
-	ACTION_RETURN_BOOL(P_GiveBody(self, num, max));
 }
 
 //---------------------------------------------------------------------------
@@ -413,63 +133,6 @@ DEFINE_ACTION_FUNCTION(AInventory, A_RestoreSpecialDoomThing)
 		S_Sound (self, CHAN_VOICE, "misc/spawn", 1, ATTN_IDLE);
 		Spawn ("ItemFog", self->Pos(), ALLOW_REPLACE);
 	}
-	return 0;
-}
-
-//---------------------------------------------------------------------------
-//
-// PROP A_RestoreSpecialPosition
-//
-//---------------------------------------------------------------------------
-
-DEFINE_ACTION_FUNCTION(AActor, A_RestoreSpecialPosition)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-
-	// Move item back to its original location
-	DVector2 sp = self->SpawnPoint;
-
-	self->UnlinkFromWorld();
-	self->SetXY(sp);
-	self->LinkToWorld(true);
-	self->SetZ(self->Sector->floorplane.ZatPoint(sp));
-	P_FindFloorCeiling(self, FFCF_ONLYSPAWNPOS | FFCF_NOPORTALS);	// no portal checks here so that things get spawned in this sector.
-
-	if (self->flags & MF_SPAWNCEILING)
-	{
-		self->SetZ(self->ceilingz - self->Height - self->SpawnPoint.Z);
-	}
-	else if (self->flags2 & MF2_SPAWNFLOAT)
-	{
-		double space = self->ceilingz - self->Height - self->floorz;
-		if (space > 48)
-		{
-			space -= 40;
-			self->SetZ((space * pr_restore()) / 256. + self->floorz + 40);
-		}
-		else
-		{
-			self->SetZ(self->floorz);
-		}
-	}
-	else
-	{
-		self->SetZ(self->SpawnPoint.Z + self->floorz);
-	}
-	// Redo floor/ceiling check, in case of 3D floors and portals
-	P_FindFloorCeiling(self, FFCF_SAMESECTOR | FFCF_ONLY3DFLOORS | FFCF_3DRESTRICT);
-	if (self->Z() < self->floorz)
-	{ // Do not reappear under the floor, even if that's where we were for the
-	  // initial spawn.
-		self->SetZ(self->floorz);
-	}
-	if ((self->flags & MF_SOLID) && (self->Top() > self->ceilingz))
-	{ // Do the same for the ceiling.
-		self->SetZ(self->ceilingz - self->Height);
-	}
-	// Do not interpolate from the position the actor was at when it was
-	// picked up, in case that is different from where it is now.
-	self->ClearInterpolation();
 	return 0;
 }
 
@@ -601,10 +264,9 @@ bool AInventory::CallSpecialDropAction(AActor *dropper)
 	{
 		VMValue params[2] = { (DObject*)this, (DObject*)dropper };
 		VMReturn ret;
-		VMFrameStack stack;
 		int retval;
 		ret.IntAt(&retval);
-		stack.Call(func, params, 2, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
 		return !!retval;
 	}
 	return SpecialDropAction(dropper);
@@ -678,6 +340,25 @@ void AInventory::DoEffect ()
 {
 }
 
+DEFINE_ACTION_FUNCTION(AInventory, DoEffect)
+{
+	PARAM_SELF_PROLOGUE(AInventory);
+	self->DoEffect();
+	return 0;
+}
+
+void AInventory::CallDoEffect()
+{
+	IFVIRTUAL(AInventory, DoEffect)
+	{
+		VMValue params[1] = { (DObject*)this };
+		VMFrameStack stack;
+		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
+	}
+	else DoEffect();
+}
+
+
 //===========================================================================
 //
 // AInventory :: Travelled
@@ -716,7 +397,7 @@ bool AInventory::HandlePickup (AInventory *item)
 {
 	if (item->GetClass() == GetClass())
 	{
-		if (Amount < MaxAmount || (sv_unlimited_pickup && !item->ShouldStay()))
+		if (Amount < MaxAmount || (sv_unlimited_pickup && !item->CallShouldStay()))
 		{
 			if (Amount > 0 && Amount + item->Amount < 0)
 			{
@@ -755,10 +436,9 @@ bool AInventory::CallHandlePickup(AInventory *item)
 			// Without the type cast this picks the 'void *' assignment...
 			VMValue params[2] = { (DObject*)self, (DObject*)item };
 			VMReturn ret;
-			VMFrameStack stack;
 			int retval;
 			ret.IntAt(&retval);
-			stack.Call(func, params, 2, &ret, 1, nullptr);
+			GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
 			if (retval) return true;
 		}
 		else if (self->HandlePickup(item)) return true;
@@ -785,7 +465,7 @@ bool AInventory::GoAway ()
 		return false;
 	}
 
-	if (!ShouldStay ())
+	if (!CallShouldStay ())
 	{
 		Hide ();
 		if (ShouldRespawn ())
@@ -864,10 +544,9 @@ AInventory *AInventory::CallCreateCopy(AActor *other)
 	{
 		VMValue params[2] = { (DObject*)this, (DObject*)other };
 		VMReturn ret;
-		VMFrameStack stack;
 		AInventory *retval;
 		ret.PointerAt((void**)&retval);
-		stack.Call(func, params, 2, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
 		return retval;
 	}
 	else return CreateCopy(other);
@@ -930,10 +609,9 @@ AInventory *AInventory::CallCreateTossable()
 	{
 		VMValue params[1] = { (DObject*)this };
 		VMReturn ret;
-		VMFrameStack stack;
 		AInventory *retval;
 		ret.PointerAt((void**)&retval);
-		stack.Call(func, params, 1, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
 		return retval;
 	}
 	else return CreateTossable();
@@ -1055,16 +733,24 @@ void AInventory::ModifyDamage (int damage, FName damageType, int &newdamage, boo
 //
 //===========================================================================
 
-double AInventory::GetSpeedFactor ()
+double AInventory::GetSpeedFactor()
 {
-	if (Inventory != NULL)
+	double factor = 1.;
+	auto self = this;
+	while (self != nullptr)
 	{
-		return Inventory->GetSpeedFactor();
+		IFVIRTUALPTR(self, AInventory, GetSpeedFactor)
+		{
+			VMValue params[2] = { (DObject*)self };
+			VMReturn ret;
+			double retval;
+			ret.FloatAt(&retval);
+			GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
+			factor *= retval;
+		}
+		self = self->Inventory;
 	}
-	else
-	{
-		return 1.;
-	}
+	return factor;
 }
 
 //===========================================================================
@@ -1075,15 +761,21 @@ double AInventory::GetSpeedFactor ()
 
 bool AInventory::GetNoTeleportFreeze ()
 {
-	// do not check the flag here because it's only active when used on PowerUps, not on PowerupGivers.
-	if (Inventory != NULL)
+	auto self = this;
+	while (self != nullptr)
 	{
-		return Inventory->GetNoTeleportFreeze();
+		IFVIRTUALPTR(self, AInventory, GetNoTeleportFreeze)
+		{
+			VMValue params[2] = { (DObject*)self };
+			VMReturn ret;
+			int retval;
+			ret.IntAt(&retval);
+			GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
+			if (retval) return true;
+		}
+		self = self->Inventory;
 	}
-	else
-	{
-		return false;
-	}
+	return false;
 }
 
 //===========================================================================
@@ -1128,10 +820,9 @@ bool AInventory::CallUse(bool pickup)
 	{
 		VMValue params[2] = { (DObject*)this, pickup };
 		VMReturn ret;
-		VMFrameStack stack;
 		int retval;
 		ret.IntAt(&retval);
-		stack.Call(func, params, 2, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
 		return !!retval;
 
 	}
@@ -1232,7 +923,7 @@ void AInventory::Touch (AActor *toucher)
 	if (!CallTryPickup (toucher, &toucher)) return;
 
 	// This is the only situation when a pickup flash should ever play.
-	if (PickupFlash != NULL && !ShouldStay())
+	if (PickupFlash != NULL && !CallShouldStay())
 	{
 		Spawn(PickupFlash, Pos(), ALLOW_REPLACE);
 	}
@@ -1334,10 +1025,9 @@ FString AInventory::GetPickupMessage()
 	{
 		VMValue params[1] = { (DObject*)this };
 		VMReturn ret;
-		VMFrameStack stack;
 		FString retval;
 		ret.StringAt(&retval);
-		stack.Call(func, params, 1, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
 		return retval;
 	}
 	else return PickupMessage();
@@ -1381,6 +1071,25 @@ void AInventory::PlayPickupSound (AActor *toucher)
 	S_Sound (toucher, chan, PickupSound, 1, atten);
 }
 
+DEFINE_ACTION_FUNCTION(AInventory, PlayPickupSound)
+{
+	PARAM_SELF_PROLOGUE(AInventory);
+	PARAM_OBJECT(other, AActor);
+	self->PlayPickupSound(other);
+	return 0;
+}
+
+void AInventory::CallPlayPickupSound(AActor *other)
+{
+	IFVIRTUAL(AInventory, PlayPickupSound)
+	{
+		VMValue params[2] = { (DObject*)this, (DObject*)other };
+		GlobalVMStack.Call(func, params, 2, nullptr, 0, nullptr);
+	}
+	else PlayPickupSound(other);
+}
+
+
 //===========================================================================
 //
 // AInventory :: ShouldStay
@@ -1393,6 +1102,27 @@ bool AInventory::ShouldStay ()
 {
 	return false;
 }
+
+DEFINE_ACTION_FUNCTION(AInventory, ShouldStay)
+{
+	PARAM_SELF_PROLOGUE(AInventory);
+	ACTION_RETURN_BOOL(self->ShouldStay());
+}
+
+bool AInventory::CallShouldStay()
+{
+	IFVIRTUAL(AInventory, ShouldStay)
+	{
+		VMValue params[1] = { (DObject*)this };
+		VMReturn ret;
+		int retval;
+		ret.IntAt(&retval);
+		GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
+		return !!retval;
+	}
+	else return ShouldStay();
+}
+
 
 //===========================================================================
 //
@@ -1466,10 +1196,9 @@ PalEntry AInventory::CallGetBlend()
 	{
 		VMValue params[1] = { (DObject*)this };
 		VMReturn ret;
-		VMFrameStack stack;
 		int retval;
 		ret.IntAt(&retval);
-		stack.Call(func, params, 1, &ret, 1, nullptr);
+		GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
 		return retval;
 	}
 	else return GetBlend();
@@ -1549,12 +1278,6 @@ bool AInventory::DrawPowerup (int x, int y)
 {
 	return false;
 }
-
-/***************************************************************************/
-/* AArtifact implementation												   */
-/***************************************************************************/
-
-IMPLEMENT_CLASS(APowerupGiver, false, false)
 
 //===========================================================================
 //
@@ -1701,6 +1424,14 @@ bool AInventory::TryPickupRestricted (AActor *&toucher)
 	return false;
 }
 
+DEFINE_ACTION_FUNCTION(AInventory, TryPickupRestricted)
+{
+	PARAM_SELF_PROLOGUE(AInventory);
+	PARAM_POINTER(toucher, AActor*);
+	ACTION_RETURN_BOOL(self->TryPickupRestricted(*toucher));
+}
+
+
 //===========================================================================
 //
 // AInventory :: CallTryPickup
@@ -1721,23 +1452,34 @@ bool AInventory::CallTryPickup (AActor *toucher, AActor **toucher_return)
 		{
 			VMValue params[2] = { (DObject*)this, (void*)&toucher };
 			VMReturn ret;
-			VMFrameStack stack;
 			int retval;
 			ret.IntAt(&retval);
-			stack.Call(func, params, 2, &ret, 1, nullptr);
+			GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
 			res = !!retval;
 		}
 		else res = TryPickup(toucher);
 	}
 	else if (!(ItemFlags & IF_RESTRICTABSOLUTELY))
-		res = TryPickupRestricted(toucher);	// let an item decide for itself how it will handle this
+	{
+		// let an item decide for itself how it will handle this
+		IFVIRTUAL(AInventory, TryPickupRestricted)
+		{
+			VMValue params[2] = { (DObject*)this, (void*)&toucher };
+			VMReturn ret;
+			int retval;
+			ret.IntAt(&retval);
+			GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
+			res = !!retval;
+		}
+		else res = TryPickupRestricted(toucher);
+	}
 	else
 		return false;
 
 	// Morph items can change the toucher so we need an option to return this info.
 	if (toucher_return != NULL) *toucher_return = toucher;
 
-	if (!res && (ItemFlags & IF_ALWAYSPICKUP) && !ShouldStay())
+	if (!res && (ItemFlags & IF_ALWAYSPICKUP) && !CallShouldStay())
 	{
 		res = true;
 		GoAwayAndDie();
@@ -1861,6 +1603,25 @@ void AInventory::AttachToOwner (AActor *other)
 	other->AddInventory (this);
 }
 
+DEFINE_ACTION_FUNCTION(AInventory, AttachToOwner)
+{
+	PARAM_SELF_PROLOGUE(AInventory);
+	PARAM_OBJECT(other, AActor);
+	self->AttachToOwner(other);
+	return 0;
+}
+
+void AInventory::CallAttachToOwner(AActor *other)
+{
+	IFVIRTUAL(AInventory, AttachToOwner)
+	{
+		VMValue params[2] = { (DObject*)this, (DObject*)other };
+		GlobalVMStack.Call(func, params, 2, nullptr, 0, nullptr);
+	}
+	else AttachToOwner(other);
+}
+
+
 //===========================================================================
 //
 // AInventory :: DetachFromOwner
@@ -1873,6 +1634,28 @@ void AInventory::AttachToOwner (AActor *other)
 void AInventory::DetachFromOwner ()
 {
 }
+
+DEFINE_ACTION_FUNCTION(AInventory, DetachFromOwner)
+{
+	PARAM_SELF_PROLOGUE(AInventory);
+	self->DetachFromOwner();
+	return 0;
+}
+
+void AInventory::CallDetachFromOwner()
+{
+	IFVIRTUAL(AInventory, DetachFromOwner)
+	{
+		VMValue params[1] = { (DObject*)this };
+		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
+	}
+	else DetachFromOwner();
+}
+
+//===========================================================================
+//===========================================================================
+
+
 
 IMPLEMENT_CLASS(AStateProvider, false, false)
 IMPLEMENT_CLASS(ACustomInventory, false, false)
@@ -1919,368 +1702,3 @@ bool ACustomInventory::TryPickup (AActor *&toucher)
 	}
 	return useok;
 }
-
-IMPLEMENT_CLASS(PClassHealth, false, false)
-
-//===========================================================================
-//
-// PClassHealth Constructor
-//
-//===========================================================================
-
-PClassHealth::PClassHealth()
-{
-	LowHealth = 0;
-}
-
-//===========================================================================
-//
-// PClassHealth :: DeriveData
-//
-//===========================================================================
-
-void PClassHealth::DeriveData(PClass *newclass)
-{
-	assert(newclass->IsKindOf(RUNTIME_CLASS(PClassHealth)));
-	Super::DeriveData(newclass);
-	PClassHealth *newc = static_cast<PClassHealth *>(newclass);
-	
-	newc->LowHealth = LowHealth;
-	newc->LowHealthMessage = LowHealthMessage;
-}
-
-IMPLEMENT_CLASS(AHealth, false, false)
-
-DEFINE_FIELD(AHealth, PrevHealth)
-
-//===========================================================================
-//
-// AHealth :: PickupMessage
-//
-//===========================================================================
-FString AHealth::PickupMessage ()
-{
-	int threshold = GetClass()->LowHealth;
-
-	if (PrevHealth < threshold)
-	{
-		FString message = GetClass()->LowHealthMessage;
-
-		if (message.IsNotEmpty())
-		{
-			return message;
-		}
-	}
-	return Super::PickupMessage();
-}
-
-//===========================================================================
-//
-// AHealth :: TryPickup
-//
-//===========================================================================
-
-bool AHealth::TryPickup (AActor *&other)
-{
-	PrevHealth = other->player != NULL ? other->player->health : other->health;
-
-	// P_GiveBody adds one new feature, applied only if it is possible to pick up negative health:
-	// Negative values are treated as positive percentages, ie Amount -100 means 100% health, ignoring max amount.
-	if (P_GiveBody(other, Amount, MaxAmount))
-	{
-		GoAwayAndDie();
-		return true;
-	}
-	return false;
-}
-
-IMPLEMENT_CLASS(AHealthPickup, false, false)
-
-DEFINE_FIELD(AHealthPickup, autousemode)
-
-//===========================================================================
-//
-// AHealthPickup :: CreateCopy
-//
-//===========================================================================
-
-AInventory *AHealthPickup::CreateCopy (AActor *other)
-{
-	AInventory *copy = Super::CreateCopy (other);
-	copy->health = health;
-	return copy;
-}
-
-//===========================================================================
-//
-// AHealthPickup :: CreateTossable
-//
-//===========================================================================
-
-AInventory *AHealthPickup::CreateTossable ()
-{
-	AInventory *copy = Super::CreateTossable ();
-	if (copy != NULL)
-	{
-		copy->health = health;
-	}
-	return copy;
-}
-
-//===========================================================================
-//
-// AHealthPickup :: HandlePickup
-//
-//===========================================================================
-
-bool AHealthPickup::HandlePickup (AInventory *item)
-{
-	// HealthPickups that are the same type but have different health amounts
-	// do not count as the same item.
-	if (item->health == health)
-	{
-		return Super::HandlePickup (item);
-	}
-	return false;
-}
-
-//===========================================================================
-//
-// AHealthPickup :: Use
-//
-//===========================================================================
-
-bool AHealthPickup::Use (bool pickup)
-{
-	return P_GiveBody (Owner, health);
-}
-
-//===========================================================================
-//
-// AHealthPickup :: Serialize
-//
-//===========================================================================
-
-void AHealthPickup::Serialize(FSerializer &arc)
-{
-	Super::Serialize(arc);
-	auto def = (AHealthPickup*)GetDefault();
-	arc("autousemode", autousemode, def->autousemode);
-}
-
-// Backpack -----------------------------------------------------------------
-
-IMPLEMENT_CLASS(ABackpackItem, false, false)
-
-DEFINE_FIELD(ABackpackItem, bDepleted)
-
-//===========================================================================
-//
-// ABackpackItem :: Serialize
-//
-//===========================================================================
-
-void ABackpackItem::Serialize(FSerializer &arc)
-{
-	Super::Serialize (arc);
-	auto def = (ABackpackItem*)GetDefault();
-	arc("bdepleted", bDepleted, def->bDepleted);
-}
-
-//===========================================================================
-//
-// ABackpackItem :: CreateCopy
-//
-// A backpack is being added to a player who doesn't yet have one. Give them
-// every kind of ammo, and increase their max amounts.
-//
-//===========================================================================
-
-AInventory *ABackpackItem::CreateCopy (AActor *other)
-{
-	// Find every unique type of ammo. Give it to the player if
-	// he doesn't have it already, and double its maximum capacity.
-	for (unsigned int i = 0; i < PClassActor::AllActorClasses.Size(); ++i)
-	{
-		PClass *type = PClassActor::AllActorClasses[i];
-
-		if (type->ParentClass == RUNTIME_CLASS(AAmmo))
-		{
-			PClassActor *atype = static_cast<PClassActor *>(type);
-			AAmmo *ammo = static_cast<AAmmo *>(other->FindInventory(atype));
-			int amount = static_cast<AAmmo *>(GetDefaultByType(type))->BackpackAmount;
-			// extra ammo in baby mode and nightmare mode
-			if (!(ItemFlags&IF_IGNORESKILL))
-			{
-				amount = int(amount * G_SkillProperty(SKILLP_AmmoFactor));
-			}
-			if (amount < 0) amount = 0;
-			if (ammo == NULL)
-			{ // The player did not have the ammo. Add it.
-				ammo = static_cast<AAmmo *>(Spawn(atype));
-				ammo->Amount = bDepleted ? 0 : amount;
-				if (ammo->BackpackMaxAmount > ammo->MaxAmount)
-				{
-					ammo->MaxAmount = ammo->BackpackMaxAmount;
-				}
-				if (ammo->Amount > ammo->MaxAmount)
-				{
-					ammo->Amount = ammo->MaxAmount;
-				}
-				ammo->AttachToOwner (other);
-			}
-			else
-			{ // The player had the ammo. Give some more.
-				if (ammo->MaxAmount < ammo->BackpackMaxAmount)
-				{
-					ammo->MaxAmount = ammo->BackpackMaxAmount;
-				}
-				if (!bDepleted && ammo->Amount < ammo->MaxAmount)
-				{
-					ammo->Amount += amount;
-					if (ammo->Amount > ammo->MaxAmount)
-					{
-						ammo->Amount = ammo->MaxAmount;
-					}
-				}
-			}
-		}
-	}
-	return Super::CreateCopy (other);
-}
-
-//===========================================================================
-//
-// ABackpackItem :: HandlePickup
-//
-// When the player picks up another backpack, just give them more ammo.
-//
-//===========================================================================
-
-bool ABackpackItem::HandlePickup (AInventory *item)
-{
-	// Since you already have a backpack, that means you already have every
-	// kind of ammo in your inventory, so we don't need to look at the
-	// entire PClass list to discover what kinds of ammo exist, and we don't
-	// have to alter the MaxAmount either.
-	if (item->IsKindOf (RUNTIME_CLASS(ABackpackItem)))
-	{
-		for (AInventory *probe = Owner->Inventory; probe != NULL; probe = probe->Inventory)
-		{
-			if (probe->GetClass()->ParentClass == RUNTIME_CLASS(AAmmo))
-			{
-				if (probe->Amount < probe->MaxAmount || sv_unlimited_pickup)
-				{
-					int amount = static_cast<AAmmo*>(probe->GetDefault())->BackpackAmount;
-					// extra ammo in baby mode and nightmare mode
-					if (!(item->ItemFlags&IF_IGNORESKILL))
-					{
-						amount = int(amount * G_SkillProperty(SKILLP_AmmoFactor));
-					}
-					probe->Amount += amount;
-					if (probe->Amount > probe->MaxAmount && !sv_unlimited_pickup)
-					{
-						probe->Amount = probe->MaxAmount;
-					}
-				}
-			}
-		}
-		// The pickup always succeeds, even if you didn't get anything
-		item->ItemFlags |= IF_PICKUPGOOD;
-		return true;
-	}
-	return false;
-}
-
-//===========================================================================
-//
-// ABackpackItem :: CreateTossable
-//
-// The tossed backpack must not give out any more ammo, otherwise a player
-// could cheat by dropping their backpack and picking it up for more ammo.
-//
-//===========================================================================
-
-AInventory *ABackpackItem::CreateTossable ()
-{
-	ABackpackItem *pack = static_cast<ABackpackItem *>(Super::CreateTossable());
-	if (pack != NULL)
-	{
-		pack->bDepleted = true;
-	}
-	return pack;
-}
-
-//===========================================================================
-//
-// ABackpackItem :: DetachFromOwner
-//
-//===========================================================================
-
-void ABackpackItem::DetachFromOwner ()
-{
-	// When removing a backpack, drop the player's ammo maximums to normal
-	AInventory *item;
-
-	for (item = Owner->Inventory; item != NULL; item = item->Inventory)
-	{
-		if (item->GetClass()->ParentClass == RUNTIME_CLASS(AAmmo) &&
-			item->MaxAmount == static_cast<AAmmo*>(item)->BackpackMaxAmount)
-		{
-			item->MaxAmount = static_cast<AInventory*>(item->GetDefault())->MaxAmount;
-			if (item->Amount > item->MaxAmount)
-			{
-				item->Amount = item->MaxAmount;
-			}
-		}
-	}
-}
-
-//===========================================================================
-//
-// ABackpack
-//
-//===========================================================================
-
-IMPLEMENT_CLASS(AMapRevealer, false, false)
-
-//===========================================================================
-//
-// AMapRevealer :: TryPickup
-//
-// The MapRevealer doesn't actually go in your inventory. Instead, it sets
-// a flag on the level.
-//
-//===========================================================================
-
-bool AMapRevealer::TryPickup (AActor *&toucher)
-{
-	level.flags2 |= LEVEL2_ALLMAP;
-	GoAwayAndDie ();
-	return true;
-}
-
-
-//===========================================================================
-//
-// AScoreItem
-//
-//===========================================================================
-
-IMPLEMENT_CLASS(AScoreItem, false, false)
-
-//===========================================================================
-//
-// AScoreItem :: TryPickup
-//
-// Adds the value (Amount) of the item to the toucher's Score property.
-//
-//===========================================================================
-
-bool AScoreItem::TryPickup (AActor *&toucher)
-{
-	toucher->Score += Amount;
-	GoAwayAndDie();
-	return true;
-}
-

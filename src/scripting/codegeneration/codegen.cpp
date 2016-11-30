@@ -2248,16 +2248,7 @@ FxExpression *FxAssign::Resolve(FCompileContext &ctx)
 	}
 
 	// Special case: Assignment to a bitfield.
-	if (Base->ExprType == EFX_StructMember || Base->ExprType == EFX_ClassMember)
-	{
-		auto f = static_cast<FxStructMember *>(Base)->membervar;
-		if (f->BitValue != -1 && !ctx.CheckReadOnly(f->Flags))
-		{
-			IsBitWrite = f->BitValue;
-			return this;
-		}
-	}
-
+	IsBitWrite = Base->GetBitValue();
 	return this;
 }
 
@@ -4237,7 +4228,7 @@ PPrototype *FxTypeCheck::ReturnProto()
 //
 //==========================================================================
 
-int BuiltinTypeCheck(VMFrameStack *stack, VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
+int BuiltinTypeCheck(VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
 {
 	assert(numparam == 2);
 	PARAM_POINTER_AT(0, obj, DObject);
@@ -5039,7 +5030,7 @@ FxExpression *FxRandom::Resolve(FCompileContext &ctx)
 //
 //==========================================================================
 
-int BuiltinRandom(VMFrameStack *stack, VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
+int BuiltinRandom(VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
 {
 	assert(numparam >= 1 && numparam <= 3);
 	FRandom *rng = reinterpret_cast<FRandom *>(param[0].a);
@@ -5293,7 +5284,7 @@ FxFRandom::FxFRandom(FRandom *r, FxExpression *mi, FxExpression *ma, const FScri
 //
 //==========================================================================
 
-int BuiltinFRandom(VMFrameStack *stack, VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
+int BuiltinFRandom(VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
 {
 	assert(numparam == 1 || numparam == 3);
 	FRandom *rng = reinterpret_cast<FRandom *>(param[0].a);
@@ -5521,6 +5512,7 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			self = self->Resolve(ctx);
 			newex = ResolveMember(ctx, ctx.Function->Variants[0].SelfClass, self, ctx.Function->Variants[0].SelfClass);
 			ABORT(newex);
+			goto foundit;
 		}
 	}
 
@@ -5531,8 +5523,7 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 		{
 			ScriptPosition.Message(MSG_DEBUGLOG, "Resolving name '%s' as class constant\n", Identifier.GetChars());
 			newex = FxConstant::MakeConstant(sym, ScriptPosition);
-			delete this;
-			return newex->Resolve(ctx);
+			goto foundit;
 		}
 		// Do this check for ZScript as well, so that a clearer error message can be printed. MSG_OPTERROR will default to MSG_ERROR there.
 		else if (ctx.Function->Variants[0].SelfClass != ctx.Class && sym->IsKindOf(RUNTIME_CLASS(PField)))
@@ -5543,6 +5534,7 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			ABORT(newex);
 			ScriptPosition.Message(MSG_OPTERROR, "Self pointer used in ambiguous context; VM execution may abort!");
 			ctx.Unsafe = true;
+			goto foundit;
 		}
 		else
 		{
@@ -5573,16 +5565,20 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 		{
 			ScriptPosition.Message(MSG_DEBUGLOG, "Resolving name '%s' as global constant\n", Identifier.GetChars());
 			newex = FxConstant::MakeConstant(sym, ScriptPosition);
+			goto foundit;
 		}
 		else if (sym->IsKindOf(RUNTIME_CLASS(PField)))
 		{
 			// internally defined global variable
 			ScriptPosition.Message(MSG_DEBUGLOG, "Resolving name '%s' as global variable\n", Identifier.GetChars());
 			newex = new FxGlobalVariable(static_cast<PField *>(sym), ScriptPosition);
+			goto foundit;
 		}
 		else
 		{
 			ScriptPosition.Message(MSG_ERROR, "Invalid global identifier '%s'\n", Identifier.GetChars());
+			delete this;
+			return nullptr;
 		}
 	}
 
@@ -5591,10 +5587,10 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 	{
 		ScriptPosition.Message(MSG_DEBUGLOG, "Resolving name '%s' as line special %d\n", Identifier.GetChars(), num);
 		newex = new FxConstant(num, ScriptPosition);
+		goto foundit;
 	}
 
-	auto cvar = FindCVar(Identifier.GetChars(), nullptr);
-	if (cvar != nullptr)
+	if (auto *cvar = FindCVar(Identifier.GetChars(), nullptr))
 	{
 		if (cvar->GetFlags() & CVAR_USERINFO)
 		{
@@ -5603,14 +5599,14 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			return nullptr;
 		}
 		newex = new FxCVar(cvar, ScriptPosition);
+		goto foundit;
 	}
 	
-	if (newex == nullptr)
-	{
-		ScriptPosition.Message(MSG_ERROR, "Unknown identifier '%s'", Identifier.GetChars());
-		delete this;
-		return nullptr;
-	}
+	ScriptPosition.Message(MSG_ERROR, "Unknown identifier '%s'", Identifier.GetChars());
+	delete this;
+	return nullptr;
+
+foundit:
 	delete this;
 	return newex? newex->Resolve(ctx) : nullptr;
 }
@@ -5736,6 +5732,11 @@ FxExpression *FxMemberIdentifier::Resolve(FCompileContext& ctx)
 	}
 
 	SAFE_RESOLVE(Object, ctx);
+
+	if (Identifier == FName("allmap"))
+	{
+		int a = 2;
+	}
 
 	// check for class or struct constants if the left side is a type name.
 	if (Object->ValueType == TypeError)
@@ -7556,7 +7557,7 @@ FxExpression *FxActionSpecialCall::Resolve(FCompileContext& ctx)
 //
 //==========================================================================
 
-int BuiltinCallLineSpecial(VMFrameStack *stack, VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
+int BuiltinCallLineSpecial(VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
 {
 	assert(numparam > 2 && numparam < 8);
 	assert(param[0].Type == REGT_INT);
@@ -9516,7 +9517,7 @@ FxExpression *FxClassTypeCast::Resolve(FCompileContext &ctx)
 //
 //==========================================================================
 
-int BuiltinNameToClass(VMFrameStack *stack, VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
+int BuiltinNameToClass(VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
 {
 	assert(numparam == 2);
 	assert(numret == 1);
@@ -9648,7 +9649,7 @@ FxExpression *FxClassPtrCast::Resolve(FCompileContext &ctx)
 //
 //==========================================================================
 
-int BuiltinClassCast(VMFrameStack *stack, VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
+int BuiltinClassCast(VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret)
 {
 	PARAM_PROLOGUE;
 	PARAM_CLASS(from, DObject);
