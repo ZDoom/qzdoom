@@ -1256,7 +1256,7 @@ FxExpression *FxColorCast::Resolve(FCompileContext &ctx)
 			}
 			else
 			{
-				FxExpression *x = new FxConstant(V_GetColor(nullptr, constval.GetString()), ScriptPosition);
+				FxExpression *x = new FxConstant(V_GetColor(nullptr, constval.GetString(), &ScriptPosition), ScriptPosition);
 				delete this;
 				return x;
 			}
@@ -9974,6 +9974,19 @@ FxExpression *FxLocalVariableDeclaration::Resolve(FCompileContext &ctx)
 	{
 		if (Init) Init = new FxTypeCast(Init, ValueType, false);
 		SAFE_RESOLVE_OPT(Init, ctx);
+	}
+	if (Name != NAME_None)
+	{
+		for (auto l : ctx.Block->LocalVars)
+		{
+			if (l->Name == Name)
+			{
+				ScriptPosition.Message(MSG_ERROR, "Local variable %s already defined", Name.GetChars());
+				l->ScriptPosition.Message(MSG_ERROR, "Original definition is here ");
+				delete this;
+				return nullptr;
+			}
+		}
 	}
 	ctx.Block->LocalVars.Push(this);
 	return this;

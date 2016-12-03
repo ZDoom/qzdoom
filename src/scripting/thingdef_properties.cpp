@@ -664,7 +664,7 @@ DEFINE_PROPERTY(damage, X, Actor)
 
 	defaults->DamageVal = dmgval;
 	// Only DECORATE can get here with a valid expression.
-	CreateDamageFunction(bag.Info, defaults, id, true);
+	CreateDamageFunction(bag.Info, defaults, id, true, bag.Lumpnum);
 }
 
 //==========================================================================
@@ -2305,8 +2305,7 @@ DEFINE_CLASS_PROPERTY_PREFIX(powerup, color, C_f, Inventory)
 			*pBlendColor = MakeSpecialColormap(65535);
 			return;
 		}
-
-		color = V_GetColor(NULL, name);
+		color = V_GetColor(NULL, name, &bag.ScriptPosition);
 	}
 	if (PROP_PARM_COUNT > 2)
 	{

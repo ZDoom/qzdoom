@@ -100,13 +100,7 @@ private:
 		VM_ATAG Tag;
 	};
 
-	struct StatementInfo
-	{
-		uint16_t InstructionIndex;
-		uint16_t LineNumber;
-	};
-
-	TArray<StatementInfo> LineNumbers;
+	TArray<FStatementInfo> LineNumbers;
 	TArray<FxExpression *> StatementStack;
 
 	TArray<int> IntConstantList;
@@ -155,7 +149,7 @@ class FFunctionBuildList
 	TArray<Item> mItems;
 
 public:
-	VMFunction *AddFunction(PFunction *func, FxExpression *code, const FString &name, bool fromdecorate, int currentstate = -1, int statecnt = 0, int lumpnum = -1);
+	VMFunction *AddFunction(PFunction *func, FxExpression *code, const FString &name, bool fromdecorate, int currentstate, int statecnt, int lumpnum);
 	void Build();
 };
 
