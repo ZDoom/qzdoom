@@ -1548,6 +1548,7 @@ struct FTranslatedLineTarget
 {
 	AActor *linetarget;
 	DAngle angleFromSource;
+	DAngle attackAngleFromSource;
 	bool unlinked;	// found by a trace that went through an unlinked portal.
 };
 
