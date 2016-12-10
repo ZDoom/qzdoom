@@ -137,6 +137,16 @@ const char *FBaseCVar::GetHumanString(int precision) const
 	return GetGenericRep(CVAR_String).String;
 }
 
+const char *FBaseCVar::GetHumanStringDefault(int precision) const
+{
+	return GetGenericRepDefault(CVAR_String).String;
+}
+
+const char *FBaseCVar::GetHumanStringOverride(int precision) const
+{
+	return GetGenericRepOverride(CVAR_String).String;
+}
+
 void FBaseCVar::ForceSet (UCVarValue value, ECVarType type, bool nouserinfosend)
 {
 	DoSet (value, type);
@@ -675,6 +685,25 @@ void FBoolCVar::SetGenericRepDefault (UCVarValue value, ECVarType type)
 	}
 }
 
+UCVarValue FBoolCVar::GetGenericRepOverride (ECVarType type) const
+{
+	return FromBool (OverrideValue, type);
+}
+
+UCVarValue FBoolCVar::GetFavoriteRepOverride (ECVarType *type) const
+{
+	UCVarValue ret;
+	*type = CVAR_Bool;
+	ret.Bool = OverrideValue;
+	return ret;
+}
+
+void FBoolCVar::SetGenericRepOverride (UCVarValue value, ECVarType type)
+{
+	OverrideValue = ToBool (value, type);
+	Flags |= CVAR_OVERRIDEGET;
+}
+
 void FBoolCVar::DoSet (UCVarValue value, ECVarType type)
 {
 	Value = ToBool (value, type);
@@ -731,6 +760,25 @@ void FIntCVar::SetGenericRepDefault (UCVarValue value, ECVarType type)
 		SetGenericRep (value, type);
 		Flags |= CVAR_ISDEFAULT;
 	}
+}
+
+UCVarValue FIntCVar::GetGenericRepOverride (ECVarType type) const
+{
+	return FromInt (OverrideValue, type);
+}
+
+UCVarValue FIntCVar::GetFavoriteRepOverride (ECVarType *type) const
+{
+	UCVarValue ret;
+	*type = CVAR_Int;
+	ret.Int = OverrideValue;
+	return ret;
+}
+
+void FIntCVar::SetGenericRepOverride (UCVarValue value, ECVarType type)
+{
+	OverrideValue = ToInt (value, type);
+	Flags |= CVAR_OVERRIDEGET;
 }
 
 void FIntCVar::DoSet (UCVarValue value, ECVarType type)
@@ -799,6 +847,25 @@ void FFloatCVar::SetGenericRepDefault (UCVarValue value, ECVarType type)
 		SetGenericRep (value, type);
 		Flags |= CVAR_ISDEFAULT;
 	}
+}
+
+UCVarValue FFloatCVar::GetGenericRepOverride (ECVarType type) const
+{
+	return FromFloat (OverrideValue, type);
+}
+
+UCVarValue FFloatCVar::GetFavoriteRepOverride (ECVarType *type) const
+{
+	UCVarValue ret;
+	*type = CVAR_Float;
+	ret.Float = OverrideValue;
+	return ret;
+}
+
+void FFloatCVar::SetGenericRepOverride (UCVarValue value, ECVarType type)
+{
+	OverrideValue = ToFloat (value, type);
+	Flags |= CVAR_OVERRIDEGET;
 }
 
 void FFloatCVar::DoSet (UCVarValue value, ECVarType type)
@@ -870,6 +937,25 @@ void FStringCVar::SetGenericRepDefault (UCVarValue value, ECVarType type)
 	}
 }
 
+UCVarValue FStringCVar::GetGenericRepOverride (ECVarType type) const
+{
+	return FromString (OverrideValue, type);
+}
+
+UCVarValue FStringCVar::GetFavoriteRepOverride (ECVarType *type) const
+{
+	UCVarValue ret;
+	*type = CVAR_String;
+	ret.String = OverrideValue;
+	return ret;
+}
+
+void FStringCVar::SetGenericRepOverride (UCVarValue value, ECVarType type)
+{
+	ReplaceString(&OverrideValue, ToString(value, type));
+	Flags |= CVAR_ISDEFAULT;
+}
+
 void FStringCVar::DoSet (UCVarValue value, ECVarType type)
 {
 	ReplaceString (&Value, ToString (value, type));
@@ -907,6 +993,17 @@ void FColorCVar::SetGenericRepDefault (UCVarValue value, ECVarType type)
 		SetGenericRep (value, type);
 		Flags |= CVAR_ISDEFAULT;
 	}
+}
+
+UCVarValue FColorCVar::GetGenericRepOverride (ECVarType type) const
+{
+	return FromInt2 (OverrideValue, type);
+}
+
+void FColorCVar::SetGenericRepOverride (UCVarValue value, ECVarType type)
+{
+	OverrideValue = ToInt2 (value, type);
+	Flags |= CVAR_OVERRIDEGET;
 }
 
 void FColorCVar::DoSet (UCVarValue value, ECVarType type)
@@ -1018,6 +1115,29 @@ void FGUIDCVar::SetGenericRepDefault (UCVarValue value, ECVarType type)
 			SetGenericRep (value, type);
 			Flags |= CVAR_ISDEFAULT;
 		}
+	}
+}
+
+UCVarValue FGUIDCVar::GetGenericRepOverride (ECVarType type) const
+{
+	return FromGUID (OverrideValue, type);
+}
+
+UCVarValue FGUIDCVar::GetFavoriteRepOverride (ECVarType *type) const
+{
+	UCVarValue ret;
+	*type = CVAR_GUID;
+	ret.pGUID = &OverrideValue;
+	return ret;
+}
+
+void FGUIDCVar::SetGenericRepOverride (UCVarValue value, ECVarType type)
+{
+	const GUID *guid = ToGUID (value, type);
+	if (guid != NULL)
+	{
+		OverrideValue = *guid;
+		Flags |= CVAR_OVERRIDEGET;		
 	}
 }
 
@@ -1784,6 +1904,91 @@ CCMD (archivecvar)
 		if (var != NULL && (var->GetFlags() & CVAR_AUTO))
 		{
 			var->SetArchiveBit ();
+		}
+	}
+}
+
+CCMD (setoverride)
+{
+	if (argv.argc() != 3)
+	{
+		Printf ("usage: setoverride <variable> <value>\n");
+	}
+	else
+	{
+		FBaseCVar *var;
+
+		var = FindCVar (argv[1], NULL);
+		if (var == NULL)
+		{
+			// [SP] There's nothing here! Just create a new CVar...
+			var = new FStringCVar (argv[1], NULL, CVAR_AUTO | CVAR_UNSETTABLE | cvar_defflags);
+			var->CmdSet (argv[2]);
+		}
+		var->SetGenericRepOverride (argv[2], CVAR_String);
+	}
+}
+
+CCMD (unsetoverride)
+{
+	if (argv.argc() != 2)
+	{
+		Printf ("usage: unsetoverride <variable>\n");
+	}
+	else
+	{
+		FBaseCVar *var = FindCVar (argv[1], NULL);
+		if (var != NULL)
+		{
+			if (var->GetFlags() & CVAR_OVERRIDEGET)
+			{
+				var.Flags &= ~CVAR_OVERRIDEGET;
+			}
+			else
+			{
+				Printf ("Cannot unoverride %s\n", argv[1]);
+			}
+		}
+	}
+}
+
+CCMD (getoverride)
+{
+	FBaseCVar *var, *prev;
+
+	if (argv.argc() >= 2)
+	{
+		if ( (var = FindCVar (argv[1], &prev)) && (var->Flags & CVAR_OVERRIDEGET) )
+		{
+			UCVarValue val;
+			val = var->GetGenericRepOverride (CVAR_String);
+			Printf ("Override value for \"%s\" is \"%s\"\n", var->GetName(), val.String);
+		}
+		else
+		{
+			Printf ("Override for \"%s\" is unset\n", argv[1]);
+		}
+	}
+	else
+	{
+		Printf ("get: need variable name\n");
+	}
+}
+
+CCMD (toggleoverride)
+{
+	FBaseCVar *var, *prev;
+	UCVarValue val;
+
+	if (argv.argc() > 1)
+	{
+		if ( (var = FindCVar (argv[1], &prev)) )
+		{
+			val = var->GetGenericRepOverride (CVAR_Bool);
+			val.Bool = !val.Bool;
+			var->SetGenericRepOverride (val, CVAR_Bool);
+			Printf ("Override value for \"%s\" is \"%s\"\n", var->GetName(),
+				val.Bool ? "true" : "false");
 		}
 	}
 }

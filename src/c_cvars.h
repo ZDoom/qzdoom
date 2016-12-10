@@ -63,6 +63,7 @@ enum
 	CVAR_NOSAVE			= 4096, // when used with CVAR_SERVERINFO, do not save var to savegame
 	CVAR_MOD			= 8192,	// cvar was defined by a mod
 	CVAR_IGNORE			= 16384,// do not send cvar across the network/inaccesible from ACS (dummy mod cvar)
+	CVAR_OVERRIDEGET	= 32768,// This CVar has an override value set for GetCVar
 };
 
 union UCVarValue
@@ -109,16 +110,25 @@ public:
 	void SetGenericRep (UCVarValue value, ECVarType type);
 	void ResetToDefault ();
 	void SetArchiveBit () { Flags |= CVAR_ARCHIVE; }
+	void SetOverrideBit ()  { Flags |= CVAR_OVERRIDEGET; }
+	void UnsetOverrideBit ()  { Flags &= ~CVAR_OVERRIDEGET; }
 
 	virtual ECVarType GetRealType () const = 0;
 
 	virtual const char *GetHumanString(int precision=-1) const;
+	virtual const char *GetHumanStringDefault(int precision=-1) const;
+	virtual const char *GetHumanStringOverride(int precision=-1) const;
 	virtual UCVarValue GetGenericRep (ECVarType type) const = 0;
 	virtual UCVarValue GetFavoriteRep (ECVarType *type) const = 0;
 
 	virtual UCVarValue GetGenericRepDefault (ECVarType type) const = 0;
 	virtual UCVarValue GetFavoriteRepDefault (ECVarType *type) const = 0;
 	virtual void SetGenericRepDefault (UCVarValue value, ECVarType type) = 0;
+
+	// [SP] OverrideCVar support
+	virtual UCVarValue GetGenericRepOverride (ECVarType type) const = 0;
+	virtual UCVarValue GetFavoriteRepOverride (ECVarType *type) const = 0;
+	virtual void SetGenericRepOverride (UCVarValue value, ECVarType type) = 0;
 
 	FBaseCVar &operator= (const FBaseCVar &var)
 		{ UCVarValue val; ECVarType type; val = var.GetFavoriteRep (&type); SetGenericRep (val, type); return *this; }
@@ -237,6 +247,7 @@ protected:
 
 	bool Value;
 	bool DefaultValue;
+	bool OverrideValue;
 };
 
 class FIntCVar : public FBaseCVar
@@ -263,6 +274,7 @@ protected:
 
 	int Value;
 	int DefaultValue;
+	int OverrideValue;
 
 	friend class FFlagCVar;
 };
@@ -292,6 +304,7 @@ protected:
 
 	float Value;
 	float DefaultValue;
+	float OverrideValue;
 };
 
 class FStringCVar : public FBaseCVar
@@ -319,6 +332,7 @@ protected:
 
 	char *Value;
 	char *DefaultValue;
+	char *OverrideValue;
 };
 
 class FColorCVar : public FIntCVar
@@ -423,6 +437,7 @@ protected:
 
 	GUID Value;
 	GUID DefaultValue;
+	GUID OverrideValue;
 };
 
 extern int cvar_defflags;
