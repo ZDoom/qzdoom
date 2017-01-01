@@ -53,7 +53,7 @@
 #include "r_draw_pal.h"
 #include "r_thread.h"
 
-CVAR(Bool, r_dynlights, 1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
+CVAR(Bool, r_dynlights, 0, 0); //[SP] Disabled for release version
 
 namespace swrenderer
 {

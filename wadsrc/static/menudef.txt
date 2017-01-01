@@ -675,7 +675,6 @@ OptionMenu "TrueColorOptions"
 	Option "$TCMNU_MINFILTER",				"r_minfilter", "OnOff"
 	Option "$TCMNU_MAGFILTER",				"r_magfilter", "OnOff"
 	Option "$TCMNU_MIPMAP",					"r_mipmap", "OnOff"
-	Option "$TCMNU_DYNLIGHTS",				"r_dynlights", "OnOff"
 }
 
 OptionMenu "VideoOptions"
@@ -1774,7 +1773,6 @@ OptionMenu RendererMenu
 	Title "$RNDMNU_TITLE"
 	Option "$RNDMNU_RENDERER",	"vid_renderer", "PolyDoom"
 	Option "$RNDMNU_TRUECOLOR",	"swtruecolor", "OnOff"
-	Option "$RNDMNU_POLY",		"r_polyrenderer", "OnOff"
 	IfOption(Windows)
 	{
 		Option "$RNDMNU_CANVAS",	"vid_used3d", "D3DGL"

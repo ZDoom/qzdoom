@@ -53,7 +53,7 @@ void gl_InitData();
 EXTERN_CVAR(Bool, r_shadercolormaps)
 EXTERN_CVAR(Float, maxviewpitch)	// [SP] CVAR from GZDoom
 
-CUSTOM_CVAR(Bool, r_polyrenderer, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
+CUSTOM_CVAR(Bool, r_polyrenderer, 0, CVAR_NOINITCALL) // [SP] Disabled for release version. However, user can still turn it on and "test" it if they know the CVAR name.
 {
 	if (self == 1 && !hasglnodes)
 	{
