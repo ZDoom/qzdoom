@@ -1509,9 +1509,10 @@ void P_LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 		else	// [RH] Translate to new sector special
 			ss->special = P_TranslateSectorSpecial (LittleShort(ms->special));
 		tagManager.AddSectorTag(i, LittleShort(ms->tag));
-		ss->thinglist = NULL;
-		ss->touching_thinglist = NULL;		// phares 3/14/98
-		ss->render_thinglist = NULL;
+		ss->thinglist = nullptr;
+		ss->touching_thinglist = nullptr;		// phares 3/14/98
+		ss->render_thinglist = nullptr;
+		ss->touching_renderthings = nullptr;
 		ss->seqType = defSeqType;
 		ss->SeqName = NAME_None;
 		ss->nextsec = -1;	//jff 2/26/98 add fields to support locking out
@@ -4078,6 +4079,13 @@ void P_SetupLevel (const char *lumpname, int position)
 
 	// set up world state
 	P_SpawnSpecials ();
+
+	// disable reflective planes on sloped sectors.
+	for (auto i = 0; i < numsectors; i++)
+	{
+		if (sectors[i].floorplane.isSlope()) sectors[i].reflect[sector_t::floor] = 0;
+		if (sectors[i].ceilingplane.isSlope()) sectors[i].reflect[sector_t::ceiling] = 0;
+	}
 
 	// This must be done BEFORE the PolyObj Spawn!!!
 	Renderer->PreprocessLevel();

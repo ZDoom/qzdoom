@@ -653,7 +653,7 @@ void G_ChangeLevel(const char *levelname, int position, int flags, int nextSkill
 
 	if (thiscluster && (thiscluster->flags & CLUSTER_HUB))
 	{
-		if ((level.flags & LEVEL_NOINTERMISSION) || (nextcluster == thiscluster))
+		if ((level.flags & LEVEL_NOINTERMISSION) || ((nextcluster == thiscluster) && !(thiscluster->flags & CLUSTER_ALLOWINTERMISSION)))
 			NoWipe = 35;
 		D_DrawIcon = "TELEICON";
 	}
@@ -874,7 +874,7 @@ void G_DoCompleted (void)
 
 	if (!deathmatch &&
 		((level.flags & LEVEL_NOINTERMISSION) ||
-		((nextcluster == thiscluster) && (thiscluster->flags & CLUSTER_HUB))))
+		((nextcluster == thiscluster) && (thiscluster->flags & CLUSTER_HUB) && !(thiscluster->flags & CLUSTER_ALLOWINTERMISSION))))
 	{
 		G_WorldDone ();
 		return;
@@ -1196,8 +1196,7 @@ void G_StartTravel ()
 			// Only living players travel. Dead ones get a new body on the new level.
 			if (players[i].health > 0)
 			{
-				pawn->UnlinkFromWorld ();
-				P_DelSector_List ();
+				pawn->UnlinkFromWorld (nullptr);
 				int tid = pawn->tid;	// Save TID
 				pawn->RemoveFromHash ();
 				pawn->tid = tid;		// Restore TID (but no longer linked into the hash chain)
@@ -1206,8 +1205,7 @@ void G_StartTravel ()
 				for (inv = pawn->Inventory; inv != NULL; inv = inv->Inventory)
 				{
 					inv->ChangeStatNum (STAT_TRAVELLING);
-					inv->UnlinkFromWorld ();
-					P_DelSector_List ();
+					inv->UnlinkFromWorld (nullptr);
 				}
 			}
 		}
@@ -1304,7 +1302,7 @@ void G_FinishTravel ()
 		{
 			pawndup->Destroy();
 		}
-		pawn->LinkToWorld ();
+		pawn->LinkToWorld (nullptr);
 		pawn->ClearInterpolation();
 		pawn->AddToHash ();
 		pawn->SetState(pawn->SpawnState);
@@ -1313,7 +1311,7 @@ void G_FinishTravel ()
 		for (inv = pawn->Inventory; inv != NULL; inv = inv->Inventory)
 		{
 			inv->ChangeStatNum (STAT_INVENTORY);
-			inv->LinkToWorld ();
+			inv->LinkToWorld (nullptr);
 			inv->Travelled ();
 		}
 		if (ib_compatflags & BCOMPATF_RESETPLAYERSPEED)
@@ -1571,7 +1569,7 @@ void G_UnSnapshotLevel (bool hubLoad)
 				// If this isn't the unmorphed original copy of a player, destroy it, because it's extra.
 				for (i = 0; i < MAXPLAYERS; ++i)
 				{
-					if (playeringame[i] && players[i].morphTics && players[i].mo->tracer == pawn)
+					if (playeringame[i] && players[i].morphTics && players[i].mo->alternative == pawn)
 					{
 						break;
 					}

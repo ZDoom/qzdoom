@@ -1286,9 +1286,9 @@ DEFINE_ACTION_FUNCTION(AActor, A_Explode)
 		{
 			ang = i*360./nails;
 			// Comparing the results of a test wad with Eternity, it seems A_NailBomb does not aim
-			P_LineAttack (self, ang, MISSILERANGE, 0.,
+			P_LineAttack(self, ang, MISSILERANGE, 0.,
 				//P_AimLineAttack (self, ang, MISSILERANGE), 
-				naildamage, NAME_Hitscan, pufftype);
+				naildamage, NAME_Hitscan, pufftype, (self->flags & MF_MISSILE) ? LAF_TARGETISSOURCE : 0);
 		}
 	}
 
@@ -5229,12 +5229,13 @@ void A_Weave(AActor *self, int xyspeed, int zspeed, double xydist, double zdist)
 		}
 		else
 		{
-			self->UnlinkFromWorld ();
+			FLinkContext ctx;
+			self->UnlinkFromWorld (&ctx);
 			self->flags |= MF_NOBLOCKMAP;
 			// We need to do portal offsetting here explicitly, because SetXY cannot do that.
 			newpos -= self->Pos().XY();
 			self->SetXY(self->Vec2Offset(newpos.X, newpos.Y));
-			self->LinkToWorld ();
+			self->LinkToWorld (&ctx);
 		}
 		self->WeaveIndexXY = weaveXY;
 	}
@@ -6862,17 +6863,18 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetSize)
 	double oldradius = self->radius;
 	double oldheight = self->Height;
 
-	self->UnlinkFromWorld();
+	FLinkContext ctx;
+	self->UnlinkFromWorld(&ctx);
 	self->radius = newradius;
 	self->Height = newheight;
-	self->LinkToWorld();
+	self->LinkToWorld(&ctx);
 
 	if (testpos && !P_TestMobjLocation(self))
 	{
-		self->UnlinkFromWorld();
+		self->UnlinkFromWorld(&ctx);
 		self->radius = oldradius;
 		self->Height = oldheight;
-		self->LinkToWorld();
+		self->LinkToWorld(&ctx);
 		ACTION_RETURN_BOOL(false);
 	}
 

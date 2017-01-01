@@ -23,6 +23,7 @@
 #ifndef __R_DEFS_H__
 #define __R_DEFS_H__
 
+#include <forward_list>
 #include "doomdef.h"
 #include "templates.h"
 #include "memarena.h"
@@ -626,9 +627,9 @@ struct sector_t
 	// Member functions
 
 private:
-	bool MoveAttached(int crush, double move, int floorOrCeiling, bool resetfailed);
+	bool MoveAttached(int crush, double move, int floorOrCeiling, bool resetfailed, bool instant = false);
 public:
-	EMoveResult MoveFloor(double speed, double dest, int crush, int direction, bool hexencrush);
+	EMoveResult MoveFloor(double speed, double dest, int crush, int direction, bool hexencrush, bool instant = false);
 	EMoveResult MoveCeiling(double speed, double dest, int crush, int direction, bool hexencrush);
 
 	inline EMoveResult MoveFloor(double speed, double dest, int direction)
@@ -686,8 +687,10 @@ public:
 		int Flags;
 		int Light;
 		double alpha;
-		FTextureID Texture;
 		double TexZ;
+		PalEntry GlowColor;
+		float GlowHeight;
+		FTextureID Texture;
 	};
 
 
@@ -1028,11 +1031,11 @@ public:
 	};
 	TObjPtr<DInterpolation> interpolations[4];
 
+	int prevsec;		// -1 or number of sector for previous step
+	int nextsec;		// -1 or number of next step sector
 	BYTE 		soundtraversed;	// 0 = untraversed, 1,2 = sndlines -1
 	// jff 2/26/98 lockout machinery for stairbuilding
 	SBYTE stairlock;	// -2 on first locked -1 after thinker done 0 normally
-	int prevsec;		// -1 or number of sector for previous step
-		int nextsec;		// -1 or number of next step sector
 
 	short linecount;
 	struct line_t **lines;		// [linecount] size
@@ -1048,6 +1051,7 @@ public:
 	// thinglist is a subset of touching_thinglist
 	struct msecnode_t *touching_thinglist;				// phares 3/14/98
 	struct msecnode_t *render_thinglist;				// for cross-portal rendering.
+	struct msecnode_t *touching_renderthings; // this is used to allow wide things to be rendered not only from their main sector.
 
 	double gravity;			// [RH] Sector gravity (1.0 is normal)
 	FNameNoInit damagetype;		// [RH] Means-of-death for applied damage

@@ -1279,8 +1279,9 @@ public:
 
 	void ParseSector(sector_t *sec, int index)
 	{
-		int lightcolor = -1;
-		int fadecolor = -1;
+		PalEntry lightcolor = -1;
+		PalEntry fadecolor = -1;
+		int fogdensity = -1;
 		int desaturation = -1;
 		int fplaneflags = 0, cplaneflags = 0;
 		double fp[4] = { 0 }, cp[4] = { 0 };
@@ -1294,9 +1295,10 @@ public:
 		sec->SetYScale(sector_t::ceiling, 1.);
 		sec->SetAlpha(sector_t::floor, 1.);
 		sec->SetAlpha(sector_t::ceiling, 1.);
-		sec->thinglist = NULL;
-		sec->touching_thinglist = NULL;		// phares 3/14/98
-		sec->render_thinglist = NULL;
+		sec->thinglist = nullptr;
+		sec->touching_thinglist = nullptr;		// phares 3/14/98
+		sec->render_thinglist = nullptr;
+		sec->touching_renderthings = nullptr;
 		sec->seqType = (level.flags & LEVEL_SNDSEQTOTALCTRL) ? 0 : -1;
 		sec->nextsec = -1;	//jff 2/26/98 add fields to support locking out
 		sec->prevsec = -1;	// stair retriggering until build completes
@@ -1460,6 +1462,10 @@ public:
 					desaturation = int(255*CheckFloat(key));
 					continue;
 
+				case NAME_fogdensity:
+					fogdensity = clamp(CheckInt(key), 0, 511);
+					break;
+
 				case NAME_Silent:
 					Flag(sec->Flags, SECF_SILENT, key);
 					continue;
@@ -1562,14 +1568,18 @@ public:
 					sec->terrainnum[sector_t::ceiling] = P_FindTerrain(CheckString(key));
 					break;
 
+				case NAME_floor_reflect:
+					sec->reflect[sector_t::floor] = (float)CheckFloat(key);
+					break;
+
+				case NAME_ceiling_reflect:
+					sec->reflect[sector_t::ceiling] = (float)CheckFloat(key);
+					break;
+
 				case NAME_MoreIds:
 					// delay parsing of the tag string until parsing of the sector is complete
 					// This ensures that the ID is always the first tag in the list.
 					tagstring = CheckString(key);
-					break;
-
-				case NAME_portal_ceil_alpha:
-					sec->planes[sector_t::ceiling].alpha = CheckFloat(key);
 					break;
 
 				case NAME_portal_ceil_blocksound:
@@ -1593,10 +1603,6 @@ public:
 					else if (!stricmp(CheckString(key), "additive")) sec->planes[sector_t::ceiling].Flags |= PLANEF_ADDITIVE;
 					break;
 				
-				case NAME_portal_floor_alpha:
-					sec->planes[sector_t::floor].alpha = CheckFloat(key);
-					break;
-
 				case NAME_portal_floor_blocksound:
 					Flag(sec->planes[sector_t::floor].Flags, PLANEF_BLOCKSOUND, key);
 					break;
@@ -1673,7 +1679,7 @@ public:
 			sec->ceilingplane.set(n.X, n.Y, n.Z, cp[3]);
 		}
 
-		if (lightcolor == -1 && fadecolor == -1 && desaturation == -1)
+		if (lightcolor == -1 && fadecolor == -1 && desaturation == -1 && fogdensity == -1)
 		{
 			// [RH] Sectors default to white light with the default fade.
 			//		If they are outside (have a sky ceiling), they use the outside fog.
@@ -1701,6 +1707,8 @@ public:
 					fadecolor = level.fadeto;
 			}
 			if (desaturation == -1) desaturation = NormalLight.Desaturate;
+			if (fogdensity != -1) fadecolor.a = fogdensity / 2;
+			else fadecolor.a = 0;
 
 			sec->ColorMap = GetSpecialLights (lightcolor, fadecolor, desaturation);
 		}

@@ -91,6 +91,7 @@ extern bool r_showviewer;
 DWORD			gl_fixedcolormap;
 area_t			in_area;
 TArray<BYTE> currentmapsection;
+int camtexcount;
 
 void gl_ParseDefs();
 
@@ -497,10 +498,6 @@ void FGLRenderer::DrawScene(int drawmode)
 	if (camera != nullptr)
 	{
 		ActorRenderFlags savedflags = camera->renderflags;
-		if (drawmode != DM_PORTAL && !r_showviewer)
-		{
-			camera->renderflags |= RF_INVISIBLE;
-		}
 		CreateScene();
 		camera->renderflags = savedflags;
 	}
@@ -1356,6 +1353,7 @@ void FGLInterface::RenderTextureView (FCanvasTexture *tex, AActor *Viewpoint, in
 	}
 
 	tex->SetUpdated();
+	camtexcount++;
 }
 
 //==========================================================================
