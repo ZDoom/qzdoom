@@ -2740,7 +2740,7 @@ void R_ProjectParticle (particle_t *particle, const sector_t *sector, int shade,
 	vis->startfrac = 255 & (particle->color >>24);
 	vis->pic = NULL;
 	vis->bIsVoxel = false;
-	vis->renderflags = particle->trans;
+	vis->renderflags = short(particle->alpha * 255);
 	vis->FakeFlatStat = fakeside;
 	vis->floorclip = 0;
 	vis->Style.ColormapNum = 0;

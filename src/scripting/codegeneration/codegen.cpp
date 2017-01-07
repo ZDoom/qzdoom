@@ -208,6 +208,10 @@ ExpEmit::ExpEmit(VMFunctionBuilder *build, int type, int count)
 
 void ExpEmit::Free(VMFunctionBuilder *build)
 {
+	if (RegType == REGT_INT && RegNum == 0)
+	{
+		int a = 0;
+	}
 	if (!Fixed && !Konst && RegType <= REGT_TYPE)
 	{
 		build->Registers[RegType].Return(RegNum, RegCount);
@@ -3976,7 +3980,7 @@ ExpEmit FxConcat::Emit(VMFunctionBuilder *build)
 	}
 	else
 	{
-		int cast;
+		int cast = 0;
 		strng = ExpEmit(build, REGT_STRING);
 		if (op1.Konst)
 		{
@@ -4584,8 +4588,14 @@ ExpEmit FxConditional::Emit(VMFunctionBuilder *build)
 		else
 		{
 			// Use the register returned by the true condition as the
-			// target for the false condition.
-			out = trueop;
+			// target for the false condition, if temporary.
+			// If this is a local variable we need another register for the result.
+			if (trueop.Fixed)
+			{
+				out = ExpEmit(build, trueop.RegType);
+				build->Emit(truex->ValueType->GetMoveOp(), out.RegNum, trueop.RegNum, 0);
+			}
+			else out = trueop;
 		}
 	}
 	// Make sure to skip the false path.
@@ -8820,15 +8830,20 @@ ExpEmit FxSwitchStatement::Emit(VMFunctionBuilder *build)
 
 bool FxSwitchStatement::CheckReturn()
 {
-	//A switch statement returns when it contains no breaks and ends with a return
+	bool founddefault = false;
+	//A switch statement returns when it contains a no breaks, a default case, and ends with a return
 	for (auto line : Content)
 	{
 		if (line->ExprType == EFX_JumpStatement)
 		{
 			return false;	// Break means that the end of the statement will be reached, Continue cannot happen in the last statement of the last block.
 		}
+		else if (line->ExprType == EFX_CaseStatement)
+		{
+			if (static_cast<FxCaseStatement*>(line)->Condition == nullptr) founddefault = true;
+		}
 	}
-	return Content.Size() > 0 && Content.Last()->CheckReturn();
+	return founddefault && Content.Size() > 0 && Content.Last()->CheckReturn();
 }
 
 //==========================================================================
@@ -10043,7 +10058,7 @@ ExpEmit FxLocalVariableDeclaration::Emit(VMFunctionBuilder *build)
 				}
 				emitval.Free(build);
 			}
-			else if (Init->ExprType != EFX_LocalVariable)
+			else if (!emitval.Fixed)
 			{
 				// take over the register that got allocated while emitting the Init expression.
 				RegNum = emitval.RegNum;

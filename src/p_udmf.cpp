@@ -1297,7 +1297,7 @@ public:
 		sec->SetAlpha(sector_t::ceiling, 1.);
 		sec->thinglist = nullptr;
 		sec->touching_thinglist = nullptr;		// phares 3/14/98
-		sec->render_thinglist = nullptr;
+		sec->sectorportal_thinglist = nullptr;
 		sec->touching_renderthings = nullptr;
 		sec->seqType = (level.flags & LEVEL_SNDSEQTOTALCTRL) ? 0 : -1;
 		sec->nextsec = -1;	//jff 2/26/98 add fields to support locking out
@@ -1574,6 +1574,22 @@ public:
 
 				case NAME_ceiling_reflect:
 					sec->reflect[sector_t::ceiling] = (float)CheckFloat(key);
+					break;
+
+				case NAME_floorglowcolor:
+					sec->planes[sector_t::floor].GlowColor = CheckInt(key);
+					break;
+
+				case NAME_floorglowheight:
+					sec->planes[sector_t::floor].GlowHeight = (float)CheckFloat(key);
+					break;
+
+				case NAME_ceilingglowcolor:
+					sec->planes[sector_t::ceiling].GlowColor = CheckInt(key);
+					break;
+
+				case NAME_ceilingglowheight:
+					sec->planes[sector_t::ceiling].GlowHeight = (float)CheckFloat(key);
 					break;
 
 				case NAME_MoreIds:

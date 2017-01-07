@@ -48,6 +48,7 @@
 #include "stats.h"
 #include "zstring.h"
 #include "d_dehacked.h"
+#include "v_text.h"
 
 
 #include "gl/dynlights/gl_dynlight.h"
@@ -55,6 +56,7 @@
 #include "gl/utility/gl_clock.h"
 #include "gl/utility/gl_convert.h"
 #include "gl/data/gl_data.h"
+#include "gl/system//gl_interface.h"
 
 int ScriptDepth;
 void gl_InitGlow(FScanner &sc);
@@ -125,6 +127,7 @@ public:
    void SetParameter(double p) { m_Param = p; }
    void SetArg(int arg, BYTE val) { m_Args[arg] = val; }
    BYTE GetArg(int arg) { return m_Args[arg]; }
+   uint8_t GetAttenuate() const { return m_attenuate; }
    void SetOffset(float* ft) { m_Pos.X = ft[0]; m_Pos.Z = ft[1]; m_Pos.Y = ft[2]; }
    void SetSubtractive(bool subtract) { m_subtractive = subtract; }
    void SetAdditive(bool add) { m_additive = add; }
@@ -181,7 +184,9 @@ void FLightDefaults::ApplyProperties(ADynamicLight * light) const
 	if (m_additive) light->flags4 |= MF4_ADDITIVE;
 	if (m_dontlightself) light->flags4 |= MF4_DONTLIGHTSELF;
 	light->m_tickCount = 0;
-	if (m_type == PulseLight)
+	switch (m_type)
+	{
+	case PulseLight:
 	{
 		float pulseTime = float(m_Param / TICRATE);
 
@@ -190,6 +195,36 @@ void FLightDefaults::ApplyProperties(ADynamicLight * light) const
 		light->m_cycler.ShouldCycle(true);
 		light->m_cycler.SetCycleType(CYCLE_Sin);
 		light->m_currentRadius = light->m_cycler.GetVal();
+		break;
+	}
+
+	case FlickerLight:
+	case RandomFlickerLight:
+	{
+		float minrad = float(MIN(light->m_Radius[0], light->m_Radius[1]));
+		float maxrad = float(MAX(light->m_Radius[0], light->m_Radius[1]));
+		light->m_currentRadius = clamp(light->m_currentRadius, minrad, maxrad);
+		break;
+	}
+
+	case PointLight:
+		light->m_currentRadius = float(light->m_Radius[0]);
+		break;
+
+	case SectorLight:
+	{
+		float intensity;
+		float scale = light->args[LIGHT_SCALE] / 8.f;
+
+		if (scale == 0.f) scale = 1.f;
+
+		intensity = light->Sector->lightlevel * scale;
+		intensity = clamp<float>(intensity, 0.f, 255.f);
+
+		light->m_currentRadius = intensity;
+		break;
+	}
+
 	}
 
 	switch (m_attenuate)
@@ -307,6 +342,12 @@ void gl_AddLightDefaults(FLightDefaults *defaults)
          LightDefaults.Delete(i);
          break;
       }
+   }
+
+   if (gl.legacyMode && (defaults->GetAttenuate()))
+   {
+	   defaults->SetArg(LIGHT_INTENSITY, defaults->GetArg(LIGHT_INTENSITY) * 2 / 3);
+	   defaults->SetArg(LIGHT_SECONDARY_INTENSITY, defaults->GetArg(LIGHT_SECONDARY_INTENSITY) * 2 / 3);
    }
 
    LightDefaults.Push(defaults);
@@ -436,11 +477,11 @@ void gl_ParsePulseLight(FScanner &sc)
 				defaults->SetOffset(floatTriple);
 				break;
 			case LIGHTTAG_SIZE:
-				intVal = clamp<int>(gl_ParseInt(sc), 0, 255);
+				intVal = clamp<int>(gl_ParseInt(sc), 0, 1024);
 				defaults->SetArg(LIGHT_INTENSITY, intVal);
 				break;
 			case LIGHTTAG_SECSIZE:
-				intVal = clamp<int>(gl_ParseInt(sc), 0, 255);
+				intVal = clamp<int>(gl_ParseInt(sc), 0, 1024);
 				defaults->SetArg(LIGHT_SECONDARY_INTENSITY, intVal);
 				break;
 			case LIGHTTAG_INTERVAL:
@@ -1336,12 +1377,13 @@ void gl_DoParseDefs(FScanner &sc, int workingLump)
 //
 //==========================================================================
 
-void gl_LoadGLDefs(const char * defsLump)
+void gl_LoadGLDefs(const char *defsLump)
 {
 	int workingLump, lastLump;
+	static const char *gldefsnames[] = { "GLDEFS", defsLump, nullptr };
 
 	lastLump = 0;
-	while ((workingLump = Wads.FindLump(defsLump, &lastLump)) != -1)
+	while ((workingLump = Wads.FindLumpMulti(gldefsnames, &lastLump)) != -1)
 	{
 		FScanner sc(workingLump);
 		gl_DoParseDefs(sc, workingLump);
@@ -1383,8 +1425,7 @@ void gl_ParseDefs()
 		break;
 	}
 	gl_ParseVavoomSkybox();
-	if (defsLump != NULL) gl_LoadGLDefs(defsLump);
-	gl_LoadGLDefs("GLDEFS");
+	gl_LoadGLDefs(defsLump);
 	gl_InitializeActorLights();
 }
 

@@ -1511,7 +1511,7 @@ void P_LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 		tagManager.AddSectorTag(i, LittleShort(ms->tag));
 		ss->thinglist = nullptr;
 		ss->touching_thinglist = nullptr;		// phares 3/14/98
-		ss->render_thinglist = nullptr;
+		ss->sectorportal_thinglist = nullptr;
 		ss->touching_renderthings = nullptr;
 		ss->seqType = defSeqType;
 		ss->SeqName = NAME_None;
@@ -3557,6 +3557,7 @@ void P_FreeLevelData ()
 	P_ClearUDMFKeys();
 }
 
+extern FMemArena secnodearena;
 extern msecnode_t *headsecnode;
 
 void P_FreeExtraLevelData()
@@ -3574,18 +3575,10 @@ void P_FreeExtraLevelData()
 		}
 		FBlockNode::FreeBlocks = NULL;
 	}
-	{
-		msecnode_t *node = headsecnode;
-
-		while (node != NULL)
-		{
-			msecnode_t *next = node->m_snext;
-			M_Free (node);
-			node = next;
-		}
-		headsecnode = NULL;
-	}
+	secnodearena.FreeAllBlocks();
+	headsecnode = nullptr;
 }
+
 
 //
 // P_SetupLevel

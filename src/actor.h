@@ -418,6 +418,7 @@ enum ActorRenderFlag
 	RF_FLATSPRITE		= 0x2000,	// Flat sprite
 	RF_VOXELSPRITE		= 0x3000,	// Voxel object
 	RF_INVISIBLE		= 0x8000,	// Don't bother drawing this actor
+	RF_MAYBEINVISIBLE	= 0x10000,
 	RF_ROLLSPRITE		= 0x40000,	//[marrub]roll the sprite billboard
 	RF_DONTFLIP			= 0x80000,	// Don't flip it when viewed from behind.
 	RF_ROLLCENTER		= 0x00100000, // Rotate from the center of sprite instead of offsets
@@ -1148,8 +1149,8 @@ public:
 
 	// a linked list of sectors where this object appears
 	struct msecnode_t	*touching_sectorlist;				// phares 3/14/98
-	struct msecnode_t	*render_sectorlist;		// same for cross-sectorportal rendering
-	struct portnode_t	*render_portallist;		// and for cross-lineportal
+	struct msecnode_t	*touching_sectorportallist;		// same for cross-sectorportal rendering
+	struct portnode_t	*touching_lineportallist;		// and for cross-lineportal
 	struct msecnode_t	*touching_rendersectors; // this is the list of sectors that this thing interesects with it's max(radius, renderradius).
 	int validcount;
 
