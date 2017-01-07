@@ -86,14 +86,14 @@ void RenderPolyParticle::Render(const TriMatrix &worldToClip, const Vec4f &clipP
 
 	if (swrenderer::r_swtruecolor)
 	{
-		uint32_t alpha = particle->alpha;
+		uint32_t alpha = (uint32_t)(particle->alpha * 255 + 0.5);
 		args.uniforms.color = (alpha << 24) | (particle->color & 0xffffff);
 	}
 	else
 	{
 		args.uniforms.color = ((uint32_t)particle->color) >> 24;
-		args.uniforms.srcalpha = particle->alpha;
-		args.uniforms.destalpha = 255 - particle->alpha;
+		args.uniforms.srcalpha = (uint32_t)(particle->alpha * 255 + 0.5);
+		args.uniforms.destalpha = 255 - (uint32_t)(particle->alpha * 255 + 0.5);
 	}
 
 	args.objectToClip = &worldToClip;
