@@ -116,6 +116,7 @@ public:
 		sightend = t2->PosRelative(task->portalgroup);
 		sightstart.Z += t1->Height * 0.75;
 
+		portalgroup = task->portalgroup;
 		Startfrac = task->Frac;
 		Trace = { sightstart.X, sightstart.Y, sightend.X - sightstart.X, sightend.Y - sightstart.Y };
 		Lastztop = Lastzbottom = sightstart.Z;
@@ -790,6 +791,7 @@ sightcounts[2]++;
 
 	bool traverseres = P_SightTraverseIntercepts ( );
 	if (itres == -1) return false;	// if the iterator had an early out there was no line of sight. The traverser was only called to collect more portals.
+	if (seeingthing->Sector->PortalGroup != portalgroup) return false;	// We are in a different group than the seeingthing, so this trace cannot determine visibility alone.
 	return traverseres;
 }
 

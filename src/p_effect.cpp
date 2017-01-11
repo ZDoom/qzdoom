@@ -272,7 +272,7 @@ void P_ThinkParticles ()
 		auto oldtrans = particle->alpha;
 		particle->alpha -= particle->fadestep;
 		particle->size += particle->sizestep;
-		if (oldtrans < particle->alpha || --particle->ttl <= 0 || (particle->size <= 0))
+		if (particle->alpha <= 0 || oldtrans < particle->alpha || --particle->ttl <= 0 || (particle->size <= 0))
 		{ // The particle has expired, so free it
 			memset (particle, 0, sizeof(particle_t));
 			if (prev)
@@ -763,7 +763,7 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 			int spiralduration = (duration == 0) ? 35 : duration;
 
 			p->alpha = 1.f;
-			p->ttl = duration;
+			p->ttl = spiralduration;
 			p->fadestep = FADEFROMTTL(spiralduration);
 			p->size = 3;
 			p->bright = fullbright;
