@@ -467,7 +467,7 @@ namespace swrenderer
 				R_SetColorMapLight(basecolormap, 0, 0);
 			}
 			bool active_columnmethod = r_columnmethod && !r_swtruecolor;
-			return active_columnmethod ? DoDraw0;
+			return DoDraw0;
 		}
 
 		fglevel = GetAlpha(style.SrcAlpha, alpha);
@@ -501,7 +501,7 @@ namespace swrenderer
 			return DontDraw;
 		}
 		bool active_columnmethod = r_columnmethod && !r_swtruecolor;
-		return active_columnmethod ? DoDraw0;
+		return DoDraw0;
 	}
 
 	ESPSResult R_SetPatchStyle(FRenderStyle style, float alpha, int translation, uint32_t color)
