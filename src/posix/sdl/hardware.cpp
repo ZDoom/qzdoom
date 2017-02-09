@@ -322,8 +322,8 @@ extern int NewWidth, NewHeight, NewBits, DisplayBits;
 
 CUSTOM_CVAR (Bool, fullscreen, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 {
-	NewWidth = screen->GetWidth();
-	NewHeight = screen->GetHeight();
+	NewWidth = screen->VideoWidth;
+	NewHeight = screen->VideoHeight;
 	NewBits = DisplayBits;
 	setmodeneeded = true;
 }
@@ -337,8 +337,8 @@ CUSTOM_CVAR (Float, vid_winscale, 1.f, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 	else if (Video)
 	{
 		Video->SetWindowedScale (self);
-		NewWidth = screen->GetWidth();
-		NewHeight = screen->GetHeight();
+		NewWidth = screen->VideoWidth;
+		NewHeight = screen->VideoHeight;
 		NewBits = DisplayBits;
 		setmodeneeded = true;
 	}
