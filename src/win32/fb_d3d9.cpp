@@ -74,6 +74,9 @@
 #include "r_data/colormaps.h"
 #include "SkylineBinPack.h"
 
+int ViewportScaledWidth(int width);
+int ViewportScaledHeight(int height);
+
 // MACROS ------------------------------------------------------------------
 
 // The number of points for the vertex buffer.
@@ -1226,9 +1229,11 @@ void D3DFB::Flip()
 	{
 		RECT box;
 		GetClientRect(Window, &box);
-		if (box.right > 0 && box.right > 0 && (Width != box.right || Height != box.bottom))
+		int clientWidth = ViewportScaledWidth(box.right);
+		int clientHeight = ViewportScaledHeight(box.bottom);
+		if (clientWidth > 0 && clientHeight > 0 && (Width != clientWidth || Height != clientHeight))
 		{
-			Resize(box.right, box.bottom);
+			Resize(clientWidth, clientHeight);
 
 			TrueHeight = Height;
 			PixelDoubling = 0;
