@@ -166,6 +166,7 @@ bool	 		viewactive;
 bool 			netgame;				// only true if packets are broadcast 
 bool			multiplayer;
 bool			multiplayernext = false;		// [SP] Map coop/dm implementation
+int			fakeplayers = 0;
 player_t		players[MAXPLAYERS];
 bool			playeringame[MAXPLAYERS];
 
