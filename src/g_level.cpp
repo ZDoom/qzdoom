@@ -33,6 +33,7 @@
 */
 
 #include <assert.h>
+#include <string>
 #include "templates.h"
 #include "d_main.h"
 #include "g_level.h"
@@ -189,11 +190,19 @@ CCMD (map)
 				{
 					deathmatch = false;
 					multiplayernext = true;
+					if (argv.argc() > 3)
+						fakeplayers = std::stoi(argv[3]);
+					else
+						fakeplayers = 0;
 				}
 				else if (argv.argc() > 2 && stricmp(argv[2], "dm") == 0)
 				{
 					deathmatch = true;
 					multiplayernext = true;
+					if (argv.argc() > 3)
+						fakeplayers = std::stoi(argv[3]);
+					else
+						fakeplayers = 0;
 				}
 				G_DeferedInitNew (argv[1]);
 			}
@@ -286,11 +295,19 @@ CCMD (open)
 			{
 				deathmatch = false;
 				multiplayernext = true;
+				if (argv.argc() > 3)
+					fakeplayers = std::stoi(argv[3]);
+				else
+					fakeplayers = 0;
 			}
 			else if (argv.argc() > 2 && stricmp(argv[2], "dm") == 0)
 			{
 				deathmatch = true;
 				multiplayernext = true;
+				if (argv.argc() > 3)
+					fakeplayers = std::stoi(argv[3]);
+				else
+					fakeplayers = 0;
 			}
 			gameaction = ga_newgame2;
 			d_skill = -1;
@@ -362,6 +379,12 @@ void G_DoNewGame (void)
 {
 	G_NewInit ();
 	playeringame[consoleplayer] = 1;
+
+	// [SP] set up fake players (for eventual split-screen support)
+	if (fakeplayers > 0)
+		for (int fp=consoleplayer;fp<MAXPLAYERS && fp<(fakeplayers+consoleplayer);++fp)
+			playeringame[fp] = 1;
+
 	if (d_skill != -1)
 	{
 		gameskill = d_skill;
@@ -1961,6 +1984,43 @@ CCMD(listmaps)
 	}
 }
 
-
-
-
+extern int nodeforplayer[];
+extern int playerfornode[];
+CCMD(control)
+{
+	if (gamestate != GS_LEVEL)
+	{
+		Printf ("Must be in game!\n");
+		return;
+	}
+	if (netgame)
+	{
+		Printf ("Cannot use this in netgame!\n");
+		return;
+	}
+	if (fakeplayers == 0)
+	{
+		Printf("You don't have any fake friends!\n");
+		return;
+	}
+	if (argv.argc() > 1)
+	{
+		if (playeringame[std::stoi(argv[1]) - 1] == 1)
+		{
+#if 0
+			consoleplayer = std::stoi(argv[1]) - 1;
+			doomcom.consoleplayer = consoleplayer;
+			playerfornode[0] = consoleplayer;
+			nodeforplayer[consoleplayer] = 0;
+			S_UpdateSounds(players[consoleplayer].camera);
+			StatusBar->AttachToPlayer (players[consoleplayer].camera->player);
+			StatusBar->ShowPlayerName ();
+#endif
+			playerfornode[0] = std::stoi(argv[1]) - 1;
+		}
+		else
+			Printf("No player %d in game!\n", std::stoi(argv[1]));
+	}
+	else
+		Printf("Usage: control <playernum>\n");
+}
