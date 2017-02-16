@@ -1450,7 +1450,9 @@ void DPSprite::Tick()
 			if ((Flags & PSPF_POWDOUBLE) && Tics && (Owner->mo->FindInventory (PClass::FindActor(NAME_PowerDoubleFiringSpeed), true)))
 				Tics--;
 
-			if (!Tics)
+			assert(State != nullptr);
+
+			if (State && !Tics)
 				SetState(State->GetNextState());
 		}
 	}
