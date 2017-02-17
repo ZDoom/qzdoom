@@ -1985,11 +1985,6 @@ extern int nodeforplayer[];
 extern int playerfornode[];
 CCMD(control)
 {
-	if (gamestate != GS_LEVEL)
-	{
-		Printf ("Must be in game!\n");
-		return;
-	}
 	if (netgame)
 	{
 		Printf ("Cannot use this in netgame!\n");
@@ -2006,10 +2001,13 @@ CCMD(control)
 		{
 			int pnum = std::stoi(argv[1]) - 1;
 			Net_Arbitrator = doomcom.consoleplayer = consoleplayer = playerfornode[0] = pnum;
-			S_UpdateSounds(players[consoleplayer].camera);
-			StatusBar->AttachToPlayer (players[consoleplayer].camera->player);
-			players[consoleplayer].SendPitchLimits();
-			StatusBar->ShowPlayerName ();
+			if (gamestate == GS_LEVEL)
+			{
+				S_UpdateSounds(players[consoleplayer].camera);
+				StatusBar->AttachToPlayer (players[consoleplayer].camera->player);
+				players[consoleplayer].SendPitchLimits();
+				StatusBar->ShowPlayerName ();
+			}
 		}
 		else
 			Printf("No player %d in game!\n", std::stoi(argv[1]));
