@@ -2007,25 +2007,8 @@ CCMD(control)
 	{
 		if (playeringame[std::stoi(argv[1]) - 1] == 1)
 		{
-#if 0
-			consoleplayer = std::stoi(argv[1]) - 1;
-			doomcom.consoleplayer = consoleplayer;
-			playerfornode[0] = consoleplayer;
-			nodeforplayer[consoleplayer] = 0;
-			S_UpdateSounds(players[consoleplayer].camera);
-			StatusBar->AttachToPlayer (players[consoleplayer].camera->player);
-			StatusBar->ShowPlayerName ();
-#endif
-#if 0
 			int pnum = std::stoi(argv[1]) - 1;
-			players[consoleplayer].camera = players[pnum].mo;
-			S_UpdateSounds(players[consoleplayer].camera);
-			StatusBar->AttachToPlayer (&players[pnum]);
-			playerfornode[0] = pnum;
-			players[consoleplayer].SendPitchLimits();
-#endif
-			int pnum = std::stoi(argv[1]) - 1;
-			Net_Arbitrator = consoleplayer = playerfornode[0] = pnum;
+			Net_Arbitrator = doomcom.consoleplayer = consoleplayer = playerfornode[0] = pnum;
 			S_UpdateSounds(players[consoleplayer].camera);
 			StatusBar->AttachToPlayer (players[consoleplayer].camera->player);
 			players[consoleplayer].SendPitchLimits();
