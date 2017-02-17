@@ -2016,7 +2016,11 @@ CCMD(control)
 			StatusBar->AttachToPlayer (players[consoleplayer].camera->player);
 			StatusBar->ShowPlayerName ();
 #endif
-			playerfornode[0] = std::stoi(argv[1]) - 1;
+			int pnum = std::stoi(argv[1]) - 1;
+			players[consoleplayer].camera = players[pnum].mo;
+			S_UpdateSounds(players[consoleplayer].camera);
+			StatusBar->AttachToPlayer (&players[pnum]);
+			playerfornode[0] = pnum;
 		}
 		else
 			Printf("No player %d in game!\n", std::stoi(argv[1]));
