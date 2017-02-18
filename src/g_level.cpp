@@ -103,6 +103,7 @@ EXTERN_CVAR (Float, sv_gravity)
 EXTERN_CVAR (Float, sv_aircontrol)
 EXTERN_CVAR (Int, disableautosave)
 EXTERN_CVAR (String, playerclass)
+EXTERN_CVAR (Bool, splitscreen)
 
 #define SNAP_ID			MAKE_ID('s','n','A','p')
 #define DSNP_ID			MAKE_ID('d','s','N','p')
@@ -344,7 +345,10 @@ void G_NewInit ()
 	G_ClearSnapshots ();
 	ST_SetNeedRefresh();
 	netgame = false;
-	multiplayer = multiplayernext;
+	if (!splitscreen)
+		multiplayer = multiplayernext;
+	else
+		multiplayer = true;
 	multiplayernext = false;
 	if (demoplayback)
 	{
@@ -367,6 +371,7 @@ void G_NewInit ()
 	}
 	BackupSaveName = "";
 	consoleplayer = 0;
+	consoleplayer2 = -1;
 	NextSkill = -1;
 }
 

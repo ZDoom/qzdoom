@@ -144,6 +144,11 @@ void D_LoadWadSettings ();
 void D_DoomLoop ();
 static const char *BaseFileSearch (const char *file, const char *ext, bool lookfirstinprogdir=false);
 
+// [SP] Splitscreen support
+void G_HandleSplitscreen(ticcmd_t* cmd);
+void G_DestroySplitscreen();
+void G_BuildTiccmd_Split(ticcmd_t* cmd, ticcmd_t* cmd2);
+
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
 EXTERN_CVAR (Float, turbo)
@@ -155,6 +160,7 @@ EXTERN_CVAR (Bool, lookstrafe)
 EXTERN_CVAR (Int, screenblocks)
 EXTERN_CVAR (Bool, sv_cheats)
 EXTERN_CVAR (Bool, sv_unlimited_pickup)
+EXTERN_CVAR (Int, vr_mode)
 
 extern int testingmode;
 extern bool setmodeneeded;
@@ -211,6 +217,9 @@ CUSTOM_CVAR (String, vid_cursor, "None", CVAR_ARCHIVE | CVAR_NOINITCALL)
 CVAR (Bool, disableautoload, false, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
 CVAR (Bool, autoloadbrightmaps, false, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
 CVAR (Bool, autoloadlights, false, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
+
+// [SP] Splitscreen support
+CVAR (Bool, splitscreen, false, 0)
 
 bool wantToRestart;
 bool DrawFSHUD;				// [RH] Draw fullscreen HUD?
@@ -1004,7 +1013,16 @@ void D_DoomLoop ()
 			{
 				I_StartTic ();
 				D_ProcessEvents ();
-				G_BuildTiccmd (&netcmds[consoleplayer][maketic%BACKUPTICS]);
+				if (splitscreen)
+				{
+					G_HandleSplitscreen(&netcmds[consoleplayer][maketic%BACKUPTICS]);
+				}
+				else
+				{
+					G_BuildTiccmd (&netcmds[consoleplayer][maketic%BACKUPTICS]);
+					if (consoleplayer2 != -1)
+						G_DestroySplitscreen();
+				}
 				if (advancedemo)
 					D_DoAdvanceDemo ();
 				C_Ticker ();
@@ -2782,6 +2800,113 @@ CCMD(restart)
 
 //==========================================================================
 //
+// G_HandleSplitscreen()
+//
+// Sets up another player if necessary, and then processes input for that
+// player. Rendering the other screen will be handled by the VR code.
+//
+//==========================================================================
+
+void G_HandleSplitscreen(ticcmd_t* cmd)
+{
+	if (netgame)
+	{
+		Printf("Splitscreen is not yet supported in netgames!\n");
+		splitscreen = false;
+		G_BuildTiccmd (cmd);
+		return;
+	}
+
+	// splitscreen player not yet spawned, find a spot for them
+	if (consoleplayer2 == -1)
+	{
+		int bnum = 0;
+		// Player not in game yet, let's tic like we're single player, we'll do split tics later.
+		G_BuildTiccmd (cmd);
+
+		// taken from the botcode
+		for (bnum = 0; bnum < MAXPLAYERS; bnum++)
+			if (!playeringame[bnum])
+				break;
+
+		if (bnum == MAXPLAYERS)
+		{
+			Printf ("The maximum of %d players/bots has been reached\n", MAXPLAYERS);
+			splitscreen = false;
+			return;
+		}
+
+		// [SP] Set up other "eye"
+		if (vr_mode == 0)
+			vr_mode = 3;
+
+		multiplayer = true;
+		playeringame[bnum] = true;
+		consoleplayer2 = bnum;
+		players[bnum].mo = nullptr;
+		//players[bnum].userinfo.TransferFrom(players[consoleplayer].userinfo);
+		players[bnum].playerstate = PST_ENTER;
+
+		if (teamplay)
+			Printf ("%s joined the %s team\n", players[bnum].userinfo.GetName(), Teams[players[bnum].userinfo.GetTeam()].GetName());
+		else
+			Printf ("%s joined the game\n", players[bnum].userinfo.GetName());
+
+		G_DoReborn (bnum, true);
+		if (StatusBar != NULL)
+		{
+			StatusBar->MultiplayerChanged ();
+		}
+		return;
+	}
+
+	G_BuildTiccmd_Split (cmd, &netcmds[consoleplayer2][maketic%BACKUPTICS]);
+}
+
+//==========================================================================
+//
+// G_DestroySplitscreen()
+//
+// If we have a splitscreen player, remove them from the game!
+//
+//==========================================================================
+
+void G_DestroySplitscreen()
+{
+	// If a player is looking through this player's eyes, make him
+	// look through his own eyes instead.
+	for (int j = 0; j < MAXPLAYERS; ++j)
+	{
+		if (consoleplayer2 != j && playeringame[j] && players[j].Bot == NULL)
+		{
+			if (players[j].camera == players[consoleplayer2].mo)
+			{
+				players[j].camera = players[j].mo;
+				if (j == consoleplayer)
+				{
+					StatusBar->AttachToPlayer (players + j);
+				}
+			}
+		}
+	}
+	E_PlayerDisconnected(consoleplayer2);
+	FBehavior::StaticStartTypedScripts (SCRIPT_Disconnect, players[consoleplayer2].mo, true, consoleplayer2, true);
+
+	if (players[consoleplayer2].mo)
+	{
+		players[consoleplayer2].mo->Destroy();
+		players[consoleplayer2].mo = NULL;
+	}
+	players[consoleplayer2].~player_t();
+	::new(&players[consoleplayer2]) player_t;
+	players[consoleplayer2].userinfo.Reset();
+	playeringame[consoleplayer2] = false;
+
+	consoleplayer2 = -1;
+}
+
+//==========================================================================
+//
 // FStartupScreen Constructor
 //
 //==========================================================================
@@ -2827,7 +2952,6 @@ void FStartupScreen::AppendStatusLine(const char *status)
 {
 }
 
-
 void FStartupScreen::Progress(void) {}
 void FStartupScreen::NetInit(char const *,int) {}
 void FStartupScreen::NetProgress(int) {}
@@ -2842,3 +2966,4 @@ DEFINE_FIELD_X(InputEventData, event_t, data2)
 DEFINE_FIELD_X(InputEventData, event_t, data3)
 DEFINE_FIELD_X(InputEventData, event_t, x)
 DEFINE_FIELD_X(InputEventData, event_t, y)
+

@@ -131,7 +131,10 @@ extern	"C" int 		viewwidth;
 
 
 // Player taking events. i.e. The local player.
-extern	int				consoleplayer;	
+extern	int				consoleplayer;
+
+// Splitscreen player	
+extern	int				consoleplayer2;	
 
 
 // --------------------------------------
