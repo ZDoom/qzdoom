@@ -38,6 +38,7 @@
 EXTERN_CVAR(Float, vr_screendist)
 EXTERN_CVAR(Float, vr_hunits_per_meter)
 EXTERN_CVAR(Bool, vr_swap_eyes)
+EXTERN_CVAR(Bool, splitscreen)
 
 namespace s3d {
 
@@ -78,7 +79,10 @@ void ShiftedEyePose::GetViewShift(float yaw, float outViewShift[3]) const
 
 float ShiftedEyePose::getShift() const 
 {
-	return vr_swap_eyes ? -shift : shift;
+	if (!splitscreen)
+		return vr_swap_eyes ? -shift : shift;
+	else
+		return 0;
 }
 
 /* static */

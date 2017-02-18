@@ -127,6 +127,12 @@ void D_ProcessEvents (void);
 void G_BuildTiccmd (ticcmd_t *cmd); 
 void D_DoAdvanceDemo (void);
 
+// [SP] Splitscreen support
+void G_HandleSplitscreen(ticcmd_t* cmd);
+void G_DestroySplitscreen();
+void G_BuildTiccmd_Split(ticcmd_t* cmd, ticcmd_t* cmd2);
+EXTERN_CVAR(Bool, splitscreen)
+
 static void SendSetup (DWORD playersdetected[MAXNETNODES], BYTE gotsetup[MAXNETNODES], int len);
 static void RunScript(BYTE **stream, APlayerPawn *pawn, int snum, int argn, int always);
 
@@ -983,7 +989,19 @@ void NetUpdate (void)
 			break;			// can't hold any more
 		
 		//Printf ("mk:%i ",maketic);
-		G_BuildTiccmd (&localcmds[maketic % LOCALCMDTICS]);
+
+		if (splitscreen)
+		{
+			G_HandleSplitscreen(&localcmds[maketic % LOCALCMDTICS]);
+		}
+		else
+		{
+			G_BuildTiccmd (&localcmds[maketic % LOCALCMDTICS]);
+			if (consoleplayer2 != -1)
+				G_DestroySplitscreen();
+		}
+
+		//G_BuildTiccmd (&localcmds[maketic % LOCALCMDTICS]);
 		maketic++;
 
 		if (ticdup == 1 || maketic == 0)
