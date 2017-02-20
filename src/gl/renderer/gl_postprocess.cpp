@@ -64,6 +64,12 @@
 #include "gl/shaders/gl_presentshader.h"
 #include "gl/renderer/gl_2ddrawer.h"
 #include "gl/stereo3d/gl_stereo3d.h"
+#include "am_map.h"
+
+// externals
+extern bool DrawFSHUD;
+void DrawHUD();
+void CT_Drawer();
 
 //==========================================================================
 //
@@ -148,6 +154,8 @@ CUSTOM_CVAR(Bool, gl_paltonemap_reverselookup, true, CVAR_ARCHIVE | CVAR_NOINITC
 
 EXTERN_CVAR(Float, vid_brightness)
 EXTERN_CVAR(Float, vid_contrast)
+EXTERN_CVAR(Bool, splitscreen)
+EXTERN_CVAR(Bool, hud_althud)
 
 
 void FGLRenderer::RenderScreenQuad()
@@ -707,6 +715,76 @@ void FGLRenderer::Flush()
 		// Render 2D to eye textures
 		for (int eye_ix = 0; eye_ix < stereo3dMode.eye_count(); ++eye_ix)
 		{
+			if (splitscreen && consoleplayer2 != -1 && (gamestate == GS_LEVEL) || (gamestate == GS_TITLELEVEL))
+			{
+				int ocp = consoleplayer;
+				m2DDrawer->Draw();
+				m2DDrawer->Clear();
+				if (eye_ix != 0)
+					consoleplayer = consoleplayer2;
+
+				if (StatusBar != nullptr && players[consoleplayer].camera && players[consoleplayer].camera->player)
+					StatusBar->AttachToPlayer(players[consoleplayer].camera->player);
+				else if (StatusBar != nullptr)
+					StatusBar->AttachToPlayer(&players[consoleplayer]);
+
+				if (StatusBar != nullptr)
+				{
+					float blend[4] = { 0, 0, 0, 0 };
+					StatusBar->BlendView (blend);
+				}
+				screen->SetBlendingRect(viewwindowx, viewwindowy,
+					viewwindowx + viewwidth, viewwindowy + viewheight);
+
+				ST_SetNeedRefresh();
+				V_SetBorderNeedRefresh();
+
+				Renderer->DrawRemainingPlayerSprites();
+				screen->DrawBlendingRect();
+				if (automapactive)
+				{
+					int saved_ST_Y = gST_Y;
+					if (hud_althud && viewheight == SCREENHEIGHT)
+					{
+						gST_Y = viewheight;
+					}
+					AM_Drawer ();
+					gST_Y = saved_ST_Y;
+				}
+				if (!automapactive || viewactive)
+				{
+					V_RefreshViewBorder ();
+				}
+
+				if (hud_althud && viewheight == SCREENHEIGHT && screenblocks > 10)
+				{
+					StatusBar->DrawBottomStuff (HUD_AltHud);
+					if (DrawFSHUD || automapactive) DrawHUD();
+					StatusBar->Draw (HUD_AltHud);
+					StatusBar->DrawTopStuff (HUD_AltHud);
+				}
+				else 
+				if (viewheight == SCREENHEIGHT && viewactive && screenblocks > 10)
+				{
+					EHudState state = DrawFSHUD ? HUD_Fullscreen : HUD_None;
+					StatusBar->DrawBottomStuff (state);
+					StatusBar->Draw (state);
+					StatusBar->DrawTopStuff (state);
+				}
+				else
+				{
+					StatusBar->DrawBottomStuff (HUD_StatusBar);
+					StatusBar->Draw (HUD_StatusBar);
+					StatusBar->DrawTopStuff (HUD_StatusBar);
+				}
+				CT_Drawer ();
+
+				consoleplayer = ocp;
+				if (StatusBar != nullptr && players[consoleplayer].camera && players[consoleplayer].camera->player)
+					StatusBar->AttachToPlayer(players[consoleplayer].camera->player);
+				else if (StatusBar != nullptr)
+					StatusBar->AttachToPlayer(&players[consoleplayer]);
+			}
 			FGLDebug::PushGroup("Eye2D");
 			mBuffers->BindEyeFB(eye_ix);
 			glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);

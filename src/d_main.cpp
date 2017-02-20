@@ -778,18 +778,24 @@ void D_Display ()
 			if (!gametic)
 				break;
 
-			if (StatusBar != NULL)
+			if (!splitscreen)
 			{
-				float blend[4] = { 0, 0, 0, 0 };
-				StatusBar->BlendView (blend);
+				if (StatusBar != NULL)
+				{
+					float blend[4] = { 0, 0, 0, 0 };
+					StatusBar->BlendView (blend);
+				}
+				screen->SetBlendingRect(viewwindowx, viewwindowy,
+					viewwindowx + viewwidth, viewwindowy + viewheight);
 			}
-			screen->SetBlendingRect(viewwindowx, viewwindowy,
-				viewwindowx + viewwidth, viewwindowy + viewheight);
 
 			// [ZZ] execute event hook that we just started the frame
 			//E_RenderFrame();
 			//
 			Renderer->RenderView(&players[consoleplayer]);
+
+			if (splitscreen)
+				break;
 
 			if ((hw2d = screen->Begin2D(viewactive)))
 			{
