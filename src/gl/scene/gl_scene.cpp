@@ -722,6 +722,15 @@ void FGLRenderer::EndDrawScene(sector_t * viewsector)
 	glDisable(GL_SCISSOR_TEST);
 }
 
+// splitscreen version
+void FGLRenderer::EndDrawScene2(sector_t * viewsector)
+{
+	int old_consoleplayer = consoleplayer;
+	consoleplayer = consoleplayer2;
+	EndDrawScene(viewsector);
+	consoleplayer = old_consoleplayer;
+}
+
 
 //-----------------------------------------------------------------------------
 //
@@ -863,7 +872,11 @@ sector_t * FGLRenderer::RenderTwoViewpoints (AActor * camera, AActor * camera2, 
 		clipper.SafeAddClipRangeRealAngles(ViewAngle.BAMs() + a1, ViewAngle.BAMs() - a1);
 
 		ProcessScene(toscreen);
-		if (mainview && toscreen) EndDrawScene(lviewsector); // do not call this for camera textures.
+		if (mainview && toscreen)
+			if (eye_ix == 0)
+				EndDrawScene(lviewsector); // do not call this for camera textures.
+			else
+				EndDrawScene2(lviewsector);
 		if (mainview && FGLRenderBuffers::IsEnabled())
 		{
 			PostProcessScene();
