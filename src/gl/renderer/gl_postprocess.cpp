@@ -711,29 +711,32 @@ void FGLRenderer::SplitDisplays()
 
 	vr_mode = 0;
 	// player 1
+	D_Display ();
 	mBuffers->BindEyeFB(0);
 	glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
 	glScissor(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
-	D_Display ();
 	m2DDrawer->Draw();
 	m2DDrawer->Clear();
 
 	consoleplayer = consoleplayer2;
+	vr_mode = 0;
 	// player 2
+	D_Display ();
 	mBuffers->BindEyeFB(1);
 	glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
 	glScissor(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
-	D_Display ();
 	m2DDrawer->Draw();
 	m2DDrawer->Clear();
 
 	vr_mode = oldvr;
 	consoleplayer = oldcp;
 
-	FGLPostProcessState savedState;
-	stereo3dMode.Present();
+	//FGLPostProcessState savedState;
+	//stereo3dMode.Present();
 
-	//screen->Update ();
+	Flush();
+
+	screen->Update ();
 }
 
 //-----------------------------------------------------------------------------
@@ -746,31 +749,30 @@ void FGLRenderer::Flush()
 {
 	const s3d::Stereo3DMode& stereo3dMode = s3d::Stereo3DMode::getCurrentMode();
 
+	if (splitscreen)
+		return;
+
 	if (stereo3dMode.IsMono() || !FGLRenderBuffers::IsEnabled())
 	{
 		CopyToBackbuffer(nullptr, true);
 	}
 	else
 	{
-		// Render 2D to eye textures
-		if (!splitscreen)
+		for (int eye_ix = 0; eye_ix < stereo3dMode.eye_count(); ++eye_ix)
 		{
-			for (int eye_ix = 0; eye_ix < stereo3dMode.eye_count(); ++eye_ix)
-			{
-				FGLDebug::PushGroup("Eye2D");
-				mBuffers->BindEyeFB(eye_ix);
-				glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
-				glScissor(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
-				m2DDrawer->Draw();
-				FGLDebug::PopGroup();
-			}
-			m2DDrawer->Clear();
-
-			FGLPostProcessState savedState;
-			FGLDebug::PushGroup("PresentEyes");
-			stereo3dMode.Present();
+			FGLDebug::PushGroup("Eye2D");
+			mBuffers->BindEyeFB(eye_ix);
+			glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
+			glScissor(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
+			m2DDrawer->Draw();
 			FGLDebug::PopGroup();
 		}
+		m2DDrawer->Clear();
+
+		FGLPostProcessState savedState;
+		FGLDebug::PushGroup("PresentEyes");
+		stereo3dMode.Present();
+		FGLDebug::PopGroup();
 	}
 }
 

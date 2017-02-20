@@ -943,7 +943,8 @@ void D_Display ()
 			done = screen->WipeDo (1);
 			C_DrawConsole (hw2d);	// console and
 			M_Drawer ();			// menu are drawn even on top of wipes
-			screen->Update ();		// page flip or blit buffer
+			if (!splitscreen)
+				screen->Update ();	// page flip or blit buffer
 			NetUpdate ();			// [RH] not sure this is needed anymore
 		} while (!done);
 		screen->WipeCleanup();
