@@ -92,6 +92,7 @@ static void PlayerLandedOnThing (AActor *mo, AActor *onmobj);
 
 extern int BotWTG;
 EXTERN_CVAR (Int,  cl_rockettrails)
+EXTERN_CVAR (Bool, splitscreen)
 
 // PRIVATE DATA DEFINITIONS ------------------------------------------------
 
@@ -5503,6 +5504,13 @@ APlayerPawn *P_SpawnPlayer (FPlayerStart *mthing, int playernum, int flags)
 	if (mobj->Top() > mobj->ceilingz)
 	{
 		mobj->SetZ(mobj->ceilingz - mobj->Height, false);
+	}
+
+	// [SP] Splitscreen - handle offscreen player
+	if (splitscreen && consoleplayer2 == playernum)
+	{
+		players[playernum].MinPitch = -(double)Renderer->GetMaxViewPitch(false);
+		players[playernum].MaxPitch = (double)Renderer->GetMaxViewPitch(true);
 	}
 
 	// [BC] Do script stuff

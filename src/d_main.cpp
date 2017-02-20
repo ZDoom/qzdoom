@@ -116,6 +116,7 @@
 
 
 EXTERN_CVAR(Bool, hud_althud)
+EXTERN_CVAR(Float, maxviewpitch)
 void DrawHUD();
 
 // MACROS ------------------------------------------------------------------
@@ -2815,6 +2816,8 @@ CCMD(restart)
 //
 //==========================================================================
 
+extern int playerfornode[];
+
 void G_HandleSplitscreen(ticcmd_t* cmd)
 {
 	if (netgame)
@@ -2828,6 +2831,7 @@ void G_HandleSplitscreen(ticcmd_t* cmd)
 	// splitscreen player not yet spawned, find a spot for them
 	if (consoleplayer2 == -1)
 	{
+		int oldcp = consoleplayer;
 		int bnum = 0;
 		// Player not in game yet, let's tic like we're single player, we'll do split tics later.
 		G_BuildTiccmd (cmd);
@@ -2910,7 +2914,25 @@ void G_DestroySplitscreen()
 	players[consoleplayer2].userinfo.Reset();
 	playeringame[consoleplayer2] = false;
 
+	vr_mode = 0;
 	consoleplayer2 = -1;
+}
+
+CCMD (splitswap)
+{
+	int old_consoleplayer = consoleplayer;
+	if (!splitscreen)
+	{
+		Printf("Splitscreen is not active!\n");
+		return;
+	}
+	if (consoleplayer2 == -1)
+	{
+		Printf("Splitscreen player is not yet spawned!\n");
+		return;
+	}
+	consoleplayer = playerfornode[0] = Net_Arbitrator = consoleplayer2;
+	consoleplayer2 = old_consoleplayer;
 }
 
 //==========================================================================
