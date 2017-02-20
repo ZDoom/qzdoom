@@ -156,7 +156,9 @@ public:
 	void SetViewArea();
 	void Set3DViewport(bool mainview);
 	void Reset3DViewport();
+	sector_t *RenderTwoViewpoints (AActor * camera, AActor * camera2, GL_IRECT * bounds, float fov, float ratio, float fovratio, bool mainview, bool toscreen);
 	sector_t *RenderViewpoint (AActor * camera, GL_IRECT * bounds, float fov, float ratio, float fovratio, bool mainview, bool toscreen);
+	void RenderTwoViews(player_t *player, player_t *player2);
 	void RenderView(player_t *player);
 	void SetViewAngle(DAngle viewangle);
 	void SetupView(float viewx, float viewy, float viewz, DAngle viewangle, bool mirror, bool planemirror);
