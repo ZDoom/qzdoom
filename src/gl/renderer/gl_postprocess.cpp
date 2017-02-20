@@ -700,6 +700,7 @@ void FGLRenderer::ApplyFXAA()
 //
 //-----------------------------------------------------------------------------
 
+#if 0
 void FGLRenderer::SplitDisplays()
 {
 	if (!this)
@@ -709,35 +710,75 @@ void FGLRenderer::SplitDisplays()
 	int oldvr = vr_mode;
 	const s3d::Stereo3DMode& stereo3dMode = s3d::Stereo3DMode::getCurrentMode();
 
-	vr_mode = 0;
+	//vr_mode = 0;
 	// player 1
 	D_Display ();
+	Flush();
+	/*
 	mBuffers->BindEyeFB(0);
 	glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
 	glScissor(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
 	m2DDrawer->Draw();
 	m2DDrawer->Clear();
+	*/
 
 	consoleplayer = consoleplayer2;
-	vr_mode = 0;
+	//vr_mode = 0;
 	// player 2
 	D_Display ();
+	Flush();
+	/*
 	mBuffers->BindEyeFB(1);
 	glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
 	glScissor(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
 	m2DDrawer->Draw();
 	m2DDrawer->Clear();
 
-	vr_mode = oldvr;
-	consoleplayer = oldcp;
+	FGLPostProcessState savedState;
+	stereo3dMode.Present();
 
-	//FGLPostProcessState savedState;
-	//stereo3dMode.Present();
+	vr_mode = oldvr;
 
 	Flush();
+	*/
+
+	consoleplayer = oldcp;
 
 	screen->Update ();
 }
+#else
+void FGLRenderer::SplitDisplays()
+{
+	if (!this)
+		return D_Display();
+
+	int oldcp = consoleplayer;
+	GL_IRECT ssbox;
+
+	// player 1
+	ssbox.left = 0;
+	ssbox.top = 0;
+	ssbox.width = 200;
+	ssbox.height = 200;
+	SetOutputViewport(&ssbox);
+	D_Display ();
+	Flush();
+
+	consoleplayer = consoleplayer2;
+	// player 2
+	ssbox.left = 0;
+	ssbox.top = 200;
+	ssbox.width = 200;
+	ssbox.height = 200;
+	SetOutputViewport(&ssbox);
+	D_Display ();
+	Flush();
+
+	consoleplayer = oldcp;
+
+	screen->Update ();
+}
+#endif
 
 //-----------------------------------------------------------------------------
 //
@@ -748,9 +789,6 @@ void FGLRenderer::SplitDisplays()
 void FGLRenderer::Flush()
 {
 	const s3d::Stereo3DMode& stereo3dMode = s3d::Stereo3DMode::getCurrentMode();
-
-	if (splitscreen)
-		return;
 
 	if (stereo3dMode.IsMono() || !FGLRenderBuffers::IsEnabled())
 	{
@@ -800,7 +838,8 @@ void FGLRenderer::CopyToBackbuffer(const GL_IRECT *bounds, bool applyGamma)
 		}
 		else
 		{
-			ClearBorders();
+			if (!splitscreen)
+				ClearBorders();
 			box = mOutputLetterbox;
 		}
 
