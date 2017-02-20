@@ -202,6 +202,7 @@ public:
 	void ClearTonemapPalette();
 	void LensDistortScene();
 	void ApplyFXAA();
+	void SplitDisplays();
 	void CopyToBackbuffer(const GL_IRECT *bounds, bool applyGamma);
 	void DrawPresentTexture(const GL_IRECT &box, bool applyGamma);
 	void Flush();
