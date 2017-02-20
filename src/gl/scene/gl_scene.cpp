@@ -84,7 +84,7 @@ CVAR(Bool, gl_sort_textures, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 EXTERN_CVAR (Bool, cl_capfps)
 EXTERN_CVAR (Bool, r_deathcamera)
 EXTERN_CVAR (Float, underwater_fade_scalar)
-
+EXTERN_CVAR (Bool, splitscreen)
 
 extern int viewpitch;
 extern bool NoInterpolateView;
@@ -791,6 +791,109 @@ void FGLRenderer::SetFixedColormap (player_t *player)
 
 //-----------------------------------------------------------------------------
 //
+// Renders two viewpoints in a scene for splitscreen
+//
+//-----------------------------------------------------------------------------
+
+sector_t * FGLRenderer::RenderTwoViewpoints (AActor * camera, AActor * camera2, GL_IRECT * bounds, float fov, float ratio, float fovratio, bool mainview, bool toscreen)
+{       
+	sector_t * lviewsector;
+	mSceneClearColor[0] = 0.0f;
+	mSceneClearColor[1] = 0.0f;
+	mSceneClearColor[2] = 0.0f;
+
+	// Scroll the sky
+	mSky1Pos = (float)fmod(gl_frameMS * level.skyspeed1, 1024.f) * 90.f/256.f;
+	mSky2Pos = (float)fmod(gl_frameMS * level.skyspeed2, 1024.f) * 90.f/256.f;
+
+	// 'viewsector' will not survive the rendering so it cannot be used anymore below.
+	lviewsector = viewsector;
+
+	// Render (potentially) multiple views for stereo 3d
+	float viewShift[3];
+	const s3d::Stereo3DMode& stereo3dMode = mainview && toscreen? s3d::Stereo3DMode::getCurrentMode() : s3d::Stereo3DMode::getMonoMode();
+	if (camera2 != nullptr)
+		stereo3dMode.SetUp();
+	for (int eye_ix = 0; eye_ix < stereo3dMode.eye_count(); ++eye_ix)
+	{
+		if (eye_ix == 0)
+			R_SetupFrame (camera);
+		else
+			R_SetupFrame (camera2);
+
+		SetViewArea();
+
+		// We have to scale the pitch to account for the pixel stretching, because the playsim doesn't know about this and treats it as 1:1.
+		double radPitch = ViewPitch.Normalized180().Radians();
+		double angx = cos(radPitch);
+		double angy = sin(radPitch) * glset.pixelstretch;
+		double alen = sqrt(angx*angx + angy*angy);
+
+		mAngles.Pitch = (float)RAD2DEG(asin(angy / alen));
+		mAngles.Roll.Degrees = ViewRoll.Degrees;
+
+		if (camera->player && camera->player-players==consoleplayer &&
+			((camera->player->cheats & CF_CHASECAM) || (r_deathcamera && camera->health <= 0)) && camera==camera->player->mo)
+		{
+			mViewActor=NULL;
+		}
+		else
+		{
+			mViewActor=camera;
+		}
+
+		const s3d::EyePose * eye = stereo3dMode.getEyePose(eye_ix);
+		eye->SetUp();
+		SetOutputViewport(bounds);
+		Set3DViewport(mainview);
+		mDrawingScene2D = true;
+		mCurrentFoV = fov;
+		// Stereo mode specific perspective projection
+		SetProjection( eye->GetProjection(fov, ratio, fovratio) );
+		// SetProjection(fov, ratio, fovratio);	// switch to perspective mode and set up clipper
+		SetViewAngle(ViewAngle);
+		// Stereo mode specific viewpoint adjustment - temporarily shifts global ViewPos
+		eye->GetViewShift(GLRenderer->mAngles.Yaw.Degrees, viewShift);
+		s3d::ScopedViewShifter viewShifter(viewShift);
+		SetViewMatrix(ViewPos.X, ViewPos.Y, ViewPos.Z, false, false);
+		gl_RenderState.ApplyMatrices();
+
+		clipper.Clear();
+		angle_t a1 = FrustumAngle();
+		clipper.SafeAddClipRangeRealAngles(ViewAngle.BAMs() + a1, ViewAngle.BAMs() - a1);
+
+		ProcessScene(toscreen);
+		if (mainview && toscreen) EndDrawScene(lviewsector); // do not call this for camera textures.
+		if (mainview && FGLRenderBuffers::IsEnabled())
+		{
+			PostProcessScene();
+
+			// This should be done after postprocessing, not before.
+			mBuffers->BindCurrentFB();
+			glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
+
+			if (!toscreen)
+			{
+				gl_RenderState.mViewMatrix.loadIdentity();
+				gl_RenderState.mProjectionMatrix.ortho(mScreenViewport.left, mScreenViewport.width, mScreenViewport.height, mScreenViewport.top, -1.0f, 1.0f);
+				gl_RenderState.ApplyMatrices();
+			}
+			DrawBlend(lviewsector);		
+		}
+		mDrawingScene2D = false;
+		if (!stereo3dMode.IsMono() && FGLRenderBuffers::IsEnabled())
+			mBuffers->BlitToEyeTexture(eye_ix);
+		eye->TearDown();
+	}
+	stereo3dMode.TearDown();
+
+	gl_frameCount++;	// This counter must be increased right before the interpolations are restored.
+	interpolator.RestoreInterpolations ();
+	return lviewsector;
+}
+
+//-----------------------------------------------------------------------------
+//
 // Renders one viewpoint in a scene
 //
 //-----------------------------------------------------------------------------
@@ -891,12 +994,74 @@ sector_t * FGLRenderer::RenderViewpoint (AActor * camera, GL_IRECT * bounds, flo
 
 //-----------------------------------------------------------------------------
 //
+// renders the view - splitscreen version
+//
+//-----------------------------------------------------------------------------
+
+void FGLRenderer::RenderTwoViews (player_t* player, player_t* player2)
+{
+	OpenGLFrameBuffer* GLTarget = static_cast<OpenGLFrameBuffer*>(screen);
+
+	R_ResetViewInterpolation();
+
+	gl_RenderState.SetVertexBuffer(mVBO);
+	GLRenderer->mVBO->Reset();
+
+	// reset statistics counters
+	ResetProfilingData();
+
+	// Get this before everything else
+	r_TicFracF = 1.;
+	gl_frameMS = I_MSTime();
+
+	P_FindParticleSubsectors ();
+
+	if (!gl.legacyMode) GLRenderer->mLights->Clear();
+
+	// NoInterpolateView should have no bearing on camera textures, but needs to be preserved for the main view below.
+	bool saved_niv = NoInterpolateView;
+	NoInterpolateView = false;
+	// prepare all camera textures that have been used in the last frame
+	FCanvasTextureInfo::UpdateAll();
+	NoInterpolateView = saved_niv;
+
+
+	// now render the main view
+	float fovratio;
+	float ratio = WidescreenRatio;
+	if (WidescreenRatio >= 1.3f)
+	{
+		fovratio = 1.333333f;
+	}
+	else
+	{
+		fovratio = ratio;
+	}
+
+	SetFixedColormap (player);
+
+	// Check if there's some lights. If not some code can be skipped.
+	TThinkerIterator<ADynamicLight> it(STAT_DLIGHT);
+	GLRenderer->mLightCount = ((it.Next()) != NULL);
+
+	sector_t * viewsector = RenderTwoViewpoints(player->camera, player2->camera, NULL, FieldOfView.Degrees, ratio, fovratio, true, true);
+
+	All.Unclock();
+}
+
+
+//-----------------------------------------------------------------------------
+//
 // renders the view
 //
 //-----------------------------------------------------------------------------
 
 void FGLRenderer::RenderView (player_t* player)
 {
+	// [SP] if splitscreen, break here
+	if (splitscreen && consoleplayer2 != -1)
+		return RenderTwoViews(player, &players[consoleplayer2]);
+
 	OpenGLFrameBuffer* GLTarget = static_cast<OpenGLFrameBuffer*>(screen);
 	AActor *&LastCamera = GLTarget->LastCamera;
 
