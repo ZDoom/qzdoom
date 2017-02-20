@@ -112,6 +112,9 @@
 #include "g_levellocals.h"
 #include "events.h"
 
+#include "gl/renderer/gl_renderer.h"
+
+
 EXTERN_CVAR(Bool, hud_althud)
 void DrawHUD();
 
@@ -902,7 +905,7 @@ void D_Display ()
 		GSnd->DrawWaveDebug(snd_drawoutput);
 	}
 
-	if (!wipe || NoWipe < 0)
+	if (!wipe || NoWipe < 0 || splitscreen)
 	{
 		NetUpdate ();			// send out any new accumulation
 		// normal update
@@ -911,7 +914,8 @@ void D_Display ()
 		C_DrawConsole (hw2d);	// draw console
 		M_Drawer ();			// menu is drawn even on top of everything
 		FStat::PrintStat ();
-		screen->Update ();		// page flip or blit buffer
+		if (!splitscreen)
+			screen->Update ();		// page flip or blit buffer
 	}
 	else
 	{
@@ -1041,7 +1045,11 @@ void D_DoomLoop ()
 			}
 			// Update display, next frame, with current state.
 			I_StartTic ();
-			D_Display ();
+			if (!splitscreen || consoleplayer2 == -1 || !(GLRenderer))
+				D_Display ();
+			else
+				GLRenderer->SplitDisplays();
+
 			if (wantToRestart)
 			{
 				wantToRestart = false;
