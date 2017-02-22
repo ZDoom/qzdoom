@@ -723,6 +723,8 @@ void FGLRenderer::SplitDisplays()
 		else
 			StatusBar->AttachToPlayer (&players[consoleplayer]);
 
+		StatusBar->Tick ();
+
 		m2DDrawer->Clear();
 
 		D_Display ();

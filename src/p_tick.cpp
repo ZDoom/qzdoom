@@ -39,6 +39,7 @@
 #include "events.h"
 
 extern gamestate_t wipegamestate;
+EXTERN_CVAR(Bool, splitscreen);
 
 //==========================================================================
 //
@@ -128,7 +129,8 @@ void P_Ticker (void)
 
 	// [ZZ] call the WorldTick hook
 	E_WorldTick();
-	StatusBar->Tick ();		// [RH] moved this here
+	if (!splitscreen)
+		StatusBar->Tick ();	// [RH] moved this here
 	level.Tick ();			// [RH] let the level tick
 	DThinker::RunThinkers ();
 
