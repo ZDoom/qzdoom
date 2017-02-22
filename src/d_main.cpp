@@ -2879,6 +2879,20 @@ void G_HandleSplitscreen(ticcmd_t* cmd)
 		G_BuildTiccmd (cmd);
 		return;
 	}
+	if (!GLRenderer)
+	{
+		Printf("Splitscreen is not yet supported in the software renderer!\n");
+		splitscreen = false;
+		G_BuildTiccmd (cmd);
+		return;
+	}
+	if (demorecording)
+	{
+		Printf("Splitscreen is not yet supported in demos!\n");
+		splitscreen = false;
+		G_BuildTiccmd (cmd);
+		return;
+	}
 
 	// splitscreen player not yet spawned, find a spot for them
 	if (consoleplayer2 == -1)
