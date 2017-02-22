@@ -118,6 +118,7 @@
 EXTERN_CVAR(Bool, hud_althud)
 EXTERN_CVAR(Float, maxviewpitch)
 void DrawHUD();
+void V_FixAspectSettings();
 
 // MACROS ------------------------------------------------------------------
 
@@ -2937,6 +2938,7 @@ void G_HandleSplitscreen(ticcmd_t* cmd)
 		}
 		if (StatusBar2 == NULL)
 			G_CreateSplitStatusBar();
+		V_FixAspectSettings();
 		return;
 	}
 
@@ -2963,6 +2965,8 @@ void G_DestroySplitscreen()
 		StatusBar2->Destroy();
 		StatusBar2 = NULL;
 	}
+
+	V_FixAspectSettings();
 
 	//vr_mode = 0;
 	consoleplayer2 = -1;

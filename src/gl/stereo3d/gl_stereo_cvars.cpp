@@ -33,8 +33,13 @@
 #include "gl/stereo3d/gl_interleaved3d.h"
 #include "gl/system/gl_cvars.h"
 
+void V_FixAspectSettings();
+
 // Set up 3D-specific console variables:
-CVAR(Int, vr_mode, 0, CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Int, vr_mode, 0, CVAR_GLOBALCONFIG)
+{
+	V_FixAspectSettings();
+}
 
 // switch left and right eye views
 CVAR(Bool, vr_swap_eyes, false, CVAR_GLOBALCONFIG)

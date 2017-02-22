@@ -67,14 +67,17 @@
 #include "r_data/voxels.h"
 
 EXTERN_CVAR(Bool, r_blendmethod)
+EXTERN_CVAR(Int, vr_mode)
 
 int active_con_scale();
+void V_FixAspectSettings();
 
 FRenderer *Renderer;
 
 IMPLEMENT_CLASS(DCanvas, true, false)
 IMPLEMENT_CLASS(DFrameBuffer, true, false)
 EXTERN_CVAR (Bool, swtruecolor)
+EXTERN_CVAR (Bool, splitscreen)
 
 #if defined(_DEBUG) && defined(_M_IX86) && !defined(__MINGW32__)
 #define DBGBREAK	{ __asm int 3 }
@@ -162,6 +165,11 @@ CVAR (Int, vid_defbits, 8, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 CVAR (Bool, vid_fps, false, 0)
 CVAR (Bool, ticker, false, 0)
 CVAR (Int, vid_showpalette, 0, 0)
+
+CUSTOM_CVAR (Bool, vid_fixeyeaspect, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
+{
+	V_FixAspectSettings();
+}
 
 CUSTOM_CVAR (Bool, vid_vsync, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 {
@@ -1623,20 +1631,12 @@ void V_Shutdown()
 EXTERN_CVAR (Bool, vid_tft)
 CUSTOM_CVAR (Bool, vid_nowidescreen, false, CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
 {
-	setsizeneeded = true;
-	if (StatusBar != NULL)
-	{
-		StatusBar->ScreenSizeChanged();
-	}
+	V_FixAspectSettings();
 }
 
 CUSTOM_CVAR (Int, vid_aspect, 0, CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
 {
-	setsizeneeded = true;
-	if (StatusBar != NULL)
-	{
-		StatusBar->ScreenSizeChanged();
-	}
+	V_FixAspectSettings();
 }
 
 // Helper for ActiveRatio and CheckRatio. Returns the forced ratio type, or -1 if none.
@@ -1689,6 +1689,19 @@ float ActiveRatio(int width, int height, float *trueratio)
 
 	if (trueratio)
 		*trueratio = ratio;
+
+	if (vid_fixeyeaspect && ((splitscreen) || (vr_mode != 0)))
+	{
+		int vr_modetest = (vr_mode == 0) ? 4 : vr_mode;
+		switch (vr_modetest)
+		{
+			case 4:
+				return ((fakeratio != -1) ? forcedRatioTypes[fakeratio] : ratio) / 2.0f;
+			case 11:
+				return ((fakeratio != -1) ? forcedRatioTypes[fakeratio] : ratio) * 2.0f;
+		}
+	}
+
 	return (fakeratio != -1) ? forcedRatioTypes[fakeratio] : ratio;
 }
 
@@ -1780,4 +1793,13 @@ CCMD(vid_listadapters)
 {
 	if (Video != NULL)
 		Video->DumpAdapters();
+}
+
+void V_FixAspectSettings()
+{
+	setsizeneeded = true;
+	if (StatusBar != NULL)
+	{
+		StatusBar->ScreenSizeChanged();
+	}
 }
