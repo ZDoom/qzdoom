@@ -2877,34 +2877,10 @@ void G_HandleSplitscreen(ticcmd_t* cmd)
 
 void G_DestroySplitscreen()
 {
-	// If a player is looking through this player's eyes, make him
-	// look through his own eyes instead.
-	for (int j = 0; j < MAXPLAYERS; ++j)
-	{
-		if (consoleplayer2 != j && playeringame[j] && players[j].Bot == NULL)
-		{
-			if (players[j].camera == players[consoleplayer2].mo)
-			{
-				players[j].camera = players[j].mo;
-				if (j == consoleplayer)
-				{
-					StatusBar->AttachToPlayer (players + j);
-				}
-			}
-		}
-	}
-	E_PlayerDisconnected(consoleplayer2);
-	FBehavior::StaticStartTypedScripts (SCRIPT_Disconnect, players[consoleplayer2].mo, true, consoleplayer2, true);
+	if (consoleplayer2 == -1)
+		return;
 
-	if (players[consoleplayer2].mo)
-	{
-		players[consoleplayer2].mo->Destroy();
-		players[consoleplayer2].mo = NULL;
-	}
-	players[consoleplayer2].~player_t();
-	::new(&players[consoleplayer2]) player_t;
-	players[consoleplayer2].userinfo.Reset();
-	playeringame[consoleplayer2] = false;
+	G_DoPlayerPop(consoleplayer2);
 
 	vr_mode = 0;
 	consoleplayer2 = -1;
