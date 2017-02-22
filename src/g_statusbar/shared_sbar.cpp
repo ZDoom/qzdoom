@@ -83,6 +83,7 @@ EXTERN_CVAR (Int, con_scaletext)
 int active_con_scaletext();
 
 DBaseStatusBar *StatusBar;
+DBaseStatusBar *StatusBar2; // for splitscreen
 
 extern int setblocks;
 

@@ -707,33 +707,46 @@ void FGLRenderer::SplitDisplays()
 
 	int oldcp = consoleplayer;
 	int oldvr = vr_mode;
+	DBaseStatusBar *OldStatusBar = StatusBar;
 	const s3d::Stereo3DMode& stereo3dMode = s3d::Stereo3DMode::getCurrentMode();
 
-	vr_mode = 0;
-	// player 1
-	mBuffers->BindEyeFB(0);
-	glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
-	glScissor(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
-	D_Display ();
-	m2DDrawer->Draw();
-	m2DDrawer->Clear();
+	Renderer->RenderView(&players[consoleplayer]);
 
-	consoleplayer = consoleplayer2;
-	// player 2
-	mBuffers->BindEyeFB(1);
-	glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
-	glScissor(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
-	D_Display ();
-	m2DDrawer->Draw();
-	m2DDrawer->Clear();
+	//vr_mode = 0;
+	for (int player = 0;player<2;player++)
+	{
+		if (consoleplayer == -1)
+			consoleplayer = oldcp;
 
-	vr_mode = oldvr;
+		if (&players[consoleplayer] && &players[consoleplayer].camera && &players[consoleplayer].camera->player)
+			StatusBar->AttachToPlayer (players[consoleplayer].camera->player);
+		else
+			StatusBar->AttachToPlayer (&players[consoleplayer]);
+
+		m2DDrawer->Clear();
+
+		D_Display ();
+
+		mBuffers->BindEyeFB(player);
+		
+		glViewport(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
+		glScissor(mScreenViewport.left, mScreenViewport.top, mScreenViewport.width, mScreenViewport.height);
+		m2DDrawer->Draw();
+		m2DDrawer->Clear();
+
+		consoleplayer = consoleplayer2;
+		StatusBar = StatusBar2;
+	}
+	//vr_mode = oldvr;
 	consoleplayer = oldcp;
+	StatusBar = OldStatusBar;
 
 	FGLPostProcessState savedState;
 	stereo3dMode.Present();
 
-	//screen->Update ();
+	screen->Update ();
+
+	StatusBar->AttachToPlayer (&players[consoleplayer]); // just in case...
 }
 
 //-----------------------------------------------------------------------------
@@ -744,6 +757,9 @@ void FGLRenderer::SplitDisplays()
 
 void FGLRenderer::Flush()
 {
+	if (splitscreen)
+		return;
+
 	const s3d::Stereo3DMode& stereo3dMode = s3d::Stereo3DMode::getCurrentMode();
 
 	if (stereo3dMode.IsMono() || !FGLRenderBuffers::IsEnabled())

@@ -781,27 +781,30 @@ void D_Display ()
 			if (!gametic)
 				break;
 
-			if (StatusBar != NULL)
-			{
-				float blend[4] = { 0, 0, 0, 0 };
-				StatusBar->BlendView (blend);
-			}
-			screen->SetBlendingRect(viewwindowx, viewwindowy,
-				viewwindowx + viewwidth, viewwindowy + viewheight);
-
 			// [ZZ] execute event hook that we just started the frame
 			//E_RenderFrame();
 			//
-			Renderer->RenderView(&players[consoleplayer]);
-
-			if ((hw2d = screen->Begin2D(viewactive)))
+			if (!splitscreen)
 			{
-				// Redraw everything every frame when using 2D accel
-				ST_SetNeedRefresh();
-				V_SetBorderNeedRefresh();
+				if (StatusBar != NULL)
+				{
+					float blend[4] = { 0, 0, 0, 0 };
+					StatusBar->BlendView (blend);
+				}
+				screen->SetBlendingRect(viewwindowx, viewwindowy,
+					viewwindowx + viewwidth, viewwindowy + viewheight);
+
+				Renderer->RenderView(&players[consoleplayer]);
+
+				if ((hw2d = screen->Begin2D(viewactive)))
+				{
+					// Redraw everything every frame when using 2D accel
+					ST_SetNeedRefresh();
+					V_SetBorderNeedRefresh();
+				}
+				Renderer->DrawRemainingPlayerSprites();
+				screen->DrawBlendingRect();
 			}
-			Renderer->DrawRemainingPlayerSprites();
-			screen->DrawBlendingRect();
 			if (automapactive)
 			{
 				int saved_ST_Y = gST_Y;
@@ -916,7 +919,7 @@ void D_Display ()
 		M_Drawer ();			// menu is drawn even on top of everything
 		FStat::PrintStat ();
 		if (!splitscreen)
-			screen->Update ();		// page flip or blit buffer
+			screen->Update ();	// page flip or blit buffer
 	}
 	else
 	{
@@ -943,7 +946,8 @@ void D_Display ()
 			done = screen->WipeDo (1);
 			C_DrawConsole (hw2d);	// console and
 			M_Drawer ();			// menu are drawn even on top of wipes
-			screen->Update ();		// page flip or blit buffer
+			if (!splitscreen)
+				screen->Update ();	// page flip or blit buffer
 			NetUpdate ();			// [RH] not sure this is needed anymore
 		} while (!done);
 		screen->WipeCleanup();
@@ -2818,6 +2822,54 @@ CCMD(restart)
 
 extern int playerfornode[];
 
+void G_CreateSplitStatusBar()
+{
+	if (StatusBar2 != NULL)
+	{
+		StatusBar2->Destroy();
+		StatusBar2 = NULL;
+	}
+	auto cls = PClass::FindClass("DoomStatusBar");
+
+	if (cls && gameinfo.gametype == GAME_Doom)
+	{
+		StatusBar2 = (DBaseStatusBar*)cls->CreateNew();
+	}
+	else if (SBarInfoScript[SCRIPT_CUSTOM] != NULL)
+	{
+		int cstype = SBarInfoScript[SCRIPT_CUSTOM]->GetGameType();
+
+		//Did the user specify a "base"
+		if(cstype == GAME_Strife)
+		{
+			StatusBar2 = CreateStrifeStatusBar();
+		}
+		else if(cstype == GAME_Any) //Use the default, empty or custom.
+		{
+			StatusBar2 = CreateCustomStatusBar(SCRIPT_CUSTOM);
+		}
+		else
+		{
+			StatusBar2 = CreateCustomStatusBar(SCRIPT_DEFAULT);
+		}
+	}
+	if (StatusBar == NULL)
+	{
+		if (gameinfo.gametype & (GAME_DoomChex|GAME_Heretic|GAME_Hexen))
+		{
+			StatusBar2 = CreateCustomStatusBar (SCRIPT_DEFAULT);
+		}
+		else if (gameinfo.gametype == GAME_Strife)
+		{
+			StatusBar2 = CreateStrifeStatusBar ();
+		}
+		else
+		{
+			StatusBar2 = new DBaseStatusBar (0);
+		}
+	}
+}
+
 void G_HandleSplitscreen(ticcmd_t* cmd)
 {
 	if (netgame)
@@ -2869,6 +2921,8 @@ void G_HandleSplitscreen(ticcmd_t* cmd)
 		{
 			StatusBar->MultiplayerChanged ();
 		}
+		if (StatusBar2 == NULL)
+			G_CreateSplitStatusBar();
 		return;
 	}
 
@@ -2889,6 +2943,12 @@ void G_DestroySplitscreen()
 		return;
 
 	G_DoPlayerPop(consoleplayer2);
+
+	if (StatusBar2 != NULL)
+	{
+		StatusBar2->Destroy();
+		StatusBar2 = NULL;
+	}
 
 	vr_mode = 0;
 	consoleplayer2 = -1;

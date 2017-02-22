@@ -420,6 +420,7 @@ private:
 };
 
 extern DBaseStatusBar *StatusBar;
+extern DBaseStatusBar *StatusBar2; // for splitscreen
 
 // Status bar factories -----------------------------------------------------
 
