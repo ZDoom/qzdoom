@@ -2901,8 +2901,8 @@ void G_HandleSplitscreen(ticcmd_t* cmd)
 		}
 
 		// [SP] Set up other "eye"
-		if (vr_mode == 0)
-			vr_mode = 3;
+		//if (vr_mode == 0)
+			//vr_mode = 3;
 
 		multiplayer = true;
 		playeringame[bnum] = true;
@@ -2950,7 +2950,7 @@ void G_DestroySplitscreen()
 		StatusBar2 = NULL;
 	}
 
-	vr_mode = 0;
+	//vr_mode = 0;
 	consoleplayer2 = -1;
 }
 
