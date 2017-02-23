@@ -2,6 +2,13 @@
 //---------------------------------------------------------------------------
 //
 // Copyright(C) 2017 Rachael Alexanderson
+//
+// **Uses lots of code from the following authors:
+// Copyright 1998-2017 Randy Heit
+// Copyright 2017 Christoph Oelckers
+// Copyright(C) 2015-2017 Christopher Bruns
+// Copyright (c) 2016-2017 Magnus Norddahl
+//
 // All rights reserved.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -33,7 +40,10 @@
 #include "c_dispatch.h"
 #include "d_player.h"
 #include "d_net.h"
+#include "d_ticcmd.h"
+#include "d_event.h"
 #include "doomstat.h"
+#include "m_joy.h"
 #include "gi.h"
 #include "g_game.h"
 #include "g_level.h"
@@ -62,7 +72,12 @@
 EXTERN_CVAR(Bool, splitscreen)
 EXTERN_CVAR(Int, vr_mode)
 EXTERN_CVAR(Int, ss_mode)
-EXTERN_CVAR (Bool, r_deathcamera)
+EXTERN_CVAR(Bool, r_deathcamera)
+EXTERN_CVAR(Bool, cl_run)
+EXTERN_CVAR(Bool, lookstrafe)
+EXTERN_CVAR(Bool, freelook)
+EXTERN_CVAR(Float, m_forward)
+EXTERN_CVAR(Float, m_side)
 
 
 // external function prototypes
@@ -77,8 +92,34 @@ void V_FixAspectSettings();
 void G_BuildTiccmd_Split(ticcmd_t* cmd, ticcmd_t* cmd2);
 
 
-// external variables
+// external global variables
 extern bool NoInterpolateView;
+extern short consistancy[MAXPLAYERS][BACKUPTICS];
+extern int turnheld;
+extern int forwardmove[2], sidemove[2], angleturn[4], lookspeed[2], flyspeed[2];
+extern int mousex, mousey;
+extern bool SendLand, sendpause, sendsave, sendturn180;
+extern FString savegamefile, savedescription;
+
+
+// defines...?
+#define SLOWTURNTICS	6 
+#define MAXPLMOVE				(forwardmove[1]) 
+
+
+// forward static
+static inline int joyint(double val)
+{
+	if (val >= 0)
+	{
+		return int(ceil(val));
+	}
+	else
+	{
+		return int(floor(val));
+	}
+}
+
 
 
 //-----------------------------------------------------------------------------
@@ -480,6 +521,283 @@ void G_DestroySplitscreen()
 	//vr_mode = 0;
 	consoleplayer2 = -1;
 }
+
+
+//==========================================================================
+//
+// G_BuildTiccmd_Split
+//
+// [SP] This is the split-screen version of G_BuildTiccmd - this discriminates by input.
+// For now, only Gamepad input is split.
+//
+//==========================================================================
+
+void G_BuildTiccmd_Split (ticcmd_t *cmd, ticcmd_t *cmd2)
+{
+	int 		strafe;
+	int 		speed;
+	int 		forward;
+	int 		side;
+	int			fly;
+
+	//int 		strafe2;
+	//int 		speed2;
+	int 		forward2;
+	int 		side2;
+	int			fly2;
+
+	ticcmd_t	*base;
+
+	base = I_BaseTiccmd (); 			// empty, or external driver
+	*cmd = *base;
+	*cmd2 = *base;
+
+	cmd->consistancy = consistancy[consoleplayer][(maketic/ticdup)%BACKUPTICS];
+	cmd2->consistancy = consistancy[consoleplayer2][(maketic/ticdup)%BACKUPTICS];
+
+	strafe = Button_Strafe.bDown;
+	speed = Button_Speed.bDown ^ (int)cl_run;
+
+	forward = side = fly = 0;
+	forward2 = side2 = fly2 = 0;
+
+	// [RH] only use two stage accelerative turning on the keyboard
+	//		and not the joystick, since we treat the joystick as
+	//		the analog device it is.
+	if (Button_Left.bDown || Button_Right.bDown)
+		turnheld += ticdup;
+	else
+		turnheld = 0;
+
+	// let movement keys cancel each other out
+	if (strafe)
+	{
+		if (Button_Right.bDown)
+			side += sidemove[speed];
+		if (Button_Left.bDown)
+			side -= sidemove[speed];
+	}
+	else
+	{
+		int tspeed = speed;
+
+		if (turnheld < SLOWTURNTICS)
+			tspeed += 2;		// slow turn
+		
+		if (Button_Right.bDown)
+		{
+			G_AddViewAngle (angleturn[tspeed]);
+			LocalKeyboardTurner = true;
+		}
+		if (Button_Left.bDown)
+		{
+			G_AddViewAngle (-angleturn[tspeed]);
+			LocalKeyboardTurner = true;
+		}
+	}
+
+	if (Button_LookUp.bDown)
+	{
+		G_AddViewPitch (lookspeed[speed]);
+		LocalKeyboardTurner = true;
+	}
+	if (Button_LookDown.bDown)
+	{
+		G_AddViewPitch (-lookspeed[speed]);
+		LocalKeyboardTurner = true;
+	}
+
+	if (Button_MoveUp.bDown)
+		fly += flyspeed[speed];
+	if (Button_MoveDown.bDown)
+		fly -= flyspeed[speed];
+
+	if (Button_Klook.bDown)
+	{
+		if (Button_Forward.bDown)
+			G_AddViewPitch (lookspeed[speed]);
+		if (Button_Back.bDown)
+			G_AddViewPitch (-lookspeed[speed]);
+	}
+	else
+	{
+		if (Button_Forward.bDown)
+			forward += forwardmove[speed];
+		if (Button_Back.bDown)
+			forward -= forwardmove[speed];
+	}
+
+	if (Button_MoveRight.bDown)
+		side += sidemove[speed];
+	if (Button_MoveLeft.bDown)
+		side -= sidemove[speed];
+
+	// buttons
+	if (Button_Attack.bDown)		cmd->ucmd.buttons |= BT_ATTACK;
+	if (Button_AltAttack.bDown)		cmd->ucmd.buttons |= BT_ALTATTACK;
+	if (Button_Use.bDown)			cmd->ucmd.buttons |= BT_USE;
+	if (Button_Jump.bDown)			cmd->ucmd.buttons |= BT_JUMP;
+	if (Button_Crouch.bDown)		cmd->ucmd.buttons |= BT_CROUCH;
+	if (Button_Zoom.bDown)			cmd->ucmd.buttons |= BT_ZOOM;
+	if (Button_Reload.bDown)		cmd->ucmd.buttons |= BT_RELOAD;
+
+	if (Button_User1.bDown)			cmd->ucmd.buttons |= BT_USER1;
+	if (Button_User2.bDown)			cmd->ucmd.buttons |= BT_USER2;
+	if (Button_User3.bDown)			cmd->ucmd.buttons |= BT_USER3;
+	if (Button_User4.bDown)			cmd->ucmd.buttons |= BT_USER4;
+
+	if (Button_Speed.bDown)			cmd->ucmd.buttons |= BT_SPEED;
+	if (Button_Strafe.bDown)		cmd->ucmd.buttons |= BT_STRAFE;
+	if (Button_MoveRight.bDown)		cmd->ucmd.buttons |= BT_MOVERIGHT;
+	if (Button_MoveLeft.bDown)		cmd->ucmd.buttons |= BT_MOVELEFT;
+	if (Button_LookDown.bDown)		cmd->ucmd.buttons |= BT_LOOKDOWN;
+	if (Button_LookUp.bDown)		cmd->ucmd.buttons |= BT_LOOKUP;
+	if (Button_Back.bDown)			cmd->ucmd.buttons |= BT_BACK;
+	if (Button_Forward.bDown)		cmd->ucmd.buttons |= BT_FORWARD;
+	if (Button_Right.bDown)			cmd->ucmd.buttons |= BT_RIGHT;
+	if (Button_Left.bDown)			cmd->ucmd.buttons |= BT_LEFT;
+	if (Button_MoveDown.bDown)		cmd->ucmd.buttons |= BT_MOVEDOWN;
+	if (Button_MoveUp.bDown)		cmd->ucmd.buttons |= BT_MOVEUP;
+	if (Button_ShowScores.bDown)	cmd->ucmd.buttons |= BT_SHOWSCORES;
+
+	// Handle joysticks/game controllers.
+	int consoleplayer1 = consoleplayer;
+
+	consoleplayer = consoleplayer2;
+	float joyaxes[NUM_JOYAXIS];
+
+	I_GetAxes(joyaxes);
+
+	// Remap some axes depending on button state.
+	if (Button_Strafe.bDown || (Button_Mlook.bDown && lookstrafe))
+	{
+		joyaxes[JOYAXIS_Side] = joyaxes[JOYAXIS_Yaw];
+		joyaxes[JOYAXIS_Yaw] = 0;
+	}
+	if (Button_Mlook.bDown)
+	{
+		joyaxes[JOYAXIS_Pitch] = joyaxes[JOYAXIS_Forward];
+		joyaxes[JOYAXIS_Forward] = 0;
+	}
+
+	if (joyaxes[JOYAXIS_Pitch] != 0)
+	{
+		G_AddViewPitch(joyint(joyaxes[JOYAXIS_Pitch] * 2048));
+		LocalKeyboardTurner = true;
+	}
+	if (joyaxes[JOYAXIS_Yaw] != 0)
+	{
+		G_AddViewAngle(joyint(-1280 * joyaxes[JOYAXIS_Yaw]));
+		LocalKeyboardTurner = true;
+	}
+	side2 -= joyint(sidemove[speed] * joyaxes[JOYAXIS_Side]);
+	forward2 += joyint(joyaxes[JOYAXIS_Forward] * forwardmove[speed]);
+	fly2 += joyint(joyaxes[JOYAXIS_Up] * 2048);
+
+	consoleplayer = consoleplayer1;
+
+	// Handle mice.
+	if (!Button_Mlook.bDown && !freelook)
+	{
+		forward += (int)((float)mousey * m_forward);
+	}
+
+	cmd->ucmd.pitch = LocalViewPitch >> 16;
+
+	if (SendLand)
+	{
+		SendLand = false;
+		fly = -32768;
+	}
+
+	if (strafe || lookstrafe)
+		side += (int)((float)mousex * m_side);
+
+	mousex = mousey = 0;
+
+	// Build command.
+	if (forward > MAXPLMOVE)
+		forward = MAXPLMOVE;
+	else if (forward < -MAXPLMOVE)
+		forward = -MAXPLMOVE;
+	if (side > MAXPLMOVE)
+		side = MAXPLMOVE;
+	else if (side < -MAXPLMOVE)
+		side = -MAXPLMOVE;
+
+	cmd->ucmd.forwardmove += forward;
+	cmd->ucmd.sidemove += side;
+	cmd->ucmd.yaw = LocalViewAngle >> 16;
+	cmd->ucmd.upmove = fly;
+	LocalViewAngle = 0;
+	LocalViewPitch = 0;
+
+	// and for the gamepad...
+	if (forward2 > MAXPLMOVE)
+		forward2 = MAXPLMOVE;
+	else if (forward2 < -MAXPLMOVE)
+		forward2 = -MAXPLMOVE;
+	if (side2 > MAXPLMOVE)
+		side2 = MAXPLMOVE;
+	else if (side2 < -MAXPLMOVE)
+		side2 = -MAXPLMOVE;
+	cmd2->ucmd.forwardmove += forward2;
+	cmd2->ucmd.sidemove += side2;
+	cmd2->ucmd.yaw = LocalViewAngle >> 16;
+	cmd2->ucmd.upmove = fly2;
+
+	// special buttons
+	if (sendturn180)
+	{
+		sendturn180 = false;
+		cmd->ucmd.buttons |= BT_TURN180;
+	}
+	if (sendpause)
+	{
+		sendpause = false;
+		Net_WriteByte (DEM_PAUSE);
+	}
+	if (sendsave)
+	{
+		sendsave = false;
+		Net_WriteByte (DEM_SAVEGAME);
+		Net_WriteString (savegamefile);
+		Net_WriteString (savedescription);
+		savegamefile = "";
+	}
+	if (SendItemUse == (const AInventory *)1)
+	{
+		Net_WriteByte (DEM_INVUSEALL);
+		SendItemUse = NULL;
+	}
+	else if (SendItemUse != NULL)
+	{
+		Net_WriteByte (DEM_INVUSE);
+		Net_WriteLong (SendItemUse->InventoryID);
+		SendItemUse = NULL;
+	}
+	if (SendItemDrop != NULL)
+	{
+		Net_WriteByte (DEM_INVDROP);
+		Net_WriteLong (SendItemDrop->InventoryID);
+		SendItemDrop = NULL;
+	}
+
+	cmd->ucmd.forwardmove <<= 8;
+	cmd->ucmd.sidemove <<= 8;
+	cmd2->ucmd.forwardmove <<= 8;
+	cmd2->ucmd.sidemove <<= 8;
+}
+
+
+//==========================================================================
+//
+// "splitswap" CCMD
+//
+// [SP] Swaps the split screen players so player 2 is now the keyboard input.
+//
+//==========================================================================
+
 
 CCMD (splitswap)
 {
