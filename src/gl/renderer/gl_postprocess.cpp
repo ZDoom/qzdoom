@@ -719,7 +719,8 @@ void FGLRenderer::SplitDisplays()
 
 	const s3d::Stereo3DMode& stereo3dMode = s3d::Stereo3DMode::getCurrentMode();
 
-	Renderer->RenderView(&players[consoleplayer]);
+	if (gamestate == GS_LEVEL || gamestate == GS_TITLELEVEL)
+		Renderer->RenderView(&players[consoleplayer]);
 
 	//vr_mode = 0;
 	for (int player = 0;player<2;player++)
@@ -727,10 +728,13 @@ void FGLRenderer::SplitDisplays()
 		if (consoleplayer == -1)
 			consoleplayer = oldcp;
 
-		if (StatusBar && &players[consoleplayer] && &players[consoleplayer].camera && &players[consoleplayer].camera->player)
+		if (gamestate == GS_LEVEL || gamestate == GS_TITLELEVEL)
 		{
-			StatusBar->AttachToPlayer(players[consoleplayer].camera->player);
-			StatusBar->Tick();
+			if (StatusBar && &players[consoleplayer] && &players[consoleplayer].camera && &players[consoleplayer].camera->player)
+			{
+				StatusBar->AttachToPlayer(players[consoleplayer].camera->player);
+				StatusBar->Tick();
+			}
 		}
 
 		D_Display ();
