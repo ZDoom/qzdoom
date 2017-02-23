@@ -1182,6 +1182,7 @@ set (PCH_SOURCES
 	r_utility.cpp
 	serializer.cpp
 	sc_man.cpp
+	splitscreen.cpp
 	st_stuff.cpp
 	statistics.cpp
 	stats.cpp

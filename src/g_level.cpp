@@ -465,6 +465,11 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 		StatusBar->Destroy();
 		StatusBar = NULL;
 	}
+	if (StatusBar2 != NULL)
+	{
+		StatusBar2->Destroy();
+		StatusBar2 = NULL;
+	}
 	auto cls = PClass::FindClass("DoomStatusBar");
 
 	if (bTitleLevel)
