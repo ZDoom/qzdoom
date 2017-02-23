@@ -117,8 +117,6 @@
 
 EXTERN_CVAR(Bool, hud_althud)
 EXTERN_CVAR(Float, maxviewpitch)
-void DrawHUD();
-void V_FixAspectSettings();
 
 // MACROS ------------------------------------------------------------------
 
@@ -143,6 +141,8 @@ void G_BuildTiccmd (ticcmd_t* cmd);
 void D_DoAdvanceDemo ();
 void D_AddWildFile (TArray<FString> &wadfiles, const char *pattern);
 void D_LoadWadSettings ();
+void DrawHUD();
+void V_FixAspectSettings();
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
@@ -178,6 +178,11 @@ extern bool insave;
 
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
+
+CUSTOM_CVAR (Int, ss_mode, 4, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
+{
+	V_FixAspectSettings();
+}
 
 CUSTOM_CVAR (Int, fraglimit, 0, CVAR_SERVERINFO)
 {

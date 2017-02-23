@@ -559,7 +559,7 @@ void FGLRenderer::DrawBlend(sector_t * viewsector)
 	}
 
 	// don't draw sector based blends when an invulnerability colormap is active
-	if (!gl_fixedcolormap)
+	if (!gl_fixedcolormap && viewsector->e)
 	{
 		if (!viewsector->e->XFloor.ffloors.Size())
 		{
@@ -872,11 +872,14 @@ sector_t * FGLRenderer::RenderTwoViewpoints (AActor * camera, AActor * camera2, 
 		clipper.SafeAddClipRangeRealAngles(ViewAngle.BAMs() + a1, ViewAngle.BAMs() - a1);
 
 		ProcessScene(toscreen);
-		if (mainview && toscreen)
-			if (eye_ix == 0)
-				EndDrawScene(lviewsector); // do not call this for camera textures.
-			else
-				EndDrawScene2(lviewsector);
+		if (lviewsector && lviewsector->e)
+		{
+			if (mainview && toscreen)
+				if (eye_ix == 0)
+					EndDrawScene(lviewsector); // do not call this for camera textures.
+				else
+					EndDrawScene2(lviewsector);
+		}
 		if (mainview && FGLRenderBuffers::IsEnabled())
 		{
 			PostProcessScene();

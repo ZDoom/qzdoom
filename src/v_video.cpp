@@ -68,6 +68,7 @@
 
 EXTERN_CVAR(Bool, r_blendmethod)
 EXTERN_CVAR(Int, vr_mode)
+EXTERN_CVAR(Int, ss_mode)
 
 int active_con_scale();
 void V_FixAspectSettings();
@@ -1692,7 +1693,7 @@ float ActiveRatio(int width, int height, float *trueratio)
 
 	if (vid_fixeyeaspect && ((splitscreen) || (vr_mode != 0)))
 	{
-		int vr_modetest = (vr_mode == 0) ? 4 : vr_mode;
+		int vr_modetest = (vr_mode == 0) ? ss_mode : vr_mode;
 		switch (vr_modetest)
 		{
 			case 4:

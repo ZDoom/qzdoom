@@ -150,6 +150,7 @@ EXTERN_CVAR(Float, vid_brightness)
 EXTERN_CVAR(Float, vid_contrast)
 EXTERN_CVAR(Bool, splitscreen)
 EXTERN_CVAR(Int, vr_mode)
+EXTERN_CVAR(Int, ss_mode)
 void D_Display ();
 
 
@@ -714,7 +715,7 @@ void FGLRenderer::SplitDisplays()
 	DBaseStatusBar *OldStatusBar = StatusBar;
 
 	if (vr_mode == 0)
-		vr_mode = 4;
+		vr_mode = ss_mode;
 
 	const s3d::Stereo3DMode& stereo3dMode = s3d::Stereo3DMode::getCurrentMode();
 
@@ -726,12 +727,9 @@ void FGLRenderer::SplitDisplays()
 		if (consoleplayer == -1)
 			consoleplayer = oldcp;
 
-		if (StatusBar)
+		if (StatusBar && &players[consoleplayer] && &players[consoleplayer].camera && &players[consoleplayer].camera->player)
 		{
-			if (&players[consoleplayer] && &players[consoleplayer].camera && &players[consoleplayer].camera->player)
-				StatusBar->AttachToPlayer(players[consoleplayer].camera->player);
-			else
-				StatusBar->AttachToPlayer(&players[consoleplayer]);
+			StatusBar->AttachToPlayer(players[consoleplayer].camera->player);
 			StatusBar->Tick();
 		}
 
