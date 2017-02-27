@@ -71,28 +71,29 @@ out vec4 FragNormal;
 		for (int iteration = 0; iteration < max_iterations; iteration++)
 		{
 			GPUNode node = bspNodes[nodeIndex];
-			int side = (dot(node.plane, vec4(from, 1.0)) >= 0.0) ? 0 : 1;
+			int side = (dot(node.plane, vec4(from, 1.0)) > 0.0) ? 1 : 0;
 			int linecount = node.linecount[side];
 			if (linecount < 0)
 			{
-				nodeIndex = node.children[nodeIndex];
+				nodeIndex = node.children[side];
 			}
 			else
 			{
+				int startLineIndex = node.children[side];
+
 				float t = 1.0;
 				float solid = 0.0;
 
-				int startLineIndex = node.children[nodeIndex];
 				for (int i = 0; i < linecount; i++)
 				{
 					GPUSeg seg = bspSegs[startLineIndex + i];
 
 					// Ray/plane test each line.
 					float den = dot(seg.plane.xyz, raydelta);
-					if (den > epsilon)
+					if (abs(den) > epsilon)
 					{
 						float t_seg = (-seg.plane.w - dot(seg.plane.xyz, from)) / den;
-						if (t_seg < t) // The closest ray/plane hit is the correct one.
+						if (t_seg > 0.0 && t_seg < t) // The closest ray/plane hit is the correct one.
 						{
 							t = t_seg;
 							solid = seg.bSolid;
@@ -103,9 +104,16 @@ out vec4 FragNormal;
 				float one = 1.0 / length(raydelta);
 				float margin = 1.0 - one; // use some margin as fragments are often on a line
 
-				if (t < margin && solid == 0.0)
+				if (t >= margin) // We didn't hit anything
 				{
-					// We hit a two-sided segment line. Move to the other side and continue ray tracing.
+					return 1.0;
+				}
+				else if (solid > 0.0) // We hit an one-sided line
+				{
+					return 0.0;
+				}
+				else // We hit a two-sided segment line. Move to the other side and continue ray tracing.
+				{
 					from = mix(from, to, t + one);
 
 					raydelta = to - from;
@@ -113,10 +121,6 @@ out vec4 FragNormal;
 
 					if (dot(raydelta, raydelta) < epsilon)
 						return 1.0;
-				}
-				else
-				{
-					return step(margin, t);
 				}
 			}
 		}
@@ -275,7 +279,7 @@ float pointLightAttenuation(vec4 lightpos, float attenuate)
 	{
 		vec3 lightDirection = normalize(lightpos.xyz - pixelpos.xyz);
 		float diffuseAmount = diffuseContribution(lightDirection, normalize(vWorldNormal.xyz));
-		return attenuation * diffuseAmount;
+		return attenuation * diffuseAmount * rayTestLight(lightpos);
 	}
 }
 

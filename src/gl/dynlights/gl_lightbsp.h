@@ -18,6 +18,7 @@ struct GPUSeg
 class FLightBSP
 {
 public:
+	FLightBSP() { }
 	~FLightBSP() { Clear(); }
 
 	int GetNodesBuffer();

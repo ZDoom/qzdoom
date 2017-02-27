@@ -288,6 +288,10 @@ bool FRenderState::ApplyShader()
 		identityMatrix.matrixToGL(activeShader->modelmatrix_index);
 		identityMatrix.matrixToGL(activeShader->normalmodelmatrix_index);
 	}
+
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, GLRenderer->mLightBSP.GetNodesBuffer());
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, GLRenderer->mLightBSP.GetSegsBuffer());
+
 	return true;
 }
 

@@ -113,7 +113,7 @@ void FLightBSP::UploadSegs()
 		float a = (float)-(seg.v2->fY() - seg.v1->fY());
 		float b = (float)(seg.v2->fX() - seg.v1->fX());
 		float c = 0.0f;
-		float d = -(a * (float)seg.v1->fX() + b * (float)seg.v2->fY());
+		float d = -(a * (float)seg.v1->fX() + b * (float)seg.v1->fY());
 
 		gpuseg.plane[0] = a;
 		gpuseg.plane[1] = b;
@@ -138,12 +138,12 @@ void FLightBSP::UploadSegs()
 
 void FLightBSP::Clear()
 {
-	if (NodesBuffer == 0)
+	if (NodesBuffer != 0)
 	{
 		glDeleteBuffers(1, (GLuint*)&NodesBuffer);
 		NodesBuffer = 0;
 	}
-	if (SegsBuffer == 0)
+	if (SegsBuffer != 0)
 	{
 		glDeleteBuffers(1, (GLuint*)&SegsBuffer);
 		SegsBuffer = 0;
