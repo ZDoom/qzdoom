@@ -63,10 +63,10 @@ out vec4 FragNormal;
 		const float epsilon = 0.0000001;
 
 		vec3 raydelta = to - from;
-		int nodeIndex = 0;
-
-		if (dot(raydelta, raydelta) < epsilon)
+		if (dot(raydelta, raydelta) < epsilon || bspNodes.length() == 0)
 			return 1.0;
+
+		int nodeIndex = bspNodes.length() - 1;
 
 		for (int iteration = 0; iteration < max_iterations; iteration++)
 		{
@@ -79,6 +79,8 @@ out vec4 FragNormal;
 			}
 			else
 			{
+				float margin = 1.0 / length(raydelta);
+
 				int startLineIndex = node.children[side];
 
 				float t = 1.0;
@@ -93,7 +95,7 @@ out vec4 FragNormal;
 					if (abs(den) > epsilon)
 					{
 						float t_seg = (-seg.plane.w - dot(seg.plane.xyz, from)) / den;
-						if (t_seg > 0.0 && t_seg < t) // The closest ray/plane hit is the correct one.
+						if (t_seg > 0.0 && t_seg + margin < t) // The closest ray/plane hit is the correct one.
 						{
 							t = t_seg;
 							solid = seg.bSolid;
@@ -101,10 +103,7 @@ out vec4 FragNormal;
 					}
 				}
 
-				float one = 1.0 / length(raydelta);
-				float margin = 1.0 - one; // use some margin as fragments are often on a line
-
-				if (t >= margin) // We didn't hit anything
+				if (t >= 1.0 - margin) // We didn't hit anything
 				{
 					return 1.0;
 				}
@@ -114,10 +113,10 @@ out vec4 FragNormal;
 				}
 				else // We hit a two-sided segment line. Move to the other side and continue ray tracing.
 				{
-					from = mix(from, to, t + one);
+					from = from + raydelta * (t + margin);
 
 					raydelta = to - from;
-					nodeIndex = 0;
+					nodeIndex = bspNodes.length() - 1;
 
 					if (dot(raydelta, raydelta) < epsilon)
 						return 1.0;
@@ -136,7 +135,7 @@ out vec4 FragNormal;
 
 	float rayTestLight(vec4 lightpos)
 	{
-		return rayTest(lightpos.xyz, pixelpos.xyz);
+		return rayTest(lightpos.xzy, pixelpos.xzy);
 	}
 
 #endif
@@ -279,7 +278,10 @@ float pointLightAttenuation(vec4 lightpos, float attenuate)
 	{
 		vec3 lightDirection = normalize(lightpos.xyz - pixelpos.xyz);
 		float diffuseAmount = diffuseContribution(lightDirection, normalize(vWorldNormal.xyz));
-		return attenuation * diffuseAmount * rayTestLight(lightpos);
+		if (attenuation > 0.0)
+			return attenuation * diffuseAmount * rayTestLight(lightpos);
+		else
+			return 0.0;
 	}
 }
 
