@@ -24,6 +24,119 @@ out vec4 FragNormal;
 	};
 #endif
 
+#define RAYTRACE_LIGHTS
+#ifdef RAYTRACE_LIGHTS
+
+	struct GPUNode
+	{
+		vec4 plane;
+		int children[2];
+		int linecount[2];
+	};
+
+	struct GPUSeg
+	{
+		vec4 plane;
+		float bSolid;
+		float padding1, padding2, padding3;
+	};
+
+	layout(std430, binding = 2) buffer LightNodes
+	{
+		GPUNode bspNodes[];
+	};
+
+	layout(std430, binding = 3) buffer LightSegs
+	{
+		GPUSeg bspSegs[];
+	};
+
+	//===========================================================================
+	//
+	// Ray/BSP collision test. Returns 0 if the ray hit a line, 1 otherwise.
+	//
+	//===========================================================================
+
+	float rayTest(vec3 from, vec3 to)
+	{
+		const int max_iterations = 50;
+		const float epsilon = 0.0000001;
+
+		vec3 raydelta = to - from;
+		int nodeIndex = 0;
+
+		if (dot(raydelta, raydelta) < epsilon)
+			return 1.0;
+
+		for (int iteration = 0; iteration < max_iterations; iteration++)
+		{
+			GPUNode node = bspNodes[nodeIndex];
+			int side = (dot(node.plane, vec4(from, 1.0)) >= 0.0) ? 0 : 1;
+			int linecount = node.linecount[side];
+			if (linecount < 0)
+			{
+				nodeIndex = node.children[nodeIndex];
+			}
+			else
+			{
+				float t = 1.0;
+				float solid = 0.0;
+
+				int startLineIndex = node.children[nodeIndex];
+				for (int i = 0; i < linecount; i++)
+				{
+					GPUSeg seg = bspSegs[startLineIndex + i];
+
+					// Ray/plane test each line.
+					float den = dot(seg.plane.xyz, raydelta);
+					if (den > epsilon)
+					{
+						float t_seg = (-seg.plane.w - dot(seg.plane.xyz, from)) / den;
+						if (t_seg < t) // The closest ray/plane hit is the correct one.
+						{
+							t = t_seg;
+							solid = seg.bSolid;
+						}
+					}
+				}
+
+				float one = 1.0 / length(raydelta);
+				float margin = 1.0 - one; // use some margin as fragments are often on a line
+
+				if (t < margin && solid == 0.0)
+				{
+					// We hit a two-sided segment line. Move to the other side and continue ray tracing.
+					from = mix(from, to, t + one);
+
+					raydelta = to - from;
+					nodeIndex = 0;
+
+					if (dot(raydelta, raydelta) < epsilon)
+						return 1.0;
+				}
+				else
+				{
+					return step(margin, t);
+				}
+			}
+		}
+
+		return 0.0;
+	}
+
+	//===========================================================================
+	//
+	// Check if a light is visible by performing a ray collision test via the BSP
+	//
+	//===========================================================================
+
+	float rayTestLight(vec4 lightpos)
+	{
+		return rayTest(lightpos.xyz, pixelpos.xyz);
+	}
+
+#endif
+
 
 uniform sampler2D tex;
 

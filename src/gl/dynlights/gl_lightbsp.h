@@ -3,20 +3,14 @@
 
 struct GPUNode
 {
-	float x;
-	float y;
-	float dx;
-	float dy;
+	float plane[4];
 	int children[2];
 	int linecount[2];
 };
 
 struct GPUSeg
 {
-	float x;
-	float y;
-	float nx;
-	float ny;
+	float plane[4];
 	float bSolid;
 	float padding1, padding2, padding3;
 };

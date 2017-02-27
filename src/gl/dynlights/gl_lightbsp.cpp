@@ -62,10 +62,15 @@ void FLightBSP::UploadNodes()
 		const auto &node = nodes[i];
 		auto &gpunode = gpunodes[i];
 
-		gpunode.x = FIXED2FLOAT(node.x);
-		gpunode.y = FIXED2FLOAT(node.y);
-		gpunode.dx = FIXED2FLOAT(node.dx);
-		gpunode.dy = FIXED2FLOAT(node.dy);
+		float a = -FIXED2FLOAT(node.dy);
+		float b = FIXED2FLOAT(node.dx);
+		float c = 0.0f;
+		float d = -(a * FIXED2FLOAT(node.x) + b * FIXED2FLOAT(node.y));
+
+		gpunode.plane[0] = a;
+		gpunode.plane[1] = b;
+		gpunode.plane[2] = c;
+		gpunode.plane[3] = d;
 
 		for (int j = 0; j < 2; j++)
 		{
@@ -105,13 +110,15 @@ void FLightBSP::UploadSegs()
 		const auto &seg = segs[i];
 		auto &gpuseg = gpusegs[i];
 
-		gpuseg.x = (float)seg.v1->fX();
-		gpuseg.y = (float)seg.v2->fY();
-		gpuseg.nx = (float)-(seg.v2->fY() - seg.v1->fY());
-		gpuseg.ny = (float)(seg.v2->fX() - seg.v1->fX());
-		float length = sqrt(gpuseg.nx * gpuseg.nx + gpuseg.ny * gpuseg.ny);
-		gpuseg.nx /= length;
-		gpuseg.ny /= length;
+		float a = (float)-(seg.v2->fY() - seg.v1->fY());
+		float b = (float)(seg.v2->fX() - seg.v1->fX());
+		float c = 0.0f;
+		float d = -(a * (float)seg.v1->fX() + b * (float)seg.v2->fY());
+
+		gpuseg.plane[0] = a;
+		gpuseg.plane[1] = b;
+		gpuseg.plane[2] = c;
+		gpuseg.plane[3] = d;
 		gpuseg.bSolid = (seg.backsector == nullptr) ? 1.0f : 0.0f;
 		gpuseg.padding1 = 0.0f;
 		gpuseg.padding2 = 0.0f;
