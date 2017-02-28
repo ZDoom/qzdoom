@@ -36,9 +36,9 @@ out vec4 FragNormal;
 
 	struct GPUSeg
 	{
-		vec4 plane;
-		float bSolid;
-		float padding1, padding2, padding3;
+		vec2 pos;
+		vec2 delta;
+		vec4 bSolid;
 	};
 
 	layout(std430, binding = 2) buffer LightNodes
@@ -57,13 +57,21 @@ out vec4 FragNormal;
 	//
 	//===========================================================================
 
-	float rayTest(vec3 from, vec3 to)
+	float rayTest(vec2 from, vec2 to)
 	{
 		const int max_iterations = 50;
 		const float epsilon = 0.0000001;
 
-		vec3 raydelta = to - from;
-		if (dot(raydelta, raydelta) < epsilon || bspNodes.length() == 0)
+		// Avoid wall acne by adding some margin
+		vec2 margin = normalize(to - from);
+		to -= margin;
+
+		vec2 raydelta = to - from;
+		float raydist2 = dot(raydelta, raydelta);
+		vec2 raynormal = vec2(raydelta.y, -raydelta.x);
+		float rayd = dot(raynormal, from);
+
+		if (raydist2 < 1.0 || bspNodes.length() == 0)
 			return 1.0;
 
 		int nodeIndex = bspNodes.length() - 1;
@@ -71,7 +79,7 @@ out vec4 FragNormal;
 		for (int iteration = 0; iteration < max_iterations; iteration++)
 		{
 			GPUNode node = bspNodes[nodeIndex];
-			int side = (dot(node.plane, vec4(from, 1.0)) > 0.0) ? 1 : 0;
+			int side = (dot(node.plane, vec4(from, 0.0, 1.0)) > 0.0) ? 1 : 0;
 			int linecount = node.linecount[side];
 			if (linecount < 0)
 			{
@@ -79,48 +87,48 @@ out vec4 FragNormal;
 			}
 			else
 			{
-				float margin = 1.0 / length(raydelta);
-
 				int startLineIndex = node.children[side];
 
-				float t = 1.0;
-				float solid = 0.0;
-
+				// Ray/line test each line segment.
+				bool hit_line = false;
 				for (int i = 0; i < linecount; i++)
 				{
 					GPUSeg seg = bspSegs[startLineIndex + i];
 
-					// Ray/plane test each line.
-					float den = dot(seg.plane.xyz, raydelta);
+					float den = dot(raynormal, seg.delta);
 					if (abs(den) > epsilon)
 					{
-						float t_seg = (-seg.plane.w - dot(seg.plane.xyz, from)) / den;
-						if (t_seg > 0.0 && t_seg + margin < t) // The closest ray/plane hit is the correct one.
+						float t_seg = (rayd - dot(raynormal, seg.pos)) / den;
+						if (t_seg >= 0.0 && t_seg <= 1.0)
 						{
-							t = t_seg;
-							solid = seg.bSolid;
+							vec2 seghitdelta = seg.pos + seg.delta * t_seg - from;
+							if (dot(raydelta, seghitdelta) > 0.0 && dot(seghitdelta, seghitdelta) < raydist2) // We hit a line segment.
+							{
+								if (seg.bSolid.x > 0.0) // segment line is one-sided
+									return 0.0;
+
+								// We hit a two-sided segment line. Move to the other side and continue ray tracing.
+								from = from + seghitdelta + margin;
+
+								raydelta = to - from;
+								raydist2 = dot(raydelta, raydelta);
+								raynormal = vec2(raydelta.y, -raydelta.x);
+								rayd = dot(raynormal, from);
+
+								if (raydist2 < 1.0 || bspNodes.length() == 0)
+									return 1.0;
+
+								nodeIndex = bspNodes.length() - 1;
+
+								hit_line = true;
+								break;
+							}
 						}
 					}
 				}
 
-				if (t >= 1.0 - margin) // We didn't hit anything
-				{
+				if (!hit_line)
 					return 1.0;
-				}
-				else if (solid > 0.0) // We hit an one-sided line
-				{
-					return 0.0;
-				}
-				else // We hit a two-sided segment line. Move to the other side and continue ray tracing.
-				{
-					from = from + raydelta * (t + margin);
-
-					raydelta = to - from;
-					nodeIndex = bspNodes.length() - 1;
-
-					if (dot(raydelta, raydelta) < epsilon)
-						return 1.0;
-				}
 			}
 		}
 
@@ -135,7 +143,7 @@ out vec4 FragNormal;
 
 	float rayTestLight(vec4 lightpos)
 	{
-		return rayTest(lightpos.xzy, pixelpos.xzy);
+		return rayTest(lightpos.xz, pixelpos.xz);
 	}
 
 #endif

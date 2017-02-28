@@ -84,11 +84,23 @@ void FLightBSP::UploadNodes()
 			else
 			{
 				subsector_t *sub = (subsector_t *)((BYTE *)node.children[j] - 1);
-				gpunode.children[j] = (sub->numlines > 0) ? (int)(ptrdiff_t)(sub->firstline - segs) : 0;
+				if (sub->numlines > 0)
+					gpunode.children[j] = (int)(ptrdiff_t)(sub->firstline - segs);
+				else
+					gpunode.children[j] = 0;
 				gpunode.linecount[j] = sub->numlines;
 			}
 		}
 	}
+
+#if 0
+	if (gpunodes.Size() > 0)
+	{
+		FILE *file = fopen("nodes.txt", "wb");
+		fwrite(&gpunodes[0], sizeof(GPUNode) * gpunodes.Size(), 1, file);
+		fclose(file);
+	}
+#endif
 
 	int oldBinding = 0;
 	glGetIntegerv(GL_SHADER_STORAGE_BUFFER_BINDING, &oldBinding);
@@ -110,20 +122,24 @@ void FLightBSP::UploadSegs()
 		const auto &seg = segs[i];
 		auto &gpuseg = gpusegs[i];
 
-		float a = (float)-(seg.v2->fY() - seg.v1->fY());
-		float b = (float)(seg.v2->fX() - seg.v1->fX());
-		float c = 0.0f;
-		float d = -(a * (float)seg.v1->fX() + b * (float)seg.v1->fY());
-
-		gpuseg.plane[0] = a;
-		gpuseg.plane[1] = b;
-		gpuseg.plane[2] = c;
-		gpuseg.plane[3] = d;
+		gpuseg.x = (float)seg.v1->fX();
+		gpuseg.y = (float)seg.v1->fY();
+		gpuseg.dx = (float)seg.v2->fX() - gpuseg.x;
+		gpuseg.dy = (float)seg.v2->fY() - gpuseg.y;
 		gpuseg.bSolid = (seg.backsector == nullptr) ? 1.0f : 0.0f;
 		gpuseg.padding1 = 0.0f;
 		gpuseg.padding2 = 0.0f;
 		gpuseg.padding3 = 0.0f;
 	}
+
+#if 0
+	if (gpusegs.Size() > 0)
+	{
+		FILE *file = fopen("segs.txt", "wb");
+		fwrite(&gpusegs[0], sizeof(GPUSeg) * gpusegs.Size(), 1, file);
+		fclose(file);
+	}
+#endif
 
 	int oldBinding = 0;
 	glGetIntegerv(GL_SHADER_STORAGE_BUFFER_BINDING, &oldBinding);

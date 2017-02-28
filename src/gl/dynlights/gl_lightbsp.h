@@ -10,7 +10,8 @@ struct GPUNode
 
 struct GPUSeg
 {
-	float plane[4];
+	float x, y;
+	float dx, dy;
 	float bSolid;
 	float padding1, padding2, padding3;
 };
