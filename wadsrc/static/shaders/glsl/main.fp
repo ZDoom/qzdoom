@@ -280,7 +280,10 @@ float pointLightAttenuation(vec4 lightpos, float attenuate)
 	float attenuation = max(lightpos.w - distance(pixelpos.xyz, lightpos.xyz),0.0) / lightpos.w;
 	if (attenuate == 0.0)
 	{
-		return attenuation;
+		if (attenuation > 0.0)
+			return attenuation * rayTestLight(lightpos);
+		else
+			return 0.0;
 	}
 	else
 	{
