@@ -126,7 +126,7 @@ struct DDSURFACEDESC2
 	DWORD			Width;
 	union
 	{
-		SDWORD		Pitch;
+		int32_t		Pitch;
 		DWORD		LinearSize;
 	};
 	DWORD			Depth;
@@ -172,7 +172,7 @@ protected:
 	BYTE RShiftL, GShiftL, BShiftL, AShiftL;
 	BYTE RShiftR, GShiftR, BShiftR, AShiftR;
 
-	SDWORD Pitch;
+	int32_t Pitch;
 	DWORD LinearSize;
 
 	static void CalcBitShift (DWORD mask, BYTE *lshift, BYTE *rshift);
@@ -401,6 +401,7 @@ void FDDSTexture::Unload ()
 		delete[] Pixels;
 		Pixels = NULL;
 	}
+	FTexture::Unload();
 }
 
 //==========================================================================
