@@ -36,6 +36,9 @@
 
 #ifndef NO_SSE
 #include <immintrin.h>
+#elseif __ARM_NEON__
+//#include <arm_neon.h>
+#include "swrenderer/drawers/sse_to_neon.h"
 #endif
 
 struct FSpecialColormap;
