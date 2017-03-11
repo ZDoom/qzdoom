@@ -1014,6 +1014,8 @@ set( FASTMATH_SOURCES
 	gl/dynlights/gl_glow.cpp
 	gl/dynlights/gl_dynlight1.cpp
 	gl/dynlights/gl_lightbuffer.cpp
+	gl/dynlights/gl_aabbtree.cpp
+	gl/dynlights/gl_shadowmap.cpp
 	gl/shaders/gl_shader.cpp
 	gl/shaders/gl_texshader.cpp
 	gl/shaders/gl_shaderprogram.cpp
@@ -1026,6 +1028,7 @@ set( FASTMATH_SOURCES
 	gl/shaders/gl_tonemapshader.cpp
 	gl/shaders/gl_lensshader.cpp
 	gl/shaders/gl_fxaashader.cpp
+	gl/shaders/gl_shadowmapshader.cpp
 	gl/system/gl_interface.cpp
 	gl/system/gl_framebuffer.cpp
 	gl/system/gl_swframebuffer.cpp
