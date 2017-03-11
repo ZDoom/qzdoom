@@ -67,7 +67,7 @@ struct RenderContext
 	char * vendorstring;
 	bool legacyMode;
 	bool es;
-	bool intelstoragebuffer = false;	// this card supports storage buffers, but it was disabled because it was Intel (used for shadowmaps)
+
 	int MaxLights() const
 	{
 		return maxuniforms>=2048? 128:64;
