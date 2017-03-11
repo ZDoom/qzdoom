@@ -238,10 +238,6 @@ void gl_LoadExtensions()
 						{
 							gl.flags |= RFL_SHADER_STORAGE_BUFFER;
 						}
-						else
-						{	// [SP] Shadowmaps support for intel
-							gl.intelstoragebuffer = true;
-						}
 					}
 					gl.flags |= RFL_BUFFER_STORAGE;
 					gl.lightmethod = LM_DIRECT;
