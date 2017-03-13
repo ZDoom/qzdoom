@@ -8815,7 +8815,8 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 			if (outerside == FScopeBarrier::Side_Virtual)
 				outerside = FScopeBarrier::SideFromObjectFlags(CallingFunction->OwningClass->ObjectFlags);
 
-			if (selfside != outerside && (selfside == FScopeBarrier::Side_Play || selfside == FScopeBarrier::Side_UI))	// if the self pointer and the calling functions have the same scope the check here is not needed.
+			// [ZZ] only emit if target side cannot be checked at compile time.
+			if (selfside == FScopeBarrier::Side_PlainData)
 			{
 				// Check the self object against the calling function's flags at run time
 				build->Emit(OP_SCOPE, selfemit.RegNum, outerside + 1, build->GetConstantAddress(vmfunc, ATAG_OBJECT));
