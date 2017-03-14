@@ -56,7 +56,6 @@
 
 GLRenderSettings glset;
 long gl_frameMS;
-long gl_frameCount;
 
 EXTERN_CVAR(Int, gl_lightmode)
 EXTERN_CVAR(Bool, gl_brightfog)
@@ -172,50 +171,6 @@ void AdjustSpriteOffsets()
 
 
 
-// Normally this would be better placed in p_lnspec.cpp.
-// But I have accidentally overwritten that file several times
-// so I'd rather place it here.
-int LS_Sector_SetPlaneReflection (line_t *ln, AActor *it, bool backSide,
-	int arg0, int arg1, int arg2, int arg3, int arg4)
-{
-// Sector_SetPlaneReflection (tag, floor, ceiling)
-	int secnum;
-	FSectorTagIterator itr(arg0);
-
-	while ((secnum = itr.Next()) >= 0)
-	{
-		sector_t * s = &level.sectors[secnum];
-		if (!s->floorplane.isSlope()) s->reflect[sector_t::floor] = arg1/255.f;
-		if (!s->ceilingplane.isSlope()) level.sectors[secnum].reflect[sector_t::ceiling] = arg2/255.f;
-	}
-
-	return true;
-}
-
-int LS_SetGlobalFogParameter (line_t *ln, AActor *it, bool backSide,
-	int arg0, int arg1, int arg2, int arg3, int arg4)
-{
-// SetGlobalFogParameter (type, value)
-	switch(arg0)
-	{
-	case 0:
-		fogdensity = arg1>>1;
-		return true;
-
-	case 1:
-		outsidefogdensity = arg1>>1;
-		return true;
-
-	case 2:
-		skyfog = arg1;
-		return true;
-
-	default:
-		return false;
-	}
-}
-
-
 //==========================================================================
 //
 // Portal identifier lists
@@ -234,57 +189,34 @@ struct FGLROptions : public FOptionalMapinfoData
 	FGLROptions()
 	{
 		identifier = "gl_renderer";
-		fogdensity = 0;
-		outsidefogdensity = 0;
-		skyfog = 0;
 		brightfog = false;
 		lightmode = -1;
 		nocoloredspritelighting = -1;
-		nolightfade = false;
 		notexturefill = -1;
 		skyrotatevector = FVector3(0,0,1);
 		skyrotatevector2 = FVector3(0,0,1);
-		pixelstretch = 1.2f;
 		lightadditivesurfaces = false;
 	}
 	virtual FOptionalMapinfoData *Clone() const
 	{
 		FGLROptions *newopt = new FGLROptions;
 		newopt->identifier = identifier;
-		newopt->fogdensity = fogdensity;
-		newopt->outsidefogdensity = outsidefogdensity;
-		newopt->skyfog = skyfog;
 		newopt->lightmode = lightmode;
 		newopt->nocoloredspritelighting = nocoloredspritelighting;
-		newopt->nolightfade = nolightfade;
 		newopt->notexturefill = notexturefill;
 		newopt->skyrotatevector = skyrotatevector;
 		newopt->skyrotatevector2 = skyrotatevector2;
-		newopt->pixelstretch = pixelstretch;
 		newopt->lightadditivesurfaces = lightadditivesurfaces;
 		return newopt;
 	}
-	int			fogdensity;
-	int			outsidefogdensity;
-	int			skyfog;
 	int			lightmode;
 	int			brightfog;
 	int8_t		lightadditivesurfaces;
 	int8_t		nocoloredspritelighting;
 	int8_t		notexturefill;
-	bool		nolightfade;
 	FVector3	skyrotatevector;
 	FVector3	skyrotatevector2;
-	float		pixelstretch;
 };
-
-DEFINE_MAP_OPTION(fogdensity, false)
-{
-	FGLROptions *opt = info->GetOptData<FGLROptions>("gl_renderer");
-	parse.ParseAssign();
-	parse.sc.MustGetNumber();
-	opt->fogdensity = parse.sc.Number;
-}
 
 DEFINE_MAP_OPTION(brightfog, false)
 {
@@ -292,22 +224,6 @@ DEFINE_MAP_OPTION(brightfog, false)
 	parse.ParseAssign();
 	parse.sc.MustGetNumber();
 	opt->brightfog = parse.sc.Number;
-}
-
-DEFINE_MAP_OPTION(outsidefogdensity, false)
-{
-	FGLROptions *opt = info->GetOptData<FGLROptions>("gl_renderer");
-	parse.ParseAssign();
-	parse.sc.MustGetNumber();
-	opt->outsidefogdensity = parse.sc.Number;
-}
-
-DEFINE_MAP_OPTION(skyfog, false)
-{
-	FGLROptions *opt = info->GetOptData<FGLROptions>("gl_renderer");
-	parse.ParseAssign();
-	parse.sc.MustGetNumber();
-	opt->skyfog = parse.sc.Number;
 }
 
 DEFINE_MAP_OPTION(lightmode, false)
@@ -329,20 +245,6 @@ DEFINE_MAP_OPTION(nocoloredspritelighting, false)
 	else
 	{
 		opt->nocoloredspritelighting = true;
-	}
-}
-
-DEFINE_MAP_OPTION(nolightfade, false)
-{
-	FGLROptions *opt = info->GetOptData<FGLROptions>("gl_renderer");
-	if (parse.CheckAssign())
-	{
-		parse.sc.MustGetNumber();
-		opt->nolightfade = !!parse.sc.Number;
-	}
-	else
-	{
-		opt->nolightfade = true;
 	}
 }
 
@@ -406,15 +308,6 @@ DEFINE_MAP_OPTION(skyrotate2, false)
 	opt->skyrotatevector2.MakeUnit();
 }
 
-DEFINE_MAP_OPTION(pixelratio, false)
-{
-	FGLROptions *opt = info->GetOptData<FGLROptions>("gl_renderer");
-
-	parse.ParseAssign();
-	parse.sc.MustGetFloat();
-	opt->pixelstretch = (float)parse.sc.Float;
-}
-
 bool IsLightmodeValid()
 {
 	return (glset.map_lightmode >= 0 && glset.map_lightmode <= 4) || glset.map_lightmode == 8;
@@ -440,7 +333,6 @@ void InitGLRMapinfoData()
 
 	if (opt != NULL)
 	{
-		gl_SetFogParams(clamp(opt->fogdensity, 0, 255), level.info->outsidefog, clamp(opt->outsidefogdensity, 0, 255), opt->skyfog);
 		glset.map_lightmode = opt->lightmode;
 		glset.map_lightadditivesurfaces = opt->lightadditivesurfaces;
 		glset.map_brightfog = opt->brightfog;
@@ -448,12 +340,9 @@ void InitGLRMapinfoData()
 		glset.map_notexturefill = opt->notexturefill;
 		glset.skyrotatevector = opt->skyrotatevector;
 		glset.skyrotatevector2 = opt->skyrotatevector2;
-		glset.pixelstretch = opt->pixelstretch;
-		glset.nolightfade = opt->nolightfade;
 	}
 	else
 	{
-		gl_SetFogParams(0, level.info->outsidefog, 0, 0);
 		glset.map_lightmode = -1;
 		glset.map_lightadditivesurfaces = -1;
 		glset.map_brightfog = -1;
@@ -461,8 +350,6 @@ void InitGLRMapinfoData()
 		glset.map_notexturefill = -1;
 		glset.skyrotatevector = FVector3(0, 0, 1);
 		glset.skyrotatevector2 = FVector3(0, 0, 1);
-		glset.pixelstretch = 1.2f;
-		glset.nolightfade = false;
 	}
 	ResetOpts();
 }

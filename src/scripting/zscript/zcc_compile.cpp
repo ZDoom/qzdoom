@@ -197,6 +197,10 @@ void ZCCCompiler::ProcessClass(ZCC_Class *cnode, PSymbolTreeNode *treenode)
 			cls->Defaults.Push(static_cast<ZCC_Default *>(node));
 			break;
 
+		case AST_StaticArrayStatement:
+			cls->Arrays.Push(static_cast<ZCC_StaticArrayStatement *>(node));
+			break;
+
 		default:
 			assert(0 && "Unhandled AST node type");
 			break;
@@ -258,6 +262,10 @@ void ZCCCompiler::ProcessStruct(ZCC_Struct *cnode, PSymbolTreeNode *treenode, ZC
 
 		case AST_EnumTerminator:
 			enumType = nullptr;
+			break;
+
+		case AST_StaticArrayStatement:
+			cls->Arrays.Push(static_cast<ZCC_StaticArrayStatement *>(node));
 			break;
 
 		default:
@@ -1215,7 +1223,7 @@ bool ZCCCompiler::CompileFields(PStruct *type, TArray<ZCC_VarDeclarator *> &Fiel
 							Error(field, "The member variable '%s.%s' has not been exported from the executable.", type == nullptr? "" : type->TypeName.GetChars(), FName(name->Name).GetChars());
 						}
 						// For native structs a size check cannot be done because they normally have no size. But for a native reference they are still fine.
-						else if (thisfieldtype->Size != ~0u && thisfieldtype->Size != fd->FieldSize && fd->BitValue == 0 && !thisfieldtype->IsA(RUNTIME_CLASS(PNativeStruct)))
+						else if (thisfieldtype->Size != ~0u && fd->FieldSize != ~0u && thisfieldtype->Size != fd->FieldSize && fd->BitValue == 0 && !thisfieldtype->IsA(RUNTIME_CLASS(PNativeStruct)))
 						{
 							Error(field, "The member variable '%s.%s' has mismatching sizes in internal and external declaration. (Internal = %d, External = %d)", type == nullptr ? "" : type->TypeName.GetChars(), FName(name->Name).GetChars(), fd->FieldSize, thisfieldtype->Size);
 						}

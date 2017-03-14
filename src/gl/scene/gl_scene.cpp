@@ -221,7 +221,7 @@ void GLSceneDrawer::SetProjection(VSMatrix matrix)
 void GLSceneDrawer::SetViewMatrix(float vx, float vy, float vz, bool mirror, bool planemirror)
 {
 	float mult = mirror? -1:1;
-	float planemult = planemirror? -glset.pixelstretch : glset.pixelstretch;
+	float planemult = planemirror? -level.info->pixelstretch : level.info->pixelstretch;
 
 	gl_RenderState.mViewMatrix.loadIdentity();
 	gl_RenderState.mViewMatrix.rotate(GLRenderer->mAngles.Roll.Degrees,  0.0f, 0.0f, 1.0f);
@@ -796,7 +796,7 @@ sector_t * GLSceneDrawer::RenderViewpoint (AActor * camera, GL_IRECT * bounds, f
 	// We have to scale the pitch to account for the pixel stretching, because the playsim doesn't know about this and treats it as 1:1.
 	double radPitch = r_viewpoint.Angles.Pitch.Normalized180().Radians();
 	double angx = cos(radPitch);
-	double angy = sin(radPitch) * glset.pixelstretch;
+	double angy = sin(radPitch) * level.info->pixelstretch;
 	double alen = sqrt(angx*angx + angy*angy);
 
 	GLRenderer->mAngles.Pitch = (float)RAD2DEG(asin(angy / alen));
@@ -869,7 +869,6 @@ sector_t * GLSceneDrawer::RenderViewpoint (AActor * camera, GL_IRECT * bounds, f
 	}
 	stereo3dMode.TearDown();
 
-	gl_frameCount++;	// This counter must be increased right before the interpolations are restored.
 	interpolator.RestoreInterpolations ();
 	return lviewsector;
 }
@@ -991,7 +990,6 @@ struct FGLInterface : public FRenderer
 	void StartSerialize(FSerializer &arc) override;
 	void EndSerialize(FSerializer &arc) override;
 	void RenderTextureView (FCanvasTexture *self, AActor *viewpoint, int fov) override;
-	void SetFogParams(int _fogdensity, PalEntry _outsidefogcolor, int _outsidefogdensity, int _skyfog) override;
 	void PreprocessLevel() override;
 	void CleanLevelData() override;
 	bool RequireGLNodes() override;
@@ -1033,19 +1031,13 @@ void FGLInterface::Precache(uint8_t *texhitlist, TMap<PClassActor*, bool> &actor
 
 void FGLInterface::StartSerialize(FSerializer &arc)
 {
-	if (arc.BeginObject("glinfo"))
-	{
-		arc("fogdensity", fogdensity)
-			("outsidefogdensity", outsidefogdensity)
-			("skyfog", skyfog)
-			.EndObject();
-	}
 }
 
 void FGLInterface::EndSerialize(FSerializer &arc)
 {
 	if (arc.isReading())
 	{
+		// The portal data needs to be recreated after reading a savegame.
 		gl_InitPortals();
 	}
 }
@@ -1169,11 +1161,6 @@ void FGLInterface::RenderTextureView (FCanvasTexture *tex, AActor *Viewpoint, in
 // 
 //
 //===========================================================================
-
-void FGLInterface::SetFogParams(int _fogdensity, PalEntry _outsidefogcolor, int _outsidefogdensity, int _skyfog)
-{
-	gl_SetFogParams(_fogdensity, _outsidefogcolor, _outsidefogdensity, _skyfog);
-}
 
 void FGLInterface::PreprocessLevel() 
 {

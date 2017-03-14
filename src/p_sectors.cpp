@@ -1847,6 +1847,38 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	 return 0;
  }
 
+ DEFINE_ACTION_FUNCTION(_Sector, GetGlowHeight)
+ {
+	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
+	 PARAM_INT(pos);
+	 ACTION_RETURN_FLOAT(self->GetGlowHeight(pos));
+ }
+
+ DEFINE_ACTION_FUNCTION(_Sector, GetGlowColor)
+ {
+	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
+	 PARAM_INT(pos);
+	 ACTION_RETURN_INT(self->GetGlowColor(pos));
+ }
+
+ DEFINE_ACTION_FUNCTION(_Sector, SetGlowHeight)
+ {
+	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
+	 PARAM_INT(pos);
+	 PARAM_FLOAT(o);
+	 self->SetGlowHeight(pos, float(o));
+	 return 0;
+ }
+
+ DEFINE_ACTION_FUNCTION(_Sector, SetGlowColor)
+ {
+	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
+	 PARAM_INT(pos);
+	 PARAM_COLOR(o);
+	 self->SetGlowColor(pos, o);
+	 return 0;
+ }
+
  //===========================================================================
  //
  //  line_t exports
@@ -2033,6 +2065,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	 PARAM_SELF_STRUCT_PROLOGUE(vertex_t);
 	 ACTION_RETURN_INT(self->Index());
  }
+
 
 //===========================================================================
 //
@@ -2384,7 +2417,7 @@ DEFINE_FIELD_X(Sector, sector_t, soundtraversed)
 DEFINE_FIELD_X(Sector, sector_t, stairlock)
 DEFINE_FIELD_X(Sector, sector_t, prevsec)
 DEFINE_FIELD_X(Sector, sector_t, nextsec)
-DEFINE_FIELD_X(Sector, sector_t, Lines)
+DEFINE_FIELD_UNSIZED(Sector, sector_t, Lines)
 DEFINE_FIELD_X(Sector, sector_t, heightsec)
 DEFINE_FIELD_X(Sector, sector_t, bottommap)
 DEFINE_FIELD_X(Sector, sector_t, midmap)
