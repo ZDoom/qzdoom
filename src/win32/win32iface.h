@@ -49,6 +49,7 @@ class Win32Video : public IVideo
 	Win32Video (int parm);
 	~Win32Video ();
 
+	bool InitD3D11();
 	bool InitD3D9();
 	void InitDDraw();
 

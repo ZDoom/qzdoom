@@ -75,6 +75,7 @@
 #include "win32swiface.h"
 
 #include "optwin32.h"
+#include "fb_d3d11.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -149,6 +150,7 @@ Win32Video::Win32Video (int parm)
   m_Adapter (D3DADAPTER_DEFAULT)
 {
 	I_SetWndProc();
+	InitD3D11();
 	if (!InitD3D9())
 	{
 		InitDDraw();
@@ -175,6 +177,24 @@ Win32Video::~Win32Video ()
 	}
 
 	STOPLOG;
+}
+
+bool Win32Video::InitD3D11()
+{
+	if ((D3D11_dll = LoadLibraryA("d3d11.dll")) == 0)
+	{
+		return false;
+	}
+
+	D3D11_createdeviceandswapchain = reinterpret_cast<FuncD3D11CreateDeviceAndSwapChain>(GetProcAddress(D3D11_dll, "D3D11CreateDeviceAndSwapChain"));
+	if (D3D11_createdeviceandswapchain == 0)
+	{
+		FreeLibrary(D3D11_dll);
+		D3D11_dll = 0;
+		return false;
+	}
+
+	return true;
 }
 
 bool Win32Video::InitD3D9 ()
@@ -672,7 +692,11 @@ DFrameBuffer *Win32Video::CreateFrameBuffer (int width, int height, bool bgra, b
 		flashAmount = 0;
 	}
 
-	if (D3D != NULL)
+	if (D3D11_createdeviceandswapchain)
+	{
+		fb = new D3D11FB (width, height, bgra, fullscreen);
+	}
+	else if (D3D != NULL)
 	{
 		fb = new D3DFB (m_Adapter, width, height, bgra, fullscreen);
 	}
