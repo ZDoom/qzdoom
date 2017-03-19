@@ -46,7 +46,7 @@ const char *GetVersionString();
 #ifdef GIT_DESCRIPTION
 #define VERSIONSTR GIT_DESCRIPTION
 #else
-#define VERSIONSTR "1.3"
+#define VERSIONSTR "1.3.0"
 #endif
 
 // The version as seen in the Windows resource
