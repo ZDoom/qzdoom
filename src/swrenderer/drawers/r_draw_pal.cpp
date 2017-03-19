@@ -1428,14 +1428,14 @@ namespace swrenderer
 		if (count <= 0)
 			return;
 
-		int pitch = args.Viewport()->RenderTarget->GetPitch();
+		int pitch = RenderViewport::Instance()->RenderTarget->GetPitch();
 		dest = thread->dest_for_thread(args.DestY(), pitch, dest);
 		frac += fracstep * thread->skipped_by_thread(args.DestY());
 		fracstep *= thread->num_cores;
 		pitch *= thread->num_cores;
 
 		const uint8_t *source = args.TexturePixels();
-		const uint8_t *colormap = args.Colormap(args.Viewport());
+		const uint8_t *colormap = args.Colormap();
 		//uint32_t *fgstart = &Col2RGB8[0][args.SolidColor()]; // if someone wants to write the 555's, be my guest.
 		const PalEntry *palette = GPalette.BaseColors;
 
