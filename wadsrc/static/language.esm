@@ -1,0 +1,2730 @@
+/* Traducción al Español (latino) */
+
+[enu default]
+
+SECRETMESSAGE = "Un secreto es revelado!";
+
+D_DEVSTR = "Modo inútil Activado.\n";
+D_CDROM = "CD-ROM Version: zdoom.ini from c:\\zdoomdat\n";
+PRESSKEY = "Presiona una tecla.";
+PRESSYN = "Presiona Y o N";
+
+QUITMSG = "Estás seguro de que quieres\nsalir de este gran juego?";
+TXT_YES = "Sí";
+TXT_NO = "No";
+
+// Mensajes de salida DOOM I
+QUITMSG1 = "Por favor no te vayas, hay más\ndemonios que tostar!";
+QUITMSG2 = "Vámonos -- Esto se esta convirtiendo\nen un baño de sangre!";
+QUITMSG3 = "No me iría si fuera tú.\nDOS es mucho peor.";
+QUITMSG4 = "Intentas decir que te gusta más DOS\nque yo, cierto?";
+QUITMSG5 = "No te vayas aún -- Hay un\ndemonio tras esa esquina!";
+QUITMSG6 = "Tú sabes, la próxima vez que vengas aquí\nte voy a tostar.";	// El término "Toast" se usa para decirle a alguien que está en problemas.
+QUITMSG7 = "Vé y lárgate. Mira si me importa.";
+
+// Mensajes de salida DOOM II
+QUITMSG8 = "Queréis salir?\nEntonces, habréis perdido un octavo!";		// No sé si es que no supe traducir esto, o si nunca tuvo mucho sentido.
+QUITMSG9 = "No te vayas ahora, hay un\nmonstruo interdimensional\nen la pantalla de DOS!";
+QUITMSG10 = "Vete de aquí y vuelve\na tus aburridos programas.";
+QUITMSG11 = "Si fuera tu jefe, te jugaría un\n deathmatch en un minuto!";
+QUITMSG12 = "Mira amigo, te vas ahora\ny pierdes tu cuenta de los cuerpos!";
+QUITMSG13 = "Solo vete. Cuando\nvuelvas, te estaré esperando con un bate.";
+QUITMSG14 = "Tienes suerte de que no te golpee\npor pensar en irte.";
+
+// Mensajes de salida Strife
+QUITMSG15 = "Adónde vas?!\nQué hay de la rebelión?";
+QUITMSG16 = "Interrupción de carnicería...\nPero qué bromas!";
+QUITMSG17 = "Pero eres la esperanza...\n-- Mi única oportunidad!!";
+QUITMSG18 = "Nadie abandona a BlackBird.";
+QUITMSG19 = "Pensé que eras diferente...";
+QUITMSG20 = "Bien! Sólo mata y corre!";
+QUITMSG21 = "Puedes salir...\nPero no puedes esconderte...";
+QUITMSG22 = "Quéeee? Cuál es el problema?\nMami dice hora de la cena?";
+
+// Mensajes de salida Chex Quest
+QUITMSG23 = "No te vayas ahora, siguen habiendo\nflemoides sueltos!";
+QUITMSG24 = "No te rindas -- Los flemoides\ntomarán la superioridad!";
+QUITMSG25 = "No te vayas ahora.\nNecesitamos tu ayuda!";
+QUITMSG26 = "Espero que sólo te estés tomando un\ndescanzo para comer Chex(R) party mix.";
+QUITMSG27 = "No te vayas ahora!\nNecesitamos tu ayuda!";
+QUITMSG28 = "No abandones la\nFederación Intergaláctica de Cereales!";
+QUITMSG29 = "El verdadero Guerrero Chex(R)\nno se rendiría tan rápido!";
+
+LOADNET = "No puedes cargar en una partida en línea!\n\nPresiona una tecla.";
+QLOADNET = "No puedes cargar rápido en una partida en línea!\n\nPresiona una tecla.";
+QSAVESPOT = "No has elegido un espacio para guardar rápido aún!\n\nPresiona una tecla.";
+SAVEDEAD = "No puedes guardar si no estás jugando!\n\nPresiona una tecla.";
+QSPROMPT = "Guardar rápido sobre tu partida llamada\n\n'%s'?\n\nPresiona Y o N.";
+QLPROMPT = "Quieres cargar rápido la partida llamada\n\n'%s'?\n\nPresiona Y o N.";
+NEWGAME = "No puedes comenzar una nueva partida\ndurante una partida en línea.\n\nPresiona una tecla.";
+NIGHTMARE = "Estás seguro? Este nivel de habilidad\nno es ni remotamente justo.\n\nPresiona Y o N.";
+SWSTRING = "Esta es la versión Shareware de DOOM.\n\nNecesitas ordenar la trilogía entera.\n\nPresiona una tecla.";
+MSGOFF = "Mensajes desactivados";
+MSGON = "Mensajes activados";
+NETEND = "No puedes terminar una partida en línea!\n\nPresiona una tecla.";
+ENDGAME = "Estás seguro de que quieres terminar la partida?\n\nPresiona Y o N.";
+DOSY = "(Presiona Y para salir)";
+EMPTYSTRING = "Espacio vacío";
+GOTARMOR = "Recogiste la armadura.";
+GOTMEGA = "Recogiste la MegaArmadura!";
+GOTHTHBONUS = "Recogiste un bono de salud.";
+GOTARMBONUS = "Recogiste un bono de armadura.";
+GOTSTIM = "Recogiste un pack de estímulo.";
+GOTMEDINEED = "Recogiste un kit médico que REALMENTE necesitabas!";
+GOTMEDIKIT = "Recogiste un kit médico.";
+GOTSUPER = "Súper carga!";
+GOTBLUECARD = "Recogiste una tarjeta de acceso azul.";
+GOTYELWCARD = "Recogiste una tarjeta de acceso amarilla.";
+GOTREDCARD = "Recogiste una tarjeta de acceso roja.";
+GOTBLUESKUL = "Recogiste una llave calavera azul.";
+GOTYELWSKUL = "Recogiste una llave calavera amarilla.";
+GOTREDSKUL = "Recogiste una llave calavera roja.";
+GOTINVUL = "Invulnerabilidad!";
+GOTBERSERK = "Enloquecido!";
+GOTINVIS = "Invisibilidad Parcial";
+GOTSUIT = "Traje de Protección Contra la Radiación";
+GOTMAP = "Computador de Mapa de Área";
+GOTVISOR = "Visor de Amplificación de Luz";
+GOTMSPHERE = "MegaEsfera!";
+GOTCLIP = "Recogiste un cargador.";
+GOTCLIPBOX = "Recogiste una caja de balas.";
+GOTROCKET = "Recogiste un cohete.";
+GOTROCKBOX = "Recogiste una caja de cohetes.";
+GOTCELL = "Recogiste una célula de energía.";
+GOTCELLBOX = "Recogiste un pack de células de energía.";
+GOTSHELLS = "Recogiste 4 cartuchos de escopeta.";
+GOTSHELLBOX = "Recogiste una caja de cartuchos de escopeta.";
+GOTBACKPACK = "Recogiste una mochila llena de munición!";
+GOTBFG9000 = "Conseguiste la BFG9000!  Oh, sí.";
+GOTCHAINGUN = "Conseguiste la Ametralladora en Cadena!";
+GOTCHAINSAW = "Una motosierra!  Encuentra algo de carne!";
+GOTLAUNCHER = "Conseguiste el Lanza Cohetes!";
+GOTPLASMA = "Conseguiste el Arma de Plasma!";
+GOTSHOTGUN = "Conseguiste la Escopeta!";
+GOTSHOTGUN2 = "Conseguiste la Súper Escopeta!";
+PD_BLUEO = "Necesitas una llave azul para activar este objeto";
+PD_REDO = "Necesitas una llave roja para activar este objeto";
+PD_YELLOWO = "Necesitas una llave amarilla para activar este objeto";
+PD_BLUEK = "Necesitas una llave azul para abrir esta puerta";
+PD_REDK = "Necesitas una llave roja para abrir esta puerta";
+PD_YELLOWK = "Necesitas una llave amarilla para abrir esta puerta";
+PD_BLUECO = "Necesitas una tarjeta azul para activar este objeto";
+PD_REDCO = "Necesitas una tarjeta roja para activar este objeto";
+PD_YELLOWCO = "Necesitas una tarjeta amarilla para activar este objeto";
+PD_BLUESO = "Necesitas una calavera azul para activar este objeto";
+PD_REDSO = "Necesitas una calavera roja para activar este objeto";
+PD_YELLOWSO = "Necesitas una calavera amarilla para activar este objeto";
+NEWSAVE = "<Nueva Partida Guardada>";
+GGSAVED = "Partida guardada.";
+HUSTR_MSGU = "[Mensaje no enviado]";
+PICKUP_PISTOL_DROPPED = "Recogiste una pistola.";
+BETA_BONUS1 = "Recoges una daga demoníaca.";
+BETA_BONUS2 = "Recoges un cofre de calaveras.";
+BETA_BONUS3 = "Recoges un cetro maligno.";
+BETA_BONUS4 = "Recoges una biblia impía.";
+
+// Nombres de Niveles
+HUSTR_E1M1 = "E1M1: Hangar";
+HUSTR_E1M2 = "E1M2: Planta Nuclear";
+HUSTR_E1M3 = "E1M3: Refinería de Toxinas";
+HUSTR_E1M4 = "E1M4: Control de Comando";
+HUSTR_E1M5 = "E1M5: Laboratorio de Phobos";
+HUSTR_E1M6 = "E1M6: Procesamiento Central";
+HUSTR_E1M7 = "E1M7: Estación de Computadores";
+HUSTR_E1M8 = "E1M8: Anomalía de Phobos";
+HUSTR_E1M9 = "E1M9: Base Militar";
+HUSTR_E2M1 = "E2M1: Anomalía de Deimos";
+HUSTR_E2M2 = "E2M2: Área de Contenimiento";
+HUSTR_E2M3 = "E2M3: Refinería";
+HUSTR_E2M4 = "E2M4: Laboratorio de Deimos";
+HUSTR_E2M5 = "E2M5: Centro de Comando";
+HUSTR_E2M6 = "E2M6: Salas de los Malditos";
+HUSTR_E2M7 = "E2M7: Tinas de Desove";
+HUSTR_E2M8 = "E2M8: Torre de Babel";
+HUSTR_E2M9 = "E2M9: Fortaleza del Misterio";
+HUSTR_E3M1 = "E3M1: Mazmorra del Infierno";
+HUSTR_E3M2 = "E3M2: Pantano de la Desesperación";	// Pues a mí ese nivel no me parece un pantano.
+HUSTR_E3M3 = "E3M3: Pandemonio";
+HUSTR_E3M4 = "E3M4: Casa del Dolor";
+HUSTR_E3M5 = "E3M5: Catedral Impía";
+HUSTR_E3M6 = "E3M6: Monte Erebus";
+HUSTR_E3M7 = "E3M7: Limbo";
+HUSTR_E3M8 = "E3M8: Dis";				// Esto se podría considerar como "This" (Esto), pero también podría ser sólo un nombre.
+HUSTR_E3M9 = "E3M9: Madrigeras";
+HUSTR_E4M1 = "E4M1: Infierno Debajo";
+HUSTR_E4M2 = "E4M2: Odio Perfecto";
+HUSTR_E4M3 = "E4M3: Corta a los Malvados";
+HUSTR_E4M4 = "E4M4: Mal Revoltoso";
+HUSTR_E4M5 = "E4M5: Ellos se Arrepentirán";
+HUSTR_E4M6 = "E4M6: Contra Tí Malvadamente";
+HUSTR_E4M7 = "E4M7: Y el Infierno Siguió";
+HUSTR_E4M8 = "E4M8: A los Crueles";
+HUSTR_E4M9 = "E4M9: Miedo";
+
+HUSTR_1 = "Nivel 1: Entrada";
+HUSTR_2 = "Nivel 2: Salas Subterráneas";
+HUSTR_3 = "Nivel 3: El Desafío";		// Si no fuera por el contexto, "Gauntlet" se podría referir a una pieza de armadura medieval.
+HUSTR_4 = "Nivel 4: El Foco";
+HUSTR_5 = "Nivel 5: Los Túneles de Desperdicios";
+HUSTR_6 = "Nivel 6: La Trituradora";
+HUSTR_7 = "Nivel 7: Muerto Simple";
+HUSTR_8 = "Nivel 8: Trucos y Trampas";
+HUSTR_9 = "Nivel 9: El Agujero";
+HUSTR_10 = "Nivel 10: Base de Repostaje";
+HUSTR_11 = "Nivel 11: Círculo de la Muerte";		// El nombre original era una referencia a un juego de la serie Ultima.
+HUSTR_12 = "Nivel 12: La Fábrica";
+HUSTR_13 = "Nivel 13: Centro";
+HUSTR_14 = "Nivel 14: Las Guaridas Más Recónditas";
+HUSTR_15 = "Nivel 15: Zona Industrial";
+HUSTR_16 = "Nivel 16: Suburbios";
+HUSTR_17 = "Nivel 17: Viviendas";
+HUSTR_18 = "Nivel 18: El Patio";
+HUSTR_19 = "Nivel 19: La Ciudadela";
+HUSTR_20 = "Nivel 20: Te Tengo!";
+HUSTR_21 = "Nivel 21: Nirvana";
+HUSTR_22 = "Nivel 22: Las Catacumbas";
+HUSTR_23 = "Nivel 23: Barriles de Diversión";
+HUSTR_24 = "Nivel 24: El Abismo";
+HUSTR_25 = "Nivel 25: Cascadas de Sangre";
+HUSTR_26 = "Nivel 26: Las Minas Abandonadas";
+HUSTR_27 = "Nivel 27: Condominio de Monstruos";
+HUSTR_28 = "Nivel 28: El Mundo de los Espíritus";
+HUSTR_29 = "Nivel 29: El Fin Viviente";
+HUSTR_30 = "Nivel 30: Ícono del Pecado";
+HUSTR_31 = "Nivel 31: Wolfenstein";
+HUSTR_32 = "Nivel 32: Grosse";
+HUSTR_31B = "Nivel 31: idkfa";
+HUSTR_32B = "Nivel 32: keen";
+HUSTR_33 = "Nivel 33: Traición";
+
+NHUSTR_1 = "Nivel 1: La Base Terrestre";
+NHUSTR_2 = "Nivel 2: Los Laboratorios del Dolor";
+NHUSTR_3 = "Nivel 3: Cañón de los Muertos";
+NHUSTR_4 = "Nivel 4: Montaña Infernal";
+NHUSTR_5 = "Nivel 5: Vivisección";
+NHUSTR_6 = "Nivel 6: Infierno de Sangre";
+NHUSTR_7 = "Nivel 7: Banquete de los Barones";
+NHUSTR_8 = "Nivel 8: Tumba de Malevolencia";
+NHUSTR_9 = "Nivel 9: Marcha de los Demonios";
+
+PHUSTR_1 = "Nivel 1: Congo";
+PHUSTR_2 = "Nivel 2: Pozo de Almas";
+PHUSTR_3 = "Nivel 3: Azteca";
+PHUSTR_4 = "Nivel 4: Enjaulado";
+PHUSTR_5 = "Nivel 5: Pueblo Fantasma";
+PHUSTR_6 = "Nivel 6: Guarida de los Barones";
+PHUSTR_7 = "Nivel 7: Corral";				// "Caughtyard" no tiene una traducción oficial, pero esto es lo que más se acerca.
+PHUSTR_8 = "Nivel 8: Reino";
+PHUSTR_9 = "Nivel 9: Matadero";
+PHUSTR_10 = "Nivel 10: Embate";
+PHUSTR_11 = "Nivel 11: Cazado";
+PHUSTR_12 = "Nivel 12: Velocidad";
+PHUSTR_13 = "Nivel 13: La Cripta";
+PHUSTR_14 = "Nivel 14: Génesis";
+PHUSTR_15 = "Nivel 15: El Crepúsculo";
+PHUSTR_16 = "Nivel 16: El Presagio";
+PHUSTR_17 = "Nivel 17: Recinto";
+PHUSTR_18 = "Nivel 18: Neurósfera";			// Algo sobre el sistema nervioso supongo.
+PHUSTR_19 = "Nivel 19: NME";				// Ni idea sobre esto...
+PHUSTR_20 = "Nivel 20: El Dominio de la Muerte";
+PHUSTR_21 = "Nivel 21: Asesino";
+PHUSTR_22 = "Nivel 22: Misión Imposible";
+PHUSTR_23 = "Nivel 23: Lápida";
+PHUSTR_24 = "Nivel 24: La Frontera Final";
+PHUSTR_25 = "Nivel 25: El Templo de la Oscuridad";
+PHUSTR_26 = "Nivel 26: Búnker";
+PHUSTR_27 = "Nivel 27: Anti Cristo";
+PHUSTR_28 = "Nivel 28: Las Alcantarillas";
+PHUSTR_29 = "Nivel 29: Odisea de Ruidos";
+PHUSTR_30 = "Nivel 30: El Portal del Infierno";
+PHUSTR_31 = "Nivel 31: Ciberguarida";
+PHUSTR_32 = "Nivel 32: Ve a Ello";
+
+THUSTR_1 = "Nivel 1: Control de Sistema";
+THUSTR_2 = "Nivel 2: Barbacoa Humana";
+THUSTR_3 = "Nivel 3: Control de Enegría";
+THUSTR_4 = "Nivel 4: Agujero de Gusano";
+THUSTR_5 = "Nivel 5: Colgador";
+THUSTR_6 = "Nivel 6: Temporada Abierta";		// "Open season" se refiere a la temporada de caza.
+THUSTR_7 = "Nivel 7: Prisión";
+THUSTR_8 = "Nivel 8: Metal";
+THUSTR_9 = "Nivel 9: Fortaleza";
+THUSTR_10 = "Nivel 10: Redención";
+THUSTR_11 = "Nivel 11: Instalación de Almacenamiento";
+THUSTR_12 = "Nivel 12: Cráter";
+THUSTR_13 = "Nivel 13: Procesamiento de Desechos Tóxicos";
+THUSTR_14 = "Nivel 14: Acerería";
+THUSTR_15 = "Nivel 15: Zona Muerta";
+THUSTR_16 = "Nivel 16: Alcances Más Profundos";
+THUSTR_17 = "Nivel 17: Área de Procesamiento";
+THUSTR_18 = "Nivel 18: Molino";
+THUSTR_19 = "Nivel 19: Enviando/Reapareciendo";
+THUSTR_20 = "Nivel 20: Procesamiento Central";
+THUSTR_21 = "Nivel 21: Centro de Administración";
+THUSTR_22 = "Nivel 22: Hábitat";
+THUSTR_23 = "Nivel 23: Proyecto de Minería Lunar";
+THUSTR_24 = "Nivel 24: Cantera";
+THUSTR_25 = "Nivel 25: Guarida de los Barones";
+THUSTR_26 = "Nivel 26: Balístico";
+THUSTR_27 = "Nivel 27: Monte Dolor";
+THUSTR_28 = "Nivel 28: Mierda!";			// La palabra original era "Heck", una combinación de "Hell" y "Fuck".
+THUSTR_29 = "Nivel 29: Río Styx";
+THUSTR_30 = "Nivel 30: Último Llamado";
+THUSTR_31 = "Nivel 31: Faraón";
+THUSTR_32 = "Nivel 32: Caribe";
+
+HUSTR_TALKTOSELF1 = "Te mascullas a tí mismo";
+HUSTR_TALKTOSELF2 = "Quién anda ahí?";
+HUSTR_TALKTOSELF3 = "Te asustas a tí mismo";
+HUSTR_TALKTOSELF4 = "Comienzas a delirar";
+HUSTR_TALKTOSELF5 = "Perdiste la cabeza...";
+HUSTR_MESSAGESENT = "[Mensaje Enviado]";
+
+AMSTR_FOLLOWON = "Modo de Seguimiento Activado";
+AMSTR_FOLLOWOFF = "Modo de Seguimiento Desactivado";
+AMSTR_GRIDON = "Cuadrícula Activada";
+AMSTR_GRIDOFF = "Cuadrícula Desactivada";
+AMSTR_TEXON = "Modo de Texturas Activado";
+AMSTR_TEXOFF = "Modo de Texturas Desactivado";
+AMSTR_MARKEDSPOT = "Punto Marcado";
+AMSTR_MARKSCLEARED = "Todas las Marcas Eliminadas";
+STSTR_MUS = "Cambio de Música";
+STSTR_NOMUS = "SELECCIÓN IMPOSIBLE";
+STSTR_DQDON = "Modo Estado Sin Grado Activado";		// Broma interna de id Software. Demasiados detalles para escribirlos aquí.
+STSTR_DQDOFF = "Modo Estado Sin Grado Desactivado";
+STSTR_DQD2ON = "Modo Estado Sin Grado Supremo Activado";
+STSTR_DQD2OFF = "Modo Estado Sin Grado Supremo Desactivado";
+STSTR_KFAADDED = "Munición Muy Feliz Añadida";
+STSTR_FAADDED = "Munición (Sin Llaves) Añadida";
+STSTR_NCON = "Modo No Clipping Activado";
+STSTR_NCOFF = "Modo No Clipping Desactivado";
+STSTR_NC2ON = "Modo No Clipping 2 Activado";
+STSTR_BEHOLD = "inVuln, Str, Inviso, Rad, Allmap, o Lite-amp";
+STSTR_BEHOLDX = "Power-up Activado";
+STSTR_CHOPPERS = "... no apesta - GM";
+STSTR_CLEV = "Cambiando Nivel...\n";
+TXT_BUDDHAON = "Modo Buddha Activado";
+TXT_BUDDHAOFF = "Modo Buddha Desactivado";
+TXT_BUDDHA2ON = "Modo Buddha Supremo Activado";
+TXT_BUDDHA2OFF = "Modo Buddha Supremo Desactivado";
+TXT_DEFAULTPICKUPMSG = "Recogiste un objeto.";
+
+E1TEXT =
+	"Una vez que derrotas a los grandes chicos malos\n"		// Algún día encontraré una buena traducción para "Badass"...
+	"y limpias la base de la luna se supone que\n"
+	"has ganado. No es así? No es así? Dónde está\n"
+	"tu gorda recompensa y tu boleto a casa? Qué\n"
+	"demonios es esto? No se supone que\n"
+	"terminara de ésta manera!\n"
+	"\n"
+	"Apesta a carne podrida, pero luce\n"
+	"como la base perdida de Deimos. Parece\n"
+	"que estás atascado en las Orillas del Infierno.\n"
+	"La única manera de salir es a través de esto.\n"
+	"\n"
+	"Para continuar la experiencia DOOM, juega\n"
+	"Las Orillas del Infierno y su impresionante\n"
+	"sequela, Infierno!\n";
+E2TEXT =
+	"Lo has hecho! el horrible señor\n"
+	"Ciber-Demonio que gobernaba la\n"
+	"base de la luna ha sido asesinado y tú\n"
+	"eres triunfante! Pero... en dónde\n"
+	"estás? Trepas hasta el borde de la\n"
+	"luna para ver la horrible\n"
+	"verdad.\n"
+	"\n"
+	"Deimos flota sobre el mismísimo Infierno!\n"
+	"Nunca has escuchado de alguien escapando\n"
+	"del Infierno, pero harás que los bastardos\n"
+	"lamenten siquiera haber oído de tí! Rápidamente,\n"
+	"te deslizas hacia la superficie del\n"
+	"Infierno.\n"
+	"\n"
+	"Ahora, estás en el episodio final de\n"
+	"DOOM! -- Infierno.";
+E3TEXT =
+	"La repugnante araña demonio que\n"
+	"planeó la invasion de las bases de las\n"
+	"lunas y causó tanta muerte ha sufrido\n"
+	"una pateada de culo para toda la eternidad.\n"
+	"\n"
+	"Una puerta secreta se abre y entras.\n"
+	"Has probado ser demasiado duro para que el Infierno\n"
+	"te contenga, y ahora el Infierno al fin juega\n"
+	"justamente -- ya que emerges de la puerta\n"
+	"para ver los verdes campos de la Tierra!\n"
+	"Hogar al fin.\n"
+	"\n"
+	"Te preguntas qué ha pasado en la\n"
+	"Tierra mientras tú peleabas contra el mal\n"
+	"desatado. Es bueno que ningún demonio\n"
+	"haya podido venir por esa\n"
+	"puerta contigo ...";
+E4TEXT =
+	"La Araña Mente Maestra debe haber enviado adelante\n"
+	"a sus legiones de demonios antes de tu\n"
+	"confrontación final con esa terrible\n"
+	"bestia del Infierno. Pero diste un paso al frente\n"
+	"y llevaste maldición eterna y\n"
+	"sufrimiento sobre la horda como un verdadero héroe\n"
+	"haría en la faz de algo tan horrible.\n"
+	"\n"
+	"Además, alguien va a pagar por lo que le\n"
+	"pasó a Daisy, tu conejo mascota.\n"
+	"\n"
+	"Pero ahora, ves esparcido delante tí más\n"
+	"dolor potencial mientras una nación de demonios\n"
+	"corre enloqecida entre nuestras ciudades.\n"
+	"\n"
+	"Siguiente parada, el Infierno en la Tierra!";
+C1TEXT =
+	"Has entrado en lo profundo del puerto estelar\n"
+	"infestado. Pero algo está mal. Los\n"
+	"mostruos han traído su propia realidad\n"
+	"con ellos, y la tecnología del puerto estelar\n"
+	"está siendo subvertida por su presencia.\n"
+	"\n"
+	"Delante, ves un puesto avanzado del Infierno, una\n"
+	"zona fortificada. Si puedes atravesarla,\n"
+	"puedes penetrar dentro del embrujado corazón\n"
+	"de la base estelar y encontrar el interruptor\n"
+	"de control que mantiene prisionera a la población\n"
+	"de la Tierra.";
+C2TEXT =
+	"Has ganado! Tu victoria ha permitido a la\n"
+	"raza humana evacuar la Tierra y escapar de\n"
+	"la pesadilla. Ahora eres el único\n"
+	"humano que queda en la faz del planeta.\n"
+	"mutaciones caníbales, alienígenas carnívoros,\n"
+	"y espíritus malignos son tus únicos vecinos.\n"
+	"Te recuestas y esperas a la muerte, contento\n"
+	"de que has salvado a tu especie.\n"
+	"\n"
+	"Pero entonces, control de Tierra envía un\n"
+	"mensaje desde el espacio: \"Los sensores han\n"
+	"localizado la fuente de la invasión alienígena. Si\n"
+	"vas ahí, puede que seas capaz de bloquear su\n"
+	"entrada. La base alienígena está en el centro de\n"
+	"tu ciudad natal, no lejos del puerto\n"
+	"estelar.\" Lenta y dolorosamente, te\n"
+	"levantas y regresas a la refriega.";
+C3TEXT =
+	"Estás en el corrupto corazón de la ciudad,\n"
+	"rodeado por lo cadáveres de tu enemigos.\n"
+	"No ves la manera de destruir la entrada de\n"
+	"las criaturas de este lado, así que apretas\n"
+	"tus dientes y te inmersas en ella.\n"
+	"\n"
+	"Debe de haber una manera de cerrar la entrada\n"
+	"desde el otro lado. Qué te importa si tienes\n"
+	"que atravesar el Infierno para llegar a ella?";
+C4TEXT =
+	"El horrendo rostro del más grande\n"
+	"demonio que jamás has visto se derrumba frente\n"
+	"a tí, después de que bombeaste tus cohetes en\n"
+	"su cerebro expuesto. El monstruo se marchita\n"
+	"y muere, sus extremidades para dar palizas\n"
+	"devastan incontables millas de superficie\n"
+	"del Infierno.\n"
+	"\n"
+	"Lo has hecho. La invasión se acabó.\n"
+	"La Tierra está salvada. El Infierno es una ruina.\n"
+	"Te preguntas adónde irá la gente mala cuando\n"
+	"muera, ahora. Limpiando el sudor de tu\n"
+	"frente comienzas el largo viaje de vuelta a\n"
+	"casa. Reconstruir la Tierra debería ser\n"
+	"mucho más divertido que arruinarla.\n";
+C5TEXT =
+	"Felicidades, has encontrado el nivel\n"
+	"secreto! Parece ser que fue construído por\n"
+	"humanos, en vez de demonios. Te preguntas\n"
+	"quiénes serán los presos de esta esquina\n"
+	"del Infierno.";
+C6TEXT =
+	"Felicidades, has encontrado el\n"
+	"nivel súper secreto!  Será mejor que\n"
+	"ardas a través de éste!\n";				// "Blaze" tiene relación con el fuego, pero también es una refrencia a Commander Keen (Billy Blaze).
+P1TEXT =
+	"Te regocijas frente al humeante cuerpo del\n"		// "Steaming" en realidad se refiere a vapor, no a humo.
+	"Guardián.  Con su muerte, has arrebatado\n"
+	"el Acelerador de las apestosas garras\n"
+	"del Infierno.  Te relajas y echas un vistazo a\n"
+	"la habitación.  Maldición!  Se suponía que había\n"
+	"al menos un prototipo funcional, pero no puedes\n"
+	"verlo. Los demonios deben haberlo tomado.\n"
+	"\n"
+	"Debes encontrar el prototipo, o todos tus\n"
+	"esfuerzos habrán sido desperdiciados. Sigue\n"
+	"moviéndote, sigue peleando, sigue matando.\n"
+	"Oh sí, sigue viviendo, también.";
+P2TEXT =
+	"Incluso el mortífero laberinto Arch-Vile no\n"
+	"pudo detenerte, y has llegado al prototipo\n"
+	"de Acelearador el cual es pronto\n"
+	"eficiente y definitivamente desactivado.\n"
+	"\n"
+	"Eres bueno en esa clase de cosas.";
+P3TEXT =
+	"Has golpeado y abollado tu camino dentro\n"
+	"del corazón de la colmena demoníaca.  Hora de una\n"
+	"misión de Buscar y Destruir, apuntada al\n"
+	"Guardían del Portal, cuya vil descendencia está\n"
+	"cayendo en cascada a la Tierra.  Sí, él es malo,\n"
+	"pero tú sabes quién es peor!\n"
+	"\n"
+	"Sonriéndo de manera malvada, compruebas tu equipo\n"
+	"y te preparas para darle al bastardo un poco de\n"
+	"Infierno de tu propia creación!";
+P4TEXT =
+	"El malvado rostro del Guardían del Portal es\n"
+	"salpicado por todo el lugar.  Como su andrajoso\n"
+	"cadáver colapsa, una Puerta invertida se forma y\n"
+	"y absorbe los últimos fragmentos del\n"
+	"prototipo de Acelearador, sin mencionar los\n"
+	"pocos demonios restantes.  Has acabado. El Infierno\n"
+	"ha vuelto a triturar gente muerta mala\n"
+	"en lugar de vivos buenos.  Recuerda\n"
+	"decirle a tus nietos que pongan un Lanza\n"
+	"Cohetes en tu ataúd. Si vas al Infierno\n"
+	"al morir, lo necesitarás para una\n"
+	"limpieza final ...";
+P5TEXT =
+	"Has encontrado el segundo nivel más dificil que\n"
+	"tenemos. Espero que hayas guardado la partida uno o\n"
+	"dos niveles antes.  Si no, prepárate para morir\n"
+	"en abundancia. Sólo para maestros marine.";
+P6TEXT =
+	"Apuesto a que te preguntabas cuál ERA el nivel más\n"
+	"difícil que teníamos preparado para tí?  Ahora sabes.\n"
+	"Nadie sale vivo.";
+T1TEXT =
+	"Haz luchado tu camino fuera de los laboratorios\n"
+	"experimentales infestados.   Parece que la UAC se\n"
+	"lo ha tragado una vez más.  Con su alto volumen\n"
+	"de negocios, debe ser difícil para la pobre y\n"
+	"vieja UAC comprar seguros de salud corporativos\n"
+	"hoy en día...\n"
+	"\n"
+	"Delante yace el complejo militar, ahora\n"
+	"con un enjambre de horrores enfermos impacientes\n"
+	"por poner sus dientes en tí. Con suerte, el\n"
+	"complejo sigue teniendo algo de artillería de\n"
+	"guerra en los alrededores.";
+T2TEXT =
+	"Escuchas el estruendo de maquinaria pesada\n"
+	"delante.  Seguro que esperas que no estén estampando\n"
+	"nuevos demonios, pero estás listo para\n"
+	"apilar una horda entera si tienes que hacerlo.\n"
+	"Puede que estén planeando un festín de sangre, pero\n"
+	"te sientes tan vil como dos mil\n"
+	"maníacos juntos en un asesino loco.\n"
+	"\n"
+	"No planeas caer fácilmente.";
+T3TEXT =
+	"La vista abriéndose delante luce realmente\n"
+	"familiar. Huele familiar, también -- como\n"
+	"excremento frito. No te gustó este\n"
+	"lugar antes, y estás seguro como el Infierno que no\n"
+	"planeas que te guste ahora. Mientras más\n"
+	"piensas en ello, más enojado te pones.\n"
+	"Levantando tu arma, una malvada sonrisa se forma\n"
+	"en tu cara. Hora de tomar algunos nombres.";
+T4TEXT =
+	"Súbitamente, todo es silencioso, de un horizonte\n"
+	"al otro. El eco agonizante del Infierno\n"
+	"desaparece, el cielo de pesadilla se vuelve\n"
+	"azul, las montañas de cadáveres de mostruos\n"
+	"comienzan a evaporarse junto con el malvado hedor\n"
+	"que llenaba el aire. Tal vez lo has\n"
+	"logrado. De verdad has ganado?\n"
+	"\n"
+	"Algo retumba en la distacia.\n"
+	"Una luz azul comienza a brillar dentro de\n"
+	"la arruinada calavera del escupe demonios.";
+T5TEXT =
+	"Ahora qué? Luce totalmente diferente. Algo\n"
+	"como el condominio del rey Tut. Bueno,\n"
+	"lo que sea que hay aquí no puede ser peor\n"
+	"que lo usual. No es así?  O tal vez es mejor\n"
+	"dejar a los dioses durmiendo..";
+T6TEXT =
+	"Hora de unas vacaciones. Has reventado\n"
+	"las profundidades del Infierno y por Dios estás\n"
+	"listo para un descanzo. Te mascullas a tí mismo,\n"
+	"Tal vez alguien más pueda patear el culo del\n"
+	"Infierno la próxima vez. Delante yace un silencioso\n"
+	"pueblo, con agua corriendo pacíficamente, pintorescas\n"
+	"construcciones, y presumiblemente sin demonios.\n"
+	"\n"
+	"Al dar un paso fuera del transporte, escuchas\n"
+	"la pisada del zapato de hierro de un Ciberdemonio.";
+
+NERVETEXT =
+	"Problemas se estaban cocinando de nuevo en tu punto\n"
+	"de vacaciones favorito... el Infierno. Algún imbécil\n"
+	"Ciberdemonio pensó que podía convertir el Infierno\n"
+	"en su parque de diversiones personal, y hacer que\n"
+	"la Tierra fuera la boletería.\n"
+	"\n"
+	"Bueno ese raro mitad robot no sabía\n"
+	"quién venía a la feria. No hay\n"
+	"nada como una galería de disparos llena de\n"
+	"demonios para dejar la sangre bombeando...\n"
+	"\n"
+	"Ahora las murallas del laberinto del demonio\n"
+	"crean eco con el sonido de sus extremidades metálicas\n"
+	"golpeando el suelo. Su gemido de muerte gorgotea\n"
+	"fuera del desastre que dejaste en su cara.\n"
+	"\n"
+	"Esta atracción está cerrada.\n";
+
+
+// Lista de elenco (debe aparecer en este orden)
+CC_ZOMBIE = "Hombre Zombie";
+CC_SHOTGUN = "Tipo de la Escopeta";
+CC_HEAVY = "Tipo del Arma Pesada";
+CC_IMP = "Diablillo";
+CC_DEMON = "Demonio";
+CC_LOST = "Alma Perdida";
+CC_CACO = "Cacodemonio";
+CC_HELL = "Caballero del Infierno";
+CC_BARON = "Barón del Infierno";
+CC_ARACH = "Arachnotron";
+CC_PAIN = "Dolor Elemental";
+CC_REVEN = "Revenant";			// "Revenant" se refiere a alguien que fue resucitado.
+CC_MANCU = "Mancubus";
+CC_ARCH = "Arch-Vile";
+CC_SPIDER = "La Araña Mente Maestra";
+CC_CYBER = "El Ciberdemonio";
+CC_HERO = "Nuestro Héroe";
+
+// Nuevas líneas de BOOM
+PD_BLUEC = "Necesitas una tarjeta azul para abrir esta puerta";
+PD_REDC = "Necesitas una tarjeta roja para abrir esta puerta";
+PD_YELLOWC = "Necesitas una tarjeta amarilla para abrir esta puerta";
+PD_BLUES = "Necesitas una calavera azul para abrir esta puerta";
+PD_REDS = "Necesitas una calavera roja para abrir esta puerta";
+PD_YELLOWS = "Necesitas una calavera amarilla para abrir esta puerta";
+PD_ANY = "Cualquier llave abrirá esta puerta";
+PD_ANYOBJ = "Cualquier llave activará este objeto";
+PD_ALL3 = "Necesitas las tres llaves para abrir esta puerta";
+PD_ALL3O = "Necesitas las tres llaves para activar este objeto";
+PD_ALL6 = "Necesitas las seis llaves para abrir esta puerta";
+PD_ALL6O = "Necesitas las seis llaves para activar este objeto";
+PD_ALLKEYS = "Necesitas todas las llaves";
+
+// MBF (BOOM?) narration backgrounds
+bgflatE1 = "FLOOR4_8";
+bgflatE2 = "SFLR6_1";
+bgflatE3 = "MFLR8_4";
+bgflatE4 = "MFLR8_3";
+bgflat06 = "SLIME16";
+bgflat11 = "RROCK14";
+bgflat20 = "RROCK07";
+bgflat30 = "RROCK17";
+bgflat15 = "RROCK13";
+bgflat31 = "RROCK19";
+bgcastcall = "BOSSBACK";
+
+// Mensajes de corriente de juego
+TXT_FRAGLIMIT = "Límite de puntos alcanzado.";
+TXT_TIMELIMIT = "Límite de tiempo alcanzado.";
+
+// Mensajes de matanzas
+SPREEKILLSELF = "%o se veía bien hasta que se mató a sí mismo!";
+SPREEOVER = "La matanza de %o fue terminada por %k";
+SPREE5 = "%k tiene una matanza!";
+SPREE10 = "%k tiene un alboroto!";
+SPREE15 = "%k está dominando!";
+SPREE20 = "%k es imparable!";
+SPREE25 = "%k es un dios!";
+
+// Mulitkill messages
+MULTI2 = "Double kill!";
+MULTI3 = "Multi kill!";
+MULTI4 = "Ultra kill!";
+MULTI5 = "Monster kill!";
+
+// Líneas de obituarios
+// Primero los auto-asesinatos, luego los otro-asesinatos
+OB_SUICIDE = "%o se suicida.";
+OB_FALLING = "%o cayó de demasiado alto.";
+OB_CRUSH = "%o fue aplastado.";
+OB_EXIT = "%o intentó irse.";
+OB_WATER = "%o no puede nadar.";
+OB_SLIME = "%o mutó.";
+OB_LAVA = "%o se derritió.";
+OB_BARREL = "%o explotó.";
+OB_SPLASH = "%o se paró en el punto equivocado.";
+OB_R_SPLASH = "%o debería haber retrocedido.";
+OB_ROCKET = "%o debería haberse quedado atrás.";
+OB_KILLEDSELF = "%o se mató a sí mismo.";
+
+OB_VOODOO = "%o fue asesinado con el poder del vudú.";
+OB_STEALTHBABY = "%o pensó que %g vió un Arachnotron.";
+OB_STEALTHVILE = "%o pensó que %g vió un Archvile.";
+OB_STEALTHBARON = "%o pensó que %g vió a un Barón del Infierno.";
+OB_STEALTHCACO = "%o pensó que %g vió un Cacodemonio.";
+OB_STEALTHCHAINGUY = "%o pensó que %g vió a un Artillero.";		// Chaingun-ner -> El que usa la Chaingun (Ametralladora en Cadena)
+OB_STEALTHDEMON = "%o pensó que %g vió un Demonio.";
+OB_STEALTHKNIGHT = "%o pensó que %g vió un Caballero del Infierno.";
+OB_STEALTHIMP = "%o pensó que %g vió un Diablillo.";
+OB_STEALTHFATSO = "%o pensó que %g vió un Mancubus.";
+OB_STEALTHUNDEAD = "%o pensó que %g vió un Revenant.";
+OB_STEALTHSHOTGUY = "%o pensó que %g vió a un Sargento.";
+OB_STEALTHZOMBIE = "%o pensó que %g vió a un Hombre Zombie.";
+OB_UNDEADHIT = "%o fue golpeado por un Revenant.";			// "Punch" se refiere específicamente a un puñetazo.
+OB_IMPHIT = "%o fue cortado por un Diablillo.";
+OB_CACOHIT = "%o se acercó demasiado a un Cacodemonio.";
+OB_DEMONHIT = "%o fue mordido por un Demonio.";
+OB_SPECTREHIT = "%o fue comido por un Espectro.";
+OB_BARONHIT = "%o fue rasgado por un Barón del Infierno.";		// "Ripped" -> Rasgado -- "Open" -> Abierto
+OB_KNIGHTHIT = "%o fue destripado por un Caballero del Infierno.";
+OB_ZOMBIE = "%o fue asesinado por un Hombre Zombie.";
+OB_SHOTGUY = "Un sargento le disparó a %o.";
+OB_VILE = "%o fue incinerado por un Archvile.";
+OB_UNDEAD = "%o no pudo evadir una bola de fuego de un Revenant.";
+OB_FATSO = "%o fue aplastado por un Mancubus.";
+OB_CHAINGUY = "%o fue perforado por un Artillero.";
+OB_SKULL = "%o fue asustado por un Alma Perdida.";
+OB_IMP = "%o fue quemado por un Diablillo.";
+OB_CACO = "%o fue gravemente herido por un Cacodemonio.";		// "Smite": Golpear, herir.
+OB_BARON = "%o fue machucado por un Barón del Infierno.";
+OB_KNIGHT = "%o fue desarmado por un Caballero del Infierno.";		// "Splay": Sacar cosas de lugar (especialmente extremidades o dedos).
+OB_SPIDER = "%o se paró en terror frente a la Araña Demonio.";
+OB_BABY = "%o dejó que un Arachnotron lo atrapara.";
+OB_CYBORG = "%o fue salpicado por un Ciberdemonio.";
+OB_WOLFSS = "%o se encontró con un Nazi.";
+OB_DOG = "%o fue magullado por un perro.";
+
+OB_CHICKEN = "%o fue picoteado hasta la muerte.";
+OB_BEAST = "%o fue carbonizado por un Hombre Dragón.";
+OB_CLINK = "%o fue acuchillado por un Garra de Sable.";
+OB_DSPARIL1 = "%o fue escaldado por la Serpiente de D'Sparil.";
+OB_DSPARIL1HIT = "%o fue masticado por la Serpiente de D'Sparil.";
+OB_DSPARIL2 = "%o no fue rival para D'Sparil.";
+OB_DSPARIL2HIT = "%o fue derribado por D'Sparil.";
+OB_HERETICIMP = "Una Gárgola dejó con cicatrices a %o.";
+OB_HERETICIMPHIT = "%o fue cortado por una Gárgola.";
+OB_IRONLICH = "%o fue devastado por un Lich de Hierro.";
+OB_IRONLICHHIT = "%o se acercó en persona a un Lich de Hierro.";
+OB_BONEKNIGHT = "%o recibió el hachazo de un Guerrero No Muerto.";
+OB_BONEKNIGHTHIT = "%o fue asesinado por un Guerrero No Muerto.";
+OB_MUMMY = "%o fue aplastado por un Golem.";
+OB_MUMMYLEADER = "%o recibió chillidos hasta la muerte por parte de un NitroGolem.";
+OB_SNAKE = "%o fue sacudido por un Ofídico.";
+OB_WIZARD = "%o fue maldecido por un Mago.";
+OB_WIZARDHIT = "%o fue palpado por un Mago.";
+
+OB_FIREDEMON = "%o saboreó el fuego de un Afrit.";
+OB_DEMON1 = "%o fue escaldado por una Serpiente.";
+OB_DEMON2 = "%o fue envenenado por una Serpiente.";
+OB_ETTIN = "%o fue hecho puré por un Ettin.";
+OB_CENTAUR = "%o fue cortado por un Centauro.";
+OB_SLAUGHTAURHIT = "%o fue cortado por un Asesinotauro.";
+OB_SLAUGHTAUR = "%o fue derribado por la bola de fuego de un Asesinotauro.";
+OB_BISHOP = "%o sucumbió al poder oscuro de un Obispo.";
+OB_ICEGUY = "%o fue congelado por un Wendigo.";
+OB_SERPENTHIT = "%o fue magullado por un Acechador.";
+OB_SERPENT = "%o fue derretido por un Acechador.";
+OB_WRAITH = "%o fue carbonizado por un Reiver.";
+OB_WRAITHHIT = "Un Reiver robó la vida de %o.";
+OB_DRAGON = "%o fue incinerado por el Death Wyvern.";
+OB_KORAX = "%o fue barrido del tablero por Korax.";
+OB_FBOSS = "%o fue asesinado por Zedek.";
+OB_MBOSS = "%o no pudo absorber el Maná de Menelkir.";
+OB_CBOSS = "%o fue bautizado por Traductus.";
+OB_HERESIARCH = "El Heresiarca hizo rodar los huesos de %o.";
+
+OB_ACOLYTE = "%o fue celosamente acribillado por un Acólito.";
+OB_MACIL = "%o nunca debió haberse revelado contra Macil.";
+OB_REBEL = "%o fue acribillado por un Rebelde.";
+OB_BEGGAR = "%o fue golpeado hasta la muerte por los pobres.";
+OB_PEASANT = "%o nunca debió haber comenzado una pelea con un civil.";
+OB_ALIENSPECTRE = "%o fue derribado por el Espectro.";
+OB_ENTITY = "%o sintió la ira del Dios Único.";
+OB_LOREMASTER = "%o no pudo escapar del agarre del Lore Master.";		// No estoy seguro de cómo traducir "Lore".
+OB_PROGRAMMER = "%o fue borrado por el Programador.";
+OB_STFBISHOP = "%o fue volado por el Obispo.";
+OB_SENTINEL = "%o fue acribillado por un Centinela.";
+OB_CRUSADER = "%o fue barrido por un Cruzado.";
+OB_INQUISITOR = "%o fue sentenciado por un Inquisidor.";
+OB_STALKER = "%o fue fastidiado por un Acechador.";
+OB_TURRET = "%o activó las defensas automáticas.";
+OB_TEMPLARHIT = "%o fue arañado por un Templario.";
+OB_TEMPLAR = "%o fue vaporizado por un Templario.";
+OB_REAVERHIT = "%o fue rebanado por un Saqueador.";
+OB_REAVER = "%o fue acribillado por un Saqueador.";
+
+OB_MPFIST = "%o masticó el puño de %k.";
+OB_MPCHAINSAW = "%o fue segado por la motosierra de %k.";
+OB_MPPISTOL = "%o sintió cosquillas con la pistolita de %k.";
+OB_MPSHOTGUN = "%o masticó la escopeta de %k.";
+OB_MPSSHOTGUN = "%o fue salpicado por la super escopeta de %k.";
+OB_MPCHAINGUN = "%o fue segado por la ametralladora en cadena de %k.";
+OB_MPROCKET = "%o montó el cohete de %k.";
+OB_MPR_SPLASH = "%o casi esquivó el cohete de %k.";
+OB_MPPLASMARIFLE = "%o fue derretido por el arma de plasma de %k.";
+OB_MPBFG_BOOM = "%o fue astillado por la BFG de %k.";
+OB_MPBFG_SPLASH = "%o no se pudo ocultar de la BFG de %k.";
+OB_MPTELEFRAG = "%o fue teleasesinado por %k.";
+OB_RAILGUN = "%o fue atravesado por %k.";
+OB_MPBFG_MBF = "%o fue quemado por la BFG de %k.";
+
+OB_MPSTAFF = "%o fue bastoneado %k.";
+OB_MPGAUNTLETS = "%o fue choqueado por los guanteletes de %k.";
+OB_MPGOLDWAND = "%o se despidió de la vara de elfo de %k.";
+OB_MPCROSSBOW = "%o fue clavado con la ballesta etérea de %k.";
+OB_MPBLASTER = "%o fue lanzado por la garra de dragón de %k.";
+OB_MPSKULLROD = "%o fue enviado abajo por la vara infernal de %k.";
+OB_MPPHOENIXROD = "%o fue reducido a cenizas por la vara del fénix de %k.";
+OB_MPMACE = "%o rebotó con el mazo de fuego de %k.";
+
+OB_MPPSTAFF = "%o fue palmeado por la vara cargada de %k.";
+OB_MPPGAUNTLETS = "%o quedó sin sangre con los guanteletes de %k.";
+OB_MPPGOLDWAND = "%o fue asaltado por la vara de elfo de %k.";
+OB_MPPCROSSBOW = "%o fue atravesado por la ballesta etérea de %k.";
+OB_MPPBLASTER = "%o fue despedazado por la garra de dragón de %k.";
+OB_MPPSKULLROD = "%k vertió su vara infernal en %o.";
+OB_MPPPHOENIXROD = "%o fue quemado por la vara del fénix de %k.";
+OB_MPPMACE = "%o fue aplastado por la esfera de mazo gigante de %k.";
+
+OB_MPFWEAPFIST = "%o fue reducido a una pulpa por los puños de %k."; 
+OB_MPFWEAPAXE = "%o recibió el hacha de %k."; 
+OB_MPFWEAPHAMMERM = "%o tenía su cabeza clavada en el martillo de %k."; 
+OB_MPFWEAPHAMMERR = "El alma de %o fue forjada nuevamente por el martillo de %k."; 
+OB_MPFWEAPQUIETUS = "%o fue sileciado por el poderoso Quietus de %k."; 
+OB_MPCWEAPMACE = "%o recibió un mazo a la cara de parte de %k."; 
+OB_MPCWEAPSTAFFM = "%o fue mordido por la vara de la serpiente de %k."; 
+OB_MPCWEAPSTAFFR = "%o se ahogó con la vara de la serpiente de %k."; 
+OB_MPCWEAPFLAME = "%o fue encendido con la llamas de %k."; 
+OB_MPCWEAPWRAITHVERGE = "%o fue limpiado por la Wraithverge de %k."; 
+OB_MPMWEAPWAND = "%o recibió demasiados rayos de zafiro de %k."; 
+OB_MPMWEAPFROST = "%o fue convertido en un helado compañero por %k."; 
+OB_MPMWEAPLIGHTNING = "%o recibió una choqueante revelación de %k."; 
+OB_MPMWEAPBLOODSCOURGE = "%o fue limpiado de la faz del universo por la Bloodscourge de %k.";
+
+OB_MPPUNCHDAGGER = "%o fue inconscientemente apuñalado por la espalda por %k."; 
+OB_MPELECTRICBOLT = "%o fue electrocutado contra la pared por %k."; 
+OB_MPPOISONBOLT = "%o recibió una dosis letal de la ira de %k."; 
+OB_MPASSAULTGUN = "%o quedó lleno de agujeros con el arma de asalto de %k."; 
+OB_MPMINIMISSILELAUNCHER = "%o se tragó el misil de %k."; 
+OB_MPSTRIFEGRENADE = "%o fue invertido por la granada H-E de %k."; 
+OB_MPPHOSPHOROUSGRENADE = "%o tomó un baño de llamas en la pira fosfórica de %k."; 
+OB_MPFLAMETHROWER = "%o fue hecho barbacoa por %k."; 
+OB_MPMAULER1 = "%o fue borrado por %k.";
+OB_MPMAULER = "%o fue cruelmente vaporizado por %k."; 
+OB_MPSIGIL = "%o se inclinó ante el poder total del Sigilo de %k.";
+
+// Igual que OB_MPTELEFRAG, pero se muestra cuando un monstruo te teleasesina.
+OB_MONTELEFRAG = "%o fue teleasesinado.";
+
+OB_DEFAULT = "%o murió.";
+OB_MPDEFAULT = "%o fue asesinado por %k.";
+OB_FRIENDLY1 = "%k sega a un compañero de equipo.";
+OB_FRIENDLY2 = "%k revisa sus lentes.";
+OB_FRIENDLY3 = "%k consigue un punto para el otro equipo.";
+OB_FRIENDLY4 = "%k pierde otro amigo.";
+
+SAVEGAMENAME = "zdoomsv";
+STARTUP1 = "";
+STARTUP2 = "";
+STARTUP3 = "";
+STARTUP4 = "";
+STARTUP5 = "";
+
+// Texto de la pantalla de puntaje
+SCORE_ITEMS = "OBJETOS";
+SCORE_BONUS = "BONO";
+SCORE_COLOR = "COLOR";
+SCORE_SECRET = "SECRETO";
+SCORE_NAME = "NOMBRE";
+SCORE_DELAY = "RETRASO(ms)";
+SCORE_KILLS = "ASESINATOS";
+SCORE_FRAGS = "PUNTAJE";
+SCORE_DEATHS = "MUERTES";
+SCORE_MISSED = "NO ENCONTRADO";
+SCORE_TOTAL = "TOTAL";
+SCORE_LVLTIME = "TIEMPO DE NIVEL";
+
+// Item tags: Doom weapons
+TAG_FIST = "Brass Knuckles";
+TAG_CHAINSAW = "Chainsaw";
+TAG_PISTOL = "Pistol";
+TAG_SHOTGUN = "Shotgun";
+TAG_SUPERSHOTGUN = "Super Shotgun";
+TAG_CHAINGUN = "Chaingun";
+TAG_ROCKETLAUNCHER = "Rocket Launcher";
+TAG_PLASMARIFLE = "Plasma Rifle";
+TAG_BFG9000 = "BFG 9000";
+
+// Item tags: Heretic weapons
+TAG_STAFF = "Staff";
+TAG_GAUNTLETS = "Gauntlets of the Necromancer";
+TAG_GOLDWAND = "Elven Wand";
+TAG_CROSSBOW = "Ethereal Crossbow";
+TAG_BLASTER = "Dragon Claw";
+TAG_SKULLROD = "Hellstaff";
+TAG_PHOENIXROD = "Phoenix Rod";
+TAG_MACE = "Firemace";
+
+TAG_STAFFP = "Staff";
+TAG_GAUNTLETSP = "Gauntlets of the Necromancer";
+TAG_GOLDWANDP = "Elven Wand";
+TAG_CROSSBOWP = "Ethereal Crossbow";
+TAG_BLASTERP = "Dragon Claw";
+TAG_SKULLRODP = "Hellstaff";
+TAG_PHOENIXRODP = "Phoenix Rod";
+TAG_MACEP = "Firemace";
+
+// Item tags: Heretic artifacts
+TAG_ARTIEGG = "Morph Ovum";
+TAG_ARTIFIREBOMB = "Timebomb of the Ancients";
+TAG_ARTIFLY = "Wings of Wrath";
+TAG_ARTIHEALTH = "Quartz Flask";
+TAG_ARTIINVISIBILITY = "Shadowsphere";
+TAG_ARTIINVULNERABILITY = "Ring of Invincibility";
+TAG_ARTISUPERHEALTH = "Mystic Urn";
+TAG_ARTITELEPORT = "Chaos Device";
+TAG_ARTITOMEOFPOWER = "Tome of Power";
+TAG_ARTITORCH = "Torch";
+
+// Item tags: Hexen weapons
+TAG_CWEAPMACE = "Mace of Contrition";
+TAG_CWEAPSTAFF = "Serpent Staff";
+TAG_CWEAPFLAME = "Firestorm";
+TAG_CWEAPWRAITHVERGE = "Wraithverge";
+TAG_FWEAPFIST = "Spiked Gauntlets";
+TAG_FWEAPAXE = "Timon's Axe";
+TAG_FWEAPHAMMER = "Hammer of Retribution";
+TAG_FWEAPQUIETUS = "Quietus";
+TAG_MWEAPWAND = "Sapphire Wand";
+TAG_MWEAPFROST = "Frost Shards";
+TAG_MWEAPLIGHTNING = "Arcs of Death";
+TAG_MWEAPBLOODSCOURGE = "Bloodscourge";
+
+// Item tags: Hexen artifacts
+TAG_ARTIBLASTRADIUS = "Disc of Repulsion";
+TAG_ARTIBOOSTARMOR = "Dragonskin Bracers";
+TAG_ARTIBOOSTMANA = "Krater of Might";
+TAG_ARTIPOISONBAG = "Flechette";
+TAG_ARTIPOISONBAG1 = "Poison Cloud Flechette";
+TAG_ARTIPOISONBAG2 = "Timebomb Flechette";
+TAG_ARTIPOISONBAG3 = "Grenade Flechette";
+TAG_ARTIHEALINGRADIUS = "Mystic Ambit Incant";
+TAG_ARTIDEFENDER = "Icon of the Defender";
+TAG_ARTIPORK = "Porkelator";
+TAG_ARTISPEED = "Boots of Speed";
+TAG_ARTISUMMON = "Dark Servant";
+TAG_ARTITELEPORTOTHER = "Banishment Device";
+
+// Item tags: Hexen puzzle items
+TAG_ARTIPUZZSKULL = "Yorick's Skull";
+TAG_ARTIPUZZGEMBIG = "Heart of D'Sparil";
+TAG_ARTIPUZZGEMRED = "Ruby Planet";
+TAG_ARTIPUZZGEMGREEN1 = "Emerald Planet (1)";
+TAG_ARTIPUZZGEMGREEN2 = "Emerald Planet (2)";
+TAG_ARTIPUZZGEMBLUE1 = "Sapphire Planet (1)";
+TAG_ARTIPUZZGEMBLUE2 = "Sapphire Planet (2)";
+TAG_ARTIPUZZBOOK1 = "Daemon Codex";
+TAG_ARTIPUZZBOOK2 = "Liber Obscura";
+TAG_ARTIPUZZSKULL2 = "Flame Mask";
+TAG_ARTIPUZZFWEAPON = "Glaive Seal";
+TAG_ARTIPUZZCWEAPON = "Holy Relic";
+TAG_ARTIPUZZMWEAPON = "Sigil of the Magus";
+TAG_ARTIPUZZGEAR1 = "Iron gear";
+TAG_ARTIPUZZGEAR2 = "Brass gear";
+TAG_ARTIPUZZGEAR3 = "Brass and iron gear";
+TAG_ARTIPUZZGEAR4 = "Silver and brass gear";
+
+// Item tags: Strife weapons
+TAG_PUNCHDAGGER = "Dagger";
+TAG_STRIFECROSSBOW1 = "Crossbow";
+TAG_STRIFECROSSBOW2 = "Crossbow";
+TAG_ASSAULTGUN = "Assault Gun";
+TAG_MMLAUNCHER = "Mini Missile Launcher";
+TAG_FLAMER = "Flame Thrower";
+TAG_MAULER1 = "Mauler";
+TAG_MAULER2 = "Mauler";
+TAG_GLAUNCHER1 = "Grenade Launcher";
+TAG_GLAUNCHER2 = "Grenade Launcher";
+TAG_SIGIL = "SIGIL";
+
+// Item tags: Strife artifacts
+TAG_COIN = "coin";
+TAG_MEDPATCH = "Med patch";
+TAG_MEDICALKIT = "Medical kit";
+TAG_SURGERYKIT = "Surgery Kit";	// "full_health" in the Teaser
+TAG_BELDINSRING = "Ring";
+TAG_OFFERINGCHALICE = "Offering Chalice";
+TAG_EAR = "Ear";
+TAG_BROKENCOUPLING = "Broken Power Coupling";
+TAG_SHADOWARMOR = "Shadow Armor";
+TAG_ENVSUIT = "Environmental Suit";
+TAG_GUARDUNIFORM = "Guard Uniform";
+TAG_OFFICERSUNIFORM = "Officer's Uniform";
+TAG_FTHROWERPARTS = "Flame Thrower Parts";
+TAG_REPORT = "Report";
+TAG_INFO = "Info";
+TAG_TARGETER = "Targeter";
+TAG_COMMUNICATOR = "Communicator";
+TAG_DEGNINORE = "Degnin Ore";
+TAG_GUNTRAINING = "Accuracy";
+TAG_HEALTHTRAINING = "Toughness";
+TAG_SCANNER = "Scanner";
+TAG_PRISONPASS = "Prison Pass";
+TAG_ALARM = "Alarm";
+TAG_AMMOFILLUP = "Ammo";
+TAG_HEALTHFILLUP = "Health";
+TAG_TELEPORTERBEACON = "Teleporter Beacon";
+TAG_METALARMOR = "Metal Armor";
+TAG_LEATHER = "Leather Armor";
+TAG_HEGRENADES = "HE-Grenade Rounds";
+TAG_PHGRENADES = "Phoshorus-Grenade Rounds";	// "Fire-Grenade_Rounds" in the Teaser
+TAG_CLIPOFBULLETS = "Clip of Bullets";	// "bullets" in the Teaser
+TAG_BOXOFBULLETS = "Ammo";
+TAG_MINIMISSILES = "Mini Missiles";	//"rocket" in the Teaser
+TAG_CRATEOFMISSILES = "Crate of Missiles";	//"box_of_rockets" in the Teaser
+TAG_ENERGYPOD = "Energy Pod";
+TAG_ENERGYPACK = "Energy Pack";
+TAG_POISONBOLTS = "Poison Bolts";	// "poison_arrows" in the Teaser
+TAG_ELECTRICBOLTS = "Electric Bolts";	// "electric_arrows" in the Teaser
+TAG_AMMOSATCHEL = "Ammo Satchel";	// "Back_pack" in the Teaser
+
+// Item tags: Strife keys
+TAG_BASEKEY = "Base Key";
+TAG_GOVSKEY = "Govs Key";	// "Rebel_Key" in the Teaser
+TAG_PASSCARD = "Passcard";
+TAG_IDBADGE = "ID Badge";
+TAG_PRISONKEY = "Prison Key";
+TAG_SEVEREDHAND = "Severed Hand";
+TAG_POWER1KEY = "Power1 Key";
+TAG_POWER2KEY = "Power2 Key";
+TAG_POWER3KEY = "Power3 Key";
+TAG_GOLDKEY = "Gold Key";
+TAG_IDCARD = "ID Card";
+TAG_SILVERKEY = "Silver Key";
+TAG_ORACLEKEY = "Oracle Key";
+TAG_MILITARYID = "Military ID";
+TAG_ORDERKEY = "Order Key";
+TAG_WAREHOUSEKEY = "Warehouse Key";
+TAG_BRASSKEY = "Brass Key";
+TAG_REDCRYSTALKEY = "Red Crystal Key";
+TAG_BLUECRYSTALKEY = "Blue Crystal Key";
+TAG_CHAPELKEY = "Chapel Key";
+TAG_CATACOMBKEY = "Catacomb Key";	// "Tunnel_Key" in the Teaser
+TAG_SECURITYKEY = "Security Key";
+TAG_COREKEY = "Core Key";	// "New_Key1" in the Teaser
+TAG_MAULERKEY = "Mauler Key";	// "New_Key2" in the Teaser
+TAG_FACTORYKEY = "Factory Key";	// "New_Key3" in the Teaser
+TAG_MINEKEY = "Mine Key";	// "New_Key4" in the Teaser
+TAG_NEWKEY5 = "New Key5";
+TAG_ORACLEPASS = "Oracle Pass";
+
+// Item tags: misc Strife stuff
+TAG_10GOLD = "10 gold";
+TAG_25GOLD = "25 gold";
+TAG_50GOLD = "50 gold";
+TAG_300GOLD = "300 gold";
+TAG_QUEST4 = "quest4";
+TAG_QUEST5 = "quest5";
+TAG_QUEST6 = "quest4";
+
+// Item tags: Strife NPCs
+TAG_ACOLYTE = "ACOLYTE";
+TAG_ARMORER = "Armorer";
+TAG_BARKEEP = "Bar Keep";
+TAG_BEGGAR = "Beggar";
+TAG_MACIL1 = "MACIL";
+TAG_MACIL2 = "MACIL";
+TAG_MEDIC = "Medic";
+TAG_ORACLE = "Oracle";
+TAG_PRIEST = "PRIEST";
+TAG_RATBUDDY = "rat buddy";
+TAG_REBEL = "Rebel";
+TAG_TEMPLAR = "TEMPLAR";
+TAG_WEAPONSMITH = "Weapon Smith";
+
+// Item tags: Chex weapons
+TAG_SPOON = "Spoon";
+TAG_SPORK = "Super Bootspork";
+TAG_MINIZORCHER = "Mini Zorcher";
+TAG_LARGEZORCHER = "Large Zorcher";
+TAG_SUPERLARGEZORCHER = "Super-Large Zorcher";
+TAG_RAPIDZORCHER = "Rapid Zorcher";
+TAG_ZORCHPROPULSOR = "Zorch Propulsor";
+TAG_PHASINGZORCHER = "Phasing Zorcher";
+TAG_LAZDEVICE = "LAZ Device";
+
+// Líneas de Heretic
+HE1TEXT =
+		"Con la destrucción de los Lich de\n"
+		"Hierro y sus sequaces, lo último\n"
+		"de los no muertos es limpiado de este\n"
+		"plano de existencia.\n\n"
+		"Aunque, esas criaturas deben haber\n"
+		"venido de algún lugar, y tienes la\n"
+		"pequeña sospecha de que el fiero\n"
+		"portal de la garganta del Infierno va\n"
+		"a su dimension natal.\n\n"
+		"Para asegurarte de que más no muertos\n"
+		"(o incluso peores cosas) no vengan\n"
+		"aquí, tendrás que sellar la garganta del\n"
+		"Infierno desde el otro lado. Por supuesto\n"
+		"esto significa que puedes quedarte atascado en\n"
+		"un mundo muy poco amigable, pero nunca nadie\n"
+		"dijo que ser un hereje fuera fácil!";
+HE2TEXT =
+		"Los poderosos Maulotaurs han demostrado\n"
+		"no ser rivales para tí, y mientras\n"
+		"sus humeantes cadáveres se deslizan al\n"
+		"suelo sientes una sensación de siniestra\n"
+		"satisfacción de que han sido\n"
+		"destruídos.\n\n"
+		"Las puertas que protegían se\n"
+		"han abierto, revelando lo que\n"
+		"esperas es un camino a casa. Pero al\n"
+		"entrar, una risa burlona\n"
+		"campanea en tus oídos.\n\n"
+		"Había otra fuerza controlando a\n"
+		"los Maulotaurs? Podrían incluso haber\n"
+		"seser más horroríficos más allá de esta\n"
+		"puerta? La presencia de un domo de cristal\n"
+		"en donde el cielo debería estar\n"
+		"ciertamente no es un buen signo....";
+HE3TEXT =
+		"La muerte de D'Sparil ha liberado\n"
+		"el cautiverio mágico que mantenía a\n"
+		"sus criaturas en este plano, sus\n"
+		"gritos moribundos abruman sus propios\n"
+		"llantos de agonía.\n\n"
+		"Con tu juramento de venganza completado,\n"
+		"entras al portal a tu mundo,\n"
+		"meros momentos antes de que el domo se\n"
+		"rompa en un millón de pedazos.\n\n"
+		"Pero si el poder de D'Sparil está roto\n"
+		"para siempre, por qué no te sientes seguro?\n"
+		"Fue ese último grito justo antes de\n"
+		"su muerte, el que sonó\n"
+		"como una maldición? o una invocación? No\n"
+		"puedes estar realmente seguro, pero puede\n"
+		"que sólo haya sido un grito.\n\n"
+		"De todos modos, que hay de los otros\n"
+		"Jinetes de Serpientes?";
+HE4TEXT =
+		"Pensaste que volverías a tu\n"
+		"mundo después de que D'Sparil murió, pero\n"
+		"su acto final te desterró a su\n"
+		"propio plano. Aquí entraste a los\n"
+		"destrozados restos de tierras conquistadas\n"
+		"por d'Sparil. Tú derrotaste a los\n"
+		"últimos guardianes de estas tierras, pero\n"
+		"ahora estás de pie frente a las puertas\n"
+		"de la fortaleza de D'Sparil. Hasta este\n"
+		"momento no tenías dudas sobre tu habilidad\n"
+		"para enfrentar cualquier cosa que pudieras\n"
+		"encontrar, pero más allá de este portal\n"
+		"yace el mismísimo corazón del mal\n"
+		"que invadió tu mundo. Puede que D'Sparil\n"
+		"esté muerto, pero el agujero donde\n"
+		"nació aún existe. Ahora debes\n"
+		"entrar en ese agujero en la esperanza de\n"
+		"encontrar una salida. Y en algún lugar,\n"
+		"en la esquina más oscura de la heredad\n"
+		"de D'Sparil, sus guardaespaldas pesonales\n"
+		"esperan tu llegada ...";
+HE5TEXT =
+		"Cuando el último Maulotaur ruge su\n"
+		"agonía de muerte, te das cuenta de que\n"
+		"nunca te habías acercado tanto a tu propia\n"
+		"destrucción. Ni siquiera la pelea contra\n"
+		"D'Sparil y sus discípulos había sido\n"
+		"tan desesperada. Miras de manera siniestra\n"
+		"las puertas que se abren delante de tí,\n"
+		"preguntándote si llevan a casa, o si\n"
+		"llevan a alguna tierra de horror\n"
+		"inimaginable. Te encuentras preguntándote\n"
+		"si tienes la fuerza para seguir,\n"
+		"si nada más que muerte y dolor te espera.\n"
+		"Pero qué más puedes hacer, si\n"
+		"la voluntad de luchar ya no está? Puedes\n"
+		"forzarte a tí mismo para continuar en la\n"
+		"faz de tal desesperación? Tienes\n"
+		"el coraje? Te das cuenta, que al final,\n"
+		"no es parte de tí rendirte\n"
+		"sin una pelea. Con los ojos bien\n"
+		"abiertos, vas a reunirte con tu destino.";
+
+// EPISODIO 1 - LA CIUDAD DE LOS CONDENADOS
+HHUSTR_E1M1 = "Los Muelles";
+HHUSTR_E1M2 = "Las Mazmorras";
+HHUSTR_E1M3 = "Puerta de Entrada";			// "Gatehouse" se refiera a una casa cerca de una entrada.
+HHUSTR_E1M4 = "La Torre de Guardia";
+HHUSTR_E1M5 = "La Ciudadela";
+HHUSTR_E1M6 = "La Catedral";
+HHUSTR_E1M7 = "Las Criptas";
+HHUSTR_E1M8 = "La Garganta del Infierno";
+HHUSTR_E1M9 = "El Cementerio";
+
+// EPISODIO 2 - LA GARGANTA DEL INFIERNO
+HHUSTR_E2M1 = "El Cráter";
+HHUSTR_E2M2 = "Los Agujeros de Lava";
+HHUSTR_E2M3 = "El Río de Fuego";
+HHUSTR_E2M4 = "La Gruta de Hielo";
+HHUSTR_E2M5 = "Las Catacumbas";
+HHUSTR_E2M6 = "El Laberinto";
+HHUSTR_E2M7 = "El Gran Salón";
+HHUSTR_E2M8 = "Los Portales del Caos";
+HHUSTR_E2M9 = "El Glaciar";
+
+// EPISODIO 3 - EL DOMO DE D'SPARIL
+HHUSTR_E3M1 = "El Almacén";
+HHUSTR_E3M2 = "El Pozo";				// "Cesspool" es un contenedor subterráneo destinado a guardar desechos líquidos.
+HHUSTR_E3M3 = "La Confluencia";
+HHUSTR_E3M4 = "La Fortaleza Azur";
+HHUSTR_E3M5 = "La Guarida Ofídica";
+HHUSTR_E3M6 = "Las Salas del Miedo";
+HHUSTR_E3M7 = "El Abismo";
+HHUSTR_E3M8 = "La Guarida de D'Sparil";
+HHUSTR_E3M9 = "El Aquífero";
+
+// EPISODIO 4 - EL OSARIO
+HHUSTR_E4M1 = "Catafalco";
+HHUSTR_E4M2 = "Blocao";
+HHUSTR_E4M3 = "Ambulatorio";
+HHUSTR_E4M4 = "Sepulcro";
+HHUSTR_E4M5 = "Gran Escalera";
+HHUSTR_E4M6 = "Salones del Apóstata";
+HHUSTR_E4M7 = "Baluartes de la Perdición";
+HHUSTR_E4M8 = "Puente Destrozado";
+HHUSTR_E4M9 = "Mausoleo";
+
+// EPISODIO 5 - LA HEREDAD ESTANCADA
+HHUSTR_E5M1 = "Acantillados de Ocre";
+HHUSTR_E5M2 = "Rápidos";
+HHUSTR_E5M3 = "Muelle";
+HHUSTR_E5M4 = "Patio";
+HHUSTR_E5M5 = "Hydratyr";
+HHUSTR_E5M6 = "Columnata";
+HHUSTR_E5M7 = "Mansión Fétida";
+HHUSTR_E5M8 = "Campo del Juicio";
+HHUSTR_E5M9 = "Madeja de D'Sparil";
+
+// Llaves
+
+TXT_GOTBLUEKEY = "Llave Azul";
+TXT_GOTYELLOWKEY = "Llave Amarilla";
+TXT_GOTGREENKEY = "Llave Verde";
+
+// Artefactos
+
+TXT_ARTIHEALTH = "Matraz de Cuarzo";
+TXT_ARTIFLY = "Alas de Ira";
+TXT_ARTIINVULNERABILITY = "Anillo de Invencibilidad";
+TXT_ARTITOMEOFPOWER = "Tomo de Poder";
+TXT_ARTIINVISIBILITY = "Esfera de Sombras";
+TXT_ARTIEGG = "Óvulo de Transformación";
+TXT_ARTISUPERHEALTH = "Urna Mística";
+TXT_ARTITORCH = "Antorcha";
+TXT_ARTIFIREBOMB = "Bomba de Tiempo de los Antiguos";
+TXT_ARTITELEPORT = "Dispositivo de Caos";
+
+// Objetos
+
+TXT_ITEMHEALTH = "Frasco de Cristal";
+TXT_ITEMBAGOFHOLDING = "Bolsa de Llevar";			// Esto está sujeto a cambios.
+TXT_ITEMSHIELD1 = "Escudo de Plata";
+TXT_ITEMSHIELD2 = "Escudo Encantado";
+TXT_ITEMSUPERMAP = "Rollo de Mapa";
+
+// Munición
+
+TXT_AMMOGOLDWAND1 = "Cristal de Vara";
+TXT_AMMOGOLDWAND2 = "Geodo de Cristal";
+TXT_AMMOMACE1 = "Esferas de Mazo";
+TXT_AMMOMACE2 = "Pila de Esferas de Mazo";
+TXT_AMMOCROSSBOW1 = "Flechas Etéreas";
+TXT_AMMOCROSSBOW2 = "Carcaj de Flechas Etéreas";
+TXT_AMMOBLASTER1 = "Orbe de Garra";
+TXT_AMMOBLASTER2 = "Orbe de Energía";
+TXT_AMMOSKULLROD1 = "Runas Menores";
+TXT_AMMOSKULLROD2 = "Runas Mayores";
+TXT_AMMOPHOENIXROD1 = "Orbe de Llamas";
+TXT_AMMOPHOENIXROD2 = "Orbe de Infierno";
+
+// Armas
+
+TXT_WPNGOLDWAND = "Vara de Oro";
+TXT_WPNMACE = "Mazo de Fuego";
+TXT_WPNCROSSBOW = "Ballesta Etérea";
+TXT_WPNBLASTER = "Garra de Dragón";
+TXT_WPNSKULLROD = "Vara Infernal";
+TXT_WPNPHOENIXROD = "Vara de Fénix";
+TXT_WPNGAUNTLETS = "Guanteletes del Nigromante";
+
+TXT_NEEDBLUEKEY = "Necesitas una llave azul para abrir esta puerta";
+TXT_NEEDGREENKEY = "Necesitas una llave verde para abrir esta puerta";
+TXT_NEEDYELLOWKEY = "Necesitas una llave amarilla para abrir esta puerta";
+
+TXT_CHEATPOWERON = "Poder activado";
+TXT_CHEATPOWEROFF = "Poder desactivado";
+TXT_CHEATHEALTH = "Salud al máximo";
+TXT_CHEATKEYS = "Todas las llaves";
+TXT_CHEATSOUNDON = "Debug de sonido activado";
+TXT_CHEATSOUNDOFF = "Debug de sonido desactivado";
+TXT_CHEATIDDQD = "Intentando hacer trampa, eh?  Ahora mueres!";
+TXT_CHEATIDKFA = "Tramposo - No mereces armas";
+TXT_CHEATTICKERON = "TICKER activado";					// Ni siquiera conozco ese cheat.
+TXT_CHEATTICKEROFF = "TICKER desactivado";
+TXT_CHEATARTIFACTS3 = "Ahí lo tienes";
+TXT_MIDASTOUCH = "Tienes el toque de Midas, nena";
+TXT_GOTSTUFF = "Conseguiste las cosas!";
+TXT_FREEZEON = "Modo congelar activado";
+TXT_FREEZEOFF = "Modo congelar desactivado";
+TXT_STRANGE = "Te sientes extraño...";
+TXT_STRANGER = "Te sientes incluso más extraño.";
+TXT_NOTSTRANGE = "Te sientes como tú mismo de nuevo.";
+TXT_LEADBOOTSON = "Botas de plomo activadas";
+TXT_LEADBOOTSOFF = "Botas de plomo desactivadas";
+TXT_LIGHTER = "Te sientes más liviano";
+TXT_GRAVITY = "La gravedad te afecta";
+
+// Estadísticas Raven
+
+TXT_IMKILLS = "ASESINATOS";
+TXT_IMITEMS = "OBJETOS";
+TXT_IMSECRETS = "SECRETOS";
+TXT_IMTIME = "TIEMPO";
+
+
+RAVENQUITMSG = "Estás seguro de que quieres salir?";
+
+// Líneas de HeXen
+
+// Maná
+
+TXT_MANA_1 = "Maná Azul";
+TXT_MANA_2 = "Maná Verde";
+TXT_MANA_BOTH = "Maná Combinado";
+
+// Keys
+
+TXT_KEY_STEEL = "Llave de Acero";
+TXT_KEY_CAVE = "Llave de la Cueva";
+TXT_KEY_AXE = "Llave Hacha";
+TXT_KEY_FIRE = "Llave del Fuego";
+TXT_KEY_EMERALD = "Llave Esmeralda";
+TXT_KEY_DUNGEON = "Llave de la Mazmorra";
+TXT_KEY_SILVER = "Llave de Plata";
+TXT_KEY_RUSTED = "Llave Oxidada";
+TXT_KEY_HORN = "Llave Cuerno";
+TXT_KEY_SWAMP = "Llave del Pantano";
+TXT_KEY_CASTLE = "Llave del Castillo";
+
+TXT_NEED_KEY_STEEL = "Necesitas la Llave de Acero";
+TXT_NEED_KEY_CAVE = "Necesitas la Llave de la Cueva";
+TXT_NEED_KEY_AXE = "Necesitas la Llave Hacha";
+TXT_NEED_KEY_FIRE = "Necesitas la Llave del Fuego";
+TXT_NEED_KEY_EMERALD = "Necesitas la Llave Esmeralda";
+TXT_NEED_KEY_DUNGEON = "Necesitas la Llave de la Mazmorra";
+TXT_NEED_KEY_SILVER = "Necesitas la Llave de Plata";
+TXT_NEED_KEY_RUSTED = "Necesitas la Llave Oxidada";
+TXT_NEED_KEY_HORN = "Necesitas la Llave Cuerno";
+TXT_NEED_KEY_SWAMP = "Necesitas la Llave del Pantano";
+TXT_NEED_KEY_CASTLE = "Necesitas la Llave del Castillo";
+
+// Artifacts
+
+TXT_ARTIINVULNERABILITY2 = "Ícono del Defensor";
+TXT_ARTISUMMON = "Sirviente Oscuro";
+TXT_ARTIEGG2 = "Cerdolador";
+TXT_ARTIPOISONBAG = "Flechette";			// Un tipo de munción, comúnmente un dardo. No hay traducción al Español.
+TXT_ARTITELEPORTOTHER = "Dispositivo de Destierro";
+TXT_ARTISPEED = "Botas de Velocidad";
+TXT_ARTIBOOSTMANA = "Copa de Poder";			// "Krater": Recipiente de la antigüedad (griego si no me equivoco).
+TXT_ARTIBOOSTARMOR = "Muñequeras de Piel de Dragón";
+TXT_ARTIBLASTRADIUS = "Disco de Repulsión";
+TXT_ARTIHEALINGRADIUS = "Incante de Ámbito Místico";	// ???
+
+// Puzzle artifacts
+
+TXT_ARTIPUZZSKULL = "Calavera de Yorick";
+TXT_ARTIPUZZGEMBIG = "Corazón de D'Sparil";
+TXT_ARTIPUZZGEMRED = "Planeta de Rubí";
+TXT_ARTIPUZZGEMGREEN1 = "Planeta de Esmeralda";
+TXT_ARTIPUZZGEMGREEN2 = "Planeta de Esmeralda";
+TXT_ARTIPUZZGEMBLUE1 = "Planeta de Zafiro";
+TXT_ARTIPUZZGEMBLUE2 = "Planeta de Zafiro";
+TXT_ARTIPUZZBOOK1 = "DAEMON CODEX";
+TXT_ARTIPUZZBOOK2 = "LIBER OSCURA";
+TXT_ARTIPUZZSKULL2 = "Máscara de las Llamas";
+TXT_ARTIPUZZFWEAPON = "Sello de la Espada";
+TXT_ARTIPUZZCWEAPON = "Reliquia Sagrada";
+TXT_ARTIPUZZMWEAPON = "Sigilo del Mago";
+TXT_ARTIPUZZGEAR = "Engranaje de Reloj";
+TXT_USEPUZZLEFAILED = "No puedes usar esto aquí";
+
+// Objetos
+
+TXT_ARMOR1 = "Armadura de Malla";
+TXT_ARMOR2 = "Escudo Halcón";
+TXT_ARMOR3 = "Casco de Platino";
+TXT_ARMOR4 = "Amuleto de Protección";
+
+// Armas
+
+TXT_WEAPON_F2 = "Hacha de Timon";
+TXT_WEAPON_F3 = "Martillo de la Retribución";
+TXT_WEAPON_F4 = "Quietus armado";
+TXT_WEAPON_C2 = "Vara de la Serpiente";
+TXT_WEAPON_C3 = "Tormenta de Fuego";
+TXT_WEAPON_C4 = "Wraithverge armada";
+TXT_WEAPON_M2 = "Trozos Congelados";
+TXT_WEAPON_M3 = "Arca de la Muerte";
+TXT_WEAPON_M4 = "Bloodscourge armada";
+TXT_WEAPONPIECE = "Una pieza de arma! Este es tu día de suerte!";
+TXT_QUIETUS_PIECE = "Segmento de Quietus";
+TXT_WRAITHVERGE_PIECE = "Segmento de Wraithverge";
+TXT_BLOODSCOURGE_PIECE = "Segmento de Bloodscourge";
+
+// Puertas cerradas Strife
+
+TXT_NEEDKEY = "No tienes la llave";
+TXT_NEED_PASSCARD = "Necesitas un pase de acceso";
+TXT_NEED_PASSCARD_DOOR = "Necesitas un pase de acceso para abrir esta puerta";
+TXT_NEED_IDCARD = "Necesitas una tarjeta de ID";
+TXT_NEED_PRISONKEY = "No tienes la llave de la prisión";
+TXT_NEED_HANDPRINT = "La huella digital no está en los archivos";
+TXT_NEED_GOLDKEY = "Necesitas la Llave de Oro";
+TXT_NEED_IDBADGE = "Necesitas la Insignia de ID";
+TXT_NEED_IDBADGE_DOOR = "Necesitas una Insignia de ID para abrir esta puerta";
+TXT_NEED_SILVERKEY = "Necesitas la Llave de Plata";
+TXT_NEED_BRASSKEY = "Necesitas la Llave de Latón";
+TXT_NEED_REDCRYSTAL = "Necesitas el Cristal Rojo";
+TXT_NEED_BLUECRYSTAL = "Necesitas el Cristal Azul";
+TXT_RETAIL_ONLY = "Ésta área sólo está disponible en la versión completa de Strife";
+TXT_DOES_NOT_WORK = "Eso no parece funcionar";
+
+// Mensajes de misiones de Strife
+
+TXT_QUEST_14 = "Has Volado el Cristal";
+TXT_QUEST_16 = "Has Volado las Puertas";
+TXT_QUEST_27 = "Has Volado el Computador";
+
+TXT_KILLED_BISHOP = "Mataste al Obispo!";
+TXT_KILLED_ORACLE = "Mataste al Oráculo!";
+TXT_KILLED_MACIL = "Mataste a Macil!";
+TXT_KILLED_LOREMASTER = "Mataste al Loremaster!";
+
+// Mensajes de objetos de Strife
+
+TXT_METALARMOR = "Recogiste la Armadura de Metal.";
+TXT_LEATHERARMOR = "Recogiste la Armadura de Cuero.";
+TXT_MEDPATCH = "Recogiste el Parche Médico.";
+TXT_MEDICALKIT = "Recogiste el Kit Médico.";
+TXT_SURGERYKIT = "Recogiste el kit de Cirugía.";
+TXT_STRIFEMAP = "Recogiste el mapa.";
+TXT_BELDINSRING = "Recogiste el anillo.";
+TXT_OFFERINGCHALICE = "Recogiste el Cáliz de Ofrenda.";
+TXT_EAR = "Recogiste la Oreja.";
+TXT_BROKENCOUPLING = "Recogiste el acoplamiento de enrgía roto.";
+TXT_SHADOWARMOR = "Recogiste la Armadura de las Sombras.";
+TXT_ENVSUIT = "Recogiste el Traje Ambiental.";
+TXT_GUARDUNIFORM = "Recogiste el Uniforme de Guardia.";
+TXT_OFFICERSUNIFORM = "Recogiste el Uniforme de Oficial.";
+TXT_FTHROWERPARTS = "Recogiste las partes de un lanzallamas.";
+TXT_REPORT = "Recogiste un reporte.";
+TXT_INFO = "Recogiste la información.";
+TXT_TARGETER = "Recogiste la Mira.";
+TXT_COMMUNICATOR = "Recogiste el Comunicador.";
+TXT_COIN = "Recogiste la moneda.";
+TXT_XGOLD = "Recogiste %d de oro.";
+TXT_BEACON = "Recogiste el Marcador de Teletranportación.";
+TXT_DEGNINORE = "Recogiste la Mena de Degnin.";
+TXT_SCANNER = "Recogiste el escáner.";
+TXT_NEEDMAP = "El escáner no funcionará sin un mapa!\n";
+TXT_PRISONPASS = "Recogiste el Pase de la Prisón.";
+
+TXT_STRIFECROSSBOW = "Recogiste la ballesta.";
+TXT_ASSAULTGUN = "Recogiste el arma de asalto.";
+TXT_MMLAUNCHER = "Recogiste el lanzador de mini misiles.";
+TXT_FLAMER = "Recogiste el lanzallamas.";
+TXT_MAULER = "Recogiste el desgarrador.";
+TXT_GLAUNCHER = "Recogiste el Lanza Granadas.";
+TXT_SIGIL = "Recogiste el SIGILO.";
+
+
+TXT_BASEKEY = "Recogiste la Llave de la Base.";
+TXT_GOVSKEY = "Recogiste la Llave Govs.";
+TXT_PASSCARD = "Recogiste el Tarjeta de Acceso.";
+TXT_IDBADGE = "Recogiste la Insignia de ID.";
+TXT_PRISONKEY = "Recogiste la Llave de la Prisión.";
+TXT_SEVEREDHAND = "Recogiste la Mano Cortada.";
+TXT_POWER1KEY = "Recogiste la Llave de Energía1.";
+TXT_POWER2KEY = "Recogiste la Llave de Energía2.";
+TXT_POWER3KEY = "Recogiste la Llave de Energía3.";
+TXT_GOLDKEY = "Recogiste la Llave de Oro.";
+TXT_IDCARD = "Recogiste la Tarjeta de ID.";
+TXT_SILVERKEY = "Recogiste la Llave de Plata.";
+TXT_ORACLEKEY = "Recogiste la Llave del Oráculo.";
+TXT_MILITARYID = "Recogiste la ID Militar.";
+TXT_ORDERKEY = "Recogiste la Llave de la Órden.";
+TXT_WAREHOUSEKEY = "Recogiste la Llave del Almacén.";
+TXT_BRASSKEY = "Recogiste la Llave de Latón.";
+TXT_REDCRYSTAL = "Recogiste la Llave Cristal Rojo.";
+TXT_BLUECRYSTAL = "Recogiste la llave Cristal Azul.";
+TXT_CHAPELKEY = "Recogiste la Llave de la Iglesia.";
+TXT_CATACOMBKEY = "Recogiste la llave de la Catacumba.";
+TXT_SECURITYKEY = "Recogiste la Llave de Seguridad.";
+TXT_COREKEY = "Recogiste la Llave del Núcleo.";
+TXT_MAULERKEY = "Recogiste la Llave del Desgarrador.";
+TXT_FACTORYKEY = "Recogiste la Llave de la Fábrica.";
+TXT_MINEKEY = "Recogiste la Llave de la Mina.";
+TXT_NEWKEY5 = "Recogiste la Nueva Llave5.";
+TXT_ORACLEPASS = "Recogiste el Pase del Oráculo.";
+
+TXT_HEGRENADES = "Recogiste Rondas de Granadas HE.";
+TXT_PHGRENADES = "Recogiste Rondas de Granadas Fosfóricas.";
+TXT_CLIPOFBULLETS = "Recogiste el cargador de balas.";
+TXT_BOXOFBULLETS = "Recogiste la caja de balas.";
+TXT_MINIMISSILES = "Recogiste los mini misiles.";
+TXT_CRATEOFMISSILES = "Recogiste la caja de misiles.";
+TXT_ENERGYPOD = "Recogiste el recipiente de energía.";
+TXT_ENERGYPACK = "Recogiste el pack de energía.";
+TXT_POISONBOLTS = "Recogiste las flechas venenosas.";
+TXT_ELECTRICBOLTS = "Recogiste las flechas eléctricas.";
+TXT_AMMOSATCHEL = "Recogiste la cartera de munición.";
+
+// Diálogos random
+
+TXT_RANDOM_PEASANT_01 = "Por favor no me hagas daño.";
+TXT_RANDOM_PEASANT_02 = "Si buscar herirme, no valgo el esfuerzo realmente.";
+TXT_RANDOM_PEASANT_03 = "No sé nada.";
+TXT_RANDOM_PEASANT_04 = "Vete o llamaré a los guardias!";
+TXT_RANDOM_PEASANT_05 = "A veces desearía que estos rebeldes sólo comprendieran cuál es su lugar y pararan esto.";
+TXT_RANDOM_PEASANT_06 = "Sólo dejame en paz, OK?";
+TXT_RANDOM_PEASANT_07 = "No estoy seguro, pero a veces pienso que conozco a algunos de los acólitos.";
+TXT_RANDOM_PEASANT_08 = "La orden todo muy bien cerrado por aquí.";
+TXT_RANDOM_PEASANT_09 = "No hay manera de que esto sea sólo una fuerza de seguridad.";
+TXT_RANDOM_PEASANT_10 = "He escuchado que la órden está realmente nerviosa por las acciones del frente por aquí.";
+
+TXT_RANDOM_REBEL_01 = "No hay manera de que la órden pueda contra nosotros.";
+TXT_RANDOM_REBEL_02 = "Estamos casi listos para atacar. Los planes de Macil están cayendo en su lugar.";
+TXT_RANDOM_REBEL_03 = "Estamos todos detrás de tí, no te preocupes.";
+TXT_RANDOM_REBEL_04 = "No te acerques mucho a ninguno de esos grandes robots. Te reducirán a chatarra!";
+TXT_RANDOM_REBEL_05 = "El día de nuestra gloria vendrá pronto, y aquellos que se opongan serán aplastados!";
+TXT_RANDOM_REBEL_06 = "No te pongas demasiado cómodo. Seguimos teniendo trabajo que hacer.";
+TXT_RANDOM_REBEL_07 = "Macil dice que eres la nueva esperanza. Ten eso en cuenta.";
+TXT_RANDOM_REBEL_08 = "Una vez que nos deshagamos de esos charlatanes, podremos reconstruir este mundo como debería ser.";
+TXT_RANDOM_REBEL_09 = "Recuerda que no estás peleando sólo por tí mismo, sino que por todos aquí y afuera.";
+TXT_RANDOM_REBEL_10 = "Mientras quede uno de nosotros de pie, ganaremos.";
+
+TXT_RANDOM_AGUARD_01 = "Muévete, campesino.";
+TXT_RANDOM_AGUARD_02 = "Sigue la verdadera fé, sólo entonces comenzarás a entender.";
+TXT_RANDOM_AGUARD_03 = "Sólo a través de la muerte uno puede realmente volver a nacer.";
+TXT_RANDOM_AGUARD_04 = "No estoy interesado en tus inútiles tonterías.";
+TXT_RANDOM_AGUARD_05 = "Si hubiera querido hablar contigo te lo habría dicho.";
+TXT_RANDOM_AGUARD_06 = "Ve y molesta a alguien más!";
+TXT_RANDOM_AGUARD_07 = "Sigue moviéndote!";
+TXT_RANDOM_AGUARD_08 = "Si la alarma suena, sólo mantente fuera de nuestro camino!";
+TXT_RANDOM_AGUARD_09 = "La órden limiará este mundo y lo llevará a la nueva era.";
+TXT_RANDOM_AGUARD_10 = "Problema? No? Eso pensaba.";
+
+TXT_RANDOM_BEGGAR_01 = "Limosna para los pobres?";
+TXT_RANDOM_BEGGAR_02 = "Qué estás mirando, hombre de la superficie?";
+TXT_RANDOM_BEGGAR_03 = "No tendrás algo de comida extra, o sí?";
+TXT_RANDOM_BEGGAR_04 = "Ustedes personas de la superficie nunca podrán entendernos.";
+TXT_RANDOM_BEGGAR_05 = "Ja, los guardias no pueden encontrarnos. Esos idiotas ni saben que existimos.";
+TXT_RANDOM_BEGGAR_06 = "Un día todos con excepción de los que sirven a la órden se verán forzados a unirse a nosotros.";
+TXT_RANDOM_BEGGAR_07 = "Mira ahora, pero sabes que ésta será tu cara algún día.";
+TXT_RANDOM_BEGGAR_08 = "No hay nada más molesto que alguien de la superficie con actitud!";
+TXT_RANDOM_BEGGAR_09 = "La órden hará trabajo rápido de su patético frente.";
+TXT_RANDOM_BEGGAR_10 = "Ten cuidado, hombre de la superficie. Conocemos a nuestros enemigos!";
+
+TXT_RANDOM_PGUARD_01 = "Somos las manos del destino. Ganar nuestra ira es encontrar el olvido!";
+TXT_RANDOM_PGUARD_02 = "La órden limpiará este mundo de los débiles y los corruptos!";
+TXT_RANDOM_PGUARD_03 = "Obedece la voluntad de los maestros!";
+TXT_RANDOM_PGUARD_04 = "Larga vida a los hermanos de la órden!";
+TXT_RANDOM_PGUARD_05 = "El libre albedrío es una ilusión que enlaza a los débiles de mente.";
+TXT_RANDOM_PGUARD_06 = "El poder es el camino a la gloria. Seguir a la órden es seguir ese camino!";
+TXT_RANDOM_PGUARD_07 = "toma tu lugar entre los justos, únete a nosotros!";
+TXT_RANDOM_PGUARD_08 = "La órden protege a los suyos.";
+TXT_RANDOM_PGUARD_09 = "Acólitos? Ellos todavía tienen que ver la completa gloria de la órden.";
+TXT_RANDOM_PGUARD_10 = "si hay algo de honor dentro de esa patética cáscara de cuerpo, entrarás en los brazos de la órden.";
+
+TXT_RANDOMGOODBYE_1 = "Adiós!";
+TXT_RANDOMGOODBYE_2 = "Gracias, adiós!";
+TXT_RANDOMGOODBYE_3 = "Te veo después!";
+TXT_HAVEENOUGH		= "Pareces tener suficiente!";
+TXT_GOAWAY			= "Vete!";
+
+TXT_COMM0			= "Mensaje Entrante";
+TXT_COMM1			= "Mensaje Entrante de BlackBird";
+
+
+// Menu Strings
+
+// Main Menu
+MNU_NEWGAME			= "NUEVA PARTIDA";
+MNU_OPTIONS			= "OPCIONES";
+MNU_GAMEFILES		= "ARCHIVOS DE PARTIDA";
+MNU_INFO			= "INFO";
+MNU_QUITGAME		= "SALIR DEL JUEGO";
+
+// Skills
+MNU_CHOOSESKILL		= "ESCOGE NIVEL DE HABILIDAD:";
+
+SKILL_BABY			= "I'm too young to die.";
+SKILL_EASY			= "Hey, not too rough.";
+SKILL_NORMAL		= "Hurt me plenty.";
+SKILL_HARD			= "Ultra-Violence";
+SKILL_NIGHTMARE		= "NIGHTMARE!";
+
+CSKILL_BABY			= "Easy does it";
+CSKILL_EASY			= "Not so sticky";
+CSKILL_NORMAL		= "Gobs of goo";
+CSKILL_HARD			= "Extreme Ooze";
+CSKILL_NIGHTMARE	= "Super Slimey!";
+
+SSKILL_BABY			= "Entrenamiento";
+SSKILL_EASY			= "Novato";
+SSKILL_NORMAL		= "Veterano";
+SSKILL_HARD			= "Elite";
+SSKILL_NIGHTMARE	= "Baño de Sangre";
+
+MNU_WETNURSE		= "Vos necesitáis una nodriza";
+MNU_YELLOWBELLIES	= "Somos unos cobardes";
+MNU_BRINGEST		= "Traedlos aquí";
+MNU_SMITE			= "Vos sois un maestro del asesinato";
+MNU_BLACKPLAGUE		= "La plaga negra os posee";
+
+MNU_SQUIRE			= "Escudero";
+MNU_KNIGHT			= "Caballero";
+MNU_WARRIOR			= "Guerrero";
+MNU_BERSERKER		= "Frenético";
+MNU_TITAN			= "Titán";
+                                    
+MNU_ALTARBOY		= "Chico de Altar";
+MNU_ACOLYTE			= "Acólito";
+MNU_PRIEST			= "Sacerdote";
+MNU_CARDINAL		= "Cardenal";
+MNU_POPE			= "Papa";
+                                    
+MNU_APPRENTICE		= "Aprendiz";
+MNU_ENCHANTER		= "Encantador";
+MNU_SORCERER        = "Hechicero";
+MNU_WARLOCK			= "Brujo";
+MNU_ARCHMAGE		= "Archimago";
+
+// Classes
+MNU_CHOOSECLASS		= "Escoge clase:";
+MNU_FIGHTER			= "Luchador";
+MNU_CLERIC			= "Clérigo";
+MNU_MAGE			= "Mago";
+MNU_RANDOM			= "Aleatorio";
+
+// Game Files
+MNU_LOADGAME		= "CARGAR PARTIDA";
+MNU_SAVEGAME		= "GUARDAR PARTIDA";
+MNU_NOPICTURE		= "Sin Imagen";
+MNU_DIFFVERSION		= "Versión\nDiferente";
+MNU_NOFILES			= "Sin archivos";
+MNU_DELETESG		= "De verdad que quieres eliminar la partida guardada\n";
+
+// Episodes
+MNU_EPISODE			= "Select Episode";
+MNU_COTD			= "CITY OF THE DAMNED";
+MNU_HELLSMAW		= "HELL'S MAW";
+MNU_DOME			= "THE DOME OF D'SPARIL";
+MNU_OSSUARY			= "THE OSSUARY";
+MNU_DEMESNE			= "THE STAGNANT DEMESNE";
+$ifgame(heretic) SWSTRING = "ONLY AVAILABLE IN THE REGISTERED VERSION";
+
+// Options Menu
+OPTMNU_TITLE				= "OPTIONS";
+OPTMNU_CONTROLS				= "Customize Controls";
+OPTMNU_MOUSE				= "Mouse options";
+OPTMNU_JOYSTICK				= "Joystick options";
+OPTMNU_PLAYER				= "Player Setup";
+OPTMNU_GAMEPLAY				= "Gameplay Options";
+OPTMNU_COMPATIBILITY		= "Compatibility Options";
+OPTMNU_AUTOMAP				= "Automap Options";
+OPTMNU_HUD					= "HUD Options";
+OPTMNU_MISCELLANEOUS		= "Miscellaneous Options";
+OPTMNU_NETWORK				= "Network Options";
+OPTMNU_SOUND				= "Sound Options";
+OPTMNU_DISPLAY				= "Display Options";
+OPTMNU_VIDEO				= "Set video mode";
+OPTMNU_DEFAULTS				= "Reset to defaults";
+OPTMNU_RESETTOSAVED			= "Reset to last saved";
+OPTMNU_CONSOLE				= "Go to console";
+
+// Controls Menu
+
+CNTRLMNU_TITLE					= "CUSTOMIZE CONTROLS";
+CNTRLMNU_SWITCHTEXT1			= "ENTER to change, BACKSPACE to clear";
+CNTRLMNU_SWITCHTEXT2			= "Press new key for control, ESC to cancel";
+CNTRLMNU_CONTROLS				= "Controls";
+CNTRLMNU_ATTACK					= "Fire";
+CNTRLMNU_ALTATTACK				= "Secondary Fire";
+CNTRLMNU_RELOAD					= "Weapon Reload";
+CNTRLMNU_ZOOM					= "Weapon Zoom";
+CNTRLMNU_USER1					= "Weapon State 1";
+CNTRLMNU_USER2					= "Weapon State 2";
+CNTRLMNU_USER3					= "Weapon State 3";
+CNTRLMNU_USER4					= "Weapon State 4";
+CNTRLMNU_USE					= "Use / Open";
+CNTRLMNU_FORWARD				= "Move forward";
+CNTRLMNU_BACK					= "Move backward";
+CNTRLMNU_MOVELEFT				= "Strafe left";
+CNTRLMNU_MOVERIGHT				= "Strafe right";
+CNTRLMNU_TURNLEFT				= "Turn left";
+CNTRLMNU_TURNRIGHT				= "Turn right";
+CNTRLMNU_TURN180				= "Quick Turn";
+CNTRLMNU_JUMP					= "Jump";
+CNTRLMNU_CROUCH					= "Crouch";
+CNTRLMNU_TOGGLECROUCH			= "Crouch Toggle";
+CNTRLMNU_MOVEUP					= "Fly / Swim up";
+CNTRLMNU_MOVEDOWN				= "Fly / Swim down";
+CNTRLMNU_LAND					= "Stop flying";
+CNTRLMNU_MOUSELOOK				= "Mouse look";
+CNTRLMNU_KEYBOARDLOOK			= "Keyboard look";
+CNTRLMNU_LOOKUP					= "Look up";
+CNTRLMNU_LOOKDOWN				= "Look down";
+CNTRLMNU_CENTERVIEW				= "Center view";
+CNTRLMNU_RUN					= "Run";
+CNTRLMNU_TOGGLERUN				= "Toggle Run";
+CNTRLMNU_STRAFE					= "Strafe";
+CNTRLMNU_SCOREBOARD				= "Show Scoreboard";
+CNTRLMNU_TOGGLESCOREBOARD		= "Toggle Scoreboard";
+CNTRLMNU_CHAT					= "Chat";
+CNTRLMNU_SAY					= "Say";
+CNTRLMNU_TEAMSAY				= "Team say";
+CNTRLMNU_WEAPONS				= "Weapons";
+CNTRLMNU_NEXTWEAPON				= "Next weapon";
+CNTRLMNU_PREVIOUSWEAPON			= "Previous weapon";
+CNTRLMNU_SLOT1					= "Weapon Slot 1";
+CNTRLMNU_SLOT2					= "Weapon Slot 2";
+CNTRLMNU_SLOT3					= "Weapon Slot 3";
+CNTRLMNU_SLOT4					= "Weapon Slot 4";
+CNTRLMNU_SLOT5					= "Weapon Slot 5";
+CNTRLMNU_SLOT6					= "Weapon Slot 6";
+CNTRLMNU_SLOT7					= "Weapon Slot 7";
+CNTRLMNU_SLOT8					= "Weapon Slot 8";
+CNTRLMNU_SLOT9					= "Weapon Slot 9";
+CNTRLMNU_SLOT0					= "Weapon Slot 0";
+CNTRLMNU_INVENTORY				= "Inventory";
+CNTRLMNU_USEITEM				= "Activate item";
+CNTRLMNU_USEALLITEMS			= "Activate all items";
+CNTRLMNU_NEXTITEM				= "Next item";
+CNTRLMNU_PREVIOUSITEM			= "Previous item";
+CNTRLMNU_DROPITEM				= "Drop item";
+CNTRLMNU_QUERYITEM				= "Query item";
+CNTRLMNU_DROPWEAPON				= "Drop weapon";
+CNTRLMNU_OTHER					= "Other";
+CNTRLMNU_AUTOMAP				= "Toggle automap";
+CNTRLMNU_CHASECAM				= "Chasecam";
+CNTRLMNU_COOPSPY				= "Coop spy";
+CNTRLMNU_SCREENSHOT				= "Screenshot";
+CNTRLMNU_CONSOLE				= "Open console";
+CNTRLMNU_POPUPS					= "Strife Popup Screens";
+CNTRLMNU_MISSION				= "Mission objectives";
+CNTRLMNU_KEYS					= "Keys list";
+CNTRLMNU_STATS					= "Weapons/ammo/stats";
+
+// Mouse Menu
+
+MOUSEMNU_TITLE				= "MOUSE OPTIONS";
+MOUSEMNU_ENABLEMOUSE		= "Enable mouse";
+MOUSEMNU_MOUSEINMENU		= "Enable mouse in menus";
+MOUSEMNU_SHOWBACKBUTTON		= "Show back button";
+MOUSEMNU_CURSOR				= "Cursor";
+MOUSEMNU_SENSITIVITY		= "Overall sensitivity";
+MOUSEMNU_NOPRESCALE			= "Prescale mouse movement";
+MOUSEMNU_SMOOTHMOUSE		= "Smooth mouse movement";
+MOUSEMNU_TURNSPEED			= "Turning speed";
+MOUSEMNU_MOUSELOOKSPEED		= "Mouselook speed";
+MOUSEMNU_FORWBACKSPEED		= "Forward/Backward speed";
+MOUSEMNU_STRAFESPEED		= "Strafing speed";
+MOUSEMNU_ALWAYSMOUSELOOK	= "Always Mouselook";
+MOUSEMNU_INVERTMOUSE		= "Invert Mouse";
+MOUSEMNU_LOOKSPRING			= "Lookspring";
+MOUSEMNU_LOOKSTRAFE			= "Lookstrafe";
+
+// Joystick Menu
+
+JOYMNU_CONFIG				= "CONFIGURE CONTROLLER";
+JOYMNU_OPTIONS				= "CONTROLLER OPTIONS";
+
+// Player Setup Menu
+MNU_PLAYERSETUP		= "PLAYER SETUP";
+PLYRMNU_NAME			= "Name";
+PLYRMNU_TEAM			= "Team";
+PLYRMNU_PLAYERCOLOR		= "Color";
+PLYRMNU_RED				= "Red";
+PLYRMNU_GREEN			= "Green";
+PLYRMNU_BLUE			= "Blue";
+PLYRMNU_PLAYERCLASS		= "Class";
+PLYRMNU_PLAYERSKIN		= "Skin";
+PLYRMNU_PLAYERGENDER	= "Gender";
+PLYRMNU_AUTOAIM			= "Autoaim";
+PLYRMNU_SWITCHONPICKUP	= "Switch on pickup";
+PLYRMNU_ALWAYSRUN		= "Always Run";
+
+// Display Options
+DSPLYMNU_TITLE					= "DISPLAY OPTIONS";
+DSPLYMNU_SCOREBOARD				= "Scoreboard Options";
+DSPLYMNU_SCREENSIZE				= "Screen size";
+DSPLYMNU_BRIGHTNESS				= "Brightness";
+DSPLYMNU_VSYNC					= "Vertical Sync";
+DSPLYMNU_CAPFPS					= "Rendering Interpolation";
+DSPLYMNU_WIPETYPE				= "Screen wipe style";
+DSPLYMNU_SHOWENDOOM				= "Show ENDOOM screen";
+DSPLYMNU_BLOODFADE				= "Blood Flash Intensity";
+DSPLYMNU_PICKUPFADE				= "Pickup Flash Intensity";
+DSPLYMNU_WATERFADE				= "Underwater Blend Intensity";
+DSPLYMNU_PALLETEHACK			= "DirectDraw palette hack"; // Not used
+DSPLYMNU_ATTACHEDSURFACES		= "Use attached surfaces"; // Not used
+DSPLYMNU_SKYMODE				= "Sky render mode";
+DSPLYMNU_GZDFULLBRIGHT			= "Fullbright overrides sector color";
+DSPLYMNU_DRAWFUZZ				= "Use fuzz effect";
+DSPLYMNU_TRANSSOUL				= "Lost Soul translucency";
+DSPLYMNU_FAKECONTRAST			= "Use fake contrast";
+DSPLYMNU_ROCKETTRAILS			= "Rocket Trails";
+DSPLYMNU_BLOODTYPE				= "Blood Type";
+DSPLYMNU_PUFFTYPE				= "Bullet Puff Type";
+DSPLYMNU_MAXPARTICLES			= "Number of particles";
+DSPLYMNU_MAXDECALS				= "Number of decals";
+DSPLYMNU_PLAYERSPRITES			= "Show player sprites";
+DSPLYMNU_DEATHCAM				= "Death camera";
+DSPLYMNU_TELEZOOM				= "Teleporter zoom";
+DSPLYMNU_QUAKEINTENSITY			= "Earthquake shake intensity";
+DSPLYMNU_NOMONSTERINTERPOLATION	= "Interpolate monster movement";
+DSPLYMNU_MENUDIM				= "Menu dim";
+DSPLYMNU_DIMCOLOR				= "Dim color";
+DSPLYMNU_MOVEBOB 				= "View bob amount while moving";
+DSPLYMNU_STILLBOB 				= "View bob amount while not moving";
+DSPLYMNU_BOBSPEED				= "Weapon bob speed";
+
+// HUD Options
+HUDMNU_TITLE					= "HUD Options";
+HUDMNU_ALTHUD					= "Alternative HUD";
+HUDMNU_MESSAGE					= "Message Options";
+HUDMNU_UISCALE					= "User interface scale";
+HUDMNU_CROSSHAIR				= "Default Crosshair";
+HUDMNU_FORCECROSSHAIR			= "Force default crosshair";
+HUDMNU_GROWCROSSHAIR			= "Grow crosshair when picking up items";
+HUDMNU_CROSSHAIRCOLOR			= "Crosshair color";
+HUDMNU_CROSSHAIRHEALTH			= "Crosshair shows health";
+HUDMNU_CROSSHAIRSCALE			= "Scale crosshair";
+HUDMNU_NAMETAGS					= "Display nametags";
+HUDMNU_NAMETAGCOLOR				= "Nametag color";
+HUDMNU_SCALESTATBAR				= "Stretch status bar";
+HUDMNU_SCALEFULLSCREENHUD		= "Stretch Fullscreen HUD";
+HUDMNU_OLDOUCH					= "Use old ouch mug shot formula";
+HUDMNU_HEXENFLASHES				= "Hexen weapon flashes";
+HUDMNU_POISONFLASHES			= "Poison damage flashes";
+HUDMNU_ICEFLASHES				= "Ice death flashes";
+HUDMNU_HAZARDFLASHES			= "Poison Buildup flashes";
+
+// AltHUD Options
+ALTHUDMNU_TITLE					= "Alternative HUD";
+ALTHUDMNU_ENABLE				= "Enable alternative HUD";
+ALTHUDMNU_SCALEHUD				= "Stretch alternative HUD";
+ALTHUDMNU_SHOWSECRETS			= "Show secret count";
+ALTHUDMNU_SHOWMONSTERS			= "Show monster count";
+ALTHUDMNU_SHOWITEMS				= "Show item count";
+ALTHUDMNU_SHOWSTATS				= "Show stamina and accuracy";
+ALTHUDMNU_SHOWBERSERK			= "Show berserk";
+ALTHUDMNU_SHOWWEAPONS			= "Show weapons";
+ALTHUDMNU_SHOWAMMO				= "Show ammo for";
+ALTHUDMNU_SHOWTIME				= "Show time";
+ALTHUDMNU_TIMECOLOR				= "Time color";
+ALTHUDMNU_SHOWLAG				= "Show network latency";
+ALTHUDMNU_AMMOORDER				= "Ammo display order";
+ALTHUDMNU_AMMORED				= "Red ammo display below %";
+ALTHUDMNU_AMMOYELLOW			= "Yellow ammo display below %";
+ALTHUDMNU_HEALTHRED				= "Red health display below";
+ALTHUDMNU_HEALTHYELLOW			= "Yellow health display below";
+ALTHUDMNU_HEALTHGREEN			= "Green health display below";
+ALTHUDMNU_ARMORRED				= "Red armor display below";
+ALTHUDMNU_ARMORYELLOW			= "Yellow armor display below";
+ALTHUDMNU_ARMORGREEN			= "Green armor display below";
+ALTHUDMNU_AUTOMAPHUD			= "Alternative Automap HUD";
+ALTHUDMNU_TITLECOLOR			= "Map title color";
+ALTHUDMNU_MAPTIMECOLOR			= "Map time color";
+ALTHUDMNU_HUBTIMECOLOR			= "Hub time color";
+ALTHUDMNU_TOTALTIMECOLOR		= "Total time color";
+ALTHUDMNU_COORDINATECOLOR		= "Coordinate color";
+ALTHUDMNU_COORDINATEMODE		= "Coordinate mode";
+ALTHUDMNU_STATSNAMECOLOR		= "Statistics name color";
+ALTHUDMNU_STATSCOLOR			= "Statistics color";
+
+// Misc. Options
+MISCMNU_TITLE					= "Miscellaneous Options";
+MISCMNU_MERGEKEYS				= "Merge left+right Alt/Ctrl/Shift";
+MISCMNU_WINFULLSCREENTOGGLE		= "Alt-Enter toggles fullscreen";
+MISCMNU_MACFULLSCREENTOGGLE		= "Command-F toggles fullscreen";
+MISCMNU_QUERYIWAD				= "Show IWAD selection dialog";
+MISCMNU_ALLCHEATS				= "Enable cheats from all games";
+MISCMNU_ENABLEAUTOSAVES			= "Enable autosaves";
+MISCMNU_AUTOSAVECOUNT			= "Number of autosaves";
+MISCMNU_SAVELOADCONFIRMATION  = "Save/Load confirmation";
+MISCMNU_DEHLOAD					= "Load *.deh/*.bex lumps";
+MISCMNU_CACHENODES				= "Cache nodes";
+MISCMNU_CACHETIME				= "Time threshold for node caching";
+MISCMNU_CLEARNODECACHE			= "Clear node cache";
+
+// Automap Options
+AUTOMAPMNU_TITLE				= "AUTOMAP OPTIONS";
+AUTOMAPMNU_COLORSET				= "Map color set";
+AUTOMAPMNU_CUSTOMCOLORS			= "Allow map defined colors";
+AUTOMAPMNU_SETCUSTOMCOLORS		= "Set custom colors";
+AUTOMAPMNU_CONTROLS				= "Customize map controls";
+AUTOMAPMNU_ROTATE				= "Rotate automap";
+AUTOMAPMNU_OVERLAY				= "Overlay automap";
+AUTOMAPMNU_TEXTURED				= "Enable textured display";
+AUTOMAPMNU_FOLLOW				= "Follow player";
+AUTOMAPMNU_SHOWITEMS			= "Show item counts";
+AUTOMAPMNU_SHOWMONSTERS			= "Show monster counts";
+AUTOMAPMNU_SHOWSECRETS			= "Show secret counts";
+AUTOMAPMNU_SHOWTIME				= "Show time elapsed";
+AUTOMAPMNU_SHOWTOTALTIME		= "Show total time elapsed";
+AUTOMAPMNU_MAPSECRETS			= "Show secrets on map";
+AUTOMAPMNU_SHOWMAPLABEL			= "Show map label";
+AUTOMAPMNU_DRAWMAPBACK			= "Draw map background";
+AUTOMAPMNU_SHOWKEYS				= "Show keys (cheat)";
+AUTOMAPMNU_SHOWTRIGGERLINES		= "Show trigger lines";
+AUTOMAPMNU_SHOWTHINGSPRITES		= "Show things as sprites";
+AUTOMAPMNU_PTOVERLAY			= "Overlay portals";
+
+// Automap Controls
+MAPCNTRLMNU_TITLE 			= "CUSTOMIZE MAP CONTROLS";
+MAPCNTRLMNU_CONTROLS		= "Map Controls";
+MAPCNTRLMNU_PANLEFT			= "Pan left";
+MAPCNTRLMNU_PANRIGHT		= "Pan right";
+MAPCNTRLMNU_PANUP			= "Pan up";
+MAPCNTRLMNU_PANDOWN			= "Pan down";
+MAPCNTRLMNU_ZOOMIN			= "Zoom in";
+MAPCNTRLMNU_ZOOMOUT			= "Zoom out";
+MAPCNTRLMNU_TOGGLEZOOM		= "Toggle zoom";
+MAPCNTRLMNU_TOGGLEFOLLOW	= "Toggle follow";
+MAPCNTRLMNU_TOGGLEGRID		= "Toggle grid";
+MAPCNTRLMNU_TOGGLETEXTURE	= "Toggle texture";
+MAPCNTRLMNU_SETMARK			= "Set mark";
+MAPCNTRLMNU_CLEARMARK		= "Clear mark";
+
+// Automap Colors
+MAPCOLORMNU_TITLE 						= "CUSTOMIZE MAP COLORS";
+MAPCOLORMNU_DEFAULTMAPCOLORS			= "Restore default custom colors";
+MAPCOLORMNU_BACKCOLOR 					= "Background";
+MAPCOLORMNU_YOURCOLOR 					= "You";
+MAPCOLORMNU_WALLCOLOR 					= "1-sided walls";	
+MAPCOLORMNU_FDWALLCOLOR 				= "2-sided walls with different floors";		
+MAPCOLORMNU_CDWALLCOLOR 				= "2-sided walls with different ceilings";
+MAPCOLORMNU_EFWALLCOLOR 				= "2-sided walls with 3D floors";	
+MAPCOLORMNU_GRIDCOLOR 					= "Map grid";
+MAPCOLORMNU_XHAIRCOLOR 					= "Center point";
+MAPCOLORMNU_NOTSEENCOLOR 				= "Not-yet-seen walls";		
+MAPCOLORMNU_LOCKEDCOLOR 				= "Locked doors";
+MAPCOLORMNU_INTRALEVELCOLOR				= "Teleporter to the same map";
+MAPCOLORMNU_INTERLEVELCOLOR 			= "Teleporter to a different map";
+MAPCOLORMNU_SECRETSECTORCOLOR 			= "Secret sector";
+MAPCOLORMNU_SPECIALWALLCOLOR			= "Special trigger lines";
+MAPCOLORMNU_CHEATMODE					= "Cheat Mode";
+MAPCOLORMNU_TSWALLCOLOR					= "Invisible 2-sided walls";	
+MAPCOLORMNU_SECRETWALLCOLOR				= "Secret walls";
+MAPCOLORMNU_THINGCOLOR					= "Actors";
+MAPCOLORMNU_MONSTERCOLOR				= "Monsters";
+MAPCOLORMNU_NONCOUNTINGMONSTERCOLOR 	= "non-counting Monsters";
+MAPCOLORMNU_FRIENDCOLOR 				= "Friends";
+MAPCOLORMNU_ITEMCOLOR 					= "Items";
+MAPCOLORMNU_COUNTITEMCOLOR 				= "Count Items";
+MAPCOLORMNU_OVERLAY 					= "Overlay Mode";
+MAPCOLORMNU_OVCHEATMODE 				= "Overlay Cheat Mode";
+MAPCOLORMNU_PORTAL						= "Portal Overlays";
+
+// Message Options
+MSGMNU_TITLE				= "MESSAGES";
+MSGMNU_SHOWMESSAGES			= "Show messages";
+MSGMNU_SHOWOBITUARIES		= "Show obituaries";
+MSGMNU_SHOWSECRETS			= "Show secret notifications";
+MSGMNU_SCALETEXT			= "Scale text in high res";
+MSGMNU_SCALECONSOLE			= "Scale console";
+MSGMNU_MESSAGELEVEL			= "Minimum message level";
+MSGMNU_CENTERMESSAGES		= "Center messages";
+MSGMNU_MESSAGECOLORS		= "Message Colors";
+MSGMNU_ITEMPICKUP			= "Item Pickup";
+MSGMNU_OBITUARIES			= "Obituaries";
+MSGMNU_CRITICALMESSAGES		= "Critical Messages";
+MSGMNU_CHATMESSAGES			= "Chat Messages";
+MSGMNU_TEAMMESSAGES			= "Team Messages";
+MSGMNU_CENTEREDMESSAGES		= "Centered Messages";
+MSGMNU_SCREENSHOTMESSAGES	= "Screenshot messages";
+MSGMNU_LONGSAVEMESSAGES		= "Detailed save messages";
+MSGMNU_DEVELOPER			= "Developer message mode";
+
+// Scoreboard Options
+SCRBRDMNU_TITLE				= "SCOREBOARD OPTIONS";
+SCRBRDMNU_COOPERATIVE		= "Cooperative Options";
+SCRBRDMNU_ENABLE			= "Enable Scoreboard";
+SCRBRDMNU_HEADERCOLOR		= "Header Color";
+SCRBRDMNU_YOURCOLOR			= "Your Player Color";
+SCRBRDMNU_OTHERPLAYERCOLOR	= "Other Players' Color";
+SCRBRDMNU_DEATHMATCH		= "Deathmatch Options";
+SCRBRDMNU_TEAMDEATHMATCH	= "Team Deathmatch Options";
+
+// Gameplay Menu
+GMPLYMNU_TITLE				= "GAMEPLAY OPTIONS";
+GMPLYMNU_TEAMPLAY			= "Teamplay";		
+GMPLYMNU_TEAMDAMAGE			= "Team damage scalar";
+GMPLYMNU_SMARTAUTOAIM		= "Smart Autoaim";
+GMPLYMNU_FALLINGDAMAGE		= "Falling damage";
+GMPLYMNU_DROPWEAPON			= "Drop weapon";
+GMPLYMNU_DOUBLEAMMO			= "Double ammo";
+GMPLYMNU_INFINITEAMMO		= "Infinite ammo";
+GMPLYMNU_INFINITEINVENTORY	= "Infinite inventory";
+GMPLYMNU_NOMONSTERS			= "No monsters";
+GMPLYMNU_NOMONSTERSTOEXIT	= "No monsters to exit";
+GMPLYMNU_MONSTERSRESPAWN	= "Monsters respawn";
+GMPLYMNU_NORESPAWN			= "No respawn";
+GMPLYMNU_ITEMSRESPAWN		= "Items respawn";
+GMPLYMNU_SUPERRESPAWN		= "Big powerups respawn";
+GMPLYMNU_FASTMONSTERS		= "Fast monsters";
+GMPLYMNU_DEGENERATION		= "Degeneration";
+GMPLYMNU_NOAUTOAIM			= "Allow Autoaim";
+GMPLYMNU_ALLOWSUICIDE		= "Allow Suicide";
+GMPLYMNU_ALLOWJUMP			= "Allow jump";
+GMPLYMNU_ALLOWCROUCH		= "Allow crouch";
+GMPLYMNU_ALLOWFREELOOK		= "Allow freelook";
+GMPLYMNU_ALLOWFOV			= "Allow FOV";
+GMPLYMNU_BFGFREEAIM			= "Allow BFG aiming";
+GMPLYMNU_ALLOWAUTOMAP		= "Allow automap";
+GMPLYMNU_AUTOMAPALLIES		= "Automap allies";
+GMPLYMNU_ALLOWSPYING		= "Allow spying";
+GMPLYMNU_CHASECAM			= "Chasecam cheat";
+GMPLYMNU_DONTCHECKAMMO		= "Check ammo for weapon switch";
+GMPLYMNU_KILLBOSSSPAWNS		= "Icon's death kills its spawns";
+GMPLYMNU_NOCOUNTENDMONSTER	= "End sector counts for kill %";
+GMPLYMNU_DEATHMATCH			= "Deathmatch Settings";
+GMPLYMNU_WEAPONSSTAY		= "Weapons stay";
+GMPLYMNU_ALLOWPOWERUPS		= "Allow powerups";
+GMPLYMNU_ALLOWHEALTH		= "Allow health";
+GMPLYMNU_ALLOWARMOR			= "Allow armor";
+GMPLYMNU_SPAWNFARTHEST		= "Spawn farthest";
+GMPLYMNU_SAMEMAP			= "Same map";
+GMPLYMNU_FORCERESPAWN		= "Force respawn";
+GMPLYMNU_ALLOWEXIT			= "Allow exit";
+GMPLYMNU_BARRELSRESPAWN		= "Barrels respawn";
+GMPLYMNU_RESPAWNPROTECTION	= "Respawn protection";
+GMPLYMNU_LOSEFRAG			= "Lose frag if fragged";
+GMPLYMNU_KEEPFRAGS			= "Keep frags gained";
+GMPLYMNU_NOTEAMSWITCH		= "No team switching";
+GMPLYMNU_COOPERATIVE		= "Cooperative Settings";
+GMPLYMNU_MULTIPLAYERWEAPONS	= "Spawn multi. weapons";
+GMPLYMNU_LOSEINVENTORY		= "Lose entire inventory";
+GMPLYMNU_KEEPKEYS			= "Keep keys";
+GMPLYMNU_KEEPWEAPONS		= "Keep weapons";
+GMPLYMNU_KEEPARMOR			= "Keep armor";
+GMPLYMNU_KEEPPOWERUPS		= "Keep powerups";
+GMPLYMNU_KEEPAMMO			= "Keep ammo";
+GMPLYMNU_LOSEHALFAMMO		= "Lose half ammo";
+GMPLYMNU_SPAWNWHEREDIED		= "Spawn where died";
+
+// Compatibility Options
+CMPTMNU_TITLE				= "COMPATIBILITY OPTIONS";
+CMPTMNU_MODE				= "Compatibility mode";
+CMPTMNU_ACTORBEHAVIOR		= "Actor Behavior";
+CMPTMNU_CORPSEGIBS			= "Crushed monsters can be resurrected";
+CMPTMNU_NOBLOCKFRIENDS		= "Friendly monsters aren't blocked";
+CMPTMNU_LIMITPAIN			= "Limit Pain Elementals' Lost Souls";
+CMPTMNU_MBFMONSTERMOVE		= "Monster movement is affected by effects";
+CMPTMNU_CROSSDROPOFF		= "Monsters cannot cross dropoffs";
+CMPTMNU_DROPOFF				= "Monsters get stuck over dropoffs";
+CMPTMNU_INVISIBILITY		= "Monsters see invisible players";
+CMPTMNU_MINOTAUR			= "No Minotaur floor flames in water";
+CMPTMNU_NOTOSSDROPS			= "Spawn item drops on the floor";
+CMPTMNU_DEHACKEDBEHAVIOR	= "DehackEd Behavior";
+CMPTMNU_DEHHEALTH			= "DEH health settings like Doom2.exe";
+CMPTMNU_MUSHROOM			= "Original A_Mushroom speed in DEH mods";
+CMPTMNU_MAPACTIONBEHAVIOR	= "Map/Action Behavior";
+CMPTMNU_USEBLOCKING			= "All special lines can block <use>";
+CMPTMNU_ANYBOSSDEATH		= "Allow any bossdeath for level special";
+CMPTMNU_NODOORLIGHT			= "Disable BOOM door light effect";
+CMPTMNU_LIGHT				= "Find neighboring light like Doom";
+CMPTMNU_SHORTTEX			= "Find shortest textures like Doom";
+CMPTMNU_STAIRS				= "Use buggier stair building";
+CMPTMNU_FLOORMOVE			= "Use Doom's floor motion behavior";
+CMPTMNU_POINTONLINE			= "Use Doom's point-on-line algorithm";
+CMPTMNU_MULTIEXIT			= "Level exit can be triggered more than once.";
+CMPTMNU_PHYSICSBEHAVIOR		= "Physics Behavior";
+CMPTMNU_NOPASSOVER			= "Actors are infinitely tall";
+CMPTMNU_BOOMSCROLL			= "Boom scrollers are additive";
+CMPTMNU_BADANGLES			= "Cannot travel straight NSEW";
+CMPTMNU_WALLRUN				= "Enable wall running";
+CMPTMNU_RAVENSCROLL			= "Raven scrollers use original speed";
+CMPTMNU_TRACE				= "Self ref. sectors don't block shots";
+CMPTMNU_HITSCAN				= "Use Doom code for hitscan checks";
+CMPTMNU_MISSILECLIP			= "Use Doom heights for missile clipping";
+CMPTMNU_RENDERINGBEHAVIOR	= "Rendering Behavior";
+CMPTMNU_POLYOBJ				= "Draw polyobjects like Hexen";
+CMPTMNU_MASKEDMIDTEX		= "Ignore Y offsets on masked midtextures";
+CMPTMNU_SPRITESORT			= "Invert sprite sorting";
+CMPTMNU_SOUNDBEHAVIOR		= "Sound Behavior";
+CMPTMNU_SOUNDSLOTS			= "Cripple sound for silent BFG trick";
+CMPTMNU_SILENTPICKUP		= "Don't let others hear your pickups";
+CMPTMNU_SILENTINSTANTFLOORS	= "Inst. moving floors are not silent";
+CMPTMNU_SECTORSOUNDS		= "Sector sounds use center as source";
+CMPTMNU_SOUNDCUTOFF			= "Sounds stop when actor vanishes";
+CMPTMNU_SOUNDTARGET			= "Use original sound target handling";
+CMPTMNU_TELEPORT			= "Scripted teleports don't trigger sector actions";
+CMPTMNU_PUSHWINDOW			= "Non-blocking lines can be pushed";
+
+// Sound Options
+SNDMNU_TITLE			= "SOUND OPTIONS";
+SNDMNU_SFXVOLUME		= "Sounds volume";
+SNDMNU_MENUVOLUME		= "Menu volume";
+SNDMNU_MUSICVOLUME		= "Music volume";
+SNDMNU_MIDIDEVICE		= "MIDI device";
+SNDMNU_UNDERWATERREVERB	= "Underwater reverb";
+SNDMNU_RANDOMIZEPITCHES	= "Randomize pitches";
+SNDMNU_CHANNELS			= "Sound channels";
+SNDMNU_BACKEND			= "Sound backend";
+SNDMNU_FMOD				= "FMOD options";
+SNDMNU_OPENAL			= "OpenAL options";
+SNDMNU_RESTART			= "Restart sound";
+SNDMNU_ADVANCED			= "Advanced options";
+SNDMNU_MODREPLAYER		= "Module replayer options";
+
+// Fmod Options
+FMODMNU_TITLE			= "FMOD OPTIONS";
+FMODMNU_WATERCUTOFF		= "Underwater cutoff";
+FMODMNU_OUTPUTSYSTEM	= "Output system";
+FMODMNU_OUTPUTFORMAT	= "Output format";
+FMODMNU_SPEAKERMODE		= "Speaker mode";
+FMODMNU_RESAMPLER		= "Resampler";
+FMODMNU_HRTFFILTER		= "HRTF filter";
+FMODMNU_BUFFERSIZE		= "Buffer size";
+FMODMNU_BUFFERCOUNT		= "Buffer count";
+
+// OpenAL Options
+OPENALMNU_TITLE				= "OPENAL OPTIONS";
+OPENALMNU_PLAYBACKDEVICE	= "Playback device";
+OPENALMNU_ENABLEEFX			= "Enable EFX";
+
+// Advanced Sound Options
+ADVSNDMNU_TITLE				= "ADVANCED SOUND OPTIONS";
+ADVSNDMNU_SAMPLERATE		= "Sample rate";
+ADVSNDMNU_OPLSYNTHESIS		= "OPL Synthesis";
+ADVSNDMNU_OPLNUMCHIPS		= "Number of emulated OPL chips";
+ADVSNDMNU_OPLFULLPAN		= "Full MIDI stereo panning";
+ADVSNDMNU_OPLCORES			= "OPL Emulator Core";
+ADVSNDMNU_GUSEMULATION		= "GUS Emulation";
+ADVSNDMNU_GUSCONFIG			= "GUS config file";
+ADVSNDMNU_MIDIVOICES		= "MIDI voices";
+ADVSNDMNU_DMXGUS			= "Read DMXGUS lumps";
+ADVSNDMNU_GUSMEMSIZE		= "GUS memory size";
+ADVSNDMNU_FLUIDSYNTH		= "FluidSynth";
+ADVSNDMNU_FLUIDPATCHSET		= "Patch set";
+ADVSNDMNU_FLUIDGAIN			= "Gain";
+ADVSNDMNU_REVERB			= "Reverb";
+ADVSNDMNU_FLUIDVOICES		= "MIDI voices";
+ADVSNDMNU_TIMIDITY			= "Timidity++";
+ADVSNDMNU_TIMIDITYEXE		= "Path for executable";
+ADVSNDMNU_TIMIDITYCHORUS	= "Chorus";
+ADVSNDMNU_TIMIDITYVOLUME	= "Relative volume";
+ADVSNDMNU_WILDMIDI			= "WildMidi";
+ADVSNDMNU_WILDMIDICONFIG	= "WildMidi config file";
+
+// Module Replayer Options
+MODMNU_TITLE			= "MODULE REPLAYER OPTIONS";
+MODMNU_REPLAYERENGINE	= "Replayer engine";
+MODMNU_MASTERVOLUME		= "Master Volume";
+MODMNU_QUALITY			= "Quality";
+MODMNU_VOLUMERAMPING	= "Volume ramping";
+MODMNU_CHIPOMATIC		= "Chip-o-matic";
+
+// Video Options
+VIDMNU_TITLE			= "VIDEO MODE";
+VIDMNU_FULLSCREEN		= "Fullscreen";
+VIDMNU_HIDPI			= "Retina/HiDPI support";
+VIDMNU_ASPECTRATIO		= "Aspect ratio";
+VIDMNU_FORCEASPECT		= "Force aspect ratio";
+VIDMNU_5X4ASPECTRATIO	= "Enable 5:4 aspect ratio";
+VIDMNU_ENTERTEXT		= "Press ENTER to set mode";
+VIDMNU_TESTTEXT1		= "T to test mode for 5 seconds";
+VIDMNU_TESTTEXT2		= "Please wait 5 seconds...";
+
+// Network Options
+NETMNU_TITLE					= "NETWORK OPTIONS";
+NETMNU_LOCALOPTIONS				= "Local options";
+NETMNU_MOVEPREDICTION			= "Movement prediction";
+NETMNU_LINESPECIALPREDICTION	= "Predict line actions";
+NETMNU_PREDICTIONLERPSCALE		= "Prediction Lerp Scale";
+NETMNU_LERPTHRESHOLD			= "Lerp Threshold";
+NETMNU_HOSTOPTIONS				= "Host options";
+NETMNU_EXTRATICS				= "Extra Tics";
+NETMNU_TICBALANCE				= "Latency balancing";
+
+// Option Values
+OPTVAL_OFF					= "Off";
+OPTVAL_ON					= "On";
+OPTVAL_LOW					= "Low";
+OPTVAL_MEDIUM				= "Medium";
+OPTVAL_HIGH					= "High";
+OPTVAL_MALE					= "Male";
+OPTVAL_FEMALE				= "Female";
+OPTVAL_OTHER				= "Other";
+OPTVAL_UPPERLEFT			= "Upper left";
+OPTVAL_UPPERRIGHT			= "Upper right";
+OPTVAL_LOWERLEFT			= "Lower left";
+OPTVAL_LOWERRIGHT			= "Lower right";
+OPTVAL_TOUCHSCREENLIKE		= "Touchscreen-like";
+OPTVAL_NONE					= "None";
+OPTVAL_TURNING				= "Turning";
+OPTVAL_LOOKINGUPDOWN		= "Looking Up/Down";
+OPTVAL_MOVINGFORWARD		= "Moving Forward";
+OPTVAL_STRAFING				= "Strafing";
+OPTVAL_MOVINGUPDOWN			= "Moving Up/Down";
+OPTVAL_INVERTED				= "Inverted";
+OPTVAL_NOTINVERTED			= "Not Inverted";
+OPTVAL_ORIGINAL				= "Original";
+OPTVAL_OPTIMIZED			= "Optimized";
+OPTVAL_NORMAL				= "Normal";
+OPTVAL_STRETCH				= "Stretch";
+OPTVAL_CAPPED				= "Capped";
+OPTVAL_PARTICLES 			= "Particles";
+OPTVAL_SPRITES				= "Sprites";
+OPTVAL_SPRITESPARTICLES		= "Sprites & Particles";
+OPTVAL_MELT					= "Melt";
+OPTVAL_BURN					= "Burn";
+OPTVAL_CROSSFADE			= "Crossfade";
+OPTVAL_ONLYMODIFIED			= "Only modified";
+OPTVAL_SMOOTH				= "Smooth";
+OPTVAL_TRANSLUCENT			= "Translucent";
+OPTVAL_FUZZ					= "Fuzz";
+OPTVAL_SHADOW				= "Shadow";
+OPTVAL_ITEMS				= "Items";
+OPTVAL_WEAPONS				= "Weapons";
+OPTVAL_BOTH					= "Both";
+OPTVAL_ZDOOM				= "ZDoom";
+OPTVAL_STRIFE				= "Strife";
+OPTVAL_PLAYER				= "Player";
+OPTVAL_MAP					= "Map";
+OPTVAL_SCALETO640X400		= "Scale to 640x400";
+OPTVAL_PIXELDOUBLE			= "Pixel double";
+OPTVAL_PIXELQUADRUPLE		= "Pixel quadruple";
+OPTVAL_CURRENTWEAPON		= "Current weapon";
+OPTVAL_AVAILABLEWEAPONS		= "Available weapons";
+OPTVAL_ALLWEAPONS			= "All weapons";
+OPTVAL_LEVELMILLISECONDS	= "Level, milliseconds";
+OPTVAL_LEVELSECONDS			= "Level, seconds";
+OPTVAL_LEVEL				= "Level";
+OPTVAL_HUBSECONDS			= "Hub, seconds";
+OPTVAL_HUB					= "Hub";
+OPTVAL_TOTALSECONDS			= "Total, seconds";
+OPTVAL_TOTAL				= "Total";
+OPTVAL_SYSTEMSECONDS		= "System, seconds";
+OPTVAL_SYSTEM				= "System";
+OPTVAL_NETGAMESONLY			= "Netgames only";
+OPTVAL_ALWAYS				= "Always";
+OPTVAL_AMMOIMAGETEXT		= "Image and Text";
+OPTVAL_AMMOTEXTIMAGE		= "Text and Image";
+OPTVAL_SCRIPTSONLY			= "Scripts Only";
+OPTVAL_NEVER				= "Never";
+OPTVAL_ALL					= "All";
+OPTVAL_ONLYLASTONE			= "Only last one";
+OPTVAL_CUSTOM				= "Custom";
+OPTVAL_TRADITIONALDOOM		= "Traditional Doom";
+OPTVAL_TRADITIONALSTRIFE	= "Traditional Strife";
+OPTVAL_TRADITIONALRAVEN		= "Traditional Raven";
+OPTVAL_ONLYWHENFOUND		= "Only when found";
+OPTVAL_ONFOROVERLAYONLY		= "On for overlay only";
+OPTVAL_OVERLAYNORMAL		= "Overlay+Normal";
+OPTVAL_OVERLAYONLY			= "Overlay Only";
+OPTVAL_NOTFORHUBS			= "Not for hubs";
+OPTVAL_FRONT				= "Front";
+OPTVAL_ANIMATED				= "Animated";
+OPTVAL_ROTATED				= "Rotated";
+OPTVAL_MAPDEFINEDCOLORSONLY = "Map defined colors only";
+OPTVAL_DOUBLE				= "Double";
+OPTVAL_TRIPLE				= "Triple";
+OPTVAL_QUADRUPLE			= "Quadruple";
+OPTVAL_ITEMPICKUP			= "Item Pickup";
+OPTVAL_OBITUARIES			= "Obituaries";
+OPTVAL_CRITICALMESSAGES		= "Critical Messages";
+OPTVAL_NEVERFRIENDS			= "Never friends";
+OPTVAL_ONLYMONSTERS			= "Only monsters";
+OPTVAL_HEXEN				= "Hexen";
+OPTVAL_OLD					= "Old";
+OPTVAL_DEFAULT				= "Default";
+OPTVAL_DOOM					= "Doom";
+OPTVAL_DOOMSTRICT			= "Doom (strict)";
+OPTVAL_BOOM					= "Boom";
+OPTVAL_BOOMSTRICT			= "Boom (strict)";
+OPTVAL_MBF					= "MBF";
+OPTVAL_ZDOOM2063			= "ZDoom 2.0.63";
+OPTVAL_4000HZ				= "4000 Hz";
+OPTVAL_8000HZ				= "8000 Hz";
+OPTVAL_11025HZ				= "11025 Hz";
+OPTVAL_22050HZ				= "22050 Hz";
+OPTVAL_32000HZ				= "32000 Hz";
+OPTVAL_44100HZ				= "44100 Hz";
+OPTVAL_48000HZ				= "48000 Hz";
+OPTVAL_64SAMPLES			= "64 samples";
+OPTVAL_128SAMPLES			= "128 samples";
+OPTVAL_256SAMPLES			= "256 samples";
+OPTVAL_512SAMPLES			= "512 samples";
+OPTVAL_1024SAMPLES			= "1024 samples";
+OPTVAL_2048SAMPLES			= "2048 samples";
+OPTVAL_4096SAMPLES			= "4096 samples";
+OPTVAL_UNLIMITED			= "Unlimited";
+OPTVAL_256K					= "256K";
+OPTVAL_512K					= "512K";
+OPTVAL_768K					= "768K";
+OPTVAL_1024K				= "1024K";
+OPTVAL_MAMEOPL2				= "MAME OPL2";
+OPTVAL_DOSBOXOPL3			= "DOSBox OPL3";
+OPTVAL_JAVAOPL3				= "Java OPL3";
+OPTVAL_NUKEDOPL3			= "Nuked OPL3";
+OPTVAL_SOUNDSYSTEM			= "Sound System";
+OPTVAL_FOO_DUMB				= "foo_dumb";
+OPTVAL_ALIASING				= "Aliasing";
+OPTVAL_LINEAR				= "Linear";
+OPTVAL_CUBIC				= "Cubic";
+OPTVAL_BLEP					= "Band-limited step";
+OPTVAL_LINEARSLOW			= "Linear (Slower)";
+OPTVAL_BLAM					= "Band-limited linear";
+OPTVAL_CUBICSLOW			= "Cubic (Slower)";
+OPTVAL_SINC					= "Sinc";
+OPTVAL_NOTEONOFFONLY		= "Note on/off only";
+OPTVAL_FULLRAMPING			= "Full ramping";
+OPTVAL_ALLUNACKNOWLEDGED	= "All unacknowledged";
+OPTVAL_ERRORS				= "Errors";
+OPTVAL_WARNINGS				= "Warnings";
+OPTVAL_NOTIFICATIONS		= "Notifications";
+OPTVAL_EVERYTHING			= "Everything";
+OPTVAL_FULLSCREENONLY		= "Fullscreen only";
+// Colors
+C_BRICK					= "\cabrick";
+C_TAN					= "\cbtan";
+C_GRAY					= "\ccgray";
+C_GREEN					= "\cdgreen";
+C_BROWN					= "\cebrown";
+C_GOLD					= "\cfgold";
+C_RED					= "\cgred";
+C_BLUE					= "\chblue";
+C_ORANGE				= "\ciorange";
+C_WHITE					= "\cjwhite";
+C_YELLOW				= "\ckyellow";
+C_DEFAULT				= "\cldefault";
+C_BLACK					= "\cmblack";
+C_LIGHTBLUE				= "\cnlight blue";
+C_CREAM					= "\cocream";
+C_OLIVE					= "\cpolive";
+C_DARKGREEN				= "\cqdark green";
+C_DARKRED				= "\crdark red";
+C_DARKBROWN				= "\csdark brown";
+C_PURPLE				= "\ctpurple";
+C_DARKGRAY				= "\cudark gray";
+C_CYAN					= "\cvcyan";
+// Option Strings
+OPTSTR_SIMPLEARROW			= "Simple arrow";
+OPTSTR_HERETIC				= "Heretic";
+OPTSTR_CHEX					= "Chex";
+OPTSTR_SYSTEMCURSOR			= "System cursor";
+OPTSTR_DIRECTSOUND			= "DirectSound";
+OPTSTR_WASAPI				= "Vista WASAPI";
+OPTSTR_ASIO					= "ASIO";
+OPTSTR_WAVEOUT				= "WaveOut";
+OPTSTR_NOSOUND				= "No Sound";
+OPTSTR_OSS					= "OSS";
+OPTSTR_ALSA					= "ALSA";
+OPTSTR_SDL					= "SDL";
+OPTSTR_ESD					= "ESD";
+OPTSTR_PULSEAUDIO			= "PulseAudio";
+OPTSTR_COREAUDIO			= "Core Audio";
+OPTSTR_PCM8BIT				= "8-bit";
+OPTSTR_PCM16BIT				= "16-bit";
+OPTSTR_PCM24BIT				= "24-bit";
+OPTSTR_PCM32BIT				= "32-bit";
+OPTSTR_PCMFLOAT				= "32-bit float";
+OPTSTR_AUTO					= "Auto";
+OPTSTR_MONO					= "Mono";
+OPTSTR_STEREO				= "Stereo";
+OPTSTR_PROLOGIC				= "Dolby Prologic Decoder";
+OPTSTR_QUAD					= "Quad";
+OPTSTR_SURROUND				= "5 speakers";
+OPTSTR_5POINT1				= "5.1 speakers";
+OPTSTR_7POINT1				= "7.1 speakers";
+OPTSTR_NOINTERPOLATION		= "No interpolation";
+OPTSTR_SPLINE				= "Spline";
+OPTSTR_FMOD					= "FMOD Ex";
+OPTSTR_OPENAL				= "OpenAL";
+
+
+
+SAFEMESSAGE			= "Do you really want to do this?";
+MNU_COLORPICKER		= "SELECT COLOR";
+
+
+WI_FINISHED			= "finished";
+WI_ENTERING			= "Now entering:";
+
+AM_MONSTERS			= "Monsters:";
+AM_SECRETS			= "Secrets:";
+AM_ITEMS			= "Items:";
+
+// Bloodbath announcer
+
+BBA_BONED = "%k boned %o like a fish";
+BBA_CASTRA = "%k castrated %o";
+BBA_CREAMED = "%k creamed %o";
+BBA_DECIMAT = "%k decimated %o";
+BBA_DESTRO = "%k destroyed %o";
+BBA_DICED = "%k diced %o";
+BBA_DISEMBO = "%k disembowled %o";
+BBA_FLATTE = "%k flattened %o";
+BBA_JUSTICE = "%k gave %o Anal Justice";
+BBA_MADNESS = "%k gave AnAl MaDnEsS to %o";
+BBA_KILLED = "%k killed %o";
+BBA_MINCMEAT = "%k made mincemeat out of %o";
+BBA_MASSACR = "%k massacred %o";
+BBA_MUTILA = "%k mutilated %o";
+BBA_REAMED = "%k reamed %o";
+BBA_RIPPED = "%k ripped %o a new orifice";
+BBA_SLAUGHT = "%k slaughtered %o";
+BBA_SMASHED = "%k smashed %o";
+BBA_SODOMIZ = "%k sodomized %o";
+BBA_SPLATT = "%k splattered %o";
+BBA_SQUASH = "%k squashed %o";
+BBA_THROTTL = "%k throttled %o";
+BBA_WASTED = "%k wasted %o";
+BBA_BODYBAG = "%k body bagged %o";
+BBA_HELL = "%k sent %o to Hell";
+BBA_TOAST = "%k toasted %o";
+BBA_SNUFF = "%k snuffed %o";
+BBA_HOSED = "%k hosed %o";
+BBA_SPRAYED = "%k sprayed %o";
+BBA_DOGMEAT = "%k made dog meat out of %o";
+BBA_BEATEN = "%k beat %o like a cur";
+
+BBA_EXCREMENT = "%o is excrement";
+BBA_HAMBURGER = "%o is hamburger";
+BBA_SCROTUM = "%o suffered scrotum separation";
+BBA_POPULATION = "%o volunteered for population control";
+BBA_SUICIDE = "%o has suicided";
+BBA_DARWIN = "%o received the Darwin Award";
+
+// Chex Quest Strings
+CHUSTR_E1M1 = "E1M1: Landing Zone";
+CHUSTR_E1M2 = "E1M2: Storage Facility";
+CHUSTR_E1M3 = "E1M3: Experimental Lab";
+CHUSTR_E1M4 = "E1M4: Arboretum";
+CHUSTR_E1M5 = "E1M5: Caverns of Bazoik";
+
+CE1TEXT =
+		"Mission accomplished.\n"
+		"\n"
+		"Are you prepared for the next mission?\n"
+		"\n"
+		"\n"
+		"\n"
+		"\n"
+		"\n"
+		"\n"
+		"Press the escape key to continue...";
+
+CE2TEXT = "You've done it!";
+CE3TEXT = "Wonderful Job!";
+CE4TEXT = "Fantastic";
+
+CLOADNET = "you can't do load while in a net quest!\n\npress a key.";
+$ifgame(chex) QSPROMPT = "quicksave over your quest named\n\n'%s'?\n\npress y or n.";
+$ifgame(chex) QLOADNET = "you can't quickload during a netquest!\n\npress a key.";
+$ifgame(chex) QLPROMPT = "do you want to quickload the quest named\n\n'%s'?\n\npress y or n.";
+CNEWGAME = "you can't start a new quest\nwhile in a network quest.\n\npress a key.";
+
+CNIGHTMARE = "Careful, this will be tough.\nDo you wish to continue?\n\npress y or n.";
+
+CSWSTRING = "this is Chex(R) Quest. look for\n\nfuture levels at www.chexquest.com.\n\npress a key.";
+
+$ifgame(chex) NETEND = "you can't end a netquest!\n\npress a key.";
+$ifgame(chex) ENDGAME = "are you sure you want to end the quest?\n\npress y or n.";
+
+GOTCHEXARMOR = "Picked up the Chex(R) Armor.";
+GOTSUPERCHEXARMOR = "Picked up the Super Chex(R) Armor!";
+GOTWATER = "Picked up a glass of water.";
+GOTREPELLENT = "Picked up slime repellent.";
+GOTBREAKFAST = "Supercharge Breakfast!";
+GOTCBLUEKEY = "Picked up a blue key.";
+GOTCYELLOWKEY = "Picked up a yellow key.";
+GOTCREDKEY = "Picked up a red key.";
+GOTFRUIT = "Picked up a bowl of fruit.";
+GOTVEGETABLESNEED = "Vegetables are REALLY good for you!";
+GOTVEGETABLES = "Picked up a bowl of vegetables.";
+GOTSLIMESUIT = "Found a Slime-Proof Suit";
+GOTCHEXMAP = "Found a Computer Area Map";
+
+GOTZORCHRECHARGE = "Picked up a mini zorch recharge.";
+GOTMINIZORCHPACK = "Picked up a mini zorch pack.";
+GOTPROPULSORRECHARGE = "Picked up a zorch propulsor recharge.";
+GOTPROPULSORPACK = "Picked up a zorch propulsor pack.";
+GOTPHASINGZORCHERRECHARGE = "Picked up a phasing zorcher recharge";
+GOTPHASINGZORCHERPACK = "Picked up a phasing zorcher pack.";
+GOTLARGEZORCHERRECHARGE = "Picked up a large zorcher recharge.";
+GOTLARGEZORCHERPACK = "Picked up a large zorcher pack.";
+GOTZORCHPACK = "Picked up a Zorchpak!";
+
+GOTLAZDEVICE = "You got the LAZ Device! Woot!";
+GOTRAPIDZORCHER = "You got the Rapid Zorcher!";
+GOTSUPERBOOTSPORK = "You got the Super Bootspork!";
+GOTZORCHPROPULSOR = "You got the Zorch Propulsor!";
+GOTPHASINGZORCHER = "You got the Phasing Zorcher!";
+GOTLARGEZORCHER = "You got the Large Zorcher!";
+GOTSUPERLARGEZORCHER = "You got the Mega Zorcher!";
+GOTMINIZORCHER = "Picked up a Mini Zorcher.";
+
+$ifgame(chex) STSTR_DQDON = "Invincible Mode ON";
+$ifgame(chex) STSTR_DQDOFF = "Invincible Mode OFF";
+$ifgame(chex) STSTR_FAADDED = "Zorch Added";
+$ifgame(chex) STSTR_KFAADDED = "Super Zorch Added";
+$ifgame(chex) STSTR_CHOPPERS = "... Eat Chex(R)!";
+
+OB_COMMONUS = "%o was slimed by a flemoid.";
+OB_BIPEDICUS = "%o was slimed by a bipedicus.";
+OB_BIPEDICUS2 = "%o was slimed by an armored bipedicus.";
+OB_CYCLOPTIS = "%o was slimed by a cycloptis.";
+OB_FLEMBRANE = "%o was defeated by the Flembrane.";
+
+OB_MPSPOON = "%o was spoon fed by %k.";
+OB_MPBOOTSPORK = "%o was thouroughly mixed with %k's bootspork.";
+OB_MPZORCH = "%o was zorched by %k.";
+OB_MPMEGAZORCH = "%o was hit by %k's mega-zorcher.";
+OB_MPRAPIDZORCH = "%o was rapid zorched by %k.";
+OB_MPPROPULSOR = "%o was zorched by %k's propulsor.";
+OB_MPP_SPLASH = "%o was hit by %k's propulsor.";
+OB_MPPHASEZORCH = "%o was phase zorched by %k.";
+OB_MPLAZ_BOOM = "%o fell prey to %k's LAZ device.";
+OB_MPLAZ_SPLASH = "%o was lazzed by %k.";
+
+// Music names for Doom. These are needed in the string table only so that they can
+// be replaced by Dehacked. 
+// Note that these names are not prefixed with 'd_' because that's how Dehacked patches 
+// expect them.
+
+MUSIC_E1M1 = "e1m1";
+MUSIC_E1M2 = "e1m2";
+MUSIC_E1M3 = "e1m3";
+MUSIC_E1M4 = "e1m4";
+MUSIC_E1M5 = "e1m5";
+MUSIC_E1M6 = "e1m6";
+MUSIC_E1M7 = "e1m7";
+MUSIC_E1M8 = "e1m8";
+MUSIC_E1M9 = "e1m9";
+MUSIC_E2M1 = "e2m1";
+MUSIC_E2M2 = "e2m2";
+MUSIC_E2M3 = "e2m3";
+MUSIC_E2M4 = "e2m4";
+MUSIC_E2M5 = "e2m5";
+MUSIC_E2M6 = "e2m6";
+MUSIC_E2M7 = "e2m7";
+MUSIC_E2M8 = "e2m8";
+MUSIC_E2M9 = "e2m9";
+MUSIC_E3M1 = "e3m1";
+MUSIC_E3M2 = "e3m2";
+MUSIC_E3M3 = "e3m3";
+MUSIC_E3M4 = "e3m4";
+MUSIC_E3M5 = "e3m5";
+MUSIC_E3M6 = "e3m6";
+MUSIC_E3M7 = "e3m7";
+MUSIC_E3M8 = "e3m8";
+MUSIC_E3M9 = "e3m9";
+MUSIC_INTER = "inter";
+MUSIC_INTRO = "intro";
+MUSIC_BUNNY = "bunny";
+MUSIC_VICTOR = "victor";
+MUSIC_INTROA = "introa";
+MUSIC_RUNNIN = "runnin";
+MUSIC_STALKS = "stalks";
+MUSIC_COUNTD = "countd";
+MUSIC_BETWEE = "betwee";
+MUSIC_DOOM = "doom";
+MUSIC_THE_DA = "the_da";
+MUSIC_SHAWN = "shawn";
+MUSIC_DDTBLU = "ddtblu";
+MUSIC_IN_CIT = "in_cit";
+MUSIC_DEAD = "dead";
+MUSIC_STLKS2 = "stlks2";
+MUSIC_THEDA2 = "theda2";
+MUSIC_DOOM2 = "doom2";
+MUSIC_DDTBL2 = "ddtbl2";
+MUSIC_RUNNI2 = "runni2";
+MUSIC_DEAD2 = "dead2";
+MUSIC_STLKS3 = "stlks3";
+MUSIC_ROMERO = "romero";
+MUSIC_SHAWN2 = "shawn2";
+MUSIC_MESSAG = "messag";
+MUSIC_COUNT2 = "count2";
+MUSIC_DDTBL3 = "ddtbl3";
+MUSIC_AMPIE = "ampie";
+MUSIC_THEDA3 = "theda3";
+MUSIC_ADRIAN = "adrian";
+MUSIC_MESSG2 = "messg2";
+MUSIC_ROMER2 = "romer2";
+MUSIC_TENSE = "tense";
+MUSIC_SHAWN3 = "shawn3";
+MUSIC_OPENIN = "openin";
+MUSIC_EVIL = "evil";
+MUSIC_ULTIMA = "ultima";
+MUSIC_READ_M = "read_m";
+MUSIC_DM2TTL = "dm2ttl";
+MUSIC_DM2INT = "dm2int";
+
+// GZDoom exclusive:
+
+DSPLYMNU_GLOPT		= "OpenGL Options";
+DSPLYMNU_GAMMA		= "Gamma correction";
+DSPLYMNU_CONTRAST 	="Contrast";
+DSPLYMNU_HWGAMMA	= "Hardware Gamma";
+
+// OpenGL Options
+GLMNU_TITLE		= "OPENGL OPTIONS";
+GLMNU_DYNLIGHT	= "Dynamic Light Options";
+GLMNU_TEXOPT	= "Texture Options";
+GLMNU_PREFS		= "Preferences";
+
+// Texture Options
+GLTEXMNU_TITLE			= "TEXTURE OPTIONS";
+GLTEXMNU_TEXENABLED 	= "Textures enabled";
+GLTEXMNU_TEXFILTER 		= "Texture Filter mode";
+GLTEXMNU_ANISOTROPIC	= "Anisotropic filter";
+GLTEXMNU_TEXFORMAT 		= "Texture Format";
+GLTEXMNU_ENABLEHIRES 	= "Enable hires textures";
+GLTEXMNU_HQRESIZE 		= "High Quality Resize mode";
+GLTEXMNU_RESIZETEX 		= "Resize textures";
+GLTEXMNU_RESIZESPR 		= "Resize sprites";
+GLTEXMNU_RESIZEFNT 		= "Resize fonts";
+GLTEXMNU_PRECACHETEX 	= "Precache GL textures";
+GLTEXMNU_TRIMSPREDGE	= "Trim sprite edges";
+GLTEXMNU_SORTDRAWLIST 	= "Sort draw lists by texture";
+
+// Dynamic Light Options
+GLLIGHTMNU_TITLE 			= "DYNAMIC LIGHTS";
+GLLIGHTMNU_LIGHTSENABLED 	= "Dynamic Lights enabled";
+GLLIGHTMNU_LIGHTDEFS		= "Enable light definitions";
+GLLIGHTMNU_CLIPLIGHTS 		= "Clip lights";
+GLLIGHTMNU_LIGHTSPRITES 	= "Lights affect sprites";
+GLLIGHTMNU_LIGHTPARTICLES 	= "Lights affect particles";
+
+// OpenGL Preferences
+GLPREFMNU_TITLE 				= "OPENGL PREFERENCES";
+GLPREFMNU_SECLIGHTMODE 			= "Sector light mode";
+GLPREFMNU_FOGMODE 				= "Fog mode";
+GLPREFMNU_FOGFORCEFULLBRIGHT 	= "Fog forces fullbright";
+GLPREFMNU_WPNLIGHTSTR 			= "Weapon light strength";
+GLPREFMNU_ENVIRONMENTMAPMIRROR 	= "Environment map on mirrors";
+GLPREFMNU_ENV 					= "Enhanced night vision mode";
+GLPREFMNU_ENVSTEALTH 			= "ENV shows stealth monsters";
+GLPREFMNU_SPRBRIGHTFOG 			= "Force brightness in fog";
+GLPREFMNU_SPRCLIP 				= "Adjust sprite clipping";
+GLPREFMNU_SPRBLEND 				= "Smooth sprite edges";
+GLPREFMNU_FUZZSTYLE 			= "Fuzz Style";
+GLPREFMNU_SPRBILLBOARD 			= "Sprite billboard";
+GLPREFMNU_SPRBILLFACECAMERA 	= "Sprites face camera";
+GLPREFMNU_PARTICLESTYLE 		= "Particle style";
+GLPREFMNU_AMBLIGHT 				= "Ambient light level";
+GLPREFMNU_RENDERQUALITY 		= "Rendering quality";
+GLPREFMNU_VRMODE 				= "Stereo 3D VR";
+GLPREFMNU_VRQUADSTEREO 			= "Enable Quad Stereo";
+GLPREFMNU_MULTISAMPLE			= "Multisample";
+GLPREFMNU_TONEMAP				= "Tonemap Mode";
+GLPREFMNU_BLOOM					= "Bloom effect";
+GLPREFMNU_LENS					= "Lens distortion effect";
+GLPREFMNU_SSAO					= "Ambient occlusion quality";
+GLPREFMNU_SSAO_PORTALS			= "Portals with AO";
+GLPREFMNU_FXAA					= "FXAA Quality";
+
+// Option Values
+OPTVAL_SMART 				= "Smart";
+OPTVAL_SMARTER 				= "Smarter";
+OPTVAL_INFRAREDONLY 		= "Infrared only";
+OPTVAL_INFRAREDANDTORCH 	= "Infrared and torch";
+OPTVAL_ANYFIXEDCOLORMAP 	= "Any fixed colormap";
+OPTVAL_NONENEARESTMIPMAP 	= "None (nearest mipmap)";
+OPTVAL_NONELINEARMIPMAP 	= "None (linear mipmap)";
+OPTVAL_NONETRILINEAR		= "None (trilinear)";
+OPTVAL_BILINEAR 			= "Bilinear";
+OPTVAL_TRILINEAR 			= "Trilinear";
+OPTVAL_RGBA8 				= "RGBA8";
+OPTVAL_RGB5A1 				= "RGB5_A1";
+OPTVAL_RGBA4 				= "RGBA4";
+OPTVAL_RGBA2 				= "RGBA2";
+OPTVAL_COMPRRGBA 			= "COMPR_RGBA";
+OPTVAL_S3TCDXT1 			= "S3TC_DXT1";
+OPTVAL_S3TCDXT3 			= "S3TC_DXT3";
+OPTVAL_S3TCDXT5 			= "S3TC_DXT5";
+OPTVAL_2X 					= "2x";
+OPTVAL_4X 					= "4x";
+OPTVAL_8X 					= "8x";
+OPTVAL_16X 					= "16x";
+OPTVAL_32X 					= "32x";
+OPTVAL_USEASPALETTE 		= "Use as palette";
+OPTVAL_BLEND 				= "Blend";
+OPTVAL_STANDARD 			= "Standard";
+OPTVAL_BRIGHT 				= "Bright";
+OPTVAL_DARK 				= "Dark";
+OPTVAL_LEGACY 				= "Legacy";
+OPTVAL_SOFTWARE 			= "Software";
+OPTVAL_SPEED 				= "Speed";
+OPTVAL_QUALITY 				= "Quality";
+OPTVAL_OPTIMAL 				= "Optimal";
+OPTVAL_60 					= "60";
+OPTVAL_70 					= "70";
+OPTVAL_72 					= "72";
+OPTVAL_75 					= "75";
+OPTVAL_85 					= "85";
+OPTVAL_100 					= "100";
+OPTVAL_YAXIS 				= "Y Axis";
+OPTVAL_XYAXIS 				= "X/Y Axis";
+OPTVAL_SQUARE 				= "Square";
+OPTVAL_ROUND 				= "Round";
+OPTVAL_SCALE2X 				= "Scale2x";
+OPTVAL_SCALE3X 				= "Scale3x";
+OPTVAL_SCALE4X 				= "Scale4x";
+OPTVAL_HQ2X 				= "hq2x";
+OPTVAL_HQ3X 				= "hq3x";
+OPTVAL_HQ4X 				= "hq4x";
+OPTVAL_HQ2XMMX 				= "hq2x MMX";
+OPTVAL_HQ3XMMX 				= "hq3x MMX";
+OPTVAL_HQ4XMMX 				= "hq4x MMX";
+OPTVAL_RADIAL 				= "Radial";
+OPTVAL_PIXELFUZZ 			= "Pixel fuzz";
+OPTVAL_SMOOTHFUZZ 			= "Smooth fuzz";
+OPTVAL_SWIRLYFUZZ 			= "Swirly fuzz";
+OPTVAL_TRANSLUCENTFUZZ 		= "Translucent fuzz";
+OPTVAL_NOISE 				= "Noise";
+OPTVAL_SMOOTHNOISE 			= "Smooth Noise";
+OPTVAL_JAGGEDFUZZ 			= "Jagged fuzz";
+OPTVAL_NORMAL 				= "Normal";
+OPTVAL_GREENMAGENTA 		= "Green/Magenta";
+OPTVAL_REDCYAN 				= "Red/Cyan";
+OPTVAL_AMBERBLUE 			= "Amber/Blue";
+OPTVAL_LEFTEYE 				= "Left Eye";
+OPTVAL_RIGHTEYE 			= "Right Eye";
+OPTVAL_SBSFULL		    	= "Side-by-side Full";
+OPTVAL_SBSNARROW			= "Side-by-side Narrow";
+OPTVAL_TOPBOTTOM			= "Top/Bottom";
+OPTVAL_ROWINTERLEAVED		= "Row Interleaved";
+OPTVAL_COLUMNINTERLEAVED	= "Column Interleaved";
+OPTVAL_CHECKERBOARD			= "Checkerboard";
+OPTVAL_QUADBUFFERED 		= "Quad-buffered";
+OPTVAL_UNCHARTED2			= "Uncharted 2";
+OPTVAL_HEJLDAWSON			= "Hejl Dawson";
+OPTVAL_REINHARD				= "Reinhard";
+OPTVAL_PALETTE				= "Palette";
+OPTVAL_LOW					= "Low";
+OPTVAL_MEDIUM				= "Medium";
+OPTVAL_HIGH					= "High";
+OPTVAL_EXTREME				= "Extreme";
