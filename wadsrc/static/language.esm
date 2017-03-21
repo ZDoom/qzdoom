@@ -1,5 +1,6 @@
 /* Traducción al Español (latino) */
-
+/* Credit: KVELLER (doomworld.com */
+/* Source: https://www.doomworld.com/forum/topic/93347-spanish-translation-for-gzdoomtraducci%C3%B3n-al-espa%C3%B1ol-para-gzdoom/ */
 [esm default]
 
 SECRETMESSAGE = "¡Un secreto es revelado!";
