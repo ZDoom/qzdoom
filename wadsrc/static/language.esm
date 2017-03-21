@@ -1,8 +1,8 @@
 /* Traducción al Español (latino) */
 
-[enu default]
+[esm default]
 
-SECRETMESSAGE = "Un secreto es revelado!";
+SECRETMESSAGE = "¡Un secreto es revelado!";
 
 D_DEVSTR = "Modo inútil Activado.\n";
 D_CDROM = "CD-ROM Version: zdoom.ini from c:\\zdoomdat\n";
@@ -14,46 +14,46 @@ TXT_YES = "Sí";
 TXT_NO = "No";
 
 // Mensajes de salida DOOM I
-QUITMSG1 = "Por favor no te vayas, hay más\ndemonios que tostar!";
-QUITMSG2 = "Vámonos -- Esto se esta convirtiendo\nen un baño de sangre!";
+QUITMSG1 = "¡Por favor no te vayas, hay más\ndemonios que tostar!";
+QUITMSG2 = "¡Vámonos -- Esto se esta convirtiendo\nen un baño de sangre!";
 QUITMSG3 = "No me iría si fuera tú.\nDOS es mucho peor.";
 QUITMSG4 = "Intentas decir que te gusta más DOS\nque yo, cierto?";
-QUITMSG5 = "No te vayas aún -- Hay un\ndemonio tras esa esquina!";
+QUITMSG5 = "¡No te vayas aún -- Hay un\ndemonio tras esa esquina!";
 QUITMSG6 = "Tú sabes, la próxima vez que vengas aquí\nte voy a tostar.";	// El término "Toast" se usa para decirle a alguien que está en problemas.
 QUITMSG7 = "Vé y lárgate. Mira si me importa.";
 
 // Mensajes de salida DOOM II
-QUITMSG8 = "Queréis salir?\nEntonces, habréis perdido un octavo!";		// No sé si es que no supe traducir esto, o si nunca tuvo mucho sentido.
+QUITMSG8 = "¡Queréis salir?\nEntonces, habréis perdido un octavo!";		// No sé si es que no supe traducir esto, o si nunca tuvo mucho sentido.
 QUITMSG9 = "No te vayas ahora, hay un\nmonstruo interdimensional\nen la pantalla de DOS!";
 QUITMSG10 = "Vete de aquí y vuelve\na tus aburridos programas.";
-QUITMSG11 = "Si fuera tu jefe, te jugaría un\n deathmatch en un minuto!";
-QUITMSG12 = "Mira amigo, te vas ahora\ny pierdes tu cuenta de los cuerpos!";
+QUITMSG11 = "¡Si fuera tu jefe, te jugaría un\n deathmatch en un minuto!";
+QUITMSG12 = "¡Mira amigo, te vas ahora\ny pierdes tu cuenta de los cuerpos!";
 QUITMSG13 = "Solo vete. Cuando\nvuelvas, te estaré esperando con un bate.";
 QUITMSG14 = "Tienes suerte de que no te golpee\npor pensar en irte.";
 
 // Mensajes de salida Strife
-QUITMSG15 = "Adónde vas?!\nQué hay de la rebelión?";
-QUITMSG16 = "Interrupción de carnicería...\nPero qué bromas!";
-QUITMSG17 = "Pero eres la esperanza...\n-- Mi única oportunidad!!";
+QUITMSG15 = "¡Adónde vas?!\nQué hay de la rebelión?";
+QUITMSG16 = "Interrupción de carnicería...\n¡Pero qué bromas!";
+QUITMSG17 = "Pero eres la esperanza...\n-- ¡Mi única oportunidad!";
 QUITMSG18 = "Nadie abandona a BlackBird.";
 QUITMSG19 = "Pensé que eras diferente...";
-QUITMSG20 = "Bien! Sólo mata y corre!";
+QUITMSG20 = "¡Bien! ¡Sólo mata y corre!";
 QUITMSG21 = "Puedes salir...\nPero no puedes esconderte...";
 QUITMSG22 = "Quéeee? Cuál es el problema?\nMami dice hora de la cena?";
 
 // Mensajes de salida Chex Quest
-QUITMSG23 = "No te vayas ahora, siguen habiendo\nflemoides sueltos!";
-QUITMSG24 = "No te rindas -- Los flemoides\ntomarán la superioridad!";
-QUITMSG25 = "No te vayas ahora.\nNecesitamos tu ayuda!";
+QUITMSG23 = "¡No te vayas ahora, siguen habiendo\nflemoides sueltos!";
+QUITMSG24 = "¡No te rindas -- Los flemoides\ntomarán la superioridad!";
+QUITMSG25 = "¡No te vayas ahora.\nNecesitamos tu ayuda!";
 QUITMSG26 = "Espero que sólo te estés tomando un\ndescanzo para comer Chex(R) party mix.";
-QUITMSG27 = "No te vayas ahora!\nNecesitamos tu ayuda!";
-QUITMSG28 = "No abandones la\nFederación Intergaláctica de Cereales!";
-QUITMSG29 = "El verdadero Guerrero Chex(R)\nno se rendiría tan rápido!";
+QUITMSG27 = "¡No te vayas ahora!\nNecesitamos tu ayuda!";
+QUITMSG28 = "¡No abandones la\nFederación Intergaláctica de Cereales!";
+QUITMSG29 = "¡El verdadero Guerrero Chex(R)\nno se rendiría tan rápido!";
 
-LOADNET = "No puedes cargar en una partida en línea!\n\nPresiona una tecla.";
-QLOADNET = "No puedes cargar rápido en una partida en línea!\n\nPresiona una tecla.";
-QSAVESPOT = "No has elegido un espacio para guardar rápido aún!\n\nPresiona una tecla.";
-SAVEDEAD = "No puedes guardar si no estás jugando!\n\nPresiona una tecla.";
+LOADNET = "¡No puedes cargar en una partida en línea!\n\nPresiona una tecla.";
+QLOADNET = "¡No puedes cargar rápido en una partida en línea!\n\nPresiona una tecla.";
+QSAVESPOT = "¡No has elegido un espacio para guardar rápido aún!\n\nPresiona una tecla.";
+SAVEDEAD = "¡No puedes guardar si no estás jugando!\n\nPresiona una tecla.";
 QSPROMPT = "Guardar rápido sobre tu partida llamada\n\n'%s'?\n\nPresiona Y o N.";
 QLPROMPT = "Quieres cargar rápido la partida llamada\n\n'%s'?\n\nPresiona Y o N.";
 NEWGAME = "No puedes comenzar una nueva partida\ndurante una partida en línea.\n\nPresiona una tecla.";
@@ -61,31 +61,31 @@ NIGHTMARE = "Estás seguro? Este nivel de habilidad\nno es ni remotamente justo.\
 SWSTRING = "Esta es la versión Shareware de DOOM.\n\nNecesitas ordenar la trilogía entera.\n\nPresiona una tecla.";
 MSGOFF = "Mensajes desactivados";
 MSGON = "Mensajes activados";
-NETEND = "No puedes terminar una partida en línea!\n\nPresiona una tecla.";
+NETEND = "¡No puedes terminar una partida en línea!\n\nPresiona una tecla.";
 ENDGAME = "Estás seguro de que quieres terminar la partida?\n\nPresiona Y o N.";
 DOSY = "(Presiona Y para salir)";
 EMPTYSTRING = "Espacio vacío";
 GOTARMOR = "Recogiste la armadura.";
-GOTMEGA = "Recogiste la MegaArmadura!";
+GOTMEGA = "¡Recogiste la MegaArmadura!";
 GOTHTHBONUS = "Recogiste un bono de salud.";
 GOTARMBONUS = "Recogiste un bono de armadura.";
 GOTSTIM = "Recogiste un pack de estímulo.";
-GOTMEDINEED = "Recogiste un kit médico que REALMENTE necesitabas!";
+GOTMEDINEED = "¡Recogiste un kit médico que REALMENTE necesitabas!";
 GOTMEDIKIT = "Recogiste un kit médico.";
-GOTSUPER = "Súper carga!";
+GOTSUPER = "¡Súper carga!";
 GOTBLUECARD = "Recogiste una tarjeta de acceso azul.";
 GOTYELWCARD = "Recogiste una tarjeta de acceso amarilla.";
 GOTREDCARD = "Recogiste una tarjeta de acceso roja.";
 GOTBLUESKUL = "Recogiste una llave calavera azul.";
 GOTYELWSKUL = "Recogiste una llave calavera amarilla.";
 GOTREDSKUL = "Recogiste una llave calavera roja.";
-GOTINVUL = "Invulnerabilidad!";
-GOTBERSERK = "Enloquecido!";
+GOTINVUL = "¡Invulnerabilidad!";
+GOTBERSERK = "¡Enloquecido!";
 GOTINVIS = "Invisibilidad Parcial";
 GOTSUIT = "Traje de Protección Contra la Radiación";
 GOTMAP = "Computador de Mapa de Área";
 GOTVISOR = "Visor de Amplificación de Luz";
-GOTMSPHERE = "MegaEsfera!";
+GOTMSPHERE = "¡MegaEsfera!";
 GOTCLIP = "Recogiste un cargador.";
 GOTCLIPBOX = "Recogiste una caja de balas.";
 GOTROCKET = "Recogiste un cohete.";
@@ -94,14 +94,14 @@ GOTCELL = "Recogiste una célula de energía.";
 GOTCELLBOX = "Recogiste un pack de células de energía.";
 GOTSHELLS = "Recogiste 4 cartuchos de escopeta.";
 GOTSHELLBOX = "Recogiste una caja de cartuchos de escopeta.";
-GOTBACKPACK = "Recogiste una mochila llena de munición!";
-GOTBFG9000 = "Conseguiste la BFG9000!  Oh, sí.";
-GOTCHAINGUN = "Conseguiste la Ametralladora en Cadena!";
-GOTCHAINSAW = "Una motosierra!  Encuentra algo de carne!";
-GOTLAUNCHER = "Conseguiste el Lanza Cohetes!";
-GOTPLASMA = "Conseguiste el Arma de Plasma!";
-GOTSHOTGUN = "Conseguiste la Escopeta!";
-GOTSHOTGUN2 = "Conseguiste la Súper Escopeta!";
+GOTBACKPACK = "¡Recogiste una mochila llena de munición!";
+GOTBFG9000 = "¡Conseguiste la BFG9000!  Oh, sí.";
+GOTCHAINGUN = "¡Conseguiste la Ametralladora en Cadena!";
+GOTCHAINSAW = "¡Una motosierra!  ¡Encuentra algo de carne!";
+GOTLAUNCHER = "¡Conseguiste el Lanza Cohetes!";
+GOTPLASMA = "¡Conseguiste el Arma de Plasma!";
+GOTSHOTGUN = "¡Conseguiste la Escopeta!";
+GOTSHOTGUN2 = "¡Conseguiste la Súper Escopeta!";
 PD_BLUEO = "Necesitas una llave azul para activar este objeto";
 PD_REDO = "Necesitas una llave roja para activar este objeto";
 PD_YELLOWO = "Necesitas una llave amarilla para activar este objeto";
@@ -180,7 +180,7 @@ HUSTR_16 = "Nivel 16: Suburbios";
 HUSTR_17 = "Nivel 17: Viviendas";
 HUSTR_18 = "Nivel 18: El Patio";
 HUSTR_19 = "Nivel 19: La Ciudadela";
-HUSTR_20 = "Nivel 20: Te Tengo!";
+HUSTR_20 = "Nivel 20: ¡Te Tengo!";
 HUSTR_21 = "Nivel 21: Nirvana";
 HUSTR_22 = "Nivel 22: Las Catacumbas";
 HUSTR_23 = "Nivel 23: Barriles de Diversión";
@@ -267,7 +267,7 @@ THUSTR_24 = "Nivel 24: Cantera";
 THUSTR_25 = "Nivel 25: Guarida de los Barones";
 THUSTR_26 = "Nivel 26: Balístico";
 THUSTR_27 = "Nivel 27: Monte Dolor";
-THUSTR_28 = "Nivel 28: Mierda!";			// La palabra original era "Heck", una combinación de "Hell" y "Fuck".
+THUSTR_28 = "Nivel 28: ¡Mierda!";			// La palabra original era "Heck", una combinación de "Hell" y "Fuck".
 THUSTR_29 = "Nivel 29: Río Styx";
 THUSTR_30 = "Nivel 30: Último Llamado";
 THUSTR_31 = "Nivel 31: Faraón";
@@ -314,7 +314,7 @@ E1TEXT =
 	"y limpias la base de la luna se supone que\n"
 	"has ganado. No es así? No es así? Dónde está\n"
 	"tu gorda recompensa y tu boleto a casa? Qué\n"
-	"demonios es esto? No se supone que\n"
+	"demonios es esto? ¡No se supone que\n"
 	"terminara de ésta manera!\n"
 	"\n"
 	"Apesta a carne podrida, pero luce\n"
@@ -324,24 +324,24 @@ E1TEXT =
 	"\n"
 	"Para continuar la experiencia DOOM, juega\n"
 	"Las Orillas del Infierno y su impresionante\n"
-	"sequela, Infierno!\n";
+	"sequela, ¡Infierno!\n";
 E2TEXT =
-	"Lo has hecho! el horrible señor\n"
-	"Ciber-Demonio que gobernaba la\n"
+	"¡Lo has hecho! el horrible señor\n"
+	"¡Ciber-Demonio que gobernaba la\n"
 	"base de la luna ha sido asesinado y tú\n"
 	"eres triunfante! Pero... en dónde\n"
 	"estás? Trepas hasta el borde de la\n"
 	"luna para ver la horrible\n"
 	"verdad.\n"
 	"\n"
-	"Deimos flota sobre el mismísimo Infierno!\n"
-	"Nunca has escuchado de alguien escapando\n"
+	"¡Deimos flota sobre el mismísimo Infierno!\n"
+	"¡Nunca has escuchado de alguien escapando\n"
 	"del Infierno, pero harás que los bastardos\n"
 	"lamenten siquiera haber oído de tí! Rápidamente,\n"
 	"te deslizas hacia la superficie del\n"
 	"Infierno.\n"
 	"\n"
-	"Ahora, estás en el episodio final de\n"
+	"¡Ahora, estás en el episodio final de\n"
 	"DOOM! -- Infierno.";
 E3TEXT =
 	"La repugnante araña demonio que\n"
@@ -352,7 +352,7 @@ E3TEXT =
 	"Una puerta secreta se abre y entras.\n"
 	"Has probado ser demasiado duro para que el Infierno\n"
 	"te contenga, y ahora el Infierno al fin juega\n"
-	"justamente -- ya que emerges de la puerta\n"
+	"justamente -- ¡ya que emerges de la puerta\n"
 	"para ver los verdes campos de la Tierra!\n"
 	"Hogar al fin.\n"
 	"\n"
@@ -377,7 +377,7 @@ E4TEXT =
 	"dolor potencial mientras una nación de demonios\n"
 	"corre enloqecida entre nuestras ciudades.\n"
 	"\n"
-	"Siguiente parada, el Infierno en la Tierra!";
+	"Siguiente parada, el ¡Infierno en la Tierra!";
 C1TEXT =
 	"Has entrado en lo profundo del puerto estelar\n"
 	"infestado. Pero algo está mal. Los\n"
@@ -392,7 +392,7 @@ C1TEXT =
 	"de control que mantiene prisionera a la población\n"
 	"de la Tierra.";
 C2TEXT =
-	"Has ganado! Tu victoria ha permitido a la\n"
+	"¡Has ganado! Tu victoria ha permitido a la\n"
 	"raza humana evacuar la Tierra y escapar de\n"
 	"la pesadilla. Ahora eres el único\n"
 	"humano que queda en la faz del planeta.\n"
@@ -436,21 +436,21 @@ C4TEXT =
 	"casa. Reconstruir la Tierra debería ser\n"
 	"mucho más divertido que arruinarla.\n";
 C5TEXT =
-	"Felicidades, has encontrado el nivel\n"
+	"¡Felicidades, has encontrado el nivel\n"
 	"secreto! Parece ser que fue construído por\n"
 	"humanos, en vez de demonios. Te preguntas\n"
 	"quiénes serán los presos de esta esquina\n"
 	"del Infierno.";
 C6TEXT =
-	"Felicidades, has encontrado el\n"
-	"nivel súper secreto!  Será mejor que\n"
+	"¡Felicidades, has encontrado el\n"
+	"nivel súper secreto!  ¡Será mejor que\n"
 	"ardas a través de éste!\n";				// "Blaze" tiene relación con el fuego, pero también es una refrencia a Commander Keen (Billy Blaze).
 P1TEXT =
 	"Te regocijas frente al humeante cuerpo del\n"		// "Steaming" en realidad se refiere a vapor, no a humo.
 	"Guardián.  Con su muerte, has arrebatado\n"
 	"el Acelerador de las apestosas garras\n"
 	"del Infierno.  Te relajas y echas un vistazo a\n"
-	"la habitación.  Maldición!  Se suponía que había\n"
+	"la habitación.  ¡Maldición!  Se suponía que había\n"
 	"al menos un prototipo funcional, pero no puedes\n"
 	"verlo. Los demonios deben haberlo tomado.\n"
 	"\n"
@@ -470,12 +470,12 @@ P3TEXT =
 	"del corazón de la colmena demoníaca.  Hora de una\n"
 	"misión de Buscar y Destruir, apuntada al\n"
 	"Guardían del Portal, cuya vil descendencia está\n"
-	"cayendo en cascada a la Tierra.  Sí, él es malo,\n"
+	"cayendo en cascada a la Tierra.  ¡Sí, él es malo,\n"
 	"pero tú sabes quién es peor!\n"
 	"\n"
 	"Sonriéndo de manera malvada, compruebas tu equipo\n"
 	"y te preparas para darle al bastardo un poco de\n"
-	"Infierno de tu propia creación!";
+	"¡Infierno de tu propia creación!";
 P4TEXT =
 	"El malvado rostro del Guardían del Portal es\n"
 	"salpicado por todo el lugar.  Como su andrajoso\n"
@@ -632,19 +632,19 @@ TXT_FRAGLIMIT = "Límite de puntos alcanzado.";
 TXT_TIMELIMIT = "Límite de tiempo alcanzado.";
 
 // Mensajes de matanzas
-SPREEKILLSELF = "%o se veía bien hasta que se mató a sí mismo!";
+SPREEKILLSELF = "¡%o se veía bien hasta que se mató a sí mismo!";
 SPREEOVER = "La matanza de %o fue terminada por %k";
-SPREE5 = "%k tiene una matanza!";
-SPREE10 = "%k tiene un alboroto!";
-SPREE15 = "%k está dominando!";
-SPREE20 = "%k es imparable!";
-SPREE25 = "%k es un dios!";
+SPREE5 = "¡%k tiene una matanza!";
+SPREE10 = "¡%k tiene un alboroto!";
+SPREE15 = "¡%k está dominando!";
+SPREE20 = "¡%k es imparable!";
+SPREE25 = "¡%k es un dios!";
 
 // Mulitkill messages
-MULTI2 = "Double kill!";
-MULTI3 = "Multi kill!";
-MULTI4 = "Ultra kill!";
-MULTI5 = "Monster kill!";
+MULTI2 = "¡Double kill!";
+MULTI3 = "¡Multi kill!";
+MULTI4 = "¡Ultra kill!";
+MULTI5 = "¡Monster kill!";
 
 // Líneas de obituarios
 // Primero los auto-asesinatos, luego los otro-asesinatos
@@ -1073,7 +1073,7 @@ HE1TEXT =
 		"aquí, tendrás que sellar la garganta del\n"
 		"Infierno desde el otro lado. Por supuesto\n"
 		"esto significa que puedes quedarte atascado en\n"
-		"un mundo muy poco amigable, pero nunca nadie\n"
+		"un mundo muy poco amigable, ¡pero nunca nadie\n"
 		"dijo que ser un hereje fuera fácil!";
 HE2TEXT =
 		"Los poderosos Maulotaurs han demostrado\n"
@@ -1273,13 +1273,13 @@ TXT_CHEATHEALTH = "Salud al máximo";
 TXT_CHEATKEYS = "Todas las llaves";
 TXT_CHEATSOUNDON = "Debug de sonido activado";
 TXT_CHEATSOUNDOFF = "Debug de sonido desactivado";
-TXT_CHEATIDDQD = "Intentando hacer trampa, eh?  Ahora mueres!";
+TXT_CHEATIDDQD = "Intentando hacer trampa, eh?  ¡Ahora mueres!";
 TXT_CHEATIDKFA = "Tramposo - No mereces armas";
 TXT_CHEATTICKERON = "TICKER activado";					// Ni siquiera conozco ese cheat.
 TXT_CHEATTICKEROFF = "TICKER desactivado";
 TXT_CHEATARTIFACTS3 = "Ahí lo tienes";
 TXT_MIDASTOUCH = "Tienes el toque de Midas, nena";
-TXT_GOTSTUFF = "Conseguiste las cosas!";
+TXT_GOTSTUFF = "¡Conseguiste las cosas!";
 TXT_FREEZEON = "Modo congelar activado";
 TXT_FREEZEOFF = "Modo congelar desactivado";
 TXT_STRANGE = "Te sientes extraño...";
@@ -1383,7 +1383,7 @@ TXT_WEAPON_C4 = "Wraithverge armada";
 TXT_WEAPON_M2 = "Trozos Congelados";
 TXT_WEAPON_M3 = "Arca de la Muerte";
 TXT_WEAPON_M4 = "Bloodscourge armada";
-TXT_WEAPONPIECE = "Una pieza de arma! Este es tu día de suerte!";
+TXT_WEAPONPIECE = "¡Una pieza de arma! ¡Este es tu día de suerte!";
 TXT_QUIETUS_PIECE = "Segmento de Quietus";
 TXT_WRAITHVERGE_PIECE = "Segmento de Wraithverge";
 TXT_BLOODSCOURGE_PIECE = "Segmento de Bloodscourge";
@@ -1412,10 +1412,10 @@ TXT_QUEST_14 = "Has Volado el Cristal";
 TXT_QUEST_16 = "Has Volado las Puertas";
 TXT_QUEST_27 = "Has Volado el Computador";
 
-TXT_KILLED_BISHOP = "Mataste al Obispo!";
-TXT_KILLED_ORACLE = "Mataste al Oráculo!";
-TXT_KILLED_MACIL = "Mataste a Macil!";
-TXT_KILLED_LOREMASTER = "Mataste al Loremaster!";
+TXT_KILLED_BISHOP = "¡Mataste al Obispo!";
+TXT_KILLED_ORACLE = "¡Mataste al Oráculo!";
+TXT_KILLED_MACIL = "¡Mataste a Macil!";
+TXT_KILLED_LOREMASTER = "¡Mataste al Loremaster!";
 
 // Mensajes de objetos de Strife
 
@@ -1443,7 +1443,7 @@ TXT_XGOLD = "Recogiste %d de oro.";
 TXT_BEACON = "Recogiste el Marcador de Teletranportación.";
 TXT_DEGNINORE = "Recogiste la Mena de Degnin.";
 TXT_SCANNER = "Recogiste el escáner.";
-TXT_NEEDMAP = "El escáner no funcionará sin un mapa!\n";
+TXT_NEEDMAP = "¡El escáner no funcionará sin un mapa!\n";
 TXT_PRISONPASS = "Recogiste el Pase de la Prisón.";
 
 TXT_STRIFECROSSBOW = "Recogiste la ballesta.";
@@ -1501,7 +1501,7 @@ TXT_AMMOSATCHEL = "Recogiste la cartera de munición.";
 TXT_RANDOM_PEASANT_01 = "Por favor no me hagas daño.";
 TXT_RANDOM_PEASANT_02 = "Si buscar herirme, no valgo el esfuerzo realmente.";
 TXT_RANDOM_PEASANT_03 = "No sé nada.";
-TXT_RANDOM_PEASANT_04 = "Vete o llamaré a los guardias!";
+TXT_RANDOM_PEASANT_04 = "¡Vete o llamaré a los guardias!";
 TXT_RANDOM_PEASANT_05 = "A veces desearía que estos rebeldes sólo comprendieran cuál es su lugar y pararan esto.";
 TXT_RANDOM_PEASANT_06 = "Sólo dejame en paz, OK?";
 TXT_RANDOM_PEASANT_07 = "No estoy seguro, pero a veces pienso que conozco a algunos de los acólitos.";
@@ -1512,8 +1512,8 @@ TXT_RANDOM_PEASANT_10 = "He escuchado que la órden está realmente nerviosa por l
 TXT_RANDOM_REBEL_01 = "No hay manera de que la órden pueda contra nosotros.";
 TXT_RANDOM_REBEL_02 = "Estamos casi listos para atacar. Los planes de Macil están cayendo en su lugar.";
 TXT_RANDOM_REBEL_03 = "Estamos todos detrás de tí, no te preocupes.";
-TXT_RANDOM_REBEL_04 = "No te acerques mucho a ninguno de esos grandes robots. Te reducirán a chatarra!";
-TXT_RANDOM_REBEL_05 = "El día de nuestra gloria vendrá pronto, y aquellos que se opongan serán aplastados!";
+TXT_RANDOM_REBEL_04 = "No te acerques mucho a ninguno de esos grandes robots. ¡Te reducirán a chatarra!";
+TXT_RANDOM_REBEL_05 = "El día de nuestra gloria vendrá pronto, ¡y aquellos que se opongan serán aplastados!";
 TXT_RANDOM_REBEL_06 = "No te pongas demasiado cómodo. Seguimos teniendo trabajo que hacer.";
 TXT_RANDOM_REBEL_07 = "Macil dice que eres la nueva esperanza. Ten eso en cuenta.";
 TXT_RANDOM_REBEL_08 = "Una vez que nos deshagamos de esos charlatanes, podremos reconstruir este mundo como debería ser.";
@@ -1525,9 +1525,9 @@ TXT_RANDOM_AGUARD_02 = "Sigue la verdadera fé, sólo entonces comenzarás a entend
 TXT_RANDOM_AGUARD_03 = "Sólo a través de la muerte uno puede realmente volver a nacer.";
 TXT_RANDOM_AGUARD_04 = "No estoy interesado en tus inútiles tonterías.";
 TXT_RANDOM_AGUARD_05 = "Si hubiera querido hablar contigo te lo habría dicho.";
-TXT_RANDOM_AGUARD_06 = "Ve y molesta a alguien más!";
-TXT_RANDOM_AGUARD_07 = "Sigue moviéndote!";
-TXT_RANDOM_AGUARD_08 = "Si la alarma suena, sólo mantente fuera de nuestro camino!";
+TXT_RANDOM_AGUARD_06 = "¡Ve y molesta a alguien más!";
+TXT_RANDOM_AGUARD_07 = "¡Sigue moviéndote!";
+TXT_RANDOM_AGUARD_08 = "¡Si la alarma suena, sólo mantente fuera de nuestro camino!";
 TXT_RANDOM_AGUARD_09 = "La órden limiará este mundo y lo llevará a la nueva era.";
 TXT_RANDOM_AGUARD_10 = "Problema? No? Eso pensaba.";
 
@@ -1538,9 +1538,9 @@ TXT_RANDOM_BEGGAR_04 = "Ustedes personas de la superficie nunca podrán entendern
 TXT_RANDOM_BEGGAR_05 = "Ja, los guardias no pueden encontrarnos. Esos idiotas ni saben que existimos.";
 TXT_RANDOM_BEGGAR_06 = "Un día todos con excepción de los que sirven a la órden se verán forzados a unirse a nosotros.";
 TXT_RANDOM_BEGGAR_07 = "Mira ahora, pero sabes que ésta será tu cara algún día.";
-TXT_RANDOM_BEGGAR_08 = "No hay nada más molesto que alguien de la superficie con actitud!";
+TXT_RANDOM_BEGGAR_08 = "¡No hay nada más molesto que alguien de la superficie con actitud!";
 TXT_RANDOM_BEGGAR_09 = "La órden hará trabajo rápido de su patético frente.";
-TXT_RANDOM_BEGGAR_10 = "Ten cuidado, hombre de la superficie. Conocemos a nuestros enemigos!";
+TXT_RANDOM_BEGGAR_10 = "Ten cuidado, hombre de la superficie. ¡Conocemos a nuestros enemigos!";
 
 TXT_RANDOM_PGUARD_01 = "Somos las manos del destino. Ganar nuestra ira es encontrar el olvido!";
 TXT_RANDOM_PGUARD_02 = "La órden limpiará este mundo de los débiles y los corruptos!";
