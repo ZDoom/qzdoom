@@ -1,5 +1,6 @@
 /* Traducción al Español (latino) */
-/* Credit: KVELLER (doomworld.com */
+/* Editado por leodoom85 - Edited by leodoom85 */
+/* Credit: KVELLER (doomworld.com) */
 /* Source: https://www.doomworld.com/forum/topic/93347-spanish-translation-for-gzdoomtraducci%C3%B3n-al-espa%C3%B1ol-para-gzdoom/ */
 [esm default]
 
@@ -20,12 +21,12 @@ QUITMSG2 = "¡Vámonos -- Esto se esta convirtiendo\nen un baño de sangre!";
 QUITMSG3 = "No me iría si fuera tú.\nDOS es mucho peor.";
 QUITMSG4 = "Intentas decir que te gusta más DOS\nque yo, cierto?";
 QUITMSG5 = "¡No te vayas aún -- Hay un\ndemonio tras esa esquina!";
-QUITMSG6 = "Tú sabes, la próxima vez que vengas aquí\nte voy a tostar.";	// El término "Toast" se usa para decirle a alguien que está en problemas.
-QUITMSG7 = "Vé y lárgate. Mira si me importa.";
+QUITMSG6 = "Sabes que, la próxima vez que vengas aquí\nte voy a tostar.";	// El término "Toast" se usa para decirle a alguien que está en problemas.
+QUITMSG7 = "Vé y lárgate. A ver si me importa.";
 
 // Mensajes de salida DOOM II
-QUITMSG8 = "¡Queréis salir?\nEntonces, habréis perdido un octavo!";		// No sé si es que no supe traducir esto, o si nunca tuvo mucho sentido.
-QUITMSG9 = "No te vayas ahora, hay un\nmonstruo interdimensional\nen la pantalla de DOS!";
+QUITMSG8 = "¡Queréis salir?\nEntonces, has perdido un octavo!";		// No sé si es que no supe traducir esto, o si nunca tuvo mucho sentido.
+QUITMSG9 = "No te vayas ahora, hay un\nmonstruo interdimensional esperando\nen la pantalla de DOS!";
 QUITMSG10 = "Vete de aquí y vuelve\na tus aburridos programas.";
 QUITMSG11 = "¡Si fuera tu jefe, te jugaría un\n deathmatch en un minuto!";
 QUITMSG12 = "¡Mira amigo, te vas ahora\ny pierdes tu cuenta de los cuerpos!";
@@ -46,7 +47,7 @@ QUITMSG22 = "Quéeee? Cuál es el problema?\nMami dice hora de la cena?";
 QUITMSG23 = "¡No te vayas ahora, siguen habiendo\nflemoides sueltos!";
 QUITMSG24 = "¡No te rindas -- Los flemoides\ntomarán la superioridad!";
 QUITMSG25 = "¡No te vayas ahora.\nNecesitamos tu ayuda!";
-QUITMSG26 = "Espero que sólo te estés tomando un\ndescanzo para comer Chex(R) party mix.";
+QUITMSG26 = "Espero que sólo te estés tomando un\ndescanso para comer Chex(R) party mix.";
 QUITMSG27 = "¡No te vayas ahora!\nNecesitamos tu ayuda!";
 QUITMSG28 = "¡No abandones la\nFederación Intergaláctica de Cereales!";
 QUITMSG29 = "¡El verdadero Guerrero Chex(R)\nno se rendiría tan rápido!";
@@ -59,7 +60,7 @@ QSPROMPT = "Guardar rápido sobre tu partida llamada\n\n'%s'?\n\nPresiona Y o N."
 QLPROMPT = "Quieres cargar rápido la partida llamada\n\n'%s'?\n\nPresiona Y o N.";
 NEWGAME = "No puedes comenzar una nueva partida\ndurante una partida en línea.\n\nPresiona una tecla.";
 NIGHTMARE = "Estás seguro? Este nivel de habilidad\nno es ni remotamente justo.\n\nPresiona Y o N.";
-SWSTRING = "Esta es la versión Shareware de DOOM.\n\nNecesitas ordenar la trilogía entera.\n\nPresiona una tecla.";
+SWSTRING = "Esta es la versión Shareware de DOOM.\n\nNecesitas reservar la trilogía entera.\n\nPresiona una tecla.";	//Reservar: Pedir un objeto con anterioridad para comprar :)
 MSGOFF = "Mensajes desactivados";
 MSGON = "Mensajes activados";
 NETEND = "¡No puedes terminar una partida en línea!\n\nPresiona una tecla.";
@@ -129,7 +130,7 @@ HUSTR_E1M1 = "E1M1: Hangar";
 HUSTR_E1M2 = "E1M2: Planta Nuclear";
 HUSTR_E1M3 = "E1M3: Refinería de Toxinas";
 HUSTR_E1M4 = "E1M4: Control de Comando";
-HUSTR_E1M5 = "E1M5: Laboratorio de Phobos";
+HUSTR_E1M5 = "E1M5: Laboratorio Phobos";
 HUSTR_E1M6 = "E1M6: Procesamiento Central";
 HUSTR_E1M7 = "E1M7: Estación de Computadores";
 HUSTR_E1M8 = "E1M8: Anomalía de Phobos";
@@ -137,7 +138,7 @@ HUSTR_E1M9 = "E1M9: Base Militar";
 HUSTR_E2M1 = "E2M1: Anomalía de Deimos";
 HUSTR_E2M2 = "E2M2: Área de Contenimiento";
 HUSTR_E2M3 = "E2M3: Refinería";
-HUSTR_E2M4 = "E2M4: Laboratorio de Deimos";
+HUSTR_E2M4 = "E2M4: Laboratorio Deimos";
 HUSTR_E2M5 = "E2M5: Centro de Comando";
 HUSTR_E2M6 = "E2M6: Salas de los Malditos";
 HUSTR_E2M7 = "E2M7: Tinas de Desove";
@@ -150,7 +151,7 @@ HUSTR_E3M4 = "E3M4: Casa del Dolor";
 HUSTR_E3M5 = "E3M5: Catedral Impía";
 HUSTR_E3M6 = "E3M6: Monte Erebus";
 HUSTR_E3M7 = "E3M7: Limbo";
-HUSTR_E3M8 = "E3M8: Dis";				// Esto se podría considerar como "This" (Esto), pero también podría ser sólo un nombre.
+HUSTR_E3M8 = "E3M8: Dis";				// Dis es un nombre de un dios del Inframundo. Tambien significa el nombre de una ciudad en el Infierno de Dante, parte de la Divina Comedia.
 HUSTR_E3M9 = "E3M9: Madrigeras";
 HUSTR_E4M1 = "E4M1: Infierno Debajo";
 HUSTR_E4M2 = "E4M2: Odio Perfecto";
@@ -226,7 +227,7 @@ PHUSTR_15 = "Nivel 15: El Crepúsculo";
 PHUSTR_16 = "Nivel 16: El Presagio";
 PHUSTR_17 = "Nivel 17: Recinto";
 PHUSTR_18 = "Nivel 18: Neurósfera";			// Algo sobre el sistema nervioso supongo.
-PHUSTR_19 = "Nivel 19: NME";				// Ni idea sobre esto...
+PHUSTR_19 = "Nivel 19: NME";				// Ni idea sobre esto...//Editado por leodoom85: NME es "enemigo o -enemy- en ingles, si lo dices literalmente. Ingenioso...
 PHUSTR_20 = "Nivel 20: El Dominio de la Muerte";
 PHUSTR_21 = "Nivel 21: Asesino";
 PHUSTR_22 = "Nivel 22: Misión Imposible";
@@ -256,7 +257,7 @@ THUSTR_12 = "Nivel 12: Cráter";
 THUSTR_13 = "Nivel 13: Procesamiento de Desechos Tóxicos";
 THUSTR_14 = "Nivel 14: Acerería";
 THUSTR_15 = "Nivel 15: Zona Muerta";
-THUSTR_16 = "Nivel 16: Alcances Más Profundos";
+THUSTR_16 = "Nivel 16: Alcances Más Profundos";	//También puede ser interpretado como Lugares Más Profundos
 THUSTR_17 = "Nivel 17: Área de Procesamiento";
 THUSTR_18 = "Nivel 18: Molino";
 THUSTR_19 = "Nivel 19: Enviando/Reapareciendo";
@@ -274,7 +275,7 @@ THUSTR_30 = "Nivel 30: Último Llamado";
 THUSTR_31 = "Nivel 31: Faraón";
 THUSTR_32 = "Nivel 32: Caribe";
 
-HUSTR_TALKTOSELF1 = "Te mascullas a tí mismo";
+HUSTR_TALKTOSELF1 = "Te balbuceas a tí mismo";
 HUSTR_TALKTOSELF2 = "Quién anda ahí?";
 HUSTR_TALKTOSELF3 = "Te asustas a tí mismo";
 HUSTR_TALKTOSELF4 = "Comienzas a delirar";
@@ -329,7 +330,7 @@ E1TEXT =
 E2TEXT =
 	"¡Lo has hecho! el horrible señor\n"
 	"¡Ciber-Demonio que gobernaba la\n"
-	"base de la luna ha sido asesinado y tú\n"
+	"base perdida de la luna Deimos ha sido asesinado y tú\n"
 	"eres triunfante! Pero... en dónde\n"
 	"estás? Trepas hasta el borde de la\n"
 	"luna para ver la horrible\n"
@@ -374,7 +375,7 @@ E4TEXT =
 	"Además, alguien va a pagar por lo que le\n"
 	"pasó a Daisy, tu conejo mascota.\n"
 	"\n"
-	"Pero ahora, ves esparcido delante tí más\n"
+	"Pero ahora, ves esparcido ante tí más\n"
 	"dolor potencial mientras una nación de demonios\n"
 	"corre enloqecida entre nuestras ciudades.\n"
 	"\n"
@@ -384,7 +385,7 @@ C1TEXT =
 	"infestado. Pero algo está mal. Los\n"
 	"mostruos han traído su propia realidad\n"
 	"con ellos, y la tecnología del puerto estelar\n"
-	"está siendo subvertida por su presencia.\n"
+	"está siendo subvertida por su presencia.\n" //Subvertir: trastornar, perturbar
 	"\n"
 	"Delante, ves un puesto avanzado del Infierno, una\n"
 	"zona fortificada. Si puedes atravesarla,\n"
@@ -425,7 +426,7 @@ C4TEXT =
 	"demonio que jamás has visto se derrumba frente\n"
 	"a tí, después de que bombeaste tus cohetes en\n"
 	"su cerebro expuesto. El monstruo se marchita\n"
-	"y muere, sus extremidades para dar palizas\n"
+	"y muere, sus extremidades golpeadas\n"
 	"devastan incontables millas de superficie\n"
 	"del Infierno.\n"
 	"\n"
@@ -462,10 +463,10 @@ P1TEXT =
 P2TEXT =
 	"Incluso el mortífero laberinto Arch-Vile no\n"
 	"pudo detenerte, y has llegado al prototipo\n"
-	"de Acelearador el cual es pronto\n"
-	"eficiente y definitivamente desactivado.\n"
+	"del Acelerador el cual es pronto\n"
+	"eficientemente y definitivamente desactivado.\n"
 	"\n"
-	"Eres bueno en esa clase de cosas.";
+	"Eres bueno en ese tipo de cosas.";
 P3TEXT =
 	"Has golpeado y abollado tu camino dentro\n"
 	"del corazón de la colmena demoníaca.  Hora de una\n"
@@ -482,7 +483,7 @@ P4TEXT =
 	"salpicado por todo el lugar.  Como su andrajoso\n"
 	"cadáver colapsa, una Puerta invertida se forma y\n"
 	"y absorbe los últimos fragmentos del\n"
-	"prototipo de Acelearador, sin mencionar los\n"
+	"prototipo del Acelerador, sin mencionar los\n"
 	"pocos demonios restantes.  Has acabado. El Infierno\n"
 	"ha vuelto a triturar gente muerta mala\n"
 	"en lugar de vivos buenos.  Recuerda\n"
@@ -497,7 +498,7 @@ P5TEXT =
 	"en abundancia. Sólo para maestros marine.";
 P6TEXT =
 	"Apuesto a que te preguntabas cuál ERA el nivel más\n"
-	"difícil que teníamos preparado para tí?  Ahora sabes.\n"
+	"difícil que teníamos preparado para tí?  Ahora lo sabes.\n"
 	"Nadie sale vivo.";
 T1TEXT =
 	"Haz luchado tu camino fuera de los laboratorios\n"
@@ -526,11 +527,11 @@ T3TEXT =
 	"La vista abriéndose delante luce realmente\n"
 	"familiar. Huele familiar, también -- como\n"
 	"excremento frito. No te gustó este\n"
-	"lugar antes, y estás seguro como el Infierno que no\n"
+	"lugar antes, y estás completamente seguro que no\n"
 	"planeas que te guste ahora. Mientras más\n"
 	"piensas en ello, más enojado te pones.\n"
 	"Levantando tu arma, una malvada sonrisa se forma\n"
-	"en tu cara. Hora de tomar algunos nombres.";
+	"en tu cara. Hora de tomar algunos nombres.";	//Tomar nombres significa matar enemigos
 T4TEXT =
 	"Súbitamente, todo es silencioso, de un horizonte\n"
 	"al otro. El eco agonizante del Infierno\n"
@@ -540,9 +541,9 @@ T4TEXT =
 	"que llenaba el aire. Tal vez lo has\n"
 	"logrado. De verdad has ganado?\n"
 	"\n"
-	"Algo retumba en la distacia.\n"
+	"Algo retumba en la distancia.\n"
 	"Una luz azul comienza a brillar dentro de\n"
-	"la arruinada calavera del escupe demonios.";
+	"la arruinada calavera del escupe-demonios.";
 T5TEXT =
 	"Ahora qué? Luce totalmente diferente. Algo\n"
 	"como el condominio del rey Tut. Bueno,\n"
@@ -552,7 +553,7 @@ T5TEXT =
 T6TEXT =
 	"Hora de unas vacaciones. Has reventado\n"
 	"las profundidades del Infierno y por Dios estás\n"
-	"listo para un descanzo. Te mascullas a tí mismo,\n"
+	"listo para un descanso. Te balbuceas a tí mismo,\n"
 	"Tal vez alguien más pueda patear el culo del\n"
 	"Infierno la próxima vez. Delante yace un silencioso\n"
 	"pueblo, con agua corriendo pacíficamente, pintorescas\n"
@@ -615,7 +616,7 @@ PD_ALL6 = "Necesitas las seis llaves para abrir esta puerta";
 PD_ALL6O = "Necesitas las seis llaves para activar este objeto";
 PD_ALLKEYS = "Necesitas todas las llaves";
 
-// MBF (BOOM?) narration backgrounds
+// MBF (BOOM?) Fondos de narración
 bgflatE1 = "FLOOR4_8";
 bgflatE2 = "SFLR6_1";
 bgflatE3 = "MFLR8_4";
@@ -641,7 +642,7 @@ SPREE15 = "¡%k está dominando!";
 SPREE20 = "¡%k es imparable!";
 SPREE25 = "¡%k es un dios!";
 
-// Mulitkill messages
+// Mensajes de matanza múltiple
 MULTI2 = "¡Double kill!";
 MULTI3 = "¡Multi kill!";
 MULTI4 = "¡Ultra kill!";
@@ -745,7 +746,7 @@ OB_BEGGAR = "%o fue golpeado hasta la muerte por los pobres.";
 OB_PEASANT = "%o nunca debió haber comenzado una pelea con un civil.";
 OB_ALIENSPECTRE = "%o fue derribado por el Espectro.";
 OB_ENTITY = "%o sintió la ira del Dios Único.";
-OB_LOREMASTER = "%o no pudo escapar del agarre del Lore Master.";		// No estoy seguro de cómo traducir "Lore".
+OB_LOREMASTER = "%o no pudo escapar del agarre del Maestro del Saber.";		
 OB_PROGRAMMER = "%o fue borrado por el Programador.";
 OB_STFBISHOP = "%o fue volado por el Obispo.";
 OB_SENTINEL = "%o fue acribillado por un Centinela.";
@@ -1077,10 +1078,10 @@ HE1TEXT =
 		"un mundo muy poco amigable, ¡pero nunca nadie\n"
 		"dijo que ser un hereje fuera fácil!";
 HE2TEXT =
-		"Los poderosos Maulotaurs han demostrado\n"
+		"Los poderosos Maulotauros han demostrado\n"
 		"no ser rivales para tí, y mientras\n"
 		"sus humeantes cadáveres se deslizan al\n"
-		"suelo sientes una sensación de siniestra\n"
+		"suelo, sientes una sensación de siniestra\n"
 		"satisfacción de que han sido\n"
 		"destruídos.\n\n"
 		"Las puertas que protegían se\n"
@@ -1089,8 +1090,8 @@ HE2TEXT =
 		"entrar, una risa burlona\n"
 		"campanea en tus oídos.\n\n"
 		"Había otra fuerza controlando a\n"
-		"los Maulotaurs? Podrían incluso haber\n"
-		"seser más horroríficos más allá de esta\n"
+		"los Maulotauros? Podrían incluso haber\n"
+		"seres más horroríficos más allá de esta\n"
 		"puerta? La presencia de un domo de cristal\n"
 		"en donde el cielo debería estar\n"
 		"ciertamente no es un buen signo....";
@@ -1136,7 +1137,7 @@ HE4TEXT =
 		"de D'Sparil, sus guardaespaldas pesonales\n"
 		"esperan tu llegada ...";
 HE5TEXT =
-		"Cuando el último Maulotaur ruge su\n"
+		"Cuando el último Maulotauro ruge su\n"
 		"agonía de muerte, te das cuenta de que\n"
 		"nunca te habías acercado tanto a tu propia\n"
 		"destrucción. Ni siquiera la pelea contra\n"
@@ -1416,7 +1417,7 @@ TXT_QUEST_27 = "Has Volado el Computador";
 TXT_KILLED_BISHOP = "¡Mataste al Obispo!";
 TXT_KILLED_ORACLE = "¡Mataste al Oráculo!";
 TXT_KILLED_MACIL = "¡Mataste a Macil!";
-TXT_KILLED_LOREMASTER = "¡Mataste al Loremaster!";
+TXT_KILLED_LOREMASTER = "¡Mataste al Loremaster!";	//Loremaster puede significar Maestro del Saber
 
 // Mensajes de objetos de Strife
 
