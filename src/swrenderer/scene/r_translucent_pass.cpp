@@ -155,6 +155,8 @@ namespace swrenderer
 		for (unsigned int index = 0; index != drawseglist->SegmentsCount(); index++)
 		{
 			DrawSegment *ds = drawseglist->Segment(index);
+			if (!renew)
+				ds->bRenewDrawn = false;
 
 			// [ZZ] the same as above
 			if (ds->CurrentPortalUniq != renderportal->CurrentPortalUniq)
@@ -163,6 +165,12 @@ namespace swrenderer
 			if (ds->fake) continue;
 			if (ds->maskedtexturecol != nullptr || ds->bFogBoundary)
 			{
+				if (!renew)
+					ds->bRenewDrawn = false;
+				else if (ds->bRenewDrawn && ds->maskedtexturecol == nullptr)
+					continue;
+				else
+					ds->bRenewDrawn = true;
 				RenderDrawSegment renderer(Thread);
 				renderer.Render(ds, ds->x1, ds->x2);
 			}

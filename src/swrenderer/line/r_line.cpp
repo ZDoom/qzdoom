@@ -984,6 +984,8 @@ namespace swrenderer
 
 	bool SWRenderLine::IsFogBoundary(sector_t *front, sector_t *back) const
 	{
+		//if (Thread->Clip3D->fake3D) return false;
+		//if (Thread->Clip3D->fakeActive) return false;
 		return r_fogboundary && CameraLight::Instance()->FixedColormap() == nullptr && front->Colormap.FadeColor &&
 			front->Colormap.FadeColor != back->Colormap.FadeColor &&
 			(front->GetTexture(sector_t::ceiling) != skyflatnum || back->GetTexture(sector_t::ceiling) != skyflatnum);
