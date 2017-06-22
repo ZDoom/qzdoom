@@ -28,6 +28,7 @@ namespace swrenderer
 	class WallDrawerArgs;
 	class SpanDrawerArgs;
 	class SpriteDrawerArgs;
+	class SkySphereDrawerArgs;
 	class VoxelBlock;
 
 	extern uint8_t shadetables[/*NUMCOLORMAPS*16*256*/];
@@ -62,6 +63,7 @@ namespace swrenderer
 		virtual void DrawWallRevSubClampColumn(const WallDrawerArgs &args) = 0;
 		virtual void DrawSingleSkyColumn(const SkyDrawerArgs &args) = 0;
 		virtual void DrawDoubleSkyColumn(const SkyDrawerArgs &args) = 0;
+		virtual void DrawSkySphereColumn(const SkySphereDrawerArgs &args) = 0;
 		virtual void DrawColumn(const SpriteDrawerArgs &args) = 0;
 		virtual void FillColumn(const SpriteDrawerArgs &args) = 0;
 		virtual void FillAddColumn(const SpriteDrawerArgs &args) = 0;

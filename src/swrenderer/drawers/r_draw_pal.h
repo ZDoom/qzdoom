@@ -5,6 +5,7 @@
 #include "v_palette.h"
 #include "r_thread.h"
 #include "swrenderer/viewport/r_skydrawer.h"
+#include "swrenderer/viewport/r_skyspheredrawer.h"
 #include "swrenderer/viewport/r_spandrawer.h"
 #include "swrenderer/viewport/r_walldrawer.h"
 #include "swrenderer/viewport/r_spritedrawer.h"
@@ -42,6 +43,17 @@ namespace swrenderer
 
 	class DrawSingleSky1PalCommand : public PalSkyCommand { public: using PalSkyCommand::PalSkyCommand; void Execute(DrawerThread *thread) override; };
 	class DrawDoubleSky1PalCommand : public PalSkyCommand { public: using PalSkyCommand::PalSkyCommand; void Execute(DrawerThread *thread) override; };
+
+	class DrawSkySpherePalCommand : public DrawerCommand
+	{
+	public:
+		DrawSkySpherePalCommand(const SkySphereDrawerArgs &args);
+		void Execute(DrawerThread *thread) override;
+		FString DebugInfo() override { return "PalSkyCommand"; }
+
+	protected:
+		SkySphereDrawerArgs args;
+	};
 
 	class PalColumnCommand : public DrawerCommand
 	{
@@ -239,6 +251,7 @@ namespace swrenderer
 		void DrawWallRevSubClampColumn(const WallDrawerArgs &args) override { Queue->Push<DrawWallRevSubClamp1PalCommand>(args); }
 		void DrawSingleSkyColumn(const SkyDrawerArgs &args) override { Queue->Push<DrawSingleSky1PalCommand>(args); }
 		void DrawDoubleSkyColumn(const SkyDrawerArgs &args) override { Queue->Push<DrawDoubleSky1PalCommand>(args); }
+		void DrawSkySphereColumn(const SkySphereDrawerArgs &args) override { Queue->Push<DrawSkySpherePalCommand>(args); }
 		void DrawColumn(const SpriteDrawerArgs &args) override { Queue->Push<DrawColumnPalCommand>(args); }
 		void FillColumn(const SpriteDrawerArgs &args) override { Queue->Push<FillColumnPalCommand>(args); }
 		void FillAddColumn(const SpriteDrawerArgs &args) override { Queue->Push<FillColumnAddPalCommand>(args); }

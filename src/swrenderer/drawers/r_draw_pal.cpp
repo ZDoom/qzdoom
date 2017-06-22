@@ -843,6 +843,41 @@ namespace swrenderer
 
 	/////////////////////////////////////////////////////////////////////////
 
+	DrawSkySpherePalCommand::DrawSkySpherePalCommand(const SkySphereDrawerArgs &args) : args(args)
+	{
+	}
+
+	void DrawSkySpherePalCommand::Execute(DrawerThread *thread)
+	{
+		uint8_t *dest = args.Dest();
+		int count = args.Count();
+		int pitch = args.Viewport()->RenderTarget->GetPitch();
+
+		const uint8_t *textures[6] =
+		{
+			args.TexturePixels(0),
+			args.TexturePixels(1),
+			args.TexturePixels(2),
+			args.TexturePixels(3),
+			args.TexturePixels(4),
+			args.TexturePixels(5),
+		};
+		int texWidth = args.TextureWidth();
+		int texHeight = args.TextureHeight();
+
+		count = thread->count_for_thread(args.DestY(), count);
+		dest = thread->dest_for_thread(args.DestY(), pitch, dest);
+		pitch *= thread->num_cores;
+
+		for (int i = 0; i < count; i++)
+		{
+			*dest = 50;
+			dest += pitch;
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////
+
 	PalColumnCommand::PalColumnCommand(const SpriteDrawerArgs &args) : args(args)
 	{
 	}

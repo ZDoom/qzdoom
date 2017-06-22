@@ -60,6 +60,7 @@
 #include "r_draw_span32_sse2.h"
 #include "r_draw_sky32_sse2.h"
 #endif
+#include "r_draw_skysphere32.h"
 
 #include "gi.h"
 #include "stats.h"
@@ -244,6 +245,11 @@ namespace swrenderer
 	void SWTruecolorDrawers::DrawDoubleSkyColumn(const SkyDrawerArgs &args)
 	{
 		Queue->Push<DrawSkyDouble32Command>(args);
+	}
+
+	void SWTruecolorDrawers::DrawSkySphereColumn(const SkySphereDrawerArgs &args)
+	{
+		Queue->Push<DrawSkySphere32Command>(args);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////

@@ -46,10 +46,12 @@
 #include "swrenderer/plane/r_flatplane.h"
 #include "swrenderer/plane/r_slopeplane.h"
 #include "swrenderer/plane/r_skyplane.h"
+#include "swrenderer/plane/r_skysphereplane.h"
 #include "swrenderer/plane/r_visibleplane.h"
 #include "swrenderer/drawers/r_draw.h"
 
 CVAR(Bool, tilt, false, 0);
+CVAR(Bool, r_skysphere, true, 0);
 
 namespace swrenderer
 {
@@ -108,8 +110,16 @@ namespace swrenderer
 
 		if (picnum == skyflatnum) // sky flat
 		{
-			RenderSkyPlane renderer(thread);
-			renderer.Render(this);
+			if (r_skysphere)
+			{
+				RenderSkySpherePlane renderer(thread);
+				renderer.Render(this);
+			}
+			else
+			{
+				RenderSkyPlane renderer(thread);
+				renderer.Render(this);
+			}
 		}
 		else // regular flat
 		{

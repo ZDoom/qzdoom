@@ -686,6 +686,7 @@ set ( SWRENDER_SOURCES
 	swrenderer/scene/r_translucent_pass.cpp
 	swrenderer/viewport/r_drawerargs.cpp
 	swrenderer/viewport/r_skydrawer.cpp
+	swrenderer/viewport/r_skyspheredrawer.cpp
 	swrenderer/viewport/r_spandrawer.cpp
 	swrenderer/viewport/r_spritedrawer.cpp
 	swrenderer/viewport/r_viewport.cpp
@@ -709,6 +710,7 @@ set ( SWRENDER_SOURCES
 	swrenderer/plane/r_visibleplane.cpp
 	swrenderer/plane/r_visibleplanelist.cpp
 	swrenderer/plane/r_skyplane.cpp
+	swrenderer/plane/r_skysphereplane.cpp
 	swrenderer/plane/r_planerenderer.cpp
 	swrenderer/plane/r_flatplane.cpp
 	swrenderer/plane/r_slopeplane.cpp
