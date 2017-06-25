@@ -131,6 +131,9 @@ bool FRenderState::ApplyShader()
 
 	int fogset = 0;
 
+	if (gl_lightmode == 8)
+		fogset = gl_fogmode;
+
 	if (mFogEnabled)
 	{
 		if ((mFogColor & 0xffffff) == 0)

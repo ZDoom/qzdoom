@@ -113,7 +113,11 @@ float R_DoomLightingEquation(float light)
 	float L = light * 255.0;
 
 	// z is the depth in view/eye space, positive going into the screen
-	float z = pixelpos.w;
+	float z;
+	if (uFogEnabled == 2 || uFogEnabled == -2)
+		z = distance(pixelpos.xyz, uCameraPos.xyz);
+	else
+		z = pixelpos.w;
 
 	// The zdoom light equation
 	float vis = min(globVis / z, 24.0 / 32.0);
