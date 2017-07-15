@@ -75,3 +75,20 @@ void PolyStencilBuffer::Clear(int newwidth, int newheight, uint8_t stencil_value
 		m[i] = 0xffffff00 | stencil_value;
 	}
 }
+
+/////////////////////////////////////////////////////////////////////////////
+
+PolyZBuffer *PolyZBuffer::Instance()
+{
+	static PolyZBuffer buffer;
+	return &buffer;
+}
+
+void PolyZBuffer::Resize(int newwidth, int newheight)
+{
+	width = newwidth;
+	height = newheight;
+	int count = BlockWidth() * BlockHeight();
+	values.resize(count * 64);
+}
+

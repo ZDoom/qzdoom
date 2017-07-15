@@ -100,6 +100,7 @@ void PolyTriangleDrawer::draw_arrays(const PolyDrawArgs &drawargs, WorkerThreadD
 	args.stencilValues = PolyStencilBuffer::Instance()->Values();
 	args.stencilMasks = PolyStencilBuffer::Instance()->Masks();
 	args.subsectorGBuffer = PolySubsectorGBuffer::Instance()->Values();
+	args.zbuffer = PolyZBuffer::Instance()->Values();
 
 	bool ccw = drawargs.FaceCullCCW();
 	const TriVertex *vinput = drawargs.Vertices();
@@ -464,4 +465,64 @@ void DrawRectCommand::Execute(DrawerThread *thread)
 		ScreenTriangle::RectDrawers32[blendmode](destOrg, destWidth, destHeight, destPitch, &args, &thread_data);
 	else
 		ScreenTriangle::RectDrawers8[blendmode](destOrg, destWidth, destHeight, destPitch, &args, &thread_data);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+void DeferredLightCommand::Execute(DrawerThread *thread)
+{
+	uint32_t *framebuffer = (uint32_t*)screen->GetBuffer();
+	float *zbuffer = PolyZBuffer::Instance()->Values();
+
+	float globVis = mGlobVis * (1.0f / 32.0f);
+
+	int pitch = screen->GetPitch();
+	int blockPitch = PolyStencilBuffer::Instance()->BlockWidth() * 64;
+
+	int blockWidth = screen->GetWidth() / 8;
+	int blockHeight = screen->GetHeight() / 8;
+	for (int blockY = thread->core; blockY < blockHeight; blockY += thread->num_cores)
+	{
+		int y = blockY << 3;
+		for (int blockX = 0; blockX < blockWidth; blockX++)
+		{
+			int x = blockX << 3;
+
+			float *zblock = zbuffer + (blockX << 6) + blockY * blockPitch;
+			uint32_t *line = framebuffer + y * pitch + x;
+
+			for (int iy = 0; iy < 8; iy++)
+			{
+				for (int ix = 0; ix < 8; ix++)
+				{
+					uint32_t fg = line[ix];
+					uint32_t red = RPART(fg);
+					uint32_t green = GPART(fg);
+					uint32_t blue = BPART(fg);
+
+					float invz = zblock[ix];
+
+					uint32_t light = APART(fg);
+					if ((light & 1) == 0)
+					{
+						float shade = 2.0f - (light + 12.0f) / 128.0f;
+						light = FRACUNIT - (fixed_t)(clamp(shade - MIN(24.0f / 32.0f, globVis * invz), 0.0f, 31.0f / 32.0f) * (float)FRACUNIT);
+						light >>= 8;
+					}
+					else // fixed light
+					{
+						light += light >> 7;
+					}
+
+					red = (red * light + 127) >> 8;
+					green = (green * light + 127) >> 8;
+					blue = (blue * light + 127) >> 8;
+
+					line[ix] = 0xff000000 | (red << 16) | (green << 8) | blue;
+				}
+				line += pitch;
+				zblock += 8;
+			}
+		}
+	}
 }

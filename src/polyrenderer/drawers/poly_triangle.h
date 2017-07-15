@@ -84,3 +84,14 @@ public:
 private:
 	RectDrawArgs args;
 };
+
+class DeferredLightCommand : public DrawerCommand
+{
+public:
+	DeferredLightCommand(float globVis) : mGlobVis(globVis) { }
+	void Execute(DrawerThread *thread) override;
+	FString DebugInfo() override { return "DeferredLight"; }
+
+private:
+	float mGlobVis;
+};

@@ -141,6 +141,8 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 	MainPortal.SetViewpoint(WorldToClip, PolyClipPlane(0.0f, 0.0f, 0.0f, 1.0f), GetNextStencilValue());
 	MainPortal.Render(0);
 	Skydome.Render(WorldToClip);
+	if (RenderTarget->IsBgra())
+		DrawQueue->Push<DeferredLightCommand>((float)Light.WallGlobVis(true));
 	MainPortal.RenderTranslucent(0);
 	PlayerSprites.Render();
 
@@ -160,6 +162,7 @@ void PolyRenderer::ClearBuffers()
 	FrameMemory.Clear();
 	PolyStencilBuffer::Instance()->Clear(RenderTarget->GetWidth(), RenderTarget->GetHeight(), 0);
 	PolySubsectorGBuffer::Instance()->Resize(RenderTarget->GetPitch(), RenderTarget->GetHeight());
+	PolyZBuffer::Instance()->Resize(RenderTarget->GetPitch(), RenderTarget->GetHeight());
 	NextStencilValue = 0;
 }
 
