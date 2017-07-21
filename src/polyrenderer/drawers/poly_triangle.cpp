@@ -491,6 +491,7 @@ void DeferredLightCommand::Execute(DrawerThread *thread)
 			float *zblock = zbuffer + (blockX << 6) + blockY * blockPitch;
 			uint32_t *line = framebuffer + y * pitch + x;
 
+#ifdef NO_SSE
 			for (int iy = 0; iy < 8; iy++)
 			{
 				for (int ix = 0; ix < 8; ix++)
@@ -523,6 +524,39 @@ void DeferredLightCommand::Execute(DrawerThread *thread)
 				line += pitch;
 				zblock += 8;
 			}
+#else
+			__m128 mmglobVis = _mm_set1_ps(globVis);
+			for (int iy = 0; iy < 8; iy++)
+			{
+				for (int ix = 0; ix < 8; ix += 4)
+				{
+					__m128i fg = _mm_loadu_si128((const __m128i*)(line + ix));
+					__m128 invz = _mm_loadu_ps(zblock + ix);
+
+					__m128i light = _mm_srli_epi32(fg, 24);
+					__m128 shade = _mm_sub_ps(_mm_set1_ps(2.0f), _mm_mul_ps(_mm_add_ps(_mm_cvtepi32_ps(light), _mm_set1_ps(12.0f)), _mm_set1_ps(1.0f / 128.0f)));
+
+					__m128i isfixedlightmask = _mm_cmpeq_epi32(_mm_and_si128(light, _mm_set1_epi32(1)), _mm_setzero_si128());
+					__m128i fixedlight = _mm_add_epi32(light, _mm_srli_epi32(light, 7));
+					light = _mm_sub_epi32(_mm_set1_epi32(FRACUNIT), _mm_cvtps_epi32(_mm_mul_ps(_mm_min_ps(_mm_max_ps(_mm_sub_ps(shade,_mm_min_ps(_mm_set1_ps(24.0f / 32.0f),_mm_mul_ps(mmglobVis, invz))),_mm_setzero_ps()),_mm_set1_ps(31.0f / 32.0f)), _mm_set1_ps((float)FRACUNIT))));
+					light = _mm_srli_epi32(light, 8);
+					light = _mm_or_si128(_mm_and_si128(isfixedlightmask, light), _mm_andnot_si128(isfixedlightmask, fixedlight));
+
+					__m128i fglo = _mm_unpacklo_epi8(fg, _mm_setzero_si128());
+					__m128i fghi = _mm_unpackhi_epi8(fg, _mm_setzero_si128());
+					__m128i m127 = _mm_set1_epi16(127);
+					__m128i lightlo = _mm_packs_epi32(_mm_shuffle_epi32(light, _MM_SHUFFLE(0, 0, 0, 0)), _mm_shuffle_epi32(light, _MM_SHUFFLE(1, 1, 1, 1)));
+					__m128i lighthi = _mm_packs_epi32(_mm_shuffle_epi32(light, _MM_SHUFFLE(2, 2, 2, 2)), _mm_shuffle_epi32(light, _MM_SHUFFLE(3, 3, 3, 3)));
+					fglo = _mm_srli_epi16(_mm_add_epi16(_mm_mullo_epi16(fglo, lightlo), m127), 8);
+					fghi = _mm_srli_epi16(_mm_add_epi16(_mm_mullo_epi16(fghi, lighthi), m127), 8);
+					fg = _mm_packus_epi16(fglo, fghi);
+
+					_mm_storeu_si128((__m128i*)(line + ix), fg);
+				}
+				line += pitch;
+				zblock += 8;
+			}
+#endif
 		}
 	}
 }
