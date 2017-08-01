@@ -211,9 +211,29 @@ float diffuseContribution(vec3 lightDirection, vec3 normal)
 
 //===========================================================================
 //
+// Blinn specular light calculation
+//
+//===========================================================================
+
+float blinnSpecularContribution(float diffuseContribution, vec3 lightDirection, vec3 faceNormal, float glossiness, float specularLevel)
+{
+	if (diffuseContribution > 0.0f)
+	{
+		vec3 viewDir = normalize(uCameraPos.xyz - pixelpos.xyz);
+		vec3 halfDir = normalize(lightDirection + viewDir);
+		float specAngle = max(dot(halfDir, faceNormal), 0.0f);
+		float phExp = glossiness * 4.0f;
+		return specularLevel * pow(specAngle, phExp);
+	}
+	else
+	{
+		return 0.0f;
+	}
+}
+
+//===========================================================================
+//
 // Calculates the brightness of a dynamic point light
-// Todo: Find a better way to define which lighting model to use.
-// (Specular mode has been removed for now.)
 //
 //===========================================================================
 
@@ -231,8 +251,15 @@ float pointLightAttenuation(vec4 lightpos, float lightcolorA)
 	else
 	{
 		vec3 lightDirection = normalize(lightpos.xyz - pixelpos.xyz);
-		float diffuseAmount = diffuseContribution(lightDirection, normalize(vWorldNormal.xyz));
-		return attenuation * diffuseAmount;
+		vec3 pixelnormal = normalize(vWorldNormal.xyz);
+		float diffuseAmount = diffuseContribution(lightDirection, pixelnormal);
+
+		// Diffuse only mode:
+		//return attenuation * diffuseAmount;
+
+		// Specular mode:
+		float specularAmount = blinnSpecularContribution(diffuseAmount, lightDirection, pixelnormal, 3.0, 1.2);
+		return attenuation * (diffuseAmount + specularAmount);
 	}
 }
 
