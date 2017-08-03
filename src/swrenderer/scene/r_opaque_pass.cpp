@@ -72,6 +72,8 @@
 
 EXTERN_CVAR(Bool, r_fullbrightignoresectorcolor);
 EXTERN_CVAR(Bool, r_drawvoxels);
+EXTERN_CVAR(Bool, r_debug_disable_vis_filter);
+extern uint32_t r_renderercaps;
 
 namespace
 {
@@ -79,7 +81,7 @@ namespace
 	double line_distance_cull = 1e16;
 }
 
-CUSTOM_CVAR(Float, r_sprite_distance_cull, 5000.0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Float, r_sprite_distance_cull, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	if (r_sprite_distance_cull > 0.0)
 	{
@@ -91,7 +93,7 @@ CUSTOM_CVAR(Float, r_sprite_distance_cull, 5000.0, CVAR_ARCHIVE | CVAR_GLOBALCON
 	}
 }
 
-CUSTOM_CVAR(Float, r_line_distance_cull, 8000.0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Float, r_line_distance_cull, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	if (r_line_distance_cull > 0.0)
 	{
@@ -967,6 +969,12 @@ namespace swrenderer
 		{
 			return false;
 		}
+
+		// check renderrequired vs ~r_rendercaps, if anything matches we don't support that feature,
+		// check renderhidden vs r_rendercaps, if anything matches we do support that feature and should hide it.
+		if (!r_debug_disable_vis_filter && (!!(thing->RenderRequired & ~r_renderercaps)) ||
+			(!!(thing->RenderHidden & r_renderercaps)))
+			return false;
 
 		// [ZZ] Or less definitely not visible (hue)
 		// [ZZ] 10.01.2016: don't try to clip stuff inside a skybox against the current portal.

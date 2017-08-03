@@ -79,9 +79,9 @@ CVAR (Bool, cl_showsprees, true, CVAR_ARCHIVE)
 CVAR (Bool, cl_showmultikills, true, CVAR_ARCHIVE)
 EXTERN_CVAR (Bool, show_obituaries)
 
-CVAR (Float, sv_damagefactormobj, 1.0, CVAR_SERVERINFO|CVAR_NOSAVE)
-CVAR (Float, sv_damagefactorfriendly, 1.0, CVAR_SERVERINFO|CVAR_NOSAVE)
-CVAR (Float, sv_damagefactorplayer, 1.0, CVAR_SERVERINFO|CVAR_NOSAVE)
+CVAR (Float, sv_damagefactormobj, 1.0, CVAR_SERVERINFO|CVAR_CHEAT)
+CVAR (Float, sv_damagefactorfriendly, 1.0, CVAR_SERVERINFO|CVAR_CHEAT)
+CVAR (Float, sv_damagefactorplayer, 1.0, CVAR_SERVERINFO|CVAR_CHEAT)
 
 FName MeansOfDeath;
 
@@ -1978,6 +1978,15 @@ CCMD (kill)
 
 			Net_WriteByte (DEM_GENERICCHEAT);
 			Net_WriteByte (CHT_MASSACRE);
+		}
+		else if (!stricmp (argv[1], "baddies"))
+		{
+			// Kill all the unfriendly monsters
+			if (CheckCheatmode ())
+				return;
+
+			Net_WriteByte (DEM_GENERICCHEAT);
+			Net_WriteByte (CHT_MASSACRE2);
 		}
 		else
 		{

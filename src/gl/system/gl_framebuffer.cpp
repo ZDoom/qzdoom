@@ -51,10 +51,12 @@
 #include "gl/gl_functions.h"
 #include "gl/renderer/gl_2ddrawer.h"
 #include "gl_debug.h"
+#include "r_videoscale.h"
 
 EXTERN_CVAR (Float, vid_brightness)
 EXTERN_CVAR (Float, vid_contrast)
 EXTERN_CVAR (Bool, vid_vsync)
+EXTERN_CVAR(Int, vid_scalemode)
 
 CVAR(Bool, gl_aalines, false, CVAR_ARCHIVE)
 
@@ -180,18 +182,15 @@ void OpenGLFrameBuffer::Update()
 	Unlock();
 	CheckBench();
 
-	if (!IsFullscreen())
+	int clientWidth = ViewportScaledWidth(IsFullscreen() ? VideoWidth : GetClientWidth());
+	int clientHeight = ViewportScaledHeight(IsFullscreen() ? VideoHeight : GetClientHeight());
+	if (clientWidth > 0 && clientHeight > 0 && (Width != clientWidth || Height != clientHeight))
 	{
-		int clientWidth = GetClientWidth();
-		int clientHeight = GetClientHeight();
-		if (clientWidth > 0 && clientHeight > 0 && (Width != clientWidth || Height != clientHeight))
-		{
-			// Do not call Resize here because it's only for software canvases
-			Pitch = Width = clientWidth;
-			Height = clientHeight;
-			V_OutputResized(Width, Height);
-			GLRenderer->mVBO->OutputResized(Width, Height);
-		}
+		// Do not call Resize here because it's only for software canvases
+		Pitch = Width = clientWidth;
+		Height = clientHeight;
+		V_OutputResized(Width, Height);
+		GLRenderer->mVBO->OutputResized(Width, Height);
 	}
 
 	GLRenderer->SetOutputViewport(nullptr);
@@ -549,3 +548,18 @@ void OpenGLFrameBuffer::GameRestart()
 	gl_GenerateGlobalBrightmapFromColormap();
 }
 
+
+void OpenGLFrameBuffer::ScaleCoordsFromWindow(int16_t &x, int16_t &y)
+{
+	int letterboxX = GLRenderer->mOutputLetterbox.left;
+	int letterboxY = GLRenderer->mOutputLetterbox.top;
+	int letterboxWidth = GLRenderer->mOutputLetterbox.width;
+	int letterboxHeight = GLRenderer->mOutputLetterbox.height;
+
+	// Subtract the LB video mode letterboxing
+	if (IsFullscreen())
+		y -= (GetTrueHeight() - VideoHeight) / 2;
+
+	x = int16_t((x - letterboxX) * Width / letterboxWidth);
+	y = int16_t((y - letterboxY) * Height / letterboxHeight);
+}

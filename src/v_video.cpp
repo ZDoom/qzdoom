@@ -83,6 +83,7 @@
 #include "menu/menu.h"
 #include "r_data/voxels.h"
 #include "vm.h"
+#include "r_videoscale.h"
 
 EXTERN_CVAR(Bool, r_blendmethod)
 
@@ -782,7 +783,7 @@ void DSimpleCanvas::Unlock ()
 //==========================================================================
 
 DFrameBuffer::DFrameBuffer (int width, int height, bool bgra)
-	: DSimpleCanvas (width, height, bgra)
+	: DSimpleCanvas (ViewportScaledWidth(width), ViewportScaledHeight(height), bgra)
 {
 	LastMS = LastSec = FrameCount = LastCount = LastTic = 0;
 	Accel2D = false;
@@ -1289,7 +1290,7 @@ bool V_DoModeSetup (int width, int height, int bits)
 	FFont::StaticPreloadFonts();
 
 	DisplayBits = bits;
-	V_UpdateModeSize(width, height);
+	V_UpdateModeSize(screen->GetWidth(), screen->GetHeight());
 
 	M_RefreshModesList ();
 
@@ -1626,6 +1627,10 @@ int ActiveFakeRatio(int width, int height)
 		{
 			fakeratio = 3;
 		}
+	}
+	else if (vid_aspect == 0 && ViewportIsScaled43())
+	{
+		fakeratio = 0;
 	}
 	if (vid_nowidescreen)
 	{

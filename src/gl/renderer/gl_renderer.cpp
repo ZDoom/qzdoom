@@ -72,8 +72,10 @@
 #include "gl/utility/gl_templates.h"
 #include "gl/models/gl_models.h"
 #include "gl/dynlights/gl_lightbuffer.h"
+#include "r_videoscale.h"
 
 EXTERN_CVAR(Int, screenblocks)
+EXTERN_CVAR(Int, vid_scalemode)
 
 CVAR(Bool, gl_scale_viewport, true, CVAR_ARCHIVE);
 
@@ -281,9 +283,19 @@ void FGLRenderer::SetOutputViewport(GL_IRECT *bounds)
 	}
 	int screenWidth = framebuffer->GetWidth();
 	int screenHeight = framebuffer->GetHeight();
-	float scale = MIN(clientWidth / (float)screenWidth, clientHeight / (float)screenHeight);
-	mOutputLetterbox.width = (int)round(screenWidth * scale);
-	mOutputLetterbox.height = (int)round(screenHeight * scale);
+	float scaleX, scaleY;
+	if (ViewportIsScaled43())
+	{
+		scaleX = MIN(clientWidth / (float)screenWidth, clientHeight / (screenHeight * 1.2f));
+		scaleY = scaleX * 1.2f;
+	}
+	else
+	{
+		scaleX = MIN(clientWidth / (float)screenWidth, clientHeight / (float)screenHeight);
+		scaleY = scaleX;
+	}
+	mOutputLetterbox.width = (int)round(screenWidth * scaleX);
+	mOutputLetterbox.height = (int)round(screenHeight * scaleY);
 	mOutputLetterbox.left = (clientWidth - mOutputLetterbox.width) / 2;
 	mOutputLetterbox.top = (clientHeight - mOutputLetterbox.height) / 2;
 
@@ -300,14 +312,14 @@ void FGLRenderer::SetOutputViewport(GL_IRECT *bounds)
 	mSceneViewport.height = height;
 
 	// Scale viewports to fit letterbox
-	if ((gl_scale_viewport && !framebuffer->IsFullscreen()) || !FGLRenderBuffers::IsEnabled())
+	if ((gl_scale_viewport && !framebuffer->IsFullscreen() && vid_scalemode == 0) || !FGLRenderBuffers::IsEnabled())
 	{
 		mScreenViewport.width = mOutputLetterbox.width;
 		mScreenViewport.height = mOutputLetterbox.height;
-		mSceneViewport.left = (int)round(mSceneViewport.left * scale);
-		mSceneViewport.top = (int)round(mSceneViewport.top * scale);
-		mSceneViewport.width = (int)round(mSceneViewport.width * scale);
-		mSceneViewport.height = (int)round(mSceneViewport.height * scale);
+		mSceneViewport.left = (int)round(mSceneViewport.left * scaleX);
+		mSceneViewport.top = (int)round(mSceneViewport.top * scaleY);
+		mSceneViewport.width = (int)round(mSceneViewport.width * scaleX);
+		mSceneViewport.height = (int)round(mSceneViewport.height * scaleY);
 
 		// Without render buffers we have to render directly to the letterbox
 		if (!FGLRenderBuffers::IsEnabled())

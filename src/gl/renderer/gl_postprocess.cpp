@@ -65,6 +65,7 @@
 #include "gl/shaders/gl_postprocessshader.h"
 #include "gl/renderer/gl_2ddrawer.h"
 #include "gl/stereo3d/gl_stereo3d.h"
+#include "r_videoscale.h"
 
 //==========================================================================
 //
@@ -114,7 +115,7 @@ CUSTOM_CVAR(Int, gl_ssao, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 		self = 0;
 }
 
-CUSTOM_CVAR(Int, gl_ssao_portals, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Int, gl_ssao_portals, 1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	if (self < 0)
 		self = 0;
@@ -854,8 +855,16 @@ void FGLRenderer::DrawPresentTexture(const GL_IRECT &box, bool applyGamma)
 	glViewport(box.left, box.top, box.width, box.height);
 
 	glActiveTexture(GL_TEXTURE0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	if (ViewportLinearScale())
+	{
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
+	else
+	{
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
 
 	mPresentShader->Bind();
 	mPresentShader->InputTexture.Set(0);

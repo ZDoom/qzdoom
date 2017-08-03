@@ -68,6 +68,7 @@
 #include "gl/utility/gl_templates.h"
 #include "gl/gl_functions.h"
 #include "gl_debug.h"
+#include "r_videoscale.h"
 
 #include "swrenderer/scene/r_light.h"
 
@@ -93,15 +94,6 @@ EXTERN_CVAR(Bool, vid_vsync)
 EXTERN_CVAR(Float, transsouls)
 EXTERN_CVAR(Int, vid_refreshrate)
 EXTERN_CVAR(Bool, gl_legacy_mode)
-
-CVAR(Int, vid_max_width, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Int, vid_max_height, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-
-namespace
-{
-	int ClampWidth(int width) { return (vid_max_width == 0 || width < vid_max_width) ? width : vid_max_width; }
-	int ClampHeight(int height) { return (vid_max_height == 0 || height < vid_max_height) ? height : vid_max_height; }
-}
 
 #ifdef WIN32
 extern cycle_t BlitCycles;
@@ -147,7 +139,7 @@ const char *const OpenGLSWFrameBuffer::ShaderDefines[OpenGLSWFrameBuffer::NUM_SH
 };
 
 OpenGLSWFrameBuffer::OpenGLSWFrameBuffer(void *hMonitor, int width, int height, int bits, int refreshHz, bool fullscreen, bool bgra) :
-	Super(hMonitor, ClampWidth(width), ClampHeight(height), bits, refreshHz, fullscreen, bgra)
+	Super(hMonitor, width, height, bits, refreshHz, fullscreen, bgra)
 {
 	VertexBuffer = nullptr;
 	IndexBuffer = nullptr;
@@ -722,6 +714,29 @@ void OpenGLSWFrameBuffer::DrawTriangleList(int minIndex, int numVertices, int st
 	glDrawRangeElements(GL_TRIANGLES, minIndex, minIndex + numVertices - 1, primitiveCount * 3, GL_UNSIGNED_SHORT, (const void*)(startIndex * sizeof(uint16_t)));
 }
 
+void OpenGLSWFrameBuffer::GetLetterboxFrame(int &letterboxX, int &letterboxY, int &letterboxWidth, int &letterboxHeight)
+{
+	int clientWidth = GetClientWidth();
+	int clientHeight = GetClientHeight();
+
+	float scaleX, scaleY;
+	if (ViewportIsScaled43())
+	{
+		scaleX = MIN(clientWidth / (float)Width, clientHeight / (Height * 1.2f));
+		scaleY = scaleX * 1.2f;
+	}
+	else
+	{
+		scaleX = MIN(clientWidth / (float)Width, clientHeight / (float)Height);
+		scaleY = scaleX;
+	}
+
+	letterboxWidth = (int)round(Width * scaleX);
+	letterboxHeight = (int)round(Height * scaleY);
+	letterboxX = (clientWidth - letterboxWidth) / 2;
+	letterboxY = (clientHeight - letterboxHeight) / 2;
+}
+
 void OpenGLSWFrameBuffer::Present()
 {
 	int clientWidth = GetClientWidth();
@@ -731,18 +746,26 @@ void OpenGLSWFrameBuffer::Present()
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, clientWidth, clientHeight);
 
-		float scale = MIN(clientWidth / (float)Width, clientHeight / (float)Height);
-		int letterboxWidth = (int)round(Width * scale);
-		int letterboxHeight = (int)round(Height * scale);
-		int letterboxX = (clientWidth - letterboxWidth) / 2;
-		int letterboxY = (clientHeight - letterboxHeight) / 2;
-
+		int letterboxX, letterboxY, letterboxWidth, letterboxHeight;
+		GetLetterboxFrame(letterboxX, letterboxY, letterboxWidth, letterboxHeight);
 		DrawLetterbox(letterboxX, letterboxY, letterboxWidth, letterboxHeight);
 		glViewport(letterboxX, letterboxY, letterboxWidth, letterboxHeight);
 
 		FBVERTEX verts[4];
 		CalcFullscreenCoords(verts, false, 0, 0xFFFFFFFF);
 		SetTexture(0, OutputFB->Texture.get());
+
+		if (ViewportLinearScale())
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		}
+		else
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		}
+
 		SetPixelShader(Shaders[SHADER_GammaCorrection].get());
 		SetAlphaBlend(0);
 		EnableAlphaTest(false);
@@ -1174,6 +1197,14 @@ void OpenGLSWFrameBuffer::Unlock()
 	else if (--m_Lock == 0)
 	{
 		Buffer = nullptr;
+
+		if (MappedMemBuffer)
+		{
+			BindFBBuffer();
+			glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+			MappedMemBuffer = nullptr;
+		}
 	}
 }
 
@@ -1283,8 +1314,8 @@ void OpenGLSWFrameBuffer::Flip()
 
 	if (!IsFullscreen())
 	{
-		int clientWidth = ClampWidth(GetClientWidth());
-		int clientHeight = ClampHeight(GetClientHeight());
+		int clientWidth = ViewportScaledWidth(GetClientWidth());
+		int clientHeight = ViewportScaledHeight(GetClientHeight());
 		if (clientWidth > 0 && clientHeight > 0 && (Width != clientWidth || Height != clientHeight))
 		{
 			Resize(clientWidth, clientHeight);
@@ -3806,4 +3837,17 @@ void OpenGLSWFrameBuffer::SetPaletteTexture(HWTexture *texture, int count, uint3
 	float fcount = 1 / float(count);
 	SetConstant(PSCONST_PaletteMod, 255 * fcount, 0.5f * fcount, 0, 0);
 	SetTexture(1, texture);
+}
+
+void OpenGLSWFrameBuffer::ScaleCoordsFromWindow(int16_t &x, int16_t &y)
+{
+	int letterboxX, letterboxY, letterboxWidth, letterboxHeight;
+	GetLetterboxFrame(letterboxX, letterboxY, letterboxWidth, letterboxHeight);
+
+	// Subtract the LB video mode letterboxing
+	if (IsFullscreen())
+		y -= (GetTrueHeight() - VideoHeight) / 2;
+
+	x = int16_t((x - letterboxX) * Width / letterboxWidth);
+	y = int16_t((y - letterboxY) * Height / letterboxHeight);
 }
