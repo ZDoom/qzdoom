@@ -237,7 +237,7 @@ float blinnSpecularContribution(float diffuseContribution, vec3 lightDirection, 
 //
 //===========================================================================
 
-float pointLightAttenuation(vec4 lightpos, float lightcolorA)
+vec2 pointLightAttenuation(vec4 lightpos, float lightcolorA)
 {
 	float attenuation = max(lightpos.w - distance(pixelpos.xyz, lightpos.xyz),0.0) / lightpos.w;
 #ifdef SUPPORTS_SHADOWMAPS
@@ -246,7 +246,7 @@ float pointLightAttenuation(vec4 lightpos, float lightcolorA)
 #endif
 	if (lightcolorA >= 0.0) // Sign bit is the attenuated light flag
 	{
-		return attenuation;
+		return vec2(attenuation, 0.0);
 	}
 	else
 	{
@@ -255,11 +255,11 @@ float pointLightAttenuation(vec4 lightpos, float lightcolorA)
 		float diffuseAmount = diffuseContribution(lightDirection, pixelnormal);
 
 		// Diffuse only mode:
-		//return attenuation * diffuseAmount;
+		//return vec2(attenuation * diffuseAmount, 0.0);
 
 		// Specular mode:
-		float specularAmount = blinnSpecularContribution(diffuseAmount, lightDirection, pixelnormal, 3.0, 1.2);
-		return attenuation * (diffuseAmount + specularAmount);
+		float specularAmount = blinnSpecularContribution(diffuseAmount, lightDirection, pixelnormal, 10.0, 0.3);
+		return vec2(diffuseAmount, specularAmount) * attenuation;
 	}
 }
 
@@ -277,7 +277,7 @@ float pointLightAttenuation(vec4 lightpos, float lightcolorA)
 //
 //===========================================================================
 
-vec4 getLightColor(float fogdist, float fogfactor)
+vec4 getLightColor(vec4 material, float fogdist, float fogfactor)
 {
 	vec4 color = vColor;
 	
@@ -323,6 +323,7 @@ vec4 getLightColor(float fogdist, float fogfactor)
 	//
 	
 	vec4 dynlight = uDynLightColor;
+	vec4 specular = vec4(0.0, 0.0, 0.0, 1.0);
 
 #if defined NUM_UBO_LIGHTS || defined SHADER_STORAGE_LIGHTS
 	if (uLightIndex >= 0)
@@ -338,8 +339,9 @@ vec4 getLightColor(float fogdist, float fogfactor)
 				vec4 lightpos = lights[i];
 				vec4 lightcolor = lights[i+1];
 				
-				lightcolor.rgb *= pointLightAttenuation(lightpos, lightcolor.a);
-				dynlight.rgb += lightcolor.rgb;
+				vec2 attenuation = pointLightAttenuation(lightpos, lightcolor.a);
+				dynlight.rgb += lightcolor.rgb * attenuation.x;
+				specular.rgb += lightcolor.rgb * attenuation.y;
 			}
 			//
 			// subtractive lights
@@ -349,16 +351,21 @@ vec4 getLightColor(float fogdist, float fogfactor)
 				vec4 lightpos = lights[i];
 				vec4 lightcolor = lights[i+1];
 				
-				lightcolor.rgb *= pointLightAttenuation(lightpos, lightcolor.a);
-				dynlight.rgb -= lightcolor.rgb;
+				vec2 attenuation = pointLightAttenuation(lightpos, lightcolor.a);
+				dynlight.rgb -= lightcolor.rgb * attenuation.x;
+				specular.rgb -= lightcolor.rgb * attenuation.y;
 			}
 		}
 	}
 #endif
 	color.rgb = clamp(color.rgb + desaturate(dynlight).rgb, 0.0, 1.4);
-	
+	specular.rgb = clamp(specular.rgb + desaturate(specular).rgb, 0.0, 1.4);
+
+	// Fake a specular material texture by desaturating the diffuse texture and increase the contrast
+	float materialSpec = clamp(dot(material.rgb, vec3(0.3, 0.56, 0.14)) * 2.0, 0.0, 1.0);
+
 	// prevent any unintentional messing around with the alpha.
-	return vec4(color.rgb, vColor.a);
+	return vec4(material.rgb * color.rgb + materialSpec * specular.rgb, material.a * vColor.a);
 }
 
 //===========================================================================
@@ -439,7 +446,7 @@ void main()
 			}
 			
 			
-			frag *= getLightColor(fogdist, fogfactor);
+			frag = getLightColor(frag, fogdist, fogfactor);
 			
 #if defined NUM_UBO_LIGHTS || defined SHADER_STORAGE_LIGHTS
 			if (uLightIndex >= 0)
@@ -457,7 +464,7 @@ void main()
 						vec4 lightpos = lights[i];
 						vec4 lightcolor = lights[i+1];
 						
-						lightcolor.rgb *= pointLightAttenuation(lightpos, lightcolor.a);
+						lightcolor.rgb *= pointLightAttenuation(lightpos, lightcolor.a).x;
 						addlight.rgb += lightcolor.rgb;
 					}
 					frag.rgb = clamp(frag.rgb + desaturate(addlight).rgb, 0.0, 1.0);
