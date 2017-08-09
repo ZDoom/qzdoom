@@ -259,7 +259,7 @@ vec2 pointLightAttenuation(vec4 lightpos, float lightcolorA)
 		//return vec2(attenuation * diffuseAmount, 0.0);
 
 		// Specular mode:
-		float specularAmount = blinnSpecularContribution(diffuseAmount, lightDirection, pixelnormal, 10.0, 0.3);
+		float specularAmount = blinnSpecularContribution(diffuseAmount, lightDirection, pixelnormal, 10.0, 0.12);
 		return vec2(diffuseAmount, specularAmount) * attenuation;
 	}
 }
