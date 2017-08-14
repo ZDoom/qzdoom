@@ -40,6 +40,7 @@
 #include "p_spec.h"
 #include "g_levellocals.h"
 #include "events.h"
+#include "actorinlines.h"
 
 extern gamestate_t wipegamestate;
 
@@ -118,6 +119,15 @@ void P_Ticker (void)
 
 	P_ResetSightCounters (false);
 	R_ClearInterpolationPath();
+
+	// Reset all actor interpolations for all actors before the current thinking turn so that indirect actor movement gets properly interpolated.
+	TThinkerIterator<AActor> it;
+	AActor *ac;
+
+	while ((ac = it.Next()))
+	{
+		ac->ClearInterpolation();
+	}
 
 	// Since things will be moving, it's okay to interpolate them in the renderer.
 	r_NoInterpolate = false;

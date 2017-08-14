@@ -4036,6 +4036,14 @@ void AActor::CheckPortalTransition(bool islinked)
 	if (islinked && moved) LinkToWorld(&ctx);
 }
 
+DEFINE_ACTION_FUNCTION(AActor, CheckPortalTransition)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_BOOL_DEF(linked);
+	self->CheckPortalTransition(linked);
+	return 0;
+}
+
 //
 // P_MobjThinker
 //
@@ -4068,10 +4076,6 @@ void AActor::Tick ()
 		Destroy();
 		return;
 	}
-
-	// This is necessary to properly interpolate movement outside this function
-	// like from an ActorMover
-	ClearInterpolation();
 
 	if (flags5 & MF5_NOINTERACTION)
 	{
