@@ -1,5 +1,5 @@
 /*
-**  Handling drawing a decal
+**  Polygon Doom software renderer
 **  Copyright (c) 2016 Magnus Norddahl
 **
 **  This software is provided 'as-is', without any express or implied
@@ -27,8 +27,12 @@
 class RenderPolyDecal
 {
 public:
-	static void RenderWallDecals(const TriMatrix &worldToClip, const PolyClipPlane &clipPlane, const seg_t *line, uint32_t subsectorDepth, uint32_t stencilValue);
+	static void RenderWallDecals(PolyRenderThread *thread, const TriMatrix &worldToClip, const PolyClipPlane &clipPlane, const seg_t *line, uint32_t stencilValue);
 
 private:
-	void Render(const TriMatrix &worldToClip, const PolyClipPlane &clipPlane, DBaseDecal *decal, const seg_t *line, uint32_t subsectorDepth, uint32_t stencilValue);
+	void Render(PolyRenderThread *thread, const TriMatrix &worldToClip, const PolyClipPlane &clipPlane, DBaseDecal *decal, const seg_t *line, uint32_t stencilValue);
+
+	void GetDecalSectors(DBaseDecal *decal, const seg_t *line, sector_t **front, sector_t **back);
+	double GetDecalZ(DBaseDecal *decal, const seg_t *line, sector_t *front, sector_t *back);
+	void GetWallZ(DBaseDecal *decal, const seg_t *line, sector_t *front, sector_t *back, double &walltopz, double &wallbottomz);
 };

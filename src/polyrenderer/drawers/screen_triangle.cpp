@@ -1,5 +1,5 @@
 /*
-**  Triangle drawers
+**  Polygon Doom software renderer
 **  Copyright (c) 2016 Magnus Norddahl
 **
 **  This software is provided 'as-is', without any express or implied
@@ -47,10 +47,22 @@
 class TriangleBlock
 {
 public:
-	TriangleBlock(const TriDrawTriangleArgs *args);
-	void Loop(const TriDrawTriangleArgs *args, WorkerThreadData *thread);
+	TriangleBlock(const TriDrawTriangleArgs *args, WorkerThreadData *thread);
+	void Render();
 
 private:
+	void RenderSubdivide(int x0, int y0, int x1, int y1);
+
+	enum class CoverageModes { Full, Partial };
+	struct CoverageFull { static const int Mode = (int)CoverageModes::Full; };
+	struct CoveragePartial { static const int Mode = (int)CoverageModes::Partial; };
+
+	template<typename CoverageMode>
+	void RenderBlock(int x0, int y0, int x1, int y1);
+
+	const TriDrawTriangleArgs *args;
+	WorkerThreadData *thread;
+
 	// Block size, standard 8x8 (must be power of two)
 	static const int q = 8;
 
@@ -76,10 +88,9 @@ private:
 	int clipright;
 	int clipbottom;
 
-	// Subsector buffer
-	uint32_t * RESTRICT subsectorGBuffer;
-	uint32_t subsectorDepth;
-	int32_t subsectorPitch;
+	// Depth buffer
+	float * RESTRICT zbuffer;
+	int32_t zbufferPitch;
 
 	// Triangle bounding block
 	int minx, miny;
@@ -110,16 +121,24 @@ private:
 	__m128i mDY31;
 #endif
 
+	enum class CoverageResult
+	{
+		full,
+		partial,
+		none
+	};
+	CoverageResult AreaCoverageTest(int x0, int y0, int x1, int y1);
+
 	void CoverageTest();
 	void StencilEqualTest();
 	void StencilGreaterEqualTest();
-	void SubsectorTest();
+	void DepthTest(const TriDrawTriangleArgs *args);
 	void ClipTest();
 	void StencilWrite();
-	void SubsectorWrite();
+	void DepthWrite(const TriDrawTriangleArgs *args);
 };
 
-TriangleBlock::TriangleBlock(const TriDrawTriangleArgs *args)
+TriangleBlock::TriangleBlock(const TriDrawTriangleArgs *args, WorkerThreadData *thread) : args(args), thread(thread)
 {
 	const TriVertex &v1 = *args->v1;
 	const TriVertex &v2 = *args->v2;
@@ -134,9 +153,8 @@ TriangleBlock::TriangleBlock(const TriDrawTriangleArgs *args)
 	stencilTestValue = args->uniforms->StencilTestValue();
 	stencilWriteValue = args->uniforms->StencilWriteValue();
 
-	subsectorGBuffer = args->subsectorGBuffer;
-	subsectorDepth = args->uniforms->SubsectorDepth();
-	subsectorPitch = args->stencilPitch;
+	zbuffer = args->zbuffer;
+	zbufferPitch = args->stencilPitch;
 
 	// 28.4 fixed-point coordinates
 #ifdef NO_SSE
@@ -191,9 +209,11 @@ TriangleBlock::TriangleBlock(const TriDrawTriangleArgs *args)
 		return;
 	}
 
-	// Start in corner of 8x8 block
+	// Start and end in corner of 8x8 block
 	minx &= ~(q - 1);
 	miny &= ~(q - 1);
+	maxx |= q - 1;
+	maxy |= q - 1;
 
 	// Half-edge constants
 	C1 = DY12 * X1 - DX12 * Y1;
@@ -227,40 +247,94 @@ TriangleBlock::TriangleBlock(const TriDrawTriangleArgs *args)
 #endif
 }
 
-void TriangleBlock::Loop(const TriDrawTriangleArgs *args, WorkerThreadData *thread)
+void TriangleBlock::Render()
+{
+	RenderSubdivide(minx / q, miny / q, (maxx + 1) / q, (maxy + 1) / q);
+}
+
+void TriangleBlock::RenderSubdivide(int x0, int y0, int x1, int y1)
+{
+	CoverageResult result = AreaCoverageTest(x0 * q, y0 * q, x1 * q, y1 * q);
+	if (result == CoverageResult::full)
+	{
+		RenderBlock<CoverageFull>(x0 * q, y0 * q, x1 * q, y1 * q);
+	}
+	else if (result == CoverageResult::partial)
+	{
+		bool doneX = x1 - x0 <= 8;
+		bool doneY = y1 - y0 <= 8;
+		if (doneX && doneY)
+		{
+			RenderBlock<CoveragePartial>(x0 * q, y0 * q, x1 * q, y1 * q);
+		}
+		else
+		{
+			int midx = (x0 + x1) >> 1;
+			int midy = (y0 + y1) >> 1;
+			if (doneX)
+			{
+				RenderSubdivide(x0, y0, x1, midy);
+				RenderSubdivide(x0, midy, x1, y1);
+			}
+			else if (doneY)
+			{
+				RenderSubdivide(x0, y0, midx, y1);
+				RenderSubdivide(midx, y0, x1, y1);
+			}
+			else
+			{
+				RenderSubdivide(x0, y0, midx, midy);
+				RenderSubdivide(midx, y0, x1, midy);
+				RenderSubdivide(x0, midy, midx, y1);
+				RenderSubdivide(midx, midy, x1, y1);
+			}
+		}
+	}
+}
+
+template<typename CoverageModeT>
+void TriangleBlock::RenderBlock(int x0, int y0, int x1, int y1)
 {
 	// First block line for this thread
 	int core = thread->core;
 	int num_cores = thread->num_cores;
-	int core_skip = (num_cores - ((miny / q) - core) % num_cores) % num_cores;
-	int start_miny = miny + core_skip * q;
+	int core_skip = (num_cores - ((y0 / q) - core) % num_cores) % num_cores;
+	int start_miny = y0 + core_skip * q;
 
-	bool subsectorTest = args->uniforms->SubsectorTest();
+	bool depthTest = args->uniforms->DepthTest();
 	bool writeColor = args->uniforms->WriteColor();
 	bool writeStencil = args->uniforms->WriteStencil();
-	bool writeSubsector = args->uniforms->WriteSubsector();
+	bool writeDepth = args->uniforms->WriteDepth();
 
 	int bmode = (int)args->uniforms->BlendMode();
 	auto drawFunc = args->destBgra ? ScreenTriangle::TriDrawers32[bmode] : ScreenTriangle::TriDrawers8[bmode];
 
 	// Loop through blocks
-	for (int y = start_miny; y < maxy; y += q * num_cores)
+	for (int y = start_miny; y < y1; y += q * num_cores)
 	{
-		for (int x = minx; x < maxx; x += q)
+		for (int x = x0; x < x1; x += q)
 		{
 			X = x;
 			Y = y;
 
-			CoverageTest();
-			if (Mask0 == 0 && Mask1 == 0)
-				continue;
+			if (CoverageModeT::Mode == (int)CoverageModes::Full)
+			{
+				Mask0 = 0xffffffff;
+				Mask1 = 0xffffffff;
+			}
+			else
+			{
+				CoverageTest();
+				if (Mask0 == 0 && Mask1 == 0)
+					continue;
+			}
 
 			ClipTest();
 			if (Mask0 == 0 && Mask1 == 0)
 				continue;
 
-			// To do: make the stencil test use its own flag for comparison mode instead of abusing the subsector test..
-			if (!subsectorTest)
+			// To do: make the stencil test use its own flag for comparison mode instead of abusing the depth test..
+			if (!depthTest)
 			{
 				StencilEqualTest();
 				if (Mask0 == 0 && Mask1 == 0)
@@ -272,7 +346,7 @@ void TriangleBlock::Loop(const TriDrawTriangleArgs *args, WorkerThreadData *thre
 				if (Mask0 == 0 && Mask1 == 0)
 					continue;
 
-				SubsectorTest();
+				DepthTest(args);
 				if (Mask0 == 0 && Mask1 == 0)
 					continue;
 			}
@@ -281,34 +355,54 @@ void TriangleBlock::Loop(const TriDrawTriangleArgs *args, WorkerThreadData *thre
 				drawFunc(X, Y, Mask0, Mask1, args);
 			if (writeStencil)
 				StencilWrite();
-			if (writeSubsector)
-				SubsectorWrite();
+			if (writeDepth)
+				DepthWrite(args);
 		}
 	}
 }
 
 #ifdef NO_SSE
 
-void TriangleBlock::SubsectorTest()
+void TriangleBlock::DepthTest(const TriDrawTriangleArgs *args)
 {
-	int block = (X >> 3) + (Y >> 3) * subsectorPitch;
-	uint32_t *subsector = subsectorGBuffer + block * 64;
+	int block = (X >> 3) + (Y >> 3) * zbufferPitch;
+	float *depth = zbuffer + block * 64;
+
+	const TriVertex &v1 = *args->v1;
+
+	float stepXW = args->gradientX.W;
+	float stepYW = args->gradientY.W;
+	float posYW = v1.w + stepXW * (X - v1.x) + stepYW * (Y - v1.y);
+
 	uint32_t mask0 = 0;
 	uint32_t mask1 = 0;
 
-	for (int i = 0; i < 32; i++)
+	for (int iy = 0; iy < 4; iy++)
 	{
-		bool covered = *subsector >= subsectorDepth;
-		mask0 <<= 1;
-		mask0 |= (uint32_t)covered;
-		subsector++;
+		float posXW = posYW;
+		for (int ix = 0; ix < 8; ix++)
+		{
+			bool covered = *depth <= posXW;
+			mask0 <<= 1;
+			mask0 |= (uint32_t)covered;
+			depth++;
+			posXW += stepXW;
+		}
+		posYW += stepYW;
 	}
-	for (int i = 0; i < 32; i++)
+
+	for (int iy = 0; iy < 4; iy++)
 	{
-		bool covered = *subsector >= subsectorDepth;
-		mask1 <<= 1;
-		mask1 |= (uint32_t)covered;
-		subsector++;
+		float posXW = posYW;
+		for (int ix = 0; ix < 8; ix++)
+		{
+			bool covered = *depth <= posXW;
+			mask1 <<= 1;
+			mask1 |= (uint32_t)covered;
+			depth++;
+			posXW += stepXW;
+		}
+		posYW += stepYW;
 	}
 
 	Mask0 = Mask0 & mask0;
@@ -317,26 +411,50 @@ void TriangleBlock::SubsectorTest()
 
 #else
 
-void TriangleBlock::SubsectorTest()
+void TriangleBlock::DepthTest(const TriDrawTriangleArgs *args)
 {
-	int block = (X >> 3) + (Y >> 3) * subsectorPitch;
-	uint32_t *subsector = subsectorGBuffer + block * 64;
+	int block = (X >> 3) + (Y >> 3) * zbufferPitch;
+	float *depth = zbuffer + block * 64;
+
+	const TriVertex &v1 = *args->v1;
+
+	float stepXW = args->gradientX.W;
+	float stepYW = args->gradientY.W;
+	float posYW = v1.w + stepXW * (X - v1.x) + stepYW * (Y - v1.y);
+
+	__m128 mposYW = _mm_setr_ps(posYW, posYW + stepXW, posYW + stepXW + stepXW, posYW + stepXW + stepXW + stepXW);
+	__m128 mstepXW = _mm_set1_ps(stepXW * 4.0f);
+	__m128 mstepYW = _mm_set1_ps(stepYW);
+
 	uint32_t mask0 = 0;
 	uint32_t mask1 = 0;
-	__m128i msubsectorDepth = _mm_set1_epi32(subsectorDepth);
-	__m128i mnotxor = _mm_set1_epi32(0xffffffff);
 
-	for (int iy = 0; iy < 8; iy++)
+	for (int iy = 0; iy < 4; iy++)
 	{
-		mask0 <<= 4;
-		mask0 |= _mm_movemask_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_xor_si128(_mm_cmplt_epi32(_mm_loadu_si128((const __m128i *)subsector), msubsectorDepth), mnotxor), _MM_SHUFFLE(0, 1, 2, 3))));
-		subsector += 4;
+		__m128 mposXW = mposYW;
+		for (int ix = 0; ix < 2; ix++)
+		{
+			__m128 covered = _mm_cmplt_ps(_mm_loadu_ps(depth), mposXW);
+			mask0 <<= 4;
+			mask0 |= _mm_movemask_ps(_mm_shuffle_ps(covered, covered, _MM_SHUFFLE(0, 1, 2, 3)));
+			depth += 4;
+			mposXW = _mm_add_ps(mposXW, mstepXW);
+		}
+		mposYW = _mm_add_ps(mposYW, mstepYW);
 	}
-	for (int iy = 0; iy < 8; iy++)
+
+	for (int iy = 0; iy < 4; iy++)
 	{
-		mask1 <<= 4;
-		mask1 |= _mm_movemask_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_xor_si128(_mm_cmplt_epi32(_mm_loadu_si128((const __m128i *)subsector), msubsectorDepth), mnotxor), _MM_SHUFFLE(0, 1, 2, 3))));
-		subsector += 4;
+		__m128 mposXW = mposYW;
+		for (int ix = 0; ix < 2; ix++)
+		{
+			__m128 covered = _mm_cmplt_ps(_mm_loadu_ps(depth), mposXW);
+			mask1 <<= 4;
+			mask1 |= _mm_movemask_ps(_mm_shuffle_ps(covered, covered, _MM_SHUFFLE(0, 1, 2, 3)));
+			depth += 4;
+			mposXW = _mm_add_ps(mposXW, mstepXW);
+		}
+		mposYW = _mm_add_ps(mposYW, mstepYW);
 	}
 
 	Mask0 = Mask0 & mask0;
@@ -532,6 +650,47 @@ void TriangleBlock::StencilGreaterEqualTest()
 
 		Mask0 = Mask0 & mask0;
 		Mask1 = Mask1 & mask1;
+	}
+}
+
+TriangleBlock::CoverageResult TriangleBlock::AreaCoverageTest(int x0, int y0, int x1, int y1)
+{
+	// Corners of block
+	x0 = x0 << 4;
+	x1 = (x1 - 1) << 4;
+	y0 = y0 << 4;
+	y1 = (y1 - 1) << 4;
+
+	// Evaluate half-space functions
+	bool a00 = C1 + DX12 * y0 - DY12 * x0 > 0;
+	bool a10 = C1 + DX12 * y0 - DY12 * x1 > 0;
+	bool a01 = C1 + DX12 * y1 - DY12 * x0 > 0;
+	bool a11 = C1 + DX12 * y1 - DY12 * x1 > 0;
+	int a = (a00 << 0) | (a10 << 1) | (a01 << 2) | (a11 << 3);
+
+	bool b00 = C2 + DX23 * y0 - DY23 * x0 > 0;
+	bool b10 = C2 + DX23 * y0 - DY23 * x1 > 0;
+	bool b01 = C2 + DX23 * y1 - DY23 * x0 > 0;
+	bool b11 = C2 + DX23 * y1 - DY23 * x1 > 0;
+	int b = (b00 << 0) | (b10 << 1) | (b01 << 2) | (b11 << 3);
+
+	bool c00 = C3 + DX31 * y0 - DY31 * x0 > 0;
+	bool c10 = C3 + DX31 * y0 - DY31 * x1 > 0;
+	bool c01 = C3 + DX31 * y1 - DY31 * x0 > 0;
+	bool c11 = C3 + DX31 * y1 - DY31 * x1 > 0;
+	int c = (c00 << 0) | (c10 << 1) | (c01 << 2) | (c11 << 3);
+
+	if (a == 0 || b == 0 || c == 0) // Skip block when outside an edge
+	{
+		return CoverageResult::none;
+	}
+	else if (a == 0xf && b == 0xf && c == 0xf) // Accept whole block when totally covered
+	{
+		return CoverageResult::full;
+	}
+	else // Partially covered block
+	{
+		return CoverageResult::partial;
 	}
 }
 
@@ -798,65 +957,91 @@ void TriangleBlock::StencilWrite()
 
 #ifdef NO_SSE
 
-void TriangleBlock::SubsectorWrite()
+void TriangleBlock::DepthWrite(const TriDrawTriangleArgs *args)
 {
-	int block = (X >> 3) + (Y >> 3) * subsectorPitch;
-	uint32_t *subsector = subsectorGBuffer + block * 64;
+	int block = (X >> 3) + (Y >> 3) * zbufferPitch;
+	float *depth = zbuffer + block * 64;
+
+	const TriVertex &v1 = *args->v1;
+
+	float stepXW = args->gradientX.W;
+	float stepYW = args->gradientY.W;
+	float posYW = v1.w + stepXW * (X - v1.x) + stepYW * (Y - v1.y);
 
 	if (Mask0 == 0xffffffff && Mask1 == 0xffffffff)
 	{
-		for (int i = 0; i < 64; i++)
+		for (int iy = 0; iy < 8; iy++)
 		{
-			*(subsector++) = subsectorDepth;
+			float posXW = posYW;
+			for (int ix = 0; ix < 8; ix++)
+			{
+				*(depth++) = posXW;
+				posXW += stepXW;
+			}
+			posYW += stepYW;
 		}
 	}
 	else
 	{
 		uint32_t mask0 = Mask0;
 		uint32_t mask1 = Mask1;
-		for (int i = 0; i < 32; i++)
+
+		for (int iy = 0; iy < 4; iy++)
 		{
-			if (mask0 & (1 << 31))
-				*subsector = subsectorDepth;
-			mask0 <<= 1;
-			subsector++;
+			float posXW = posYW;
+			for (int ix = 0; ix < 8; ix++)
+			{
+				if (mask0 & (1 << 31))
+					*depth = posXW;
+				posXW += stepXW;
+				mask0 <<= 1;
+				depth++;
+			}
+			posYW += stepYW;
 		}
-		for (int i = 0; i < 32; i++)
+
+		for (int iy = 0; iy < 4; iy++)
 		{
-			if (mask1 & (1 << 31))
-				*subsector = subsectorDepth;
-			mask1 <<= 1;
-			subsector++;
+			float posXW = posYW;
+			for (int ix = 0; ix < 8; ix++)
+			{
+				if (mask1 & (1 << 31))
+					*depth = posXW;
+				posXW += stepXW;
+				mask1 <<= 1;
+				depth++;
+			}
+			posYW += stepYW;
 		}
 	}
 }
 
 #else
 
-void TriangleBlock::SubsectorWrite()
+void TriangleBlock::DepthWrite(const TriDrawTriangleArgs *args)
 {
-	int block = (X >> 3) + (Y >> 3) * subsectorPitch;
-	uint32_t *subsector = subsectorGBuffer + block * 64;
-	__m128i msubsectorDepth = _mm_set1_epi32(subsectorDepth);
+	int block = (X >> 3) + (Y >> 3) * zbufferPitch;
+	float *depth = zbuffer + block * 64;
+
+	const TriVertex &v1 = *args->v1;
+
+	float stepXW = args->gradientX.W;
+	float stepYW = args->gradientY.W;
+	float posYW = v1.w + stepXW * (X - v1.x) + stepYW * (Y - v1.y);
+
+	__m128 mposYW = _mm_setr_ps(posYW, posYW + stepXW, posYW + stepXW + stepXW, posYW + stepXW + stepXW + stepXW);
+	__m128 mstepXW = _mm_set1_ps(stepXW * 4.0f);
+	__m128 mstepYW = _mm_set1_ps(stepYW);
 
 	if (Mask0 == 0xffffffff && Mask1 == 0xffffffff)
 	{
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth); subsector += 4;
-		_mm_storeu_si128((__m128i*)subsector, msubsectorDepth);
+		for (int iy = 0; iy < 8; iy++)
+		{
+			__m128 mposXW = mposYW;
+			_mm_storeu_ps(depth, mposXW); depth += 4; mposXW = _mm_add_ps(mposXW, mstepXW);
+			_mm_storeu_ps(depth, mposXW); depth += 4;
+			mposYW = _mm_add_ps(mposYW, mstepYW);
+		}
 	}
 	else
 	{
@@ -866,33 +1051,250 @@ void TriangleBlock::SubsectorWrite()
 		__m128i mmask0 = _mm_set1_epi32(Mask0);
 		__m128i mmask1 = _mm_set1_epi32(Mask1);
 
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask0 = _mm_slli_epi32(mmask0, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask0 = _mm_slli_epi32(mmask0, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask0 = _mm_slli_epi32(mmask0, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask0 = _mm_slli_epi32(mmask0, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask0 = _mm_slli_epi32(mmask0, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask0 = _mm_slli_epi32(mmask0, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask0 = _mm_slli_epi32(mmask0, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); subsector += 4;
+		for (int iy = 0; iy < 4; iy++)
+		{
+			__m128 mposXW = mposYW;
+			_mm_maskmoveu_si128(_mm_castps_si128(mposXW), _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)depth); mmask0 = _mm_slli_epi32(mmask0, 4); depth += 4; mposXW = _mm_add_ps(mposXW, mstepXW);
+			_mm_maskmoveu_si128(_mm_castps_si128(mposXW), _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask0, topfour), _mm_setzero_si128()), mxormask), (char*)depth); mmask0 = _mm_slli_epi32(mmask0, 4); depth += 4;
+			mposYW = _mm_add_ps(mposYW, mstepYW);
+		}
 
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask1 = _mm_slli_epi32(mmask1, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask1 = _mm_slli_epi32(mmask1, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask1 = _mm_slli_epi32(mmask1, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask1 = _mm_slli_epi32(mmask1, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask1 = _mm_slli_epi32(mmask1, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask1 = _mm_slli_epi32(mmask1, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); mmask1 = _mm_slli_epi32(mmask1, 4); subsector += 4;
-		_mm_maskmoveu_si128(msubsectorDepth, _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)subsector); subsector += 4;
+		for (int iy = 0; iy < 4; iy++)
+		{
+			__m128 mposXW = mposYW;
+			_mm_maskmoveu_si128(_mm_castps_si128(mposXW), _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)depth); mmask1 = _mm_slli_epi32(mmask1, 4); depth += 4; mposXW = _mm_add_ps(mposXW, mstepXW);
+			_mm_maskmoveu_si128(_mm_castps_si128(mposXW), _mm_xor_si128(_mm_cmpeq_epi32(_mm_and_si128(mmask1, topfour), _mm_setzero_si128()), mxormask), (char*)depth); mmask1 = _mm_slli_epi32(mmask1, 4); depth += 4;
+			mposYW = _mm_add_ps(mposYW, mstepYW);
+		}
 	}
 }
 
 #endif
 
+#if 1
+
 void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, WorkerThreadData *thread)
 {
-	TriangleBlock block(args);
-	block.Loop(args, thread);
+	TriangleBlock block(args, thread);
+	block.Render();
 }
+
+#else
+
+static void SortVertices(const TriDrawTriangleArgs *args, TriVertex **sortedVertices)
+{
+	sortedVertices[0] = args->v1;
+	sortedVertices[1] = args->v2;
+	sortedVertices[2] = args->v3;
+
+	if (sortedVertices[1]->y < sortedVertices[0]->y)
+		std::swap(sortedVertices[0], sortedVertices[1]);
+	if (sortedVertices[2]->y < sortedVertices[0]->y)
+		std::swap(sortedVertices[0], sortedVertices[2]);
+	if (sortedVertices[2]->y < sortedVertices[1]->y)
+		std::swap(sortedVertices[1], sortedVertices[2]);
+}
+
+void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, WorkerThreadData *thread)
+{
+	// Sort vertices by Y position
+	TriVertex *sortedVertices[3];
+	SortVertices(args, sortedVertices);
+
+	int clipright = args->clipright;
+	int clipbottom = args->clipbottom;
+
+	// Ranges that different triangles edges are active
+	int topY = (int)(sortedVertices[0]->y + 0.5f);
+	int midY = (int)(sortedVertices[1]->y + 0.5f);
+	int bottomY = (int)(sortedVertices[2]->y + 0.5f);
+
+	topY = MAX(topY, 0);
+	midY = clamp(midY, 0, clipbottom);
+	bottomY = MIN(bottomY, clipbottom);
+
+	if (topY >= bottomY)
+		return;
+
+	// Find start/end X positions for each line covered by the triangle:
+
+	int leftEdge[MAXHEIGHT];
+	int rightEdge[MAXHEIGHT];
+
+	float longDX = sortedVertices[2]->x - sortedVertices[0]->x;
+	float longDY = sortedVertices[2]->y - sortedVertices[0]->y;
+	float longStep = longDX / longDY;
+	float longPos = sortedVertices[0]->x + longStep * (topY + 0.5f - sortedVertices[0]->y) + 0.5f;
+
+	if (topY < midY)
+	{
+		float shortDX = sortedVertices[1]->x - sortedVertices[0]->x;
+		float shortDY = sortedVertices[1]->y - sortedVertices[0]->y;
+		float shortStep = shortDX / shortDY;
+		float shortPos = sortedVertices[0]->x + shortStep * (topY + 0.5f - sortedVertices[0]->y) + 0.5f;
+
+		for (int y = topY; y < midY; y++)
+		{
+			int x0 = (int)shortPos;
+			int x1 = (int)longPos;
+			if (x1 < x0) std::swap(x0, x1);
+			x0 = clamp(x0, 0, clipright);
+			x1 = clamp(x1, 0, clipright);
+
+			leftEdge[y] = x0;
+			rightEdge[y] = x1;
+
+			shortPos += shortStep;
+			longPos += longStep;
+		}
+	}
+
+	if (midY < bottomY)
+	{
+		float shortDX = sortedVertices[2]->x - sortedVertices[1]->x;
+		float shortDY = sortedVertices[2]->y - sortedVertices[1]->y;
+		float shortStep = shortDX / shortDY;
+		float shortPos = sortedVertices[1]->x + shortStep * (midY + 0.5f - sortedVertices[1]->y) + 0.5f;
+
+		for (int y = midY; y < bottomY; y++)
+		{
+			int x0 = (int)shortPos;
+			int x1 = (int)longPos;
+			if (x1 < x0) std::swap(x0, x1);
+			x0 = clamp(x0, 0, clipright);
+			x1 = clamp(x1, 0, clipright);
+
+			leftEdge[y] = x0;
+			rightEdge[y] = x1;
+
+			shortPos += shortStep;
+			longPos += longStep;
+		}
+	}
+
+	// Make variables local so the compiler can optimize without worrying about pointer aliasing
+
+	bool depthTest = args->uniforms->DepthTest();
+	bool writeColor = args->uniforms->WriteColor();
+	bool writeStencil = args->uniforms->WriteStencil();
+	bool writeDepth = args->uniforms->WriteDepth();
+
+	uint8_t stencilTestValue = args->uniforms->StencilTestValue();
+	uint8_t stencilWriteValue = args->uniforms->StencilWriteValue();
+
+	int bmode = (int)args->uniforms->BlendMode();
+	auto drawFunc = args->destBgra ? ScreenTriangle::TriDrawers32[bmode] : ScreenTriangle::TriDrawers8[bmode];
+
+	uint8_t *dest = args->dest;
+	uint8_t *stencilbuffer = args->stencilValues;
+	uint32_t *stencilMasks = args->stencilMasks;
+	float *zbuffer = args->zbuffer;
+	int pitch = args->pitch;
+	int stencilpitch = args->stencilPitch * 8;
+	int color = ((int)(ptrdiff_t)args->uniforms->TexturePixels()) >> 2;
+
+	float v1X = args->v1->x;
+	float v1Y = args->v1->y;
+	float v1W = args->v1->w;
+	float v1U = args->v1->u * v1W;
+	float v1V = args->v1->v * v1W;
+	float stepXW = args->gradientX.W;
+	float stepXU = args->gradientX.U;
+	float stepXV = args->gradientX.V;
+	float stepYW = args->gradientY.W;
+	float stepYU = args->gradientY.U;
+	float stepYV = args->gradientY.V;
+	int texWidth = args->uniforms->TextureWidth();
+	int texHeight = args->uniforms->TextureHeight();
+	const uint8_t *texPixels = args->uniforms->TexturePixels();
+	auto colormaps = args->uniforms->BaseColormap();
+
+	bool is_fixed_light = args->uniforms->FixedLight();
+	uint32_t lightmask = is_fixed_light ? 0 : 0xffffffff;
+	uint32_t light = args->uniforms->Light();
+	float shade = 2.0f - (light + 12.0f) / 128.0f;
+	float globVis = args->uniforms->GlobVis() * (1.0f / 32.0f);
+	light += light >> 7; // 255 -> 256
+
+	// Draw the triangle:
+
+	int num_cores = thread->num_cores;
+	for (int y = topY + thread->skipped_by_thread(topY); y < bottomY; y += num_cores)
+	{
+		int x0 = leftEdge[y];
+		int x1 = rightEdge[y];
+
+		uint8_t *destLine = dest + pitch * y;
+		uint8_t *stencilLine = stencilbuffer + stencilpitch * y;
+		float *zbufferLine = zbuffer + stencilpitch * y;
+
+		if ((stencilMasks[y] & 0xffffff00) == 0xffffff00) // First time we draw a line we have to clear the stencil buffer
+		{
+			memset(stencilLine, stencilMasks[y] & 0xff, stencilpitch);
+			stencilMasks[y] = 0;
+		}
+
+		float posXW = v1W + stepXW * (x0 + (0.5f - v1X)) + stepYW * (y + (0.5f - v1Y));
+		float posXU = v1U + stepXU * (x0 + (0.5f - v1X)) + stepYU * (y + (0.5f - v1Y));
+		float posXV = v1V + stepXV * (x0 + (0.5f - v1X)) + stepYV * (y + (0.5f - v1Y));
+
+		int x = x0;
+		while (x < x1)
+		{
+			bool processPixel = true;
+
+			if (!depthTest) // To do: make the stencil test use its own flag for comparison mode instead of abusing the depth test..
+			{
+				processPixel = stencilTestValue == stencilLine[x];
+			}
+			else
+			{
+				processPixel = stencilTestValue >= stencilLine[x] && zbufferLine[x] <= posXW;
+			}
+
+			if (processPixel) // Pixel is visible (passed stencil and depth tests)
+			{
+				if (writeColor)
+				{
+					if (texPixels)
+					{
+						float rcpW = 0x01000000 / posXW;
+						int32_t u = (int32_t)(posXU * rcpW);
+						int32_t v = (int32_t)(posXV * rcpW);
+
+						uint32_t texelX = ((((uint32_t)u << 8) >> 16) * texWidth) >> 16;
+						uint32_t texelY = ((((uint32_t)v << 8) >> 16) * texHeight) >> 16;
+						uint8_t fgcolor = texPixels[texelX * texHeight + texelY];
+
+						fixed_t lightpos = FRACUNIT - (int)(clamp(shade - MIN(24.0f / 32.0f, globVis * posXW), 0.0f, 31.0f / 32.0f) * (float)FRACUNIT);
+						lightpos = (lightpos & lightmask) | ((light << 8) & ~lightmask);
+						int lightshade = lightpos >> 8;
+
+						lightshade = ((256 - lightshade) * NUMCOLORMAPS) & 0xffffff00;
+						uint8_t shadedfg = colormaps[lightshade + fgcolor];
+
+						if (fgcolor != 0)
+							destLine[x] = shadedfg;
+					}
+					else
+					{
+						destLine[x] = color;
+					}
+				}
+				if (writeStencil)
+					stencilLine[x] = stencilWriteValue;
+				if (writeDepth)
+					zbufferLine[x] = posXW;
+			}
+
+			posXW += stepXW;
+			posXU += stepXU;
+			posXV += stepXV;
+			x++;
+		}
+	}
+}
+#endif
 
 void(*ScreenTriangle::TriDrawers8[])(int, int, uint32_t, uint32_t, const TriDrawTriangleArgs *) =
 {
@@ -918,7 +1320,8 @@ void(*ScreenTriangle::TriDrawers8[])(int, int, uint32_t, uint32_t, const TriDraw
 	&TriScreenDrawer8<TriScreenDrawerModes::RevSubClampBlend, TriScreenDrawerModes::FillSampler>::Execute,       // FillRevSub
 	&TriScreenDrawer8<TriScreenDrawerModes::AddSrcColorBlend, TriScreenDrawerModes::FillSampler>::Execute,       // FillAddSrcColor
 	&TriScreenDrawer8<TriScreenDrawerModes::OpaqueBlend, TriScreenDrawerModes::SkycapSampler>::Execute,          // Skycap
-	&TriScreenDrawer8<TriScreenDrawerModes::ShadedBlend, TriScreenDrawerModes::FuzzSampler>::Execute             // Fuzz
+	&TriScreenDrawer8<TriScreenDrawerModes::ShadedBlend, TriScreenDrawerModes::FuzzSampler>::Execute,            // Fuzz
+	&TriScreenDrawer8<TriScreenDrawerModes::OpaqueBlend, TriScreenDrawerModes::FogBoundarySampler>::Execute,     // FogBoundary
 };
 
 void(*ScreenTriangle::TriDrawers32[])(int, int, uint32_t, uint32_t, const TriDrawTriangleArgs *) =
@@ -945,7 +1348,8 @@ void(*ScreenTriangle::TriDrawers32[])(int, int, uint32_t, uint32_t, const TriDra
 	&TriScreenDrawer32<TriScreenDrawerModes::RevSubClampBlend, TriScreenDrawerModes::FillSampler>::Execute,       // FillRevSub
 	&TriScreenDrawer32<TriScreenDrawerModes::AddSrcColorBlend, TriScreenDrawerModes::FillSampler>::Execute,       // FillAddSrcColor
 	&TriScreenDrawer32<TriScreenDrawerModes::OpaqueBlend, TriScreenDrawerModes::SkycapSampler>::Execute,          // Skycap
-	&TriScreenDrawer32<TriScreenDrawerModes::ShadedBlend, TriScreenDrawerModes::FuzzSampler>::Execute             // Fuzz
+	&TriScreenDrawer32<TriScreenDrawerModes::ShadedBlend, TriScreenDrawerModes::FuzzSampler>::Execute,            // Fuzz
+	&TriScreenDrawer32<TriScreenDrawerModes::OpaqueBlend, TriScreenDrawerModes::FogBoundarySampler>::Execute      // FogBoundary
 };
 
 void(*ScreenTriangle::RectDrawers8[])(const void *, int, int, int, const RectDrawArgs *, WorkerThreadData *) =
@@ -972,7 +1376,8 @@ void(*ScreenTriangle::RectDrawers8[])(const void *, int, int, int, const RectDra
 	&RectScreenDrawer8<TriScreenDrawerModes::RevSubClampBlend, TriScreenDrawerModes::FillSampler>::Execute,       // FillRevSub
 	&RectScreenDrawer8<TriScreenDrawerModes::AddSrcColorBlend, TriScreenDrawerModes::FillSampler>::Execute,       // FillAddSrcColor
 	&RectScreenDrawer8<TriScreenDrawerModes::OpaqueBlend, TriScreenDrawerModes::SkycapSampler>::Execute,          // Skycap
-	&RectScreenDrawer8<TriScreenDrawerModes::ShadedBlend, TriScreenDrawerModes::FuzzSampler>::Execute             // Fuzz
+	&RectScreenDrawer8<TriScreenDrawerModes::ShadedBlend, TriScreenDrawerModes::FuzzSampler>::Execute,            // Fuzz
+	&RectScreenDrawer8<TriScreenDrawerModes::OpaqueBlend, TriScreenDrawerModes::FogBoundarySampler>::Execute      // FogBoundary
 };
 
 void(*ScreenTriangle::RectDrawers32[])(const void *, int, int, int, const RectDrawArgs *, WorkerThreadData *) =
@@ -999,7 +1404,8 @@ void(*ScreenTriangle::RectDrawers32[])(const void *, int, int, int, const RectDr
 	&RectScreenDrawer32<TriScreenDrawerModes::RevSubClampBlend, TriScreenDrawerModes::FillSampler>::Execute,       // FillRevSub
 	&RectScreenDrawer32<TriScreenDrawerModes::AddSrcColorBlend, TriScreenDrawerModes::FillSampler>::Execute,       // FillAddSrcColor
 	&RectScreenDrawer32<TriScreenDrawerModes::OpaqueBlend, TriScreenDrawerModes::SkycapSampler>::Execute,          // Skycap
-	&RectScreenDrawer32<TriScreenDrawerModes::ShadedBlend, TriScreenDrawerModes::FuzzSampler>::Execute             // Fuzz
+	&RectScreenDrawer32<TriScreenDrawerModes::ShadedBlend, TriScreenDrawerModes::FuzzSampler>::Execute,            // Fuzz
+	&RectScreenDrawer32<TriScreenDrawerModes::OpaqueBlend, TriScreenDrawerModes::FogBoundarySampler>::Execute,     // FogBoundary
 };
 
 int ScreenTriangle::FuzzStart = 0;

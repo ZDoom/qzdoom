@@ -26,11 +26,10 @@
 
 struct PolyPortalVertexRange
 {
-	PolyPortalVertexRange(const TriVertex *vertices, int count, bool ccw, uint32_t subsectorDepth) : Vertices(vertices), Count(count), Ccw(ccw), SubsectorDepth(subsectorDepth) { }
+	PolyPortalVertexRange(const TriVertex *vertices, int count, bool ccw) : Vertices(vertices), Count(count), Ccw(ccw) { }
 	const TriVertex *Vertices;
 	int Count;
 	bool Ccw;
-	uint32_t SubsectorDepth;
 };
 
 class PolyPortalSegment
@@ -51,7 +50,7 @@ public:
 	FSectorPortal *Portal = nullptr;
 	uint32_t StencilValue = 0;
 	std::vector<PolyPortalVertexRange> Shape;
-	std::vector<PolyPortalSegment> Segments;
+	//std::vector<PolyPortalSegment> Segments;
 
 private:
 	void SaveGlobals();
@@ -81,7 +80,7 @@ public:
 	line_t *Mirror = nullptr;
 	uint32_t StencilValue = 0;
 	std::vector<PolyPortalVertexRange> Shape;
-	std::vector<PolyPortalSegment> Segments;
+	//std::vector<PolyPortalSegment> Segments;
 
 private:
 	void SaveGlobals();

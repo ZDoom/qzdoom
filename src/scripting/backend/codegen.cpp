@@ -202,7 +202,7 @@ FxLocalVariableDeclaration *FCompileContext::FindLocalVariable(FName name)
 
 static PContainerType *FindContainerType(FName name, FCompileContext &ctx)
 {
-	auto sym = ctx.Class->Symbols.FindSymbol(name, true);
+	auto sym = ctx.Class != nullptr? ctx.Class->Symbols.FindSymbol(name, true) : nullptr;
 	if (sym == nullptr) sym = ctx.CurGlobals->Symbols.FindSymbol(name, true);
 	if (sym && sym->IsKindOf(RUNTIME_CLASS(PSymbolType)))
 	{
@@ -11101,7 +11101,7 @@ ExpEmit FxRuntimeStateIndex::Emit(VMFunctionBuilder *build)
 //
 //==========================================================================
 
-FxMultiNameState::FxMultiNameState(const char *_statestring, const FScriptPosition &pos)
+FxMultiNameState::FxMultiNameState(const char *_statestring, const FScriptPosition &pos, PClassActor *checkclass)
 	:FxExpression(EFX_MultiNameState, pos)
 {
 	FName scopename;
@@ -11119,7 +11119,7 @@ FxMultiNameState::FxMultiNameState(const char *_statestring, const FScriptPositi
 	}
 	names = MakeStateNameList(statestring);
 	names.Insert(0, scopename);
-	scope = nullptr;
+	scope = checkclass;
 }
 
 //==========================================================================
@@ -11135,8 +11135,8 @@ FxExpression *FxMultiNameState::Resolve(FCompileContext &ctx)
 	int symlabel;
 
 	auto vclass = PType::toClass(ctx.Class);
-	assert(vclass != nullptr);
-	auto clstype = ValidateActor(vclass->Descriptor);
+	//assert(vclass != nullptr);
+	auto clstype = vclass == nullptr? nullptr : ValidateActor(vclass->Descriptor);
 
 	if (names[0] == NAME_None)
 	{

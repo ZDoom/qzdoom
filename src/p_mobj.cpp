@@ -346,6 +346,7 @@ DEFINE_FIELD(AActor, Conversation)
 DEFINE_FIELD(AActor, DecalGenerator)
 DEFINE_FIELD(AActor, fountaincolor)
 DEFINE_FIELD(AActor, CameraHeight)
+DEFINE_FIELD(AActor, CameraFOV)
 DEFINE_FIELD(AActor, RadiusDamageFactor)
 DEFINE_FIELD(AActor, SelfDamageFactor)
 DEFINE_FIELD(AActor, StealthAlpha)
@@ -520,6 +521,7 @@ void AActor::Serialize(FSerializer &arc)
 		A("spriterotation", SpriteRotation)
 		("alternative", alternative)
 		A("cameraheight", CameraHeight)
+		A("camerafov", CameraFOV)
 		A("tag", Tag)
 		A("visiblestartangle",VisibleStartAngle)
 		A("visibleendangle",VisibleEndAngle)
@@ -4036,6 +4038,14 @@ void AActor::CheckPortalTransition(bool islinked)
 	if (islinked && moved) LinkToWorld(&ctx);
 }
 
+DEFINE_ACTION_FUNCTION(AActor, CheckPortalTransition)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_BOOL_DEF(linked);
+	self->CheckPortalTransition(linked);
+	return 0;
+}
+
 //
 // P_MobjThinker
 //
@@ -4068,10 +4078,6 @@ void AActor::Tick ()
 		Destroy();
 		return;
 	}
-
-	// This is necessary to properly interpolate movement outside this function
-	// like from an ActorMover
-	ClearInterpolation();
 
 	if (flags5 & MF5_NOINTERACTION)
 	{
@@ -4107,18 +4113,22 @@ void AActor::Tick ()
 	}
 	else
 	{
-		AInventory * item = Inventory;
 
-		// Handle powerup effects here so that the order is controlled
-		// by the order in the inventory, not the order in the thinker table
-		while (item != NULL && item->Owner == this)
+		if (!player || !(player->cheats & CF_PREDICTING))
 		{
-			IFVIRTUALPTR(item, AInventory, DoEffect)
+			// Handle powerup effects here so that the order is controlled
+			// by the order in the inventory, not the order in the thinker table
+			AInventory *item = Inventory;
+			
+			while (item != NULL && item->Owner == this)
 			{
-				VMValue params[1] = { item };
-				VMCall(func, params, 1, nullptr, 0);
+				IFVIRTUALPTR(item, AInventory, DoEffect)
+				{
+					VMValue params[1] = { item };
+					VMCall(func, params, 1, nullptr, 0);
+				}
+				item = item->Inventory;
 			}
-			item = item->Inventory;
 		}
 
 		if (flags & MF_UNMORPHED)
@@ -6741,6 +6751,7 @@ bool P_CheckMissileSpawn (AActor* th, double maxdist)
 
 	newpos = th->Vec3Offset(newpos);
 	th->SetXYZ(newpos);
+	th->Sector = P_PointInSector(th->Pos());
 
 	FCheckPosition tm(!!(th->flags2 & MF2_RIP));
 

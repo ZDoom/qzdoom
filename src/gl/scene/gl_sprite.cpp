@@ -321,6 +321,12 @@ void GLSprite::Draw(int pass)
 	}
 	else if (modelframe == nullptr)
 	{
+		int tm, sb, db, be;
+
+		// This still needs to set the texture mode. As blend mode it will always use GL_ONE/GL_ZERO
+		gl_GetRenderStyle(RenderStyle, false, false, &tm, &sb, &db, &be);
+		gl_RenderState.SetTextureMode(tm);
+
 		glEnable(GL_POLYGON_OFFSET_FILL);
 		glPolygonOffset(-1.0f, -128.0f);
 	}
@@ -685,7 +691,7 @@ void GLSprite::Process(AActor* thing, sector_t * sector, int thruportal)
 
 	// check renderrequired vs ~r_rendercaps, if anything matches we don't support that feature,
 	// check renderhidden vs r_rendercaps, if anything matches we do support that feature and should hide it.
-	if (!r_debug_disable_vis_filter && (!!(thing->RenderRequired & ~r_renderercaps)) ||
+	if ((!r_debug_disable_vis_filter && !!(thing->RenderRequired & ~r_renderercaps)) ||
 		(!!(thing->RenderHidden & r_renderercaps)))
 		return;
 

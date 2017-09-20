@@ -1014,7 +1014,7 @@ void M_ParseMenuDefs()
 	atterm(	DeinitMenus);
 	DeinitMenus();
 
-	int IWADMenu = Wads.CheckNumForName("MENUDEF", ns_global, FWadCollection::IWAD_FILENUM);
+	int IWADMenu = Wads.CheckNumForName("MENUDEF", ns_global, Wads.GetIwadNum());
 
 	while ((lump = Wads.FindLump ("MENUDEF", &lastlump)) != -1)
 	{
@@ -1386,6 +1386,7 @@ static void InitMusicMenus()
 	DMenuDescriptor **gusmenu = MenuDescriptors.CheckKey("GusConfigMenu");
 	DMenuDescriptor **timiditymenu = MenuDescriptors.CheckKey("TimidityExeMenu");
 	DMenuDescriptor **wildmidimenu = MenuDescriptors.CheckKey("WildMidiConfigMenu");
+	DMenuDescriptor **timiditycfgmenu = MenuDescriptors.CheckKey("TimidityConfigMenu");
 	DMenuDescriptor **fluidmenu = MenuDescriptors.CheckKey("FluidPatchsetMenu");
 
 	const char *key, *value;
@@ -1426,6 +1427,11 @@ static void InitMusicMenus()
 					auto it = CreateOptionMenuItemCommand(key, FStringf("wildmidi_config %s", NicePath(value).GetChars()), true);
 					static_cast<DOptionMenuDescriptor*>(*wildmidimenu)->mItems.Push(it);
 				}
+				if (timiditycfgmenu != nullptr)
+				{
+					auto it = CreateOptionMenuItemCommand(key, FStringf("timidity_config \"%s\"", NicePath(value).GetChars()), true);
+					static_cast<DOptionMenuDescriptor*>(*timiditycfgmenu)->mItems.Push(it);
+				}
 			}
 		}
 	}
@@ -1436,6 +1442,8 @@ static void InitMusicMenus()
 		auto it = d->GetItem("GusConfigMenu");
 		if (it != nullptr) d->mItems.Delete(d->mItems.Find(it));
 		it = d->GetItem("WildMidiConfigMenu");
+		if (it != nullptr) d->mItems.Delete(d->mItems.Find(it));
+		it = d->GetItem("TimidityConfigMenu");
 		if (it != nullptr) d->mItems.Delete(d->mItems.Find(it));
 	}
 #ifdef _WIN32	// Different Timidity paths only make sense if they can be stored in arbitrary paths with local configs (i.e. not if things are done the Linux way)

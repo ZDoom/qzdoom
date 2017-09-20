@@ -1843,7 +1843,9 @@ static bool DoUseInv (AActor *actor, PClassActor *info)
 	AInventory *item = actor->FindInventory (info);
 	if (item != NULL)
 	{
-		if (actor->player == NULL)
+		player_t* const player = actor->player;
+
+		if (nullptr == player)
 		{
 			return actor->UseInventory(item);
 		}
@@ -1853,10 +1855,10 @@ static bool DoUseInv (AActor *actor, PClassActor *info)
 			bool res;
 
 			// Bypass CF_TOTALLYFROZEN
-			cheats = actor->player->cheats;
-			actor->player->cheats &= ~CF_TOTALLYFROZEN;
+			cheats = player->cheats;
+			player->cheats &= ~CF_TOTALLYFROZEN;
 			res = actor->UseInventory(item);
-			actor->player->cheats |= (cheats & CF_TOTALLYFROZEN);
+			player->cheats |= (cheats & CF_TOTALLYFROZEN);
 			return res;
 		}
 	}
@@ -3437,7 +3439,7 @@ void FBehavior::StartTypedScripts (uint16_t type, AActor *activator, bool always
 		{
 			DLevelScript *runningScript = P_GetScriptGoing (activator, NULL, ptr->Number,
 				ptr, this, &arg1, 1, always ? ACS_ALWAYS : 0);
-			if (runNow)
+			if (nullptr != runningScript && runNow)
 			{
 				runningScript->RunScript ();
 			}
@@ -8765,7 +8767,10 @@ scriptwait:
 				if (pcd == PCD_ENDPRINTBOLD || screen == NULL ||
 					screen->CheckLocalView (consoleplayer))
 				{
-					C_MidPrint (activefont, work);
+					if (pcd == PCD_ENDPRINTBOLD && (gameinfo.correctprintbold || (level.flags2 & LEVEL2_HEXENHACK)))
+						C_MidPrintBold(activefont, work);
+					else
+						C_MidPrint (activefont, work);
 				}
 				STRINGBUILDER_FINISH(work);
 			}

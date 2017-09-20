@@ -1,5 +1,5 @@
 /*
-**  Handling drawing a particle
+**  Polygon Doom software renderer
 **  Copyright (c) 2016 Magnus Norddahl
 **
 **  This software is provided 'as-is', without any express or implied
@@ -28,7 +28,7 @@
 class RenderPolyParticle
 {
 public:
-	void Render(const TriMatrix &worldToClip, const PolyClipPlane &clipPlane, particle_t *particle, subsector_t *sub, uint32_t subsectorDepth, uint32_t stencilValue);
+	void Render(PolyRenderThread *thread, const TriMatrix &worldToClip, const PolyClipPlane &clipPlane, particle_t *particle, subsector_t *sub, uint32_t stencilValue);
 
 private:
 	static uint8_t *GetParticleTexture();
@@ -38,4 +38,20 @@ private:
 		NumParticleTextures = 3,
 		ParticleTextureSize = 64
 	};
+};
+
+class PolyTranslucentParticle : public PolyTranslucentObject
+{
+public:
+	PolyTranslucentParticle(particle_t *particle, subsector_t *sub, uint32_t subsectorDepth, uint32_t stencilValue) : PolyTranslucentObject(subsectorDepth, 0.0), particle(particle), sub(sub), StencilValue(stencilValue) { }
+
+	void Render(PolyRenderThread *thread, const TriMatrix &worldToClip, const PolyClipPlane &portalPlane) override
+	{
+		RenderPolyParticle spr;
+		spr.Render(thread, worldToClip, portalPlane, particle, sub, StencilValue + 1);
+	}
+
+	particle_t *particle = nullptr;
+	subsector_t *sub = nullptr;
+	uint32_t StencilValue = 0;
 };

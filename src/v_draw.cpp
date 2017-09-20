@@ -75,6 +75,7 @@ CUSTOM_CVAR(Int, uiscale, 0, CVAR_ARCHIVE | CVAR_NOINITCALL)
 	{
 		StatusBar->CallScreenSizeChanged();
 	}
+	setsizeneeded = true;
 }
 
 int GetUIScale(int altval)

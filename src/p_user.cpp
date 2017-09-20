@@ -614,7 +614,7 @@ void player_t::SetFOV(float fov)
 		{
 			Net_WriteByte(DEM_MYFOV);
 		}
-		Net_WriteByte((uint8_t)clamp<float>(fov, 5.f, 179.f));
+		Net_WriteFloat(clamp<float>(fov, 5.f, 179.f));
 	}
 }
 
@@ -962,7 +962,7 @@ void APlayerPawn::BeginPlay ()
 		int wadnorm = Wads.GetLumpFile(spritenorm);
 		int wadcrouch = Wads.GetLumpFile(spritenorm);
 		
-		if (wadnorm > FWadCollection::IWAD_FILENUM && wadcrouch <= FWadCollection::IWAD_FILENUM) 
+		if (wadnorm > Wads.GetIwadNum() && wadcrouch <= Wads.GetIwadNum())
 		{
 			// Question: Add an option / disable crouching or do what?
 			crouchsprite = 0;

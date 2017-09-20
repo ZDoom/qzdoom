@@ -1,5 +1,5 @@
 /*
-**  Projected triangle drawer
+**  Polygon Doom software renderer
 **  Copyright (c) 2016 Magnus Norddahl
 **
 **  This software is provided 'as-is', without any express or implied
@@ -32,6 +32,13 @@ struct WorkerThreadData
 {
 	int32_t core;
 	int32_t num_cores;
+
+	// The number of lines to skip to reach the first line to be rendered by this thread
+	int skipped_by_thread(int first_line)
+	{
+		int core_skip = (num_cores - (first_line - core) % num_cores) % num_cores;
+		return core_skip;
+	}
 };
 
 struct TriVertex
@@ -60,7 +67,7 @@ struct TriDrawTriangleArgs
 	uint8_t *stencilValues;
 	uint32_t *stencilMasks;
 	int32_t stencilPitch;
-	uint32_t *subsectorGBuffer;
+	float *zbuffer;
 	const PolyDrawArgs *uniforms;
 	bool destBgra;
 	ScreenTriangleStepVariables gradientX;
@@ -120,7 +127,8 @@ enum class TriBlendMode
 	FillRevSub,
 	FillAddSrcColor,
 	Skycap,
-	Fuzz
+	Fuzz,
+	FogBoundary
 };
 
 class ScreenTriangle
@@ -157,7 +165,7 @@ namespace TriScreenDrawerModes
 	struct SimpleShade { static const int Mode = (int)ShadeMode::Simple; };
 	struct AdvancedShade { static const int Mode = (int)ShadeMode::Advanced; };
 
-	enum class Samplers { Texture, Fill, Shaded, Stencil, Translated, Skycap, Fuzz };
+	enum class Samplers { Texture, Fill, Shaded, Stencil, Translated, Skycap, Fuzz, FogBoundary };
 	struct TextureSampler { static const int Mode = (int)Samplers::Texture; };
 	struct FillSampler { static const int Mode = (int)Samplers::Fill; };
 	struct ShadedSampler { static const int Mode = (int)Samplers::Shaded; };
@@ -165,6 +173,7 @@ namespace TriScreenDrawerModes
 	struct TranslatedSampler { static const int Mode = (int)Samplers::Translated; };
 	struct SkycapSampler { static const int Mode = (int)Samplers::Skycap; };
 	struct FuzzSampler { static const int Mode = (int)Samplers::Fuzz; };
+	struct FogBoundarySampler { static const int Mode = (int)Samplers::FogBoundary; };
 
 	static const int fuzzcolormap[FUZZTABLE] =
 	{

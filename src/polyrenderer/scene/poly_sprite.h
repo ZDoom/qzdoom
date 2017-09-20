@@ -1,5 +1,5 @@
 /*
-**  Handling drawing a sprite
+**  Polygon Doom software renderer
 **  Copyright (c) 2016 Magnus Norddahl
 **
 **  This software is provided 'as-is', without any express or implied
@@ -27,12 +27,40 @@
 class RenderPolySprite
 {
 public:
-	void Render(const TriMatrix &worldToClip, const PolyClipPlane &clipPlane, AActor *thing, subsector_t *sub, uint32_t subsectorDepth, uint32_t stencilValue, float t1, float t2);
+	void Render(PolyRenderThread *thread, const TriMatrix &worldToClip, const PolyClipPlane &clipPlane, AActor *thing, subsector_t *sub, uint32_t stencilValue, float t1, float t2);
 
 	static bool GetLine(AActor *thing, DVector2 &left, DVector2 &right);
 	static bool IsThingCulled(AActor *thing);
 	static FTexture *GetSpriteTexture(AActor *thing, /*out*/ bool &flipX);
 
 private:
-	//visstyle_t GetSpriteVisStyle(AActor *thing, double z);
+	static double PerformSpriteClipAdjustment(AActor *thing, const DVector2 &thingpos, double spriteheight, double z);
+	static double GetSpriteFloorZ(AActor *thing, const DVector2 &thingpos);
+	static double GetSpriteCeilingZ(AActor *thing, const DVector2 &thingpos);
+};
+
+class PolyTranslucentThing : public PolyTranslucentObject
+{
+public:
+	PolyTranslucentThing(AActor *thing, subsector_t *sub, uint32_t subsectorDepth, double dist, float t1, float t2, uint32_t stencilValue) : PolyTranslucentObject(subsectorDepth, dist), thing(thing), sub(sub), SpriteLeft(t1), SpriteRight(t2), StencilValue(stencilValue) { }
+
+	void Render(PolyRenderThread *thread, const TriMatrix &worldToClip, const PolyClipPlane &portalPlane) override
+	{
+		if ((thing->renderflags & RF_SPRITETYPEMASK) == RF_WALLSPRITE)
+		{
+			RenderPolyWallSprite wallspr;
+			wallspr.Render(thread, worldToClip, portalPlane, thing, sub, StencilValue + 1);
+		}
+		else
+		{
+			RenderPolySprite spr;
+			spr.Render(thread, worldToClip, portalPlane, thing, sub, StencilValue + 1, SpriteLeft, SpriteRight);
+		}
+	}
+
+	AActor *thing = nullptr;
+	subsector_t *sub = nullptr;
+	float SpriteLeft = 0.0f;
+	float SpriteRight = 1.0f;
+	uint32_t StencilValue = 0;
 };

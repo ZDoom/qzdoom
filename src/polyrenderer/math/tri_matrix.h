@@ -1,5 +1,5 @@
 /*
-**  Triangle drawers
+**  Polygon Doom software renderer
 **  Copyright (c) 2016 Magnus Norddahl
 **
 **  This software is provided 'as-is', without any express or implied
@@ -23,7 +23,6 @@
 #pragma once
 
 struct TriVertex;
-struct ShadedTriVertex;
 struct FRenderViewpoint;
 
 struct TriMatrix
@@ -40,7 +39,7 @@ struct TriMatrix
 	//static TriMatrix worldToView(const FRenderViewpoint &viewpoint); // Software renderer world to view space transform
 	//static TriMatrix viewToClip(double focalTangent, double centerY, double invZtoScale); // Software renderer shearing projection
 
-	ShadedTriVertex operator*(TriVertex v) const;
+	TriVertex operator*(TriVertex v) const;
 	TriMatrix operator*(const TriMatrix &m) const;
 
 	float matrix[16];

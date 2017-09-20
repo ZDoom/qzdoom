@@ -34,6 +34,7 @@
 #include "gl/gl_functions.h"
 #include "g_level.h"
 #include "g_levellocals.h"
+#include "actorinlines.h"
 
 #include "gl/system/gl_cvars.h"
 #include "gl/renderer/gl_renderer.h"
@@ -179,6 +180,13 @@ void BSPWalkCircle(float x, float y, float radiusSquared, const Callback &callba
 
 void gl_SetDynModelLight(AActor *self, bool hudmodel)
 {
+	// Legacy and deferred render paths gets the old flat model light
+	if (gl.lightmethod != LM_DIRECT)
+	{
+		gl_SetDynSpriteLight(self, nullptr);
+		return;
+	}
+
 	modellightdata.Clear();
 
 	if (self)

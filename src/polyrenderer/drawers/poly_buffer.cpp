@@ -1,5 +1,5 @@
 /*
-**  Triangle drawers
+**  Polygon Doom software renderer
 **  Copyright (c) 2016 Magnus Norddahl
 **
 **  This software is provided 'as-is', without any express or implied
@@ -38,13 +38,13 @@
 
 /////////////////////////////////////////////////////////////////////////////
 
-PolySubsectorGBuffer *PolySubsectorGBuffer::Instance()
+PolyZBuffer *PolyZBuffer::Instance()
 {
-	static PolySubsectorGBuffer buffer;
+	static PolyZBuffer buffer;
 	return &buffer;
 }
 
-void PolySubsectorGBuffer::Resize(int newwidth, int newheight)
+void PolyZBuffer::Resize(int newwidth, int newheight)
 {
 	width = newwidth;
 	height = newheight;

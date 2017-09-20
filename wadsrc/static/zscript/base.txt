@@ -95,7 +95,7 @@ struct TexMan
 	native static Vector2 GetScaledOffset(TextureID tex);
 	native static int CheckRealHeight(TextureID tex);
 
-	native static void SetCameraToTexture(Actor viewpoint, String texture, int fov);
+	native static void SetCameraToTexture(Actor viewpoint, String texture, double fov);
 }
 
 enum DrawTextureTags
@@ -385,6 +385,9 @@ class Thinker : Object native play
 		STAT_MAPMARKER,							// Map marker actors
 		STAT_DLIGHT,							// Dynamic lights
 
+		STAT_USER = 70,
+		STAT_USER_MAX = 90,
+
 		STAT_DEFAULT = 100,						// Thinkers go here unless specified otherwise.
 		STAT_SECTOREFFECT,						// All sector effects that cause floor and ceiling movement
 		STAT_ACTORMOVER,						// actor movers
@@ -527,6 +530,7 @@ struct LevelLocals native
 	native int GetUDMFInt(int type, int index, Name key);
 	native double GetUDMFFloat(int type, int index, Name key);
 	native bool ExecuteSpecial(int special, Actor activator, line linedef, bool lineside, int arg1 = 0, int arg2 = 0, int arg3 = 0, int arg4 = 0, int arg5 = 0);
+	native static void GiveSecret(Actor activator, bool printmsg = true, bool playsound = true);
 	native static void StartSlideshow(Name whichone = 'none');
 	native static void WorldDone();
 	native static void RemoveAllBots(bool fromlist);
@@ -660,6 +664,8 @@ struct StringStruct native
 	native int LastIndexOf(String substr) const;
 	native void ToUpper();
 	native void ToLower();
+	native int ToInt(int base = 0) const;
+	native double ToDouble() const;
 }
 
 class SectorEffect : Thinker native
