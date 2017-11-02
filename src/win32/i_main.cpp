@@ -1362,7 +1362,7 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE nothing, LPSTR cmdline, int n
 }
 
 // each platform has its own specific version of this function.
-void I_SetWindowTitle(const char* caption)
+void DFrameBuffer::I_SetWindowTitle(const char* caption)
 {
 	if (caption)
 		SetWindowText(Window, (LPCTSTR)caption);
