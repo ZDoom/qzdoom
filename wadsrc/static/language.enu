@@ -2098,7 +2098,7 @@ CMPTMNU_SHORTTEX			= "Find shortest textures like Doom";
 CMPTMNU_STAIRS				= "Use buggier stair building";
 CMPTMNU_FLOORMOVE			= "Use Doom's floor motion behavior";
 CMPTMNU_POINTONLINE			= "Use Doom's point-on-line algorithm";
-CMPTMNU_MULTIEXIT			= "Level exit can be triggered more than once.";
+CMPTMNU_MULTIEXIT			= "Level exit can be triggered more than once";
 CMPTMNU_PHYSICSBEHAVIOR		= "Physics Behavior";
 CMPTMNU_NOPASSOVER			= "Actors are infinitely tall";
 CMPTMNU_BOOMSCROLL			= "Boom scrollers are additive";
@@ -2191,6 +2191,7 @@ VIDMNU_FULLSCREEN		= "Fullscreen";
 VIDMNU_HIDPI			= "Retina/HiDPI support";
 VIDMNU_ASPECTRATIO		= "Aspect ratio";
 VIDMNU_FORCEASPECT		= "Force aspect ratio";
+VIDMNU_CROPASPECT		= "Forced ratio style";
 VIDMNU_5X4ASPECTRATIO	= "Enable 5:4 aspect ratio";
 VIDMNU_SCALEMODE		= "Resolution scale";
 VIDMNU_SCALEFACTOR		= "Scale Factor";
@@ -2381,6 +2382,7 @@ OPTVAL_VTAZDOOM				= "Auto (ZDoom Preferred)";
 OPTVAL_VTAVANILLA			= "Auto (Vanilla Preferred)";
 OPTVAL_SCALENEAREST			= "Scaled (Nearest)";
 OPTVAL_SCALELINEAR			= "Scaled (Linear)";
+OPTVAL_LETTERBOX			= "Letterbox";
 
 // Colors
 C_BRICK					= "\cabrick";
@@ -2405,6 +2407,10 @@ C_DARKBROWN				= "\csdark brown";
 C_PURPLE				= "\ctpurple";
 C_DARKGRAY				= "\cudark gray";
 C_CYAN					= "\cvcyan";
+C_ICE					= "\cwice";
+C_FIRE					= "\cxfire";
+C_SAPPHIRE				= "\cysapphire";
+C_TEAL					= "\czteal";
 // Option Strings
 OPTSTR_SIMPLEARROW			= "Simple arrow";
 OPTSTR_HERETIC				= "Heretic";

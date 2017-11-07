@@ -35,6 +35,7 @@
 #include "polyrenderer/scene/poly_light.h"
 #include "polyrenderer/poly_renderthread.h"
 #include "g_levellocals.h"
+#include "a_dynlight.h"
 
 EXTERN_CVAR(Bool, r_drawmirrors)
 EXTERN_CVAR(Bool, r_fogboundary)
@@ -95,6 +96,7 @@ bool RenderPolyWall::RenderLine(PolyRenderThread *thread, const TriMatrix &world
 	wall.Masked = false;
 	wall.SubsectorDepth = subsectorDepth;
 	wall.StencilValue = stencilValue;
+	wall.SectorLightLevel = frontsector->lightlevel;
 
 	if (line->backsector == nullptr)
 	{
@@ -110,9 +112,10 @@ bool RenderPolyWall::RenderLine(PolyRenderThread *thread, const TriMatrix &world
 			return true;
 		}
 	}
-	else
+	else if (line->PartnerSeg)
 	{
-		sector_t *backsector = line->backsector;
+		PolyTransferHeights fakeback(line->PartnerSeg->Subsector);
+		sector_t *backsector = fakeback.FrontSector;
 
 		double backceilz1 = backsector->ceilingplane.ZatPoint(line->v1);
 		double backfloorz1 = backsector->floorplane.ZatPoint(line->v1);
@@ -214,6 +217,7 @@ void RenderPolyWall::Render3DFloorLine(PolyRenderThread *thread, const TriMatrix
 	wall.Line = fakeFloor->master;
 	wall.Side = fakeFloor->master->sidedef[0];
 	wall.Colormap = GetColorTable(frontsector->Colormap, frontsector->SpecialColors[sector_t::walltop]);
+	wall.SectorLightLevel = frontsector->lightlevel;
 	wall.Additive = !!(fakeFloor->flags & FF_ADDITIVETRANS);
 	if (!wall.Additive && fakeFloor->alpha == 255)
 	{
@@ -317,7 +321,7 @@ void RenderPolyWall::Render(PolyRenderThread *thread, const TriMatrix &worldToCl
 	}
 
 	PolyDrawArgs args;
-	args.SetLight(GetColorTable(Line->frontsector->Colormap, Line->frontsector->SpecialColors[sector_t::walltop]), GetLightLevel(), PolyRenderer::Instance()->Light.WallGlobVis(foggy), false);
+	args.SetLight(Colormap, GetLightLevel(), PolyRenderer::Instance()->Light.WallGlobVis(foggy), false);
 	args.SetTransform(&worldToClip);
 	args.SetFaceCullCCW(true);
 	args.SetStencilTestValue(StencilValue);
@@ -325,6 +329,8 @@ void RenderPolyWall::Render(PolyRenderThread *thread, const TriMatrix &worldToCl
 	if (Texture && !Polyportal)
 		args.SetTexture(Texture);
 	args.SetClipPlane(0, clipPlane);
+
+	SetDynLights(thread, args);
 
 	if (FogBoundary)
 	{
@@ -363,6 +369,77 @@ void RenderPolyWall::Render(PolyRenderThread *thread, const TriMatrix &worldToCl
 	}
 
 	RenderPolyDecal::RenderWallDecals(thread, worldToClip, clipPlane, LineSeg, StencilValue);
+}
+
+void RenderPolyWall::SetDynLights(PolyRenderThread *thread, PolyDrawArgs &args)
+{
+	FLightNode *light_list = (LineSeg && LineSeg->sidedef) ? LineSeg->sidedef->lighthead : nullptr;
+
+	auto cameraLight = PolyCameraLight::Instance();
+	if ((cameraLight->FixedLightLevel() >= 0) || (cameraLight->FixedColormap() != nullptr))
+	{
+		args.SetLights(nullptr, 0); // [SP] Don't draw dynlights if invul/lightamp active
+		return;
+	}
+
+	// Calculate max lights that can touch the wall so we can allocate memory for the list
+	int max_lights = 0;
+	FLightNode *cur_node = light_list;
+	while (cur_node)
+	{
+		if (!(cur_node->lightsource->flags2&MF2_DORMANT))
+			max_lights++;
+		cur_node = cur_node->nextLight;
+	}
+
+	if (max_lights == 0)
+	{
+		args.SetLights(nullptr, 0);
+		return;
+	}
+
+	int dc_num_lights = 0;
+	PolyLight *dc_lights = thread->FrameMemory->AllocMemory<PolyLight>(max_lights);
+
+	// Setup lights
+	cur_node = light_list;
+	while (cur_node)
+	{
+		if (!(cur_node->lightsource->flags2&MF2_DORMANT))
+		{
+			bool is_point_light = (cur_node->lightsource->lightflags & LF_ATTENUATE) != 0;
+
+			// To do: cull lights not touching wall
+
+			uint32_t red = cur_node->lightsource->GetRed();
+			uint32_t green = cur_node->lightsource->GetGreen();
+			uint32_t blue = cur_node->lightsource->GetBlue();
+
+			auto &light = dc_lights[dc_num_lights++];
+			light.x = (float)cur_node->lightsource->X();
+			light.y = (float)cur_node->lightsource->Y();
+			light.z = (float)cur_node->lightsource->Z();
+			light.radius = 256.0f / cur_node->lightsource->GetRadius();
+			light.color = (red << 16) | (green << 8) | blue;
+			if (is_point_light)
+				light.radius = -light.radius;
+		}
+
+		cur_node = cur_node->nextLight;
+	}
+
+	args.SetLights(dc_lights, dc_num_lights);
+
+	// Face normal:
+	float dx = (float)(v2.X - v1.X);
+	float dy = (float)(v2.Y - v1.Y);
+	float nx = dy;
+	float ny = -dx;
+	float lensqr = nx * nx + ny * ny;
+	float rcplen = 1.0f / sqrt(lensqr);
+	nx *= rcplen;
+	ny *= rcplen;
+	args.SetNormal({ nx, ny, 0.0f });
 }
 
 void RenderPolyWall::DrawStripes(PolyRenderThread *thread, PolyDrawArgs &args, TriVertex *vertices)
@@ -479,7 +556,7 @@ int RenderPolyWall::GetLightLevel()
 	{
 		bool foggy = false;
 		int actualextralight = foggy ? 0 : PolyRenderer::Instance()->Viewpoint.extralight << 4;
-		return clamp(Side->GetLightLevel(foggy, LineSeg->frontsector->lightlevel) + actualextralight, 0, 255);
+		return clamp(Side->GetLightLevel(foggy, SectorLightLevel) + actualextralight, 0, 255);
 	}
 }
 

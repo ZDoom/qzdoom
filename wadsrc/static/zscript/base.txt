@@ -90,6 +90,7 @@ struct TexMan
 
 	native static TextureID CheckForTexture(String name, int usetype, int flags = TryAny);
 	native static void ReplaceTextures(String from, String to, int flags);
+	native static String GetName(TextureID tex);
 	native static int, int GetSize(TextureID tex);
 	native static Vector2 GetScaledSize(TextureID tex);
 	native static Vector2 GetScaledOffset(TextureID tex);
@@ -210,6 +211,10 @@ struct Font native
 		CR_PURPLE,
 		CR_DARKGRAY,
 		CR_CYAN,
+		CR_ICE,
+		CR_FIRE,
+		CR_SAPPHIRE,
+		CR_TEAL,
 		NUM_TEXT_COLORS
 	};
 	
@@ -236,6 +241,10 @@ struct Font native
 	const TEXTCOLOR_PURPLE			= "\034T";
 	const TEXTCOLOR_DARKGRAY		= "\034U";
 	const TEXTCOLOR_CYAN			= "\034V";
+	const TEXTCOLOR_ICE				= "\034W";
+	const TEXTCOLOR_FIRE			= "\034X";
+	const TEXTCOLOR_SAPPHIRE		= "\034Y";
+	const TEXTCOLOR_TEAL			= "\034Z";
 
 	const TEXTCOLOR_NORMAL			= "\034-";
 	const TEXTCOLOR_BOLD			= "\034+";
@@ -293,9 +302,11 @@ struct CVar native
 
 	native static CVar FindCVar(Name name);
 	native static CVar GetCVar(Name name, PlayerInfo player = null);
+	bool GetBool() { return GetInt(); }
 	native int GetInt();
 	native double GetFloat();
 	native String GetString();
+	void SetBool(bool b) { SetInt(b); }
 	native void SetInt(int v);
 	native void SetFloat(double v);
 	native void SetString(String s);
@@ -325,6 +336,7 @@ struct GameInfoStruct native
 	native GIFont mStatscreenFinishedFont;
 	native double gibfactor;
 	native bool intermissioncounter;
+	native Name mSliderColor;
 }
 
 class Object native
@@ -441,8 +453,8 @@ class BlockLinesIterator : Object native
 	native Vector3 position;
 	native int portalflags;
 	
-	native static BlockThingsIterator Create(Actor origin, double checkradius = -1);
-	native static BlockThingsIterator CreateFromPos(Vector3 pos, double checkh, double checkradius, Sector sec = null);
+	native static BlockLinesIterator Create(Actor origin, double checkradius = -1);
+	native static BlockLinesIterator CreateFromPos(Vector3 pos, double checkh, double checkradius, Sector sec = null);
 	native bool Next();
 }
 
@@ -619,7 +631,16 @@ struct Wads
 		ns_firstskin,
 	}
 
+	enum FindLumpNamespace
+	{
+		GlobalNamespace = 0,
+		AnyNamespace = 1,
+	}
+
 	native static int CheckNumForName(string name, int ns, int wadnum = -1, bool exact = false);
+	native static int CheckNumForFullName(string name);
+	native static int FindLump(string name, int startlump = 0, FindLumpNamespace ns = GlobalNamespace);
+	native static string ReadLump(int lump);
 }
 
 struct TerrainDef native
@@ -647,6 +668,12 @@ enum EPickStart
 	PPS_NOBLOCKINGCHECK		= 2,
 }
 
+enum EmptyTokenType
+{
+	TOK_SKIPEMPTY = 0,
+	TOK_KEEPEMPTY = 1,
+}
+
 // Although String is a builtin type, this is a convenient way to attach methods to it.
 struct StringStruct native
 {
@@ -661,11 +688,12 @@ struct StringStruct native
 	native int CharCodeAt(int pos) const;
 	native String Filter();
 	native int IndexOf(String substr, int startIndex = 0) const;
-	native int LastIndexOf(String substr) const;
+	native int LastIndexOf(String substr, int endIndex = 2147483647) const;
 	native void ToUpper();
 	native void ToLower();
 	native int ToInt(int base = 0) const;
 	native double ToDouble() const;
+	native void Split(out Array<String> tokens, String delimiter, EmptyTokenType keepEmpty = TOK_KEEPEMPTY) const;
 }
 
 class SectorEffect : Thinker native

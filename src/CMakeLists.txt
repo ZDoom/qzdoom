@@ -342,9 +342,9 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
 		set (USE_ARMV8 0 CACHE BOOL "Use ARMv8 instructions - Raspberry Pi 3")
 		if (USE_ARMV8)
-			set( CMAKE_CXX_FLAGS "-mcpu=cortex-a53  -mfpu=neon-fp-armv8 -mtune=cortex-a53 -mhard-float -DNO_SSE ${CMAKE_CXX_FLAGS}" )
+			set( CMAKE_CXX_FLAGS "-mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mtune=cortex-a53 -mhard-float -DNO_SSE ${CMAKE_CXX_FLAGS}" )
 		else ()
-			set( CMAKE_CXX_FLAGS "-mfpu=neon -DNO_SSE ${CMAKE_CXX_FLAGS}" )
+			set( CMAKE_CXX_FLAGS "-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mtune=cortex-a7 -mhard-float -DNO_SSE ${CMAKE_CXX_FLAGS}" )
 		endif ()
 	endif ()
 
@@ -958,7 +958,6 @@ set (PCH_SOURCES
 	stats.cpp
 	stringtable.cpp
 	teaminfo.cpp
-	tempfiles.cpp
 	v_blend.cpp
 	v_collection.cpp
 	v_draw.cpp
@@ -1179,6 +1178,7 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	${PCH_SOURCES}
 	x86.cpp
 	strnatcmp.c
+	tmpfileplus.c
 	zstring.cpp
 	math/asin.c
 	math/atan.c
@@ -1301,7 +1301,7 @@ endif()
 
 if( APPLE )
 	set_target_properties(zdoom PROPERTIES
-		LINK_FLAGS "-framework Carbon -framework Cocoa -framework IOKit -framework OpenGL"
+		LINK_FLAGS "-framework Cocoa -framework IOKit -framework OpenGL"
 		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/zdoom-info.plist" )
 
 endif()

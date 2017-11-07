@@ -2698,6 +2698,8 @@ FxExpression *FxMultiAssign::Resolve(FCompileContext &ctx)
 		auto varaccess = new FxLocalVariable(singlevar, ScriptPosition);
 		auto assignee = new FxTypeCast(varaccess, Base[i]->ValueType, false);
 		LocalVarContainer->Add(new FxAssign(Base[i], assignee, false));
+		// now temporary variable owns the current item
+		Base[i] = nullptr;
 	}
 	auto x = LocalVarContainer->Resolve(ctx);
 	LocalVarContainer = nullptr;
@@ -3302,6 +3304,7 @@ FxExpression *FxPow::Resolve(FCompileContext& ctx)
 		right = (new FxFloatCast(right))->Resolve(ctx);
 		ABORT(right);
 	}
+	ValueType = TypeFloat64;
 	if (left->isConstant() && right->isConstant())
 	{
 		double v1 = static_cast<FxConstant *>(left)->GetValue().GetFloat();
@@ -6462,6 +6465,12 @@ FxExpression *FxMemberIdentifier::Resolve(FCompileContext& ctx)
 						return nullptr;
 					}
 				}
+			}
+			else
+			{
+				ScriptPosition.Message(MSG_ERROR, "%s is not a member of %s", Identifier.GetChars(), ccls->TypeName.GetChars());
+				delete this;
+				return nullptr;
 			}
 		}
 	}

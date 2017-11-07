@@ -142,9 +142,69 @@ namespace TriScreenDrawerModes
 		}
 	}
 
-	template<typename ShadeModeT>
-	FORCEINLINE __m128i VECTORCALL Shade32(__m128i fgcolor, __m128i mlight, unsigned int ifgcolor0, unsigned int ifgcolor1, int desaturate, __m128i inv_desaturate, __m128i shade_fade, __m128i shade_light)
+	FORCEINLINE __m128i VECTORCALL AddLights(__m128i material, __m128i fgcolor, __m128i dynlight)
 	{
+		fgcolor = _mm_add_epi16(fgcolor, _mm_srli_epi16(_mm_mullo_epi16(material, dynlight), 8));
+		fgcolor = _mm_min_epi16(fgcolor, _mm_set1_epi16(255));
+		return fgcolor;
+	}
+
+	FORCEINLINE __m128i VECTORCALL CalcDynamicLight(const PolyLight *lights, int num_lights, __m128 worldpos, __m128 worldnormal, uint32_t dynlightcolor)
+	{
+		__m128i lit = _mm_unpacklo_epi8(_mm_cvtsi32_si128(dynlightcolor), _mm_setzero_si128());
+		lit = _mm_shuffle_epi32(lit, _MM_SHUFFLE(1, 0, 1, 0));
+
+		for (int i = 0; i != num_lights; i++)
+		{
+			__m128 m256 = _mm_set1_ps(256.0f);
+			__m128 mSignBit = _mm_set1_ps(-0.0f);
+
+			__m128 lightpos = _mm_loadu_ps(&lights[i].x);
+			__m128 light_radius = _mm_load_ss(&lights[i].radius);
+
+			__m128 is_attenuated = _mm_cmpge_ss(light_radius, _mm_setzero_ps());
+			is_attenuated = _mm_shuffle_ps(is_attenuated, is_attenuated, _MM_SHUFFLE(0, 0, 0, 0));
+			light_radius = _mm_andnot_ps(mSignBit, light_radius);
+
+			// L = light-pos
+			// dist = sqrt(dot(L, L))
+			// distance_attenuation = 1 - MIN(dist * (1/radius), 1)
+			__m128 L = _mm_sub_ps(lightpos, worldpos);
+			__m128 dist2 = _mm_mul_ps(L, L);
+			dist2 = _mm_add_ss(dist2, _mm_add_ss(_mm_shuffle_ps(dist2, dist2, _MM_SHUFFLE(0, 0, 0, 1)), _mm_shuffle_ps(dist2, dist2, _MM_SHUFFLE(0, 0, 0, 2))));
+			__m128 rcp_dist = _mm_rsqrt_ss(dist2);
+			__m128 dist = _mm_mul_ss(dist2, rcp_dist);
+			__m128 distance_attenuation = _mm_sub_ss(m256, _mm_min_ss(_mm_mul_ss(dist, light_radius), m256));
+			distance_attenuation = _mm_shuffle_ps(distance_attenuation, distance_attenuation, _MM_SHUFFLE(0, 0, 0, 0));
+
+			// The simple light type
+			__m128 simple_attenuation = distance_attenuation;
+
+			// The point light type
+			// diffuse = max(dot(N,normalize(L)),0) * attenuation
+			__m128 dotNL = _mm_mul_ps(worldnormal, _mm_mul_ps(L, _mm_shuffle_ps(rcp_dist, rcp_dist, _MM_SHUFFLE(0, 0, 0, 0))));
+			dotNL = _mm_add_ss(dotNL, _mm_add_ss(_mm_shuffle_ps(dotNL, dotNL, _MM_SHUFFLE(0, 0, 0, 1)), _mm_shuffle_ps(dotNL, dotNL, _MM_SHUFFLE(0, 0, 0, 2))));
+			dotNL = _mm_max_ss(dotNL, _mm_setzero_ps());
+			__m128 point_attenuation = _mm_mul_ss(dotNL, distance_attenuation);
+			point_attenuation = _mm_shuffle_ps(point_attenuation, point_attenuation, _MM_SHUFFLE(0, 0, 0, 0));
+
+			__m128i attenuation = _mm_cvtps_epi32(_mm_or_ps(_mm_and_ps(is_attenuated, simple_attenuation), _mm_andnot_ps(is_attenuated, point_attenuation)));
+			attenuation = _mm_packs_epi32(_mm_shuffle_epi32(attenuation, _MM_SHUFFLE(0, 0, 0, 0)), _mm_shuffle_epi32(attenuation, _MM_SHUFFLE(1, 1, 1, 1)));
+
+			__m128i light_color = _mm_cvtsi32_si128(lights[i].color);
+			light_color = _mm_unpacklo_epi8(light_color, _mm_setzero_si128());
+			light_color = _mm_shuffle_epi32(light_color, _MM_SHUFFLE(1, 0, 1, 0));
+
+			lit = _mm_add_epi16(lit, _mm_srli_epi16(_mm_mullo_epi16(light_color, attenuation), 8));
+		}
+
+		return _mm_min_epi16(lit, _mm_set1_epi16(256));
+	}
+
+	template<typename ShadeModeT>
+	FORCEINLINE __m128i VECTORCALL Shade32(__m128i fgcolor, __m128i mlight, unsigned int ifgcolor0, unsigned int ifgcolor1, int desaturate, __m128i inv_desaturate, __m128i shade_fade, __m128i shade_light, __m128i dynlight)
+	{
+		__m128i material = fgcolor;
 		if (ShadeModeT::Mode == (int)ShadeMode::Simple)
 		{
 			fgcolor = _mm_srli_epi16(_mm_mullo_epi16(fgcolor, mlight), 8);
@@ -168,7 +228,8 @@ namespace TriScreenDrawerModes
 			fgcolor = _mm_srli_epi16(_mm_add_epi16(shade_fade, fgcolor), 8);
 			fgcolor = _mm_srli_epi16(_mm_mullo_epi16(fgcolor, shade_light), 8);
 		}
-		return fgcolor;
+
+		return AddLights(material, fgcolor, dynlight);
 	}
 
 	template<typename BlendT>
@@ -333,17 +394,28 @@ private:
 
 		int fuzzpos = (ScreenTriangle::FuzzStart + destX * 123 + destY) % FUZZTABLE;
 
+		auto lights = args->uniforms->Lights();
+		auto num_lights = args->uniforms->NumLights();
+		__m128 worldnormal = _mm_setr_ps(args->uniforms->Normal().X, args->uniforms->Normal().Y, args->uniforms->Normal().Z, 0.0f);
+		uint32_t dynlightcolor = args->uniforms->DynLightColor();
+
 		// Calculate gradients
-		const TriVertex &v1 = *args->v1;
+		const ShadedTriVertex &v1 = *args->v1;
 		ScreenTriangleStepVariables gradientX = args->gradientX;
 		ScreenTriangleStepVariables gradientY = args->gradientY;
 		ScreenTriangleStepVariables blockPosY;
 		blockPosY.W = v1.w + gradientX.W * (destX - v1.x) + gradientY.W * (destY - v1.y);
 		blockPosY.U = v1.u * v1.w + gradientX.U * (destX - v1.x) + gradientY.U * (destY - v1.y);
 		blockPosY.V = v1.v * v1.w + gradientX.V * (destX - v1.x) + gradientY.V * (destY - v1.y);
+		blockPosY.WorldX = v1.worldX * v1.w + gradientX.WorldX * (destX - v1.x) + gradientY.WorldX * (destY - v1.y);
+		blockPosY.WorldY = v1.worldY * v1.w + gradientX.WorldY * (destX - v1.x) + gradientY.WorldY * (destY - v1.y);
+		blockPosY.WorldZ = v1.worldZ * v1.w + gradientX.WorldZ * (destX - v1.x) + gradientY.WorldZ * (destY - v1.y);
 		gradientX.W *= 8.0f;
 		gradientX.U *= 8.0f;
 		gradientX.V *= 8.0f;
+		gradientX.WorldX *= 8.0f;
+		gradientX.WorldY *= 8.0f;
+		gradientX.WorldZ *= 8.0f;
 
 		// Output
 		uint32_t * RESTRICT destOrg = (uint32_t*)args->dest;
@@ -404,10 +476,17 @@ private:
 				fixed_t lightpos = FRACUNIT - (int)(clamp(shade - MIN(24.0f / 32.0f, globVis * blockPosY.W), 0.0f, 31.0f / 32.0f) * (float)FRACUNIT);
 				lightpos = (lightpos & lightmask) | ((light << 8) & ~lightmask);
 
+				__m128 mrcpW = _mm_set1_ps(1.0f / blockPosY.W);
+				__m128 worldpos = _mm_mul_ps(_mm_loadu_ps(&blockPosY.WorldX), mrcpW);
+				__m128i dynlight = CalcDynamicLight(lights, num_lights, worldpos, worldnormal, dynlightcolor);
+
 				ScreenTriangleStepVariables blockPosX = blockPosY;
 				blockPosX.W += gradientX.W;
 				blockPosX.U += gradientX.U;
 				blockPosX.V += gradientX.V;
+				blockPosX.WorldX += gradientX.WorldX;
+				blockPosX.WorldY += gradientX.WorldY;
+				blockPosX.WorldZ += gradientX.WorldZ;
 
 				rcpW = 0x01000000 / blockPosX.W;
 				int32_t nextU = (int32_t)(blockPosX.U * rcpW);
@@ -418,6 +497,13 @@ private:
 				fixed_t lightnext = FRACUNIT - (fixed_t)(clamp(shade - MIN(24.0f / 32.0f, globVis * blockPosX.W), 0.0f, 31.0f / 32.0f) * (float)FRACUNIT);
 				fixed_t lightstep = (lightnext - lightpos) / 8;
 				lightstep = lightstep & lightmask;
+
+				mrcpW = _mm_set1_ps(1.0f / blockPosX.W);
+				worldpos = _mm_mul_ps(_mm_loadu_ps(&blockPosX.WorldX), mrcpW);
+				__m128i dynlightnext = CalcDynamicLight(lights, num_lights, worldpos, worldnormal, dynlightcolor);
+				__m128i dynlightstep = _mm_srai_epi16(_mm_sub_epi16(dynlightnext, dynlight), 3);
+				dynlight = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(dynlight, _mm_and_si128(dynlightstep, _mm_set_epi32(0xffff,0xffff,0,0))), _mm_set1_epi16(256)), _mm_setzero_si128());
+				dynlightstep = _mm_slli_epi16(dynlightstep, 1);
 
 				for (int ix = 0; ix < 4; ix++)
 				{
@@ -462,16 +548,21 @@ private:
 
 					// Shade and blend
 					__m128i fgcolor = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)ifgcolor), _mm_setzero_si128());
-					fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light);
+					fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light, dynlight);
 					__m128i outcolor = Blend32<BlendT>(fgcolor, bgcolor, ifgcolor[0], ifgcolor[1], ifgshade[0], ifgshade[1], srcalpha, destalpha);
 
 					// Store result
 					_mm_storel_epi64((__m128i*)(dest + ix * 2), outcolor);
+
+					dynlight = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(dynlight, dynlightstep), _mm_set1_epi16(256)), _mm_setzero_si128());
 				}
 
 				blockPosY.W += gradientY.W;
 				blockPosY.U += gradientY.U;
 				blockPosY.V += gradientY.V;
+				blockPosY.WorldX += gradientY.WorldX;
+				blockPosY.WorldY += gradientY.WorldY;
+				blockPosY.WorldZ += gradientY.WorldZ;
 
 				dest += pitch;
 			}
@@ -488,10 +579,17 @@ private:
 				fixed_t lightpos = FRACUNIT - (fixed_t)(clamp(shade - MIN(24.0f / 32.0f, globVis * blockPosY.W), 0.0f, 31.0f / 32.0f) * (float)FRACUNIT);
 				lightpos = (lightpos & lightmask) | ((light << 8) & ~lightmask);
 
+				__m128 mrcpW = _mm_set1_ps(1.0f / blockPosY.W);
+				__m128 worldpos = _mm_mul_ps(_mm_loadu_ps(&blockPosY.WorldX), mrcpW);
+				__m128i dynlight = CalcDynamicLight(lights, num_lights, worldpos, worldnormal, dynlightcolor);
+
 				ScreenTriangleStepVariables blockPosX = blockPosY;
 				blockPosX.W += gradientX.W;
 				blockPosX.U += gradientX.U;
 				blockPosX.V += gradientX.V;
+				blockPosX.WorldX += gradientX.WorldX;
+				blockPosX.WorldY += gradientX.WorldY;
+				blockPosX.WorldZ += gradientX.WorldZ;
 
 				rcpW = 0x01000000 / blockPosX.W;
 				int32_t nextU = (int32_t)(blockPosX.U * rcpW);
@@ -502,6 +600,13 @@ private:
 				fixed_t lightnext = FRACUNIT - (fixed_t)(clamp(shade - MIN(24.0f / 32.0f, globVis * blockPosX.W), 0.0f, 31.0f / 32.0f) * (float)FRACUNIT);
 				fixed_t lightstep = (lightnext - lightpos) / 8;
 				lightstep = lightstep & lightmask;
+
+				mrcpW = _mm_set1_ps(1.0f / blockPosX.W);
+				worldpos = _mm_mul_ps(_mm_loadu_ps(&blockPosX.WorldX), mrcpW);
+				__m128i dynlightnext = CalcDynamicLight(lights, num_lights, worldpos, worldnormal, dynlightcolor);
+				__m128i dynlightstep = _mm_srai_epi16(_mm_sub_epi16(dynlightnext, dynlight), 3);
+				dynlight = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(dynlight, _mm_and_si128(dynlightstep, _mm_set_epi32(0xffff, 0xffff, 0, 0))), _mm_set1_epi16(256)), _mm_setzero_si128());
+				dynlightstep = _mm_slli_epi16(dynlightstep, 1);
 
 				for (int x = 0; x < 4; x++)
 				{
@@ -551,7 +656,7 @@ private:
 
 					// Shade and blend
 					__m128i fgcolor = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)ifgcolor), _mm_setzero_si128());
-					fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light);
+					fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light, dynlight);
 					__m128i outcolor = Blend32<BlendT>(fgcolor, bgcolor, ifgcolor[0], ifgcolor[1], ifgshade[0], ifgshade[1], srcalpha, destalpha);
 
 					// Store result
@@ -559,12 +664,17 @@ private:
 					if (mask0 & (1 << 31)) dest[x * 2] = desttmp[0];
 					if (mask0 & (1 << 30)) dest[x * 2 + 1] = desttmp[1];
 
+					dynlight = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(dynlight, dynlightstep), _mm_set1_epi16(256)), _mm_setzero_si128());
+
 					mask0 <<= 2;
 				}
 
 				blockPosY.W += gradientY.W;
 				blockPosY.U += gradientY.U;
 				blockPosY.V += gradientY.V;
+				blockPosY.WorldX += gradientY.WorldX;
+				blockPosY.WorldY += gradientY.WorldY;
+				blockPosY.WorldZ += gradientY.WorldZ;
 
 				dest += pitch;
 			}
@@ -579,10 +689,17 @@ private:
 				fixed_t lightpos = FRACUNIT - (fixed_t)(clamp(shade - MIN(24.0f / 32.0f, globVis * blockPosY.W), 0.0f, 31.0f / 32.0f) * (float)FRACUNIT);
 				lightpos = (lightpos & lightmask) | ((light << 8) & ~lightmask);
 
+				__m128 mrcpW = _mm_set1_ps(1.0f / blockPosY.W);
+				__m128 worldpos = _mm_mul_ps(_mm_loadu_ps(&blockPosY.WorldX), mrcpW);
+				__m128i dynlight = CalcDynamicLight(lights, num_lights, worldpos, worldnormal, dynlightcolor);
+
 				ScreenTriangleStepVariables blockPosX = blockPosY;
 				blockPosX.W += gradientX.W;
 				blockPosX.U += gradientX.U;
 				blockPosX.V += gradientX.V;
+				blockPosX.WorldX += gradientX.WorldX;
+				blockPosX.WorldY += gradientX.WorldY;
+				blockPosX.WorldZ += gradientX.WorldZ;
 
 				rcpW = 0x01000000 / blockPosX.W;
 				int32_t nextU = (int32_t)(blockPosX.U * rcpW);
@@ -593,6 +710,13 @@ private:
 				fixed_t lightnext = FRACUNIT - (fixed_t)(clamp(shade - MIN(24.0f / 32.0f, globVis * blockPosX.W), 0.0f, 31.0f / 32.0f) * (float)FRACUNIT);
 				fixed_t lightstep = (lightnext - lightpos) / 8;
 				lightstep = lightstep & lightmask;
+
+				mrcpW = _mm_set1_ps(1.0f / blockPosX.W);
+				worldpos = _mm_mul_ps(_mm_loadu_ps(&blockPosX.WorldX), mrcpW);
+				__m128i dynlightnext = CalcDynamicLight(lights, num_lights, worldpos, worldnormal, dynlightcolor);
+				__m128i dynlightstep = _mm_srai_epi16(_mm_sub_epi16(dynlightnext, dynlight), 3);
+				dynlight = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(dynlight, _mm_and_si128(dynlightstep, _mm_set_epi32(0xffff, 0xffff, 0, 0))), _mm_set1_epi16(256)), _mm_setzero_si128());
+				dynlightstep = _mm_slli_epi16(dynlightstep, 1);
 
 				for (int x = 0; x < 4; x++)
 				{
@@ -642,7 +766,7 @@ private:
 
 					// Shade and blend
 					__m128i fgcolor = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)ifgcolor), _mm_setzero_si128());
-					fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light);
+					fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light, dynlight);
 					__m128i outcolor = Blend32<BlendT>(fgcolor, bgcolor, ifgcolor[0], ifgcolor[1], ifgshade[0], ifgshade[1], srcalpha, destalpha);
 
 					// Store result
@@ -650,12 +774,17 @@ private:
 					if (mask1 & (1 << 31)) dest[x * 2] = desttmp[0];
 					if (mask1 & (1 << 30)) dest[x * 2 + 1] = desttmp[1];
 
+					dynlight = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(dynlight, dynlightstep), _mm_set1_epi16(256)), _mm_setzero_si128());
+
 					mask1 <<= 2;
 				}
 
 				blockPosY.W += gradientY.W;
 				blockPosY.U += gradientY.U;
 				blockPosY.V += gradientY.V;
+				blockPosY.WorldX += gradientY.WorldX;
+				blockPosY.WorldY += gradientY.WorldY;
+				blockPosY.WorldZ += gradientY.WorldZ;
 
 				dest += pitch;
 			}
@@ -798,7 +927,7 @@ private:
 
 				// Shade and blend
 				__m128i fgcolor = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)ifgcolor), _mm_setzero_si128());
-				fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light);
+				fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light, _mm_setzero_si128());
 				__m128i outcolor = Blend32<BlendT>(fgcolor, bgcolor, ifgcolor[0], ifgcolor[1], ifgshade[0], ifgshade[1], srcalpha, destalpha);
 
 				// Store result
@@ -826,7 +955,7 @@ private:
 
 				// Shade and blend
 				__m128i fgcolor = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)ifgcolor), _mm_setzero_si128());
-				fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light);
+				fgcolor = Shade32<ShadeModeT>(fgcolor, mlight, ifgcolor[0], ifgcolor[1], desaturate, inv_desaturate, shade_fade_lit, shade_light, _mm_setzero_si128());
 				__m128i outcolor = Blend32<BlendT>(fgcolor, bgcolor, ifgcolor[0], ifgcolor[1], ifgshade[0], ifgshade[1], srcalpha, destalpha);
 
 				// Store result

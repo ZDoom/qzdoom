@@ -2361,7 +2361,7 @@ void V_InitFontColors ()
 			// which are used by the menu. So we have no choice but to skip this lump so that
 			// all colors work properly.
 			// The text colors should be the end user's choice anyway.
-			if (Wads.GetLumpFile(lump) == 1) continue;
+			if (Wads.GetLumpFile(lump) == Wads.GetIwadNum()) continue;
 		}
 		FScanner sc(lump);
 		while (sc.GetString())
@@ -2666,7 +2666,7 @@ EColorRange V_ParseFontColor (const uint8_t *&color_value, int normalcolor, int 
 	}
 	else							// Incomplete!
 	{
-		color_value = ch - (*ch == '\0');
+		color_value = ch - (newcolor == '\0');
 		return CR_UNDEFINED;
 	}
 	color_value = ch;

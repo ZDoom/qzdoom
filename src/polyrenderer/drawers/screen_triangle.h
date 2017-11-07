@@ -41,27 +41,27 @@ struct WorkerThreadData
 	}
 };
 
-struct TriVertex
+struct ShadedTriVertex
 {
-	TriVertex() { }
-	TriVertex(float x, float y, float z, float w, float u, float v) : x(x), y(y), z(z), w(w), u(u), v(v) { }
-
 	float x, y, z, w;
 	float u, v;
+	float clipDistance[3];
+	float worldX, worldY, worldZ;
 };
 
 struct ScreenTriangleStepVariables
 {
 	float W, U, V;
+	float WorldX, WorldY, WorldZ, Padding; // Padding so it can be loaded directly into a XMM register
 };
 
 struct TriDrawTriangleArgs
 {
 	uint8_t *dest;
 	int32_t pitch;
-	TriVertex *v1;
-	TriVertex *v2;
-	TriVertex *v3;
+	ShadedTriVertex *v1;
+	ShadedTriVertex *v2;
+	ShadedTriVertex *v3;
 	int32_t clipright;
 	int32_t clipbottom;
 	uint8_t *stencilValues;
@@ -80,23 +80,37 @@ struct TriDrawTriangleArgs
 		if ((bottomX >= -FLT_EPSILON && bottomX <= FLT_EPSILON) || (bottomY >= -FLT_EPSILON && bottomY <= FLT_EPSILON))
 			return false;
 
-		gradientX.W = FindGradientX(bottomX, v1->w, v2->w, v3->w);
-		gradientY.W = FindGradientY(bottomY, v1->w, v2->w, v3->w);
-		gradientX.U = FindGradientX(bottomX, v1->u * v1->w, v2->u * v2->w, v3->u * v3->w);
-		gradientY.U = FindGradientY(bottomY, v1->u * v1->w, v2->u * v2->w, v3->u * v3->w);
-		gradientX.V = FindGradientX(bottomX, v1->v * v1->w, v2->v * v2->w, v3->v * v3->w);
-		gradientY.V = FindGradientY(bottomY, v1->v * v1->w, v2->v * v2->w, v3->v * v3->w);
+		gradientX.W = FindGradientX(bottomX, 1.0f, 1.0f, 1.0f);
+		gradientX.U = FindGradientX(bottomX, v1->u, v2->u, v3->u);
+		gradientX.V = FindGradientX(bottomX, v1->v, v2->v, v3->v);
+		gradientX.WorldX = FindGradientX(bottomX, v1->worldX, v2->worldX, v3->worldX);
+		gradientX.WorldY = FindGradientX(bottomX, v1->worldY, v2->worldY, v3->worldY);
+		gradientX.WorldZ = FindGradientX(bottomX, v1->worldZ, v2->worldZ, v3->worldZ);
+
+		gradientY.W = FindGradientY(bottomY, 1.0f, 1.0f, 1.0f);
+		gradientY.U = FindGradientY(bottomY, v1->u, v2->u, v3->u);
+		gradientY.V = FindGradientY(bottomY, v1->v, v2->v, v3->v);
+		gradientY.WorldX = FindGradientY(bottomY, v1->worldX, v2->worldX, v3->worldX);
+		gradientY.WorldY = FindGradientY(bottomY, v1->worldY, v2->worldY, v3->worldY);
+		gradientY.WorldZ = FindGradientY(bottomY, v1->worldZ, v2->worldZ, v3->worldZ);
+
 		return true;
 	}
 
 private:
 	float FindGradientX(float bottomX, float c0, float c1, float c2)
 	{
+		c0 *= v1->w;
+		c1 *= v2->w;
+		c2 *= v3->w;
 		return ((c1 - c2) * (v1->y - v3->y) - (c0 - c2) * (v2->y - v3->y)) / bottomX;
 	}
 
 	float FindGradientY(float bottomY, float c0, float c1, float c2)
 	{
+		c0 *= v1->w;
+		c1 *= v2->w;
+		c2 *= v3->w;
 		return ((c1 - c2) * (v1->x - v3->x) - (c0 - c2) * (v2->x - v3->x)) / bottomY;
 	}
 };

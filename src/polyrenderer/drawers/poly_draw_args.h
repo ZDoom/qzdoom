@@ -46,6 +46,22 @@ public:
 	float A, B, C, D;
 };
 
+struct TriVertex
+{
+	TriVertex() { }
+	TriVertex(float x, float y, float z, float w, float u, float v) : x(x), y(y), z(z), w(w), u(u), v(v) { }
+
+	float x, y, z, w;
+	float u, v;
+};
+
+struct PolyLight
+{
+	uint32_t color;
+	float x, y, z;
+	float radius;
+};
+
 class PolyDrawArgs
 {
 public:
@@ -64,6 +80,8 @@ public:
 	void SetStyle(const FRenderStyle &renderstyle, double alpha, uint32_t fillcolor, uint32_t translationID, FTexture *texture, bool fullbright);
 	void SetTransform(const TriMatrix *objectToClip) { mObjectToClip = objectToClip; }
 	void SetColor(uint32_t bgra, uint8_t palindex);
+	void SetLights(PolyLight *lights, int numLights) { mLights = lights; mNumLights = numLights; }
+	void SetDynLightColor(uint32_t color) { mDynLightColor = color; }
 	void DrawArray(PolyRenderThread *thread, const TriVertex *vertices, int vcount, PolyDrawMode mode = PolyDrawMode::Triangles);
 
 	const TriMatrix *ObjectToClip() const { return mObjectToClip; }
@@ -110,6 +128,13 @@ public:
 	bool NearestFilter() const { return mNearestFilter; }
 	bool FixedLight() const { return mFixedLight; }
 
+	PolyLight *Lights() const { return mLights; }
+	int NumLights() const { return mNumLights; }
+	uint32_t DynLightColor() const { return mDynLightColor; }
+
+	const FVector3 &Normal() const { return mNormal; }
+	void SetNormal(const FVector3 &normal) { mNormal = normal; }
+
 private:
 	const TriMatrix *mObjectToClip = nullptr;
 	const TriVertex *mVertices = nullptr;
@@ -146,6 +171,10 @@ private:
 	bool mSimpleShade = true;
 	bool mNearestFilter = true;
 	bool mFixedLight = false;
+	PolyLight *mLights = nullptr;
+	int mNumLights = 0;
+	FVector3 mNormal;
+	uint32_t mDynLightColor = 0;
 };
 
 class RectDrawArgs
