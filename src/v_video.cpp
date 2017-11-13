@@ -84,6 +84,7 @@
 #include "r_data/voxels.h"
 #include "vm.h"
 #include "r_videoscale.h"
+#include "i_time.h"
 
 EXTERN_CVAR(Bool, r_blendmethod)
 
@@ -869,7 +870,7 @@ void DFrameBuffer::DrawRateStuff ()
 	// Draws frame time and cumulative fps
 	if (vid_fps)
 	{
-		uint32_t ms = I_FPSTime();
+		uint32_t ms = screen->FrameTime;
 		uint32_t howlong = ms - LastMS;
 		if ((signed)howlong >= 0)
 		{
@@ -902,7 +903,7 @@ void DFrameBuffer::DrawRateStuff ()
 	// draws little dots on the bottom of the screen
 	if (ticker)
 	{
-		int i = I_GetTime(false);
+		int i = I_GetTime();
 		int tics = i - LastTic;
 		uint8_t *buffer = GetBuffer();
 

@@ -39,6 +39,7 @@
 #include "d_player.h"
 #include "g_levellocals.h"
 #include "r_utility.h"
+#include "i_time.h"
 //#include "resources/voxels.h"
 //#include "gl/gl_intern.h"
 
@@ -54,7 +55,7 @@
 
 static inline float GetTimeFloat()
 {
-	return (float)I_MSTime() * (float)TICRATE / 1000.0f;
+	return (float)screen->FrameTime * (float)TICRATE / 1000.0f;
 }
 
 CVAR(Bool, gl_interpolate_model_frames, true, CVAR_ARCHIVE)
