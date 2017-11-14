@@ -779,7 +779,10 @@ void D_Display ()
 
 
 	{
-		screen->FrameTime = I_msTime();
+		static uint32_t firstFrame = 0;
+		if (firstFrame == 0)
+			firstFrame = screen->FrameTime;
+		screen->FrameTime = I_msTime() - firstFrame;
 		TexMan.UpdateAnimations(screen->FrameTime);
 		R_UpdateSky(screen->FrameTime);
 		switch (gamestate)
