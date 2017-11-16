@@ -941,7 +941,7 @@ void D_Display ()
 	else
 	{
 		// wipe update
-		unsigned int wipestart, nowtime, diff;
+		uint64_t wipestart, nowtime, diff;
 		bool done;
 
 		GSnd->SetSfxPaused(true, 1);
