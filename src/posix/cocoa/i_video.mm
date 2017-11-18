@@ -1521,18 +1521,12 @@ void I_SetMainWindowVisible(bool visible)
 }
 
 // each platform has its own specific version of this function.
-void CocoaVideo::I_SetWindowTitle(const char* title)
+void I_SetWindowTitle(const char* title)
 {
-	static NSString* TITLE_STRING;
+	static NSString* const TITLE_STRING;
 	if (title)
 		TITLE_STRING = [NSString stringWithFormat:@"%s", title];
 	else
 		TITLE_STRING = [NSString stringWithFormat:@"%s %s", GAMESIG, GetVersionString()];
 	[m_window setTitle:TITLE_STRING];
-}
-
-void DFrameBuffer::I_SetWindowTitle(const char* title)
-{
-	if (Video != nullptr)
-		Video->I_SetWindowTitle(title);
 }
