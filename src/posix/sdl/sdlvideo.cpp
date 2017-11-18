@@ -553,7 +553,7 @@ ADD_STAT (blit)
 }
 
 // each platform has its own specific version of this function.
-void I_SetWindowTitle(const char* caption)
+void DFrameBuffer::I_SetWindowTitle(const char* caption)
 {
 	if (caption)
 		SDL_SetWindowTitle(Screen, caption);

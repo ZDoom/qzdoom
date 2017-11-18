@@ -128,7 +128,6 @@ void DrawHUD();
 
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
 
-extern void I_SetWindowTitle(const char* caption);
 extern void ReadStatistics();
 extern void M_RestoreMode ();
 extern void M_SetDefaultMode ();
@@ -2745,7 +2744,7 @@ void D_DoomMain (void)
 		}
 
 		if (I_FriendlyWindowTitle)
-			I_SetWindowTitle(DoomStartupInfo.Name.GetChars());
+			screen->I_SetWindowTitle(DoomStartupInfo.Name.GetChars());
 
 		D_DoomLoop ();		// this only returns if a 'restart' CCMD is given.
 		// 
@@ -2910,7 +2909,7 @@ DEFINE_FIELD_X(InputEventData, event_t, y)
 CUSTOM_CVAR(Bool, I_FriendlyWindowTitle, true, CVAR_GLOBALCONFIG|CVAR_ARCHIVE|CVAR_NOINITCALL)
 {
 	if (self)
-		I_SetWindowTitle(DoomStartupInfo.Name.GetChars());
+		screen->I_SetWindowTitle(DoomStartupInfo.Name.GetChars());
 	else
-		I_SetWindowTitle(NULL);
+		screen->I_SetWindowTitle(NULL);
 }

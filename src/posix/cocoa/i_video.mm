@@ -1521,7 +1521,7 @@ void I_SetMainWindowVisible(bool visible)
 }
 
 // each platform has its own specific version of this function.
-void I_SetWindowTitle(const char* title)
+void DFrameBuffer::I_SetWindowTitle(const char* title)
 {
 	static NSString* const TITLE_STRING;
 	if (title)

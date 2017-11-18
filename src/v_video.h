@@ -444,6 +444,8 @@ public:
 
 	uint64_t GetLastFPS() const { return LastCount; }
 
+	virtual void I_SetWindowTitle(const char* caption);
+
 #ifdef _WIN32
 	virtual void PaletteChanged () = 0;
 	virtual int QueryNewPalette () = 0;
