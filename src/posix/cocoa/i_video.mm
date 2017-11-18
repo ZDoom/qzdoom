@@ -272,6 +272,8 @@ public:
 	static void SetCursor(NSCursor* cursor);
 	static void SetWindowVisible(bool visible);
 
+	void I_SetWindowTitle(const char* title);
+
 private:
 	struct ModeIterator
 	{
