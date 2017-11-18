@@ -553,8 +553,9 @@ ADD_STAT (blit)
 }
 
 // each platform has its own specific version of this function.
-void DFrameBuffer::I_SetWindowTitle(const char* caption)
+void SDLFB::I_SetWindowTitle(const char* caption)
 {
+	Screen = GetSDLWindow();
 	if (caption)
 		SDL_SetWindowTitle(Screen, caption);
 	else
@@ -563,4 +564,7 @@ void DFrameBuffer::I_SetWindowTitle(const char* caption)
 		default_caption.Format(GAMESIG " %s (%s)", GetVersionString(), GetGitTime());
 		SDL_SetWindowTitle(Screen, default_caption);
 	}
+}
+void DFrameBuffer::I_SetWindowTitle(const char* caption)
+{
 }

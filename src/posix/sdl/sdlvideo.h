@@ -30,8 +30,9 @@ public:
 	virtual void SetVSync(bool vsync);
 	virtual void ScaleCoordsFromWindow(int16_t &x, int16_t &y);
 
-	SDL_Window *GetSDLWindow() override { return Screen; }
+	void I_SetWindowTitle(const char* caption);
 
+	SDL_Window *GetSDLWindow() override { return Screen; }
 private:
 	PalEntry SourcePalette[256];
 	uint8_t GammaTable[3][256];
@@ -57,4 +58,5 @@ private:
 	void ResetSDLRenderer();
 
 	SDLFB() {}
+	void I_SetWindowTitle();
 };
