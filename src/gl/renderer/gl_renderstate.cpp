@@ -150,12 +150,6 @@ bool FRenderState::ApplyShader()
 		}
 	}
 
-	if (!activeShader)
-	{
-		assert(0); // We should not be getting to this point!
-		return false;
-	}
-
 	glVertexAttrib4fv(VATTR_COLOR, mColor.vec);
 	glVertexAttrib4fv(VATTR_NORMAL, mNormal.vec);
 	//activeShader->muObjectColor2.Set(mObjectColor2);
@@ -380,8 +374,7 @@ void FRenderState::ApplyLightIndex(int index)
 		{
 			index = GLRenderer->mLights->BindUBO(index);
 		}
-		if (activeShader)
-			activeShader->muLightIndex.Set(index);
+		activeShader->muLightIndex.Set(index);
 	}
 }
 
