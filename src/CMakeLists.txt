@@ -702,6 +702,7 @@ set ( SWRENDER_SOURCES
 	swrenderer/r_swrenderer.cpp
 	swrenderer/r_memory.cpp
 	swrenderer/r_renderthread.cpp
+	swrenderer/drawers/r_draw.cpp
 	swrenderer/drawers/r_draw_pal.cpp
 	swrenderer/drawers/r_draw_rgba.cpp
 	swrenderer/drawers/r_thread.cpp
@@ -959,6 +960,7 @@ set (PCH_SOURCES
 	stats.cpp
 	stringtable.cpp
 	teaminfo.cpp
+	umapinfo.cpp
 	v_blend.cpp
 	v_collection.cpp
 	v_draw.cpp
