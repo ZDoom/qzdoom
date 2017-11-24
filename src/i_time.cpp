@@ -3,8 +3,8 @@
 ** Implements the timer
 **
 **---------------------------------------------------------------------------
-** Copyright 1998-2916 Randy Heit
-** Copyright 2917 Magnus Norddahl
+** Copyright 1998-2016 Randy Heit
+** Copyright 2017 Magnus Norddahl
 ** All rights reserved.
 **
 ** Redistribution and use in source and binary forms, with or without
@@ -63,7 +63,7 @@ CUSTOM_CVAR(Float, i_timescale, 1.0f, CVAR_NOINITCALL)
 	else
 	{
 		I_FreezeTime(true);
-		float clampValue = (self < 0.05) ? 0.05 : self;
+		float clampValue = (self < 0.05) ? 0.05f : self;
 		if (self != clampValue)
 			self = clampValue;
 		TimeScale = self;
@@ -74,7 +74,7 @@ CUSTOM_CVAR(Float, i_timescale, 1.0f, CVAR_NOINITCALL)
 static uint64_t GetClockTimeNS()
 {
 	using namespace std::chrono;
-	return (uint64_t)duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count() * TimeScale;
+	return (uint64_t)((duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count()) * TimeScale);
 }
 
 static uint64_t MSToNS(unsigned int ms)
