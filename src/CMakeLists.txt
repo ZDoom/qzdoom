@@ -507,7 +507,6 @@ set( PLAT_SDL_SOURCES
 	posix/sdl/i_joystick.cpp
 	posix/sdl/i_main.cpp
 	posix/sdl/i_system.cpp
-	posix/sdl/i_timer.cpp
 	posix/sdl/sdlvideo.cpp
 	posix/sdl/sdlglvideo.cpp
 	posix/sdl/st_start.cpp )
@@ -525,7 +524,6 @@ set( PLAT_COCOA_SOURCES
 	posix/cocoa/i_main.mm
 	posix/cocoa/i_main_except.cpp
 	posix/cocoa/i_system.mm
-	posix/cocoa/i_timer.cpp
 	posix/cocoa/i_video.mm
 	posix/cocoa/st_console.mm
 	posix/cocoa/st_start.mm )
@@ -653,6 +651,7 @@ file( GLOB HEADER_FILES
 	posix/cocoa/*.h
 	posix/sdl/*.h
 	r_data/*.h
+	r_data/models/*.h
 	rapidjson/*.h
 	resourcefiles/*.h
 	sfmt/*.h
@@ -797,7 +796,6 @@ set( FASTMATH_SOURCES
 	sound/oalsound.cpp
 	sound/sndfile_decoder.cpp
 	sound/mididevices/music_timiditypp_mididevice.cpp
-	gl/data/gl_matrix.cpp
 	gl/utility/gl_clock.cpp
 	gl/renderer/gl_2ddrawer.cpp
 	gl/hqnx/init.cpp
@@ -826,6 +824,8 @@ set( FASTMATH_SOURCES
 	gl/dynlights/gl_dynlight1.cpp
 	gl/system/gl_load.c
 	gl/models/gl_models.cpp
+	r_data/models/models.cpp
+	r_data/matrix.cpp
 )
 
 set (PCH_SOURCES
@@ -999,9 +999,6 @@ set (PCH_SOURCES
 	gl/dynlights/gl_lightbuffer.cpp
 	gl/dynlights/gl_aabbtree.cpp
 	gl/dynlights/gl_shadowmap.cpp
-	gl/models/gl_models_md3.cpp
-	gl/models/gl_models_md2.cpp
-	gl/models/gl_voxels.cpp
 	gl/renderer/gl_quaddrawer.cpp
 	gl/renderer/gl_renderer.cpp
 	gl/renderer/gl_renderstate.cpp
@@ -1105,6 +1102,9 @@ set (PCH_SOURCES
 	r_data/renderstyle.cpp
 	r_data/r_interpolate.cpp
 	r_data/r_vanillatrans.cpp
+	r_data/models/models_md3.cpp
+	r_data/models/models_md2.cpp
+	r_data/models/models_voxel.cpp
 	scripting/symbols.cpp
 	scripting/types.cpp
 	scripting/thingdef.cpp
@@ -1359,9 +1359,9 @@ source_group("Poly Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/po
 source_group("Poly Renderer\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/polyrenderer/math/.+")
 source_group("Poly Renderer\\Drawers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/polyrenderer/drawers/.+")
 source_group("Poly Renderer\\Scene" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/polyrenderer/scene/.+")
-source_group("Render Data\\Resource Headers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/r_data/.+\\.h$")
-source_group("Render Data\\Resource Sources" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/r_data/.+\\.cpp$")
+source_group("Render Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/r_data/.+")
 source_group("Render Data\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/textures/.+")
+source_group("Render Data\\Models" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/r_data/models/.+")
 source_group("Render Interface" FILES r_defs.h r_renderer.h r_sky.cpp r_sky.h r_state.h r_utility.cpp r_utility.h)
 source_group("Resource Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/resourcefiles/.+")
 source_group("Platforms\\POSIX Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/posix/.+")

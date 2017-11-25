@@ -23,7 +23,7 @@
 #pragma once
 
 #include "polyrenderer/drawers/poly_triangle.h"
-#include "gl/data/gl_matrix.h"
+#include "r_data/matrix.h"
 #include "gl/models/gl_models.h"
 
 void PolyRenderModel(PolyRenderThread *thread, const TriMatrix &worldToClip, const PolyClipPlane &clipPlane, uint32_t stencilValue, float x, float y, float z, FSpriteModelFrame *smf, AActor *actor);
@@ -43,9 +43,9 @@ public:
 	void BeginDrawHUDModel(AActor *actor, const VSMatrix &objectToWorldMatrix) override;
 	void EndDrawHUDModel(AActor *actor) override;
 	void SetInterpolation(double interpolation) override;
-	void SetMaterial(FTexture *skin, int clampmode, int translation) override;
-	void DrawArrays(int primitiveType, int start, int count) override;
-	void DrawElements(int primitiveType, int numIndices, int elementType, size_t offset) override;
+	void SetMaterial(FTexture *skin, bool clampNoFilter, int translation) override;
+	void DrawArrays(int start, int count) override;
+	void DrawElements(int numIndices, size_t offset) override;
 	double GetTimeFloat() override;
 
 	PolyRenderThread *Thread = nullptr;

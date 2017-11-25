@@ -20,25 +20,21 @@
 //--------------------------------------------------------------------------
 //
 /*
-** gl_models.cpp
+** models.cpp
 **
 ** MD2/DMD model format code
 **
 **/
 
-#include "gl/system/gl_system.h"
 #include "w_wad.h"
 #include "cmdlib.h"
 #include "sc_man.h"
 #include "m_crc32.h"
+#include "r_data/models/models.h"
 
-#include "gl/renderer/gl_renderer.h"
-#include "gl/renderer/gl_renderstate.h"
-#include "gl/scene/gl_drawinfo.h"
-#include "gl/models/gl_models.h"
-#include "gl/textures/gl_material.h"
-#include "gl/shaders/gl_shader.h"
-#include "gl/data/gl_vertexbuffer.h"
+#ifdef _MSC_VER
+#pragma warning(disable:4244) // warning C4244: conversion from 'double' to 'float', possible loss of data
+#endif
 
 static float   avertexnormals[NUMVERTEXNORMALS][3] = {
 #include "tab_anorms.h"
@@ -374,9 +370,9 @@ void FDMDModel::RenderFrame(FModelRenderer *renderer, FTexture * skin, int frame
 	}
 
 	renderer->SetInterpolation(inter);
-	renderer->SetMaterial(skin, CLAMP_NONE, translation);
+	renderer->SetMaterial(skin, false, translation);
 	mVBuf->SetupFrame(renderer, frames[frameno].vindex, frames[frameno2].vindex, lodInfo[0].numTriangles * 3);
-	renderer->DrawArrays(GL_TRIANGLES, 0, lodInfo[0].numTriangles * 3);
+	renderer->DrawArrays(0, lodInfo[0].numTriangles * 3);
 	renderer->SetInterpolation(0.f);
 }
 
