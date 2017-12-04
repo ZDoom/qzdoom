@@ -6,6 +6,9 @@ class ReverbEdit : OptionMenu
 	static native bool GrayCheck();
 	static native string, int GetSelectedEnvironment();
 	static native void FillSelectMenu(String ccmd, OptionMenuDescriptor desc);
+	static native void FillSaveMenu(OptionMenuDescriptor desc);
+	static native int GetSaveSelection(int num);
+	static native void ToggleSaveSelection(int num);
 
 	override void Init(Menu parent, OptionMenuDescriptor desc)
 	{
@@ -63,6 +66,51 @@ class ReverbSelect : OptionMenu
 		super.Init(parent, desc);
 	}
 }
+
+class ReverbSave : OptionMenu
+{
+	//=============================================================================
+	//
+	//
+	//
+	//=============================================================================
+
+	override void Init(Menu parent, OptionMenuDescriptor desc)
+	{
+		ReverbEdit.FillSaveMenu(desc);
+		super.Init(parent, desc);
+	}
+}
+
+//=============================================================================
+//
+// Change a CVAR, command is the CVAR name
+//
+//=============================================================================
+
+class OptionMenuItemReverbSaveSelect : OptionMenuItemOptionBase
+{
+	int mValIndex;
+
+	OptionMenuItemReverbSaveSelect Init(String label, int index, Name values)
+	{
+		Super.Init(label, 'None', values, null, 0);
+		mValIndex = index;
+		return self;
+	}
+
+	//=============================================================================
+	override int GetSelection()
+	{
+		return ReverbEdit.GetSaveSelection(mValIndex);
+	}
+
+	override void SetSelection(int Selection)
+	{
+		ReverbEdit.ToggleSaveSelection(mValIndex);
+	}
+}
+
 
 //=============================================================================
 //
@@ -170,14 +218,14 @@ class OptionMenuItemSliderReverbEditOption : OptionMenuSliderBase
 	{
 		drawLabel(indent, y, selected ? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColor, ReverbEdit.GrayCheck());
 
-		int DrawX = indent + CursorSpace();
+		mDrawX = indent + CursorSpace();
 		if (mEnter)
 		{
-			screen.DrawText(SmallFont, OptionMenuSettings.mFontColorValue, DrawX, y, Represent(), DTA_CleanNoMove_1, true);
+			screen.DrawText(SmallFont, OptionMenuSettings.mFontColorValue, mDrawX, y, Represent(), DTA_CleanNoMove_1, true);
 		}
 		else
 		{
-			DrawSlider (DrawX, y, mMin, mMax, GetSliderValue(), mShowValue, indent);
+			DrawSlider (mDrawX, y, mMin, mMax, GetSliderValue(), mShowValue, indent);
 		}
 		return indent;
 	}
