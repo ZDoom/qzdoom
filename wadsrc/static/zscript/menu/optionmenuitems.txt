@@ -126,12 +126,12 @@ class OptionMenuItemSubmenu : OptionMenuItem
 
 class OptionMenuItemCommand : OptionMenuItemSubmenu
 {
-	bool mCloseOnSelect;
+	private String ccmd;	// do not allow access to this from the outside.
 	
-	OptionMenuItemCommand Init(String label, Name command, bool centered = false, bool closeonselect = false)
+	OptionMenuItemCommand Init(String label, Name command, bool centered = false)
 	{
 		Super.Init(label, command, 0, centered);
-		mCloseOnSelect = closeonselect;
+		ccmd = command;
 		return self;
 	}
 
@@ -149,7 +149,7 @@ class OptionMenuItemCommand : OptionMenuItemSubmenu
 			if (m.GetItem(mAction) != self) return false;
 		}
 		Menu.MenuSound("menu/choose");
-		DoCommand(mAction);
+		DoCommand(ccmd);
 		if (mCloseOnSelect)
 		{
 			let curmenu = Menu.GetCurrentMenu();
