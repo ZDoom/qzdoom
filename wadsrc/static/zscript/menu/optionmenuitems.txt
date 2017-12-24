@@ -150,11 +150,6 @@ class OptionMenuItemCommand : OptionMenuItemSubmenu
 		}
 		Menu.MenuSound("menu/choose");
 		DoCommand(ccmd);
-		if (mCloseOnSelect)
-		{
-			let curmenu = Menu.GetCurrentMenu();
-			if (curmenu != null) curmenu.Close();
-		}
 		return true;
 	}
 
@@ -250,11 +245,11 @@ class OptionMenuItemOptionBase : OptionMenuItem
 	virtual void SetSelection(int Selection)
 	{
 	}
-	
+
 	//=============================================================================
 	override int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected)
 	{
-		bool grayed = isGrayed();
+		bool grayed = mGrayCheck != null && !(mGrayCheck.GetInt());
 
 		if (mCenter)
 		{
@@ -299,15 +294,10 @@ class OptionMenuItemOptionBase : OptionMenuItem
 		}
 		return true;
 	}
-	
-	virtual bool isGrayed()
-	{
-		return mGrayCheck != null && !mGrayCheck.GetInt();
-	}
 
 	override bool Selectable()
 	{
-		return !isGrayed();
+		return mGrayCheck == null || mGrayCheck.GetInt();
 	}
 }
 
