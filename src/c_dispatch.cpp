@@ -191,9 +191,11 @@ static const char *MenuDefCommands[] =
 {
 	"snd_reset",
 	"reset2defaults",
+	"reset2saved",
 	"menuconsole",
 	"clearnodecache",
 	"am_restorecolors",
+	"undocolorpic",
 	"special",
 	"puke",
 	"fpuke",
