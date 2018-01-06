@@ -1895,6 +1895,14 @@ bool S_IsActorPlayingSomething (AActor *actor, int channel, int sound_id)
 	return false;
 }
 
+DEFINE_ACTION_FUNCTION(AActor, A_IsPlayingSound)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT(channel);
+	PARAM_SOUND(sound);
+	ACTION_RETURN_BOOL(S_IsActorPlayingSomething(self,channel,sound));
+}
+
 //==========================================================================
 //
 // S_PauseSound
