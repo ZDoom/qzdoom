@@ -644,7 +644,7 @@ inline int PitchToACS(DAngle ang)
 
 struct CallReturn
 {
-	CallReturn(int pc, ScriptFunction *func, FBehavior *module, int32_t *locals, ACSLocalArrays *arrays, bool discard, unsigned int runaway)
+	CallReturn(int pc, ScriptFunction *func, FBehavior *module, const ACSLocalVariables &locals, ACSLocalArrays *arrays, bool discard, unsigned int runaway)
 		: ReturnFunction(func),
 		  ReturnModule(module),
 		  ReturnLocals(locals),
@@ -656,7 +656,7 @@ struct CallReturn
 
 	ScriptFunction *ReturnFunction;
 	FBehavior *ReturnModule;
-	int32_t *ReturnLocals;
+	ACSLocalVariables ReturnLocals;
 	ACSLocalArrays *ReturnArrays;
 	int ReturnAddress;
 	int bDiscardResult;
@@ -760,6 +760,35 @@ protected:
 
 private:
 	DLevelScript();
+
+	int getbyte(int *&pc)
+	{
+		CheckInstructionPointer(pc);
+
+		int res = *(uint8_t *)pc;
+		pc = (int *)((uint8_t *)pc+1);
+		return res;
+	}
+
+	int getshort(int *&pc)
+	{
+		CheckInstructionPointer(pc);
+
+		int res = LittleShort( *(int16_t *)pc);
+		pc = (int *)((uint8_t *)pc+2);
+		return res;
+	}
+
+	void CheckInstructionPointer(int *pc) const
+	{
+		const uint32_t offset = activeBehavior->PC2Ofs(pc);
+		const uint32_t size = activeBehavior->GetDataSize();
+
+		if (offset >= size)
+		{
+			I_Error("Out of bounds instruction pointer in ACS VM");
+		}
+	}
 
 	friend class DACSThinker;
 };
@@ -6896,27 +6925,13 @@ enum
 };
 
 
-#define NEXTWORD	(LittleLong(*pc++))
+#define NEXTWORD	(CheckInstructionPointer(pc), LittleLong(*pc++))
 #define NEXTBYTE	(fmt==ACS_LittleEnhanced?getbyte(pc):NEXTWORD)
 #define NEXTSHORT	(fmt==ACS_LittleEnhanced?getshort(pc):NEXTWORD)
 #define STACK(a)	(Stack[sp - (a)])
 #define PushToStack(a)	(Stack[sp++] = (a))
 // Direct instructions that take strings need to have the tag applied.
 #define TAGSTR(a)	(a|activeBehavior->GetLibraryID())
-
-inline int getbyte (int *&pc)
-{
-	int res = *(uint8_t *)pc;
-	pc = (int *)((uint8_t *)pc+1);
-	return res;
-}
-
-inline int getshort (int *&pc)
-{
-	int res = LittleShort( *(int16_t *)pc);
-	pc = (int *)((uint8_t *)pc+2);
-	return res;
-}
 
 static bool CharArrayParms(int &capacity, int &offset, int &a, FACSStackMemory& Stack, int &sp, bool ranged)
 {
@@ -6967,7 +6982,7 @@ static void SetMarineSprite(AActor *marine, PClassActor *source)
 int DLevelScript::RunScript ()
 {
 	DACSThinker *controller = DACSThinker::ActiveThinker;
-	int32_t *locals = &Localvars[0];
+	ACSLocalVariables locals(Localvars);
 	ACSLocalArrays noarrays;
 	ACSLocalArrays *localarrays = &noarrays;
 	ScriptFunction *activeFunction = NULL;
@@ -7335,7 +7350,6 @@ int DLevelScript::RunScript ()
 				int i;
 				ScriptFunction *func;
 				FBehavior *module;
-				int32_t *mylocals;
 
 				if(pcd == PCD_CALLSTACK)
 				{
@@ -7364,9 +7378,9 @@ int DLevelScript::RunScript ()
 					state = SCRIPT_PleaseRemove;
 					break;
 				}
-				mylocals = locals;
+				const ACSLocalVariables mylocals = locals;
 				// The function's first argument is also its first local variable.
-				locals = &Stack[sp - func->ArgCount];
+				locals.Reset(&Stack[sp - func->ArgCount], func->ArgCount + func->LocalCount);
 				// Make space on the stack for any other variables the function uses.
 				for (i = 0; i < func->LocalCount; ++i)
 				{
@@ -7405,7 +7419,7 @@ int DLevelScript::RunScript ()
 				sp -= sizeof(CallReturn)/sizeof(int);
 				retsp = &Stack[sp];
 				activeBehavior->GetFunctionProfileData(activeFunction)->AddRun(runaway - ret->EntryInstrCount);
-				sp = int(locals - &Stack[0]);
+				sp = int(locals.GetPointer() - &Stack[0]);
 				pc = ret->ReturnModule->Ofs2PC(ret->ReturnAddress);
 				activeFunction = ret->ReturnFunction;
 				activeBehavior = ret->ReturnModule;
