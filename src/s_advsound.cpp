@@ -53,6 +53,7 @@
 #include "serializer.h"
 #include "v_text.h"
 #include "g_levellocals.h"
+#include "vm.h"
 
 // MACROS ------------------------------------------------------------------
 
