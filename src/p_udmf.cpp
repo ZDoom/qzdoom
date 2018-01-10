@@ -805,6 +805,10 @@ public:
 
 			case NAME_SpotOuterAngle:
 				th->SpotOuterAngle = CheckFloat(key);
+
+			case NAME_FriendlySeeBlocks:
+				CHECK_N(Zd | Zdt)
+				th->friendlyseeblocks = CheckInt(key);
 				break;
 
 			default:

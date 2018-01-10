@@ -6032,6 +6032,8 @@ AActor *P_SpawnMapThing (FMapThing *mthing, int position)
 	mobj->SpawnPoint = mthing->pos;
 	mobj->SpawnAngle = mthing->angle;
 	mobj->SpawnFlags = mthing->flags;
+	if (mthing->friendlyseeblocks > 0)
+		mobj->friendlyseeblocks = mthing->friendlyseeblocks;
 	if (mthing->FloatbobPhase >= 0 && mthing->FloatbobPhase < 64) mobj->FloatBobPhase = mthing->FloatbobPhase;
 	if (mthing->Gravity < 0) mobj->Gravity = -mthing->Gravity;
 	else if (mthing->Gravity > 0) mobj->Gravity *= mthing->Gravity;
@@ -8474,5 +8476,6 @@ void PrintMiscActorInfo(AActor *query)
 		Printf("\nSpeed= %f, velocity= x:%f, y:%f, z:%f, combined:%f.\n",
 			query->Speed, query->Vel.X, query->Vel.Y, query->Vel.Z, query->Vel.Length());
 		Printf("Scale: x:%f, y:%f\n", query->Scale.X, query->Scale.Y);
+		Printf("FriendlySeeBlocks: %d\n", query->friendlyseeblocks);
 	}
 }

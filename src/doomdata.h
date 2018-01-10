@@ -371,8 +371,9 @@ struct FMapThing
 	int16_t		roll;
 	uint32_t		RenderStyle;
 	int			FloatbobPhase;
-	double SpotInnerAngle = 10;
-	double SpotOuterAngle = 25;
+	double		SpotInnerAngle = 10;
+	double		SpotOuterAngle = 25;
+	int			friendlyseeblocks;
 };
 
 
