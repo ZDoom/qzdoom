@@ -1,4 +1,5 @@
 # Welcome to QZDoom!
+[![QZDoom Logo](https://forum.drdteam.org/download/file.php?id=3080)](https://zdoom.org/)
 
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/raa-eruanna/qzdoom?branch=master&svg=true)](https://ci.appveyor.com/project/raa-eruanna/qzdoom) [![Build Status](https://travis-ci.org/raa-eruanna/qzdoom.svg?branch=master)](https://travis-ci.org/raa-eruanna/qzdoom)
 
