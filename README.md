@@ -1,5 +1,5 @@
-# Welcome to QZDoom!
 [![QZDoom Logo](https://forum.drdteam.org/download/file.php?id=3080)](https://zdoom.org/)
+# Welcome to QZDoom!
 
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/raa-eruanna/qzdoom?branch=master&svg=true)](https://ci.appveyor.com/project/raa-eruanna/qzdoom) [![Build Status](https://travis-ci.org/raa-eruanna/qzdoom.svg?branch=master)](https://travis-ci.org/raa-eruanna/qzdoom)
 
@@ -19,6 +19,6 @@ Special thanks to Coraline of the 3DGE team for allowing us to use her README.md
 
 ## How to build QZDoom
 
-To build QZDoom, please see the [wiki](https://zdoom.org/wiki/) and see the "Programmer's Corner" on the bottom-right corner of the page to build for your plaform.
+To build QZDoom, please see the [wiki](https://zdoom.org/wiki/) and see the "Programmer's Corner" on the bottom-right corner of the page to build for your platform.
 
 Follow the same instructions as with GZDoom, except substituting "coelckers/gzdoom" with "raa-eruanna/qzdoom" in order to link this repository in your build environment.
