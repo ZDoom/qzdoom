@@ -12,38 +12,6 @@ out vec4 FragFog;
 out vec4 FragNormal;
 #endif
 
-#ifdef SHADER_STORAGE_LIGHTS
-	layout(std430, binding = 1) buffer LightBufferSSO
-	{
-		vec4 lights[];
-	};
-#elif defined NUM_UBO_LIGHTS
-	/*layout(std140)*/ uniform LightBufferUBO
-	{
-		vec4 lights[NUM_UBO_LIGHTS];
-	};
-#endif
-
-
-uniform sampler2D tex;
-uniform sampler2D ShadowMap;
-
-#if defined(SPECULAR)
-uniform sampler2D texture2;
-uniform sampler2D texture3;
-#define normaltexture texture2
-#define speculartexture texture3
-#elif defined(PBR)
-uniform sampler2D texture2;
-uniform sampler2D texture3;
-uniform sampler2D texture4;
-uniform sampler2D texture5;
-#define normaltexture texture2
-#define metallictexture texture3
-#define roughnesstexture texture4
-#define aotexture texture5
-#endif
-
 vec4 Process(vec4 color);
 vec4 ProcessTexel();
 vec4 ProcessLight(vec4 color);
@@ -432,6 +400,27 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 	return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+float quadraticDistanceAttenuation(vec4 lightpos)
+{
+	float strength = (1.0 + lightpos.w * lightpos.w * 0.25) * 0.5;
+
+	vec3 distVec = lightpos.xyz - pixelpos.xyz;
+	float attenuation = strength / (1.0 + dot(distVec, distVec));
+	if (attenuation <= 1.0 / 256.0) return 0.0;
+
+	return attenuation;
+}
+
+float shadowAttenuation(vec4 lightpos, float lightcolorA)
+{
+#ifdef SUPPORTS_SHADOWMAPS
+	float shadowIndex = abs(lightcolorA) - 1.0;
+	return shadowmapAttenuation(lightpos, shadowIndex);
+#else
+	return 1.0;
+#endif
+}
+
 vec3 applyLight(vec3 albedo, vec3 ambientLight)
 {
 	vec3 worldpos = pixelpos.xyz;
@@ -439,12 +428,11 @@ vec3 applyLight(vec3 albedo, vec3 ambientLight)
 	albedo = pow(albedo, vec3(2.2)); // sRGB to linear
 	ambientLight = pow(ambientLight, vec3(2.2));
 
-	vec3 normal = ApplyNormalMap();
 	float metallic = texture(metallictexture, vTexCoord.st).r;
 	float roughness = texture(roughnesstexture, vTexCoord.st).r;
 	float ao = texture(aotexture, vTexCoord.st).r;
 
-	vec3 N = normalize(normal);
+	vec3 N = ApplyNormalMap();
 	vec3 V = normalize(uCameraPos.xyz - worldpos);
 
 	vec3 F0 = mix(vec3(0.04), albedo, metallic);
@@ -469,28 +457,33 @@ vec3 applyLight(vec3 albedo, vec3 ambientLight)
 
 				vec3 L = normalize(lightpos.xyz - worldpos);
 				vec3 H = normalize(V + L);
-				//float distance = length(lightpos.xyz - worldpos);
-				//float attenuation = 1.0 / (distance * distance);
-				float attenuation = pointLightAttenuation(lightpos, lightcolor.a).x;
+
+				float attenuation = quadraticDistanceAttenuation(lightpos) * shadowAttenuation(lightpos, lightcolor.a);
 				if (lightspot1.w == 1.0)
 					attenuation *= spotLightAttenuation(lightpos, lightspot1.xyz, lightspot2.x, lightspot2.y);
+				if (lightcolor.a < 0.0)
+					attenuation *= clamp(dot(N, L), 0.0, 1.0); // Sign bit is the attenuated light flag
 
-				vec3 radiance = lightcolor.rgb * attenuation;
+				if (attenuation > 0.0)
+				{
+					attenuation *= shadowAttenuation(lightpos, lightcolor.a);
 
-				// cook-torrance brdf
-				float NDF = DistributionGGX(N, H, roughness);
-				float G = GeometrySmith(N, V, L, roughness);
-				vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+					vec3 radiance = lightcolor.rgb * attenuation;
 
-				vec3 kS = F;
-				vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+					// cook-torrance brdf
+					float NDF = DistributionGGX(N, H, roughness);
+					float G = GeometrySmith(N, V, L, roughness);
+					vec3 F = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
 
-				vec3 nominator = NDF * G * F;
-				float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
-				vec3 specular = nominator / max(denominator, 0.001);
+					vec3 kS = F;
+					vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
-				float NdotL = max(dot(N, L), 0.0);
-				Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+					vec3 nominator = NDF * G * F;
+					float denominator = 4.0 * clamp(dot(N, V), 0.0, 1.0) * clamp(dot(N, L), 0.0, 1.0);
+					vec3 specular = nominator / max(denominator, 0.001);
+
+					Lo += (kD * albedo / PI + specular) * radiance;
+				}
 			}
 			//
 			// subtractive lights
@@ -504,28 +497,33 @@ vec3 applyLight(vec3 albedo, vec3 ambientLight)
 				
 				vec3 L = normalize(lightpos.xyz - worldpos);
 				vec3 H = normalize(V + L);
-				//float distance = length(lightpos.xyz - worldpos);
-				//float attenuation = 1.0 / (distance * distance);
-				float attenuation = pointLightAttenuation(lightpos, lightcolor.a).x;
+
+				float attenuation = quadraticDistanceAttenuation(lightpos) * shadowAttenuation(lightpos, lightcolor.a);
 				if (lightspot1.w == 1.0)
 					attenuation *= spotLightAttenuation(lightpos, lightspot1.xyz, lightspot2.x, lightspot2.y);
+				if (lightcolor.a < 0.0)
+					attenuation *= clamp(dot(N, L), 0.0, 1.0); // Sign bit is the attenuated light flag
 
-				vec3 radiance = lightcolor.rgb * attenuation;
+				if (attenuation > 0.0)
+				{
+					attenuation *= shadowAttenuation(lightpos, lightcolor.a);
 
-				// cook-torrance brdf
-				float NDF = DistributionGGX(N, H, roughness);
-				float G = GeometrySmith(N, V, L, roughness);
-				vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+					vec3 radiance = lightcolor.rgb * attenuation;
 
-				vec3 kS = F;
-				vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+					// cook-torrance brdf
+					float NDF = DistributionGGX(N, H, roughness);
+					float G = GeometrySmith(N, V, L, roughness);
+					vec3 F = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
 
-				vec3 nominator = NDF * G * F;
-				float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
-				vec3 specular = nominator / max(denominator, 0.001);
+					vec3 kS = F;
+					vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
-				float NdotL = max(dot(N, L), 0.0);
-				Lo -= (kD * albedo / PI + specular) * radiance * NdotL;
+					vec3 nominator = NDF * G * F;
+					float denominator = 4.0 * clamp(dot(N, V), 0.0, 1.0) * clamp(dot(N, L), 0.0, 1.0);
+					vec3 specular = nominator / max(denominator, 0.001);
+
+					Lo -= (kD * albedo / PI + specular) * radiance;
+				}
 			}
 		}
 	}
@@ -533,7 +531,7 @@ vec3 applyLight(vec3 albedo, vec3 ambientLight)
 
 	// Pretend we sampled the sector light level from an irradiance map
 
-	vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+	vec3 F = fresnelSchlickRoughness(clamp(dot(N, V), 0.0, 1.0), F0, roughness);
 
 	vec3 kS = F;
 	vec3 kD = 1.0 - kS;
@@ -544,7 +542,7 @@ vec3 applyLight(vec3 albedo, vec3 ambientLight)
 	//kD *= 1.0 - metallic;
 	//const float MAX_REFLECTION_LOD = 4.0;
 	//vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;
-	//vec2 envBRDF = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+	//vec2 envBRDF = texture(brdfLUT, vec2(clamp(dot(N, V), 0.0, 1.0), roughness)).rg;
 	//vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
 	//vec3 ambient = (kD * diffuse + specular) * ao;
