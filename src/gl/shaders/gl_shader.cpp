@@ -67,10 +67,26 @@ static bool IsGlslWhitespace(char c)
 	}
 }
 
+static FString NextGlslToken(const char *chars, long len, long &pos)
+{
+	// Eat whitespace
+	long tokenStart = pos;
+	while (tokenStart != len && IsGlslWhitespace(chars[tokenStart]))
+		tokenStart++;
+
+	// Find token end
+	long tokenEnd = tokenStart;
+	while (tokenEnd != len && !IsGlslWhitespace(chars[tokenEnd]) && chars[tokenEnd] != ';')
+		tokenEnd++;
+
+	pos = tokenEnd;
+	return FString(chars + tokenStart, tokenEnd - tokenStart);
+}
+
 static FString RemoveLegacyUserUniforms(FString code)
 {
 	// User shaders must declare their uniforms via the GLDEFS file.
-	// The following code searches for uniform declarations in the shader itself and replaces them with whitespace.
+	// The following code searches for legacy uniform declarations in the shader itself and replaces them with whitespace.
 
 	long len = (long)code.Len();
 	char *chars = code.LockBuffer();
@@ -82,14 +98,25 @@ static FString RemoveLegacyUserUniforms(FString code)
 		if (matchIndex == -1)
 			break;
 
+		bool isLegacyUniformName = false;
+
 		bool isKeywordStart = matchIndex == 0 || IsGlslWhitespace(chars[matchIndex - 1]);
 		bool isKeywordEnd = matchIndex + 7 == len || IsGlslWhitespace(chars[matchIndex + 7]);
 		if (isKeywordStart && isKeywordEnd)
 		{
+			long pos = matchIndex + 7;
+			FString type = NextGlslToken(chars, len, pos);
+			FString identifier = NextGlslToken(chars, len, pos);
+
+			isLegacyUniformName = type.Compare("float") == 0 && identifier.Compare("timer") == 0;
+		}
+
+		if (isLegacyUniformName)
+		{
 			long statementEndIndex = code.IndexOf(';', matchIndex + 7);
 			if (statementEndIndex == -1)
 				statementEndIndex = len;
-			for (long i = matchIndex; i < statementEndIndex; i++)
+			for (long i = matchIndex; i <= statementEndIndex; i++)
 			{
 				if (!IsGlslWhitespace(chars[i]))
 					chars[i] = ' ';
@@ -222,8 +249,6 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	i_data += "#define brighttexture texture2\n";
 	i_data += "#endif\n";
 
-	i_data += "#line 1\n";
-
 	int vp_lump = Wads.CheckNumForFullName(vert_prog_lump, 0);
 	if (vp_lump == -1) I_Error("Unable to load '%s'", vert_prog_lump);
 	FMemLump vp_data = Wads.ReadLump(vp_lump);
@@ -280,11 +305,16 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	vp_comb << defines << i_data.GetChars();
 	FString fp_comb = vp_comb;
 
+	vp_comb << "#line 1\n";
+	fp_comb << "#line 1\n";
+
 	vp_comb << vp_data.GetString().GetChars() << "\n";
-	fp_comb << RemoveLegacyUserUniforms(fp_data.GetString()).GetChars() << "\n";
+	fp_comb << fp_data.GetString().GetChars() << "\n";
 
 	if (proc_prog_lump != NULL)
 	{
+		fp_comb << "#line 1\n";
+
 		if (*proc_prog_lump != '#')
 		{
 			int pp_lump = Wads.CheckNumForFullName(proc_prog_lump);
@@ -298,7 +328,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 
 				fp_comb.Substitute("vec4 frag = ProcessTexel();", "vec4 frag = Process(vec4(1.0));");
 			}
-			fp_comb << pp_data.GetString().GetChars();
+			fp_comb << RemoveLegacyUserUniforms(pp_data.GetString()).GetChars();
 			fp_comb.Substitute("gl_TexCoord[0]", "vTexCoord");	// fix old custom shaders.
 
 			if (pp_data.GetString().IndexOf("ProcessLight") < 0)
