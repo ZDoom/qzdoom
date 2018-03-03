@@ -150,7 +150,20 @@ struct FExternalLump : public FResourceLump
 
 };
 
+struct FMemoryFile : public FUncompressedFile
+{
+	MemoryArrayReader mr;
 
+	FMemoryFile(const char *_filename, const void *sdata, int length)
+		: FUncompressedFile(_filename, nullptr), mr((const char *)sdata, length)
+	{
+		Reader = &mr;
+	}
+
+    bool Open(bool quiet);
+
+
+};
 
 
 

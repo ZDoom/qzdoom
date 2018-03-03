@@ -40,6 +40,7 @@
 #include "m_swap.h"
 #include "w_wad.h"
 #include "v_text.h"
+#include "i_system.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -92,13 +93,13 @@ WildMIDIDevice::WildMIDIDevice(const char *args)
 {
 	Renderer = NULL;
 
-	if (wildmidi_frequency >= 11025 && wildmidi_frequency < 65536)
-	{ // Use our own sample rate instead of the global one
-		SampleRate = wildmidi_frequency;
+	if (wildmidi_frequency > 0)
+	{
+		SampleRate = clamp(*wildmidi_frequency, 11025, 65535);
 	}
 	else
-	{ // Else make sure we're not outside of WildMidi's range
-		SampleRate = clamp(SampleRate, 11025, 65535);
+	{ // If nothing is set, use the active device's output rate.
+		SampleRate = (int)GSnd->GetOutputRate();
 	}
 
 	if (args == NULL || *args == 0) args = wildmidi_config;
@@ -122,6 +123,10 @@ WildMIDIDevice::WildMIDIDevice(const char *args)
 		if (wildmidi_enhanced_resampling) flags |= WM_MO_ENHANCED_RESAMPLING;
 		if (wildmidi_reverb) flags |= WM_MO_REVERB;
 		Renderer->SetOption(WM_MO_ENHANCED_RESAMPLING | WM_MO_REVERB, flags);
+	}
+	else
+	{
+		I_Error("Failed to load any MIDI patches");
 	}
 }
 

@@ -1657,6 +1657,7 @@ OptionValue OplCores
 	3, "$OPTVAL_NUKEDOPL3"
 }
 
+
 OptionMenu AdvSoundOptions protected
 {
 	Title "$ADVSNDMNU_TITLE"
@@ -1669,15 +1670,13 @@ OptionMenu AdvSoundOptions protected
 	Option "$ADVSNDMNU_OPLCORES", 			"opl_core", "OplCores"
 	StaticText " "
 	StaticText "$ADVSNDMNU_GUSEMULATION",	1
-	TextField "$ADVSNDMNU_GUSCONFIG", 		"midi_config"
-	SubMenu "$ADVSNDMNU_SELCONFIG",		"GusConfigMenu"
+	LabeledSubMenu "$ADVSNDMNU_SELCONFIG",		"midi_config", "GusConfigMenu"
 	Slider "$ADVSNDMNU_MIDIVOICES",			"midi_voices", 16, 256, 4, 0
 	Option "$ADVSNDMNU_DMXGUS", 			"midi_dmxgus", "OnOff"
 	Option "$ADVSNDMNU_GUSMEMSIZE", 		"gus_memsize", "GusMemory"
 	StaticText " "
 	StaticText "$ADVSNDMNU_FLUIDSYNTH",	1
-	TextField "$ADVSNDMNU_FLUIDPATCHSET", 	"fluid_patchset"
-	SubMenu "$ADVSNDMNU_SELCONFIG",		"FluidPatchsetMenu"
+	LabeledSubMenu "$ADVSNDMNU_SELCONFIG",		"fluid_patchset", "FluidPatchsetMenu"
 	Slider "$ADVSNDMNU_FLUIDGAIN",			"fluid_gain", 0, 10, 0.5, 1
 	Option "$ADVSNDMNU_REVERB", 			"fluid_reverb", "OnOff"
 	Option "$ADVSNDMNU_CHORUS", 			"fluid_chorus", "OnOff"
@@ -1685,20 +1684,14 @@ OptionMenu AdvSoundOptions protected
 	// Leaving out the more advanced stuff for now.
 	StaticText " "
 	StaticText "$ADVSNDMNU_TIMIDITY",	1
-	TextField "$ADVSNDMNU_TIMIDITYEXE", 	"timidity_exe"
-	IfOption(Windows)
-	{
-		SubMenu "$ADVSNDMNU_SELCONFIG",		"TimidityExeMenu"
-	}
-	TextField "$ADVSNDMNU_TIMIDITYCONFIG", 	"timidity_config"
-	SubMenu "$ADVSNDMNU_SELCONFIG",		"TimidityConfigMenu"
-	Option "$ADVSNDMNU_REVERB", 			"timidity_reverb", "OnOff"
+
+	LabeledSubMenu "$ADVSNDMNU_SELCONFIG",		"timidity_config", "TimidityConfigMenu"
+	// This one needs reworking
+	//Option "$ADVSNDMNU_REVERB", 			"timidity_reverb", "OnOff"
 	Option "$ADVSNDMNU_CHORUS", 			"timidity_chorus", "OnOff"
-	Slider "$ADVSNDMNU_TIMIDITYVOLUME",		"timidity_mastervolume", 0, 4, 0.2, 1
 	StaticText " "
 	StaticText "$ADVSNDMNU_WILDMIDI",	1
-	TextField "$ADVSNDMNU_WILDMIDICONFIG", 	"wildmidi_config"
-	SubMenu "$ADVSNDMNU_SELCONFIG",		"WildMidiConfigMenu"
+	LabeledSubMenu "$ADVSNDMNU_SELCONFIG",		"wildmidi_config", "WildMidiConfigMenu"
 	Option "$ADVSNDMNU_REVERB", 			"wildmidi_reverb", "OnOff"
 }
 
@@ -1708,11 +1701,6 @@ OptionMenu GusConfigMenu protected
 }
 
 OptionMenu WildMidiConfigMenu protected
-{
-	Title "$ADVSNDMNU_SELCONFIG"
-}
-
-OptionMenu TimidityExeMenu protected
 {
 	Title "$ADVSNDMNU_SELCONFIG"
 }

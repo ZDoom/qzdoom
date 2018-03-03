@@ -97,7 +97,6 @@ const char *GetVersionString();
 #define GAMESIG "QZDOOM"
 #define BASEWAD "qzdoom.pk3"
 #define OPTIONALWAD "zd_extra.pk3"
-#define BASESF "gzdoom.sf2"
 
 // More stuff that needs to be different for derivatives.
 #define GAMENAME "QZDoom"

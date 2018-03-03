@@ -21,7 +21,6 @@
 #define TIMIDITY_H
 
 #include "doomtype.h"
-#include "pathexpander.h"
 
 class FileReader;
 
@@ -608,7 +607,6 @@ int LoadConfig(const char *filename);
 int LoadDMXGUS();
 extern int LoadConfig();
 extern void FreeAll();
-extern PathExpander pathExpander;
 
 extern ToneBank *tonebank[MAXBANK];
 extern ToneBank *drumset[MAXBANK];
