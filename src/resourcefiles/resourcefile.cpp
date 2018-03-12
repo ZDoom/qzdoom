@@ -45,7 +45,7 @@
 
 //==========================================================================
 //
-// FileReader that reads from a lump's cache
+// File reader that reads from a lump's cache
 //
 //==========================================================================
 
@@ -227,9 +227,9 @@ FileReader *FResourceLump::GetReader()
 //
 //==========================================================================
 
-FileReader *FResourceLump::NewReader()
+FileReader FResourceLump::NewReader()
 {
-	return new FLumpReader(this);
+	return FileReader(new FLumpReader(this));
 }
 
 //==========================================================================
@@ -276,46 +276,45 @@ int FResourceLump::ReleaseCache()
 //
 //==========================================================================
 
-typedef FResourceFile * (*CheckFunc)(const char *filename, FileReader *file, bool quiet);
+typedef FResourceFile * (*CheckFunc)(const char *filename, FileReader &file, bool quiet);
 
-FResourceFile *CheckWad(const char *filename, FileReader *file, bool quiet);
-FResourceFile *CheckGRP(const char *filename, FileReader *file, bool quiet);
-FResourceFile *CheckRFF(const char *filename, FileReader *file, bool quiet);
-FResourceFile *CheckPak(const char *filename, FileReader *file, bool quiet);
-FResourceFile *CheckZip(const char *filename, FileReader *file, bool quiet);
-FResourceFile *Check7Z(const char *filename, FileReader *file, bool quiet);
-FResourceFile *CheckLump(const char *filename, FileReader *file, bool quiet);
-FResourceFile *CheckDir(const char *filename, FileReader *file, bool quiet);
+FResourceFile *CheckWad(const char *filename, FileReader &file, bool quiet);
+FResourceFile *CheckGRP(const char *filename, FileReader &file, bool quiet);
+FResourceFile *CheckRFF(const char *filename, FileReader &file, bool quiet);
+FResourceFile *CheckPak(const char *filename, FileReader &file, bool quiet);
+FResourceFile *CheckZip(const char *filename, FileReader &file, bool quiet);
+FResourceFile *Check7Z(const char *filename,  FileReader &file, bool quiet);
+FResourceFile *CheckLump(const char *filename,FileReader &file, bool quiet);
+FResourceFile *CheckDir(const char *filename, bool quiet);
 
 static CheckFunc funcs[] = { CheckWad, CheckZip, Check7Z, CheckPak, CheckGRP, CheckRFF, CheckLump };
 
-FResourceFile *FResourceFile::OpenResourceFile(const char *filename, FileReader *file, bool quiet, bool containeronly)
+FResourceFile *FResourceFile::DoOpenResourceFile(const char *filename, FileReader &file, bool quiet, bool containeronly)
 {
-	bool mustclose = false;
-	if (file == NULL)
-	{
-		try
-		{
-			file = new FileReader(filename);
-			mustclose = true;
-		}
-		catch (CRecoverableError &)
-		{
-			return NULL;
-		}
-	}
 	for(size_t i = 0; i < countof(funcs) - containeronly; i++)
 	{
 		FResourceFile *resfile = funcs[i](filename, file, quiet);
 		if (resfile != NULL) return resfile;
 	}
-	if (mustclose) delete file;
 	return NULL;
+}
+
+FResourceFile *FResourceFile::OpenResourceFile(const char *filename, FileReader &file, bool quiet, bool containeronly)
+{
+	return DoOpenResourceFile(filename, file, quiet, containeronly);
+}
+
+
+FResourceFile *FResourceFile::OpenResourceFile(const char *filename, bool quiet, bool containeronly)
+{
+	FileReader file;
+	if (!file.OpenFile(filename)) return nullptr;
+	return DoOpenResourceFile(filename, file, quiet, containeronly);
 }
 
 FResourceFile *FResourceFile::OpenDirectory(const char *filename, bool quiet)
 {
-	return CheckDir(filename, NULL, quiet);
+	return CheckDir(filename, quiet);
 }
 
 //==========================================================================
@@ -324,18 +323,21 @@ FResourceFile *FResourceFile::OpenDirectory(const char *filename, bool quiet)
 //
 //==========================================================================
 
-FResourceFile::FResourceFile(const char *filename, FileReader *r)
+FResourceFile::FResourceFile(const char *filename)
 {
 	if (filename != NULL) Filename = copystring(filename);
 	else Filename = NULL;
-	Reader = r;
 }
 
+FResourceFile::FResourceFile(const char *filename, FileReader &r)
+	: FResourceFile(filename)
+{
+	Reader = std::move(r);
+}
 
 FResourceFile::~FResourceFile()
 {
 	if (Filename != NULL) delete [] Filename;
-	delete Reader;
 }
 
 int lumpcmp(const void * a, const void * b)
@@ -609,8 +611,8 @@ FResourceLump *FResourceFile::FindLump(const char *name)
 
 FileReader *FUncompressedLump::GetReader()
 {
-	Owner->Reader->Seek(Position, SEEK_SET);
-	return Owner->Reader;
+	Owner->Reader.Seek(Position, FileReader::SeekSet);
+	return &Owner->Reader;
 }
 
 //==========================================================================
@@ -621,7 +623,7 @@ FileReader *FUncompressedLump::GetReader()
 
 int FUncompressedLump::FillCache()
 {
-	const char * buffer = Owner->Reader->GetBuffer();
+	const char * buffer = Owner->Reader.GetBuffer();
 
 	if (buffer != NULL)
 	{
@@ -631,9 +633,9 @@ int FUncompressedLump::FillCache()
 		return -1;
 	}
 
-	Owner->Reader->Seek(Position, SEEK_SET);
+	Owner->Reader.Seek(Position, FileReader::SeekSet);
 	Cache = new char[LumpSize];
-	Owner->Reader->Read(Cache, LumpSize);
+	Owner->Reader.Read(Cache, LumpSize);
 	RefCount = 1;
 	return 1;
 }
@@ -644,11 +646,13 @@ int FUncompressedLump::FillCache()
 //
 //==========================================================================
 
-FUncompressedFile::FUncompressedFile(const char *filename, FileReader *r)
-: FResourceFile(filename, r)
-{
-	Lumps = NULL;
-}
+FUncompressedFile::FUncompressedFile(const char *filename)
+: FResourceFile(filename)
+{}
+
+FUncompressedFile::FUncompressedFile(const char *filename, FileReader &r)
+	: FResourceFile(filename, r)
+{}
 
 FUncompressedFile::~FUncompressedFile()
 {
@@ -671,9 +675,9 @@ FExternalLump::FExternalLump(const char *_filename, int filesize)
 	{
 		FileReader f;
 
-		if (f.Open(_filename))
+		if (f.OpenFile(_filename))
 		{
-			LumpSize = f.GetLength();
+			LumpSize = (int)f.GetLength();
 		}
 		else
 		{
@@ -704,7 +708,7 @@ int FExternalLump::FillCache()
 	Cache = new char[LumpSize];
 	FileReader f;
 
-	if (f.Open(filename))
+	if (f.OpenFile(filename))
 	{
 		f.Read(Cache, LumpSize);
 	}
@@ -728,7 +732,7 @@ bool FMemoryFile::Open(bool quiet)
     Lumps->FullName = fname;
     Lumps->Owner = this;
     Lumps->Position = 0;
-    Lumps->LumpSize = Reader->GetLength();
+    Lumps->LumpSize = (int)Reader.GetLength();
     Lumps->Namespace = ns_global;
     Lumps->Flags = 0;
     Lumps->FullName = NULL;

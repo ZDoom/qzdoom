@@ -80,7 +80,7 @@ static bool CheckIfRaw(FileReader & data)
 	int width;
 
 	foo = (patch_t *)M_Malloc (data.GetLength());
-	data.Seek (0, SEEK_SET);
+	data.Seek (0, FileReader::SeekSet);
 	data.Read (foo, data.GetLength());
 
 	height = LittleShort(foo->height);

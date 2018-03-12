@@ -82,7 +82,7 @@ void FLumpSourceMgr::InitSource (j_decompress_ptr cinfo)
 boolean FLumpSourceMgr::FillInputBuffer (j_decompress_ptr cinfo)
 {
 	FLumpSourceMgr *me = (FLumpSourceMgr *)(cinfo->src);
-	long nbytes = me->Lump->Read (me->Buffer, sizeof(me->Buffer));
+	auto nbytes = me->Lump->Read (me->Buffer, sizeof(me->Buffer));
 
 	if (nbytes <= 0)
 	{
@@ -113,7 +113,7 @@ void FLumpSourceMgr::SkipInputData (j_decompress_ptr cinfo, long num_bytes)
 	else
 	{
 		num_bytes -= (long)me->bytes_in_buffer;
-		me->Lump->Seek (num_bytes, SEEK_CUR);
+		me->Lump->Seek (num_bytes, FileReader::SeekCur);
 		FillInputBuffer (cinfo);
 	}
 }
@@ -217,7 +217,7 @@ FTexture *JPEGTexture_TryCreate(FileReader & data, int lumpnum)
 		uint8_t b[4];
 	} first4bytes;
 
-	data.Seek(0, SEEK_SET);
+	data.Seek(0, FileReader::SeekSet);
 	if (data.Read(&first4bytes, 4) < 4) return NULL;
 
 	if (first4bytes.b[0] != 0xFF || first4bytes.b[1] != 0xD8 || first4bytes.b[2] != 0xFF)
@@ -231,7 +231,7 @@ FTexture *JPEGTexture_TryCreate(FileReader & data, int lumpnum)
 		{
 			return NULL;
 		}
-		data.Seek (BigShort(first4bytes.w[0]) - 2, SEEK_CUR);
+		data.Seek (BigShort(first4bytes.w[0]) - 2, FileReader::SeekCur);
 		if (data.Read (first4bytes.b + 2, 2) != 2 || first4bytes.b[2] != 0xFF)
 		{
 			return NULL;
@@ -364,7 +364,7 @@ const uint8_t *FJPEGTexture::GetPixels ()
 
 void FJPEGTexture::MakeTexture ()
 {
-	FWadLump lump = Wads.OpenLumpNum (SourceLump);
+	auto lump = Wads.OpenLumpReader (SourceLump);
 	JSAMPLE *buff = NULL;
 
 	jpeg_decompress_struct cinfo;
@@ -468,7 +468,7 @@ int FJPEGTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FC
 {
 	PalEntry pe[256];
 
-	FWadLump lump = Wads.OpenLumpNum (SourceLump);
+	auto lump = Wads.OpenLumpReader (SourceLump);
 	JSAMPLE *buff = NULL;
 
 	jpeg_decompress_struct cinfo;

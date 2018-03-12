@@ -72,7 +72,7 @@ FTexture *EmptyTexture_TryCreate(FileReader & file, int lumpnum)
 {
 	char check[8];
 	if (file.GetLength() != 8) return NULL;
-	file.Seek(0, SEEK_SET);
+	file.Seek(0, FileReader::SeekSet);
 	if (file.Read(check, 8) != 8) return NULL;
 	if (memcmp(check, "\0\0\0\0\0\0\0\0", 8)) return NULL;
 

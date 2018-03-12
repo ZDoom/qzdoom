@@ -120,7 +120,7 @@ FTexture * PCXTexture_TryCreate(FileReader & file, int lumpnum)
 {
 	PCXHeader hdr;
 
-	file.Seek(0, SEEK_SET);
+	file.Seek(0, FileReader::SeekSet);
 	if (file.Read(&hdr, sizeof(hdr)) != sizeof(hdr))
 	{
 		return NULL;
@@ -141,7 +141,7 @@ FTexture * PCXTexture_TryCreate(FileReader & file, int lumpnum)
 		if (hdr.padding[i] != 0) return NULL;
 	}
 
-	file.Seek(0, SEEK_SET);
+	file.Seek(0, FileReader::SeekSet);
 	file.Read(&hdr, sizeof(hdr));
 
 	return new FPCXTexture(lumpnum, hdr);
@@ -463,7 +463,7 @@ void FPCXTexture::MakeTexture()
 	PCXHeader header;
 	int bitcount;
 
-	FWadLump lump = Wads.OpenLumpNum(SourceLump);
+	auto lump = Wads.OpenLumpReader(SourceLump);
 
 	lump.Read(&header, sizeof(header));
 
@@ -493,18 +493,18 @@ void FPCXTexture::MakeTexture()
 		}
 		else if (bitcount == 8)
 		{
-			uint8_t c;
-			lump.Seek(-769, SEEK_END);
-			lump >> c;
+			lump.Seek(-769, FileReader::SeekEnd);
+			uint8_t c = lump.ReadUInt8();
 			//if (c !=0x0c) memcpy(PaletteMap, GrayMap, 256);	// Fallback for files without palette
 			//else 
 			for(int i=0;i<256;i++)
 			{
-				uint8_t r,g,b;
-				lump >> r >> g >> b;
+				uint8_t r = lump.ReadUInt8();
+				uint8_t g = lump.ReadUInt8();
+				uint8_t b = lump.ReadUInt8();
 				PaletteMap[i] = ColorMatcher.Pick(r,g,b);
 			}
-			lump.Seek(sizeof(header), SEEK_SET);
+			lump.Seek(sizeof(header), FileReader::SeekSet);
 			ReadPCX8bits (Pixels, lump, &header);
 		}
 		if (Width == Height)
@@ -552,7 +552,7 @@ int FPCXTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCo
 	int bitcount;
 	uint8_t * Pixels;
 
-	FWadLump lump = Wads.OpenLumpNum(SourceLump);
+	auto lump = Wads.OpenLumpReader(SourceLump);
 
 	lump.Read(&header, sizeof(header));
 
@@ -582,9 +582,8 @@ int FPCXTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCo
 		}
 		else if (bitcount == 8)
 		{
-			uint8_t c;
-			lump.Seek(-769, SEEK_END);
-			lump >> c;
+			lump.Seek(-769, FileReader::SeekEnd);
+			uint8_t c = lump.ReadUInt8();
 			c=0x0c;	// Apparently there's many non-compliant PCXs out there...
 			if (c !=0x0c) 
 			{
@@ -592,11 +591,12 @@ int FPCXTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCo
 			}
 			else for(int i=0;i<256;i++)
 			{
-				uint8_t r,g,b;
-				lump >> r >> g >> b;
+				uint8_t r = lump.ReadUInt8();
+				uint8_t g = lump.ReadUInt8();
+				uint8_t b = lump.ReadUInt8();
 				pe[i] = PalEntry(255, r,g,b);
 			}
-			lump.Seek(sizeof(header), SEEK_SET);
+			lump.Seek(sizeof(header), FileReader::SeekSet);
 			ReadPCX8bits (Pixels, lump, &header);
 		}
 		bmp->CopyPixelData(x, y, Pixels, Width, Height, 1, Width, rotate, pe, inf);

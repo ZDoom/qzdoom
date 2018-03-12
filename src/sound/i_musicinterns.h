@@ -408,7 +408,7 @@ protected:
 class StreamSong : public MusInfo
 {
 public:
-    StreamSong (FileReader *reader);
+    StreamSong (FileReader &reader);
 	~StreamSong ();
 	void Play (bool looping, int subsong);
 	void Pause ();

@@ -764,16 +764,16 @@ void FTextureManager::LoadTextureDefs(int wadnum, const char *lumpname)
 
 void FTextureManager::AddPatches (int lumpnum)
 {
-	FWadLump *file = Wads.ReopenLumpNum (lumpnum);
+	auto file = Wads.ReopenLumpReader (lumpnum, true);
 	uint32_t numpatches, i;
 	char name[9];
 
-	*file >> numpatches;
+	numpatches = file.ReadUInt32();
 	name[8] = '\0';
 
 	for (i = 0; i < numpatches; ++i)
 	{
-		file->Read (name, 8);
+		file.Read (name, 8);
 
 		if (CheckForTexture (name, FTexture::TEX_WallPatch, 0) == -1)
 		{
@@ -781,8 +781,6 @@ void FTextureManager::AddPatches (int lumpnum)
 		}
 		StartScreen->Progress();
 	}
-
-	delete file;
 }
 
 
@@ -1187,10 +1185,9 @@ int FTextureManager::CountLumpTextures (int lumpnum)
 {
 	if (lumpnum >= 0)
 	{
-		FWadLump file = Wads.OpenLumpNum (lumpnum); 
-		uint32_t numtex;
+		auto file = Wads.OpenLumpReader (lumpnum); 
+		uint32_t numtex = file.ReadUInt32();;
 
-		file >> numtex;
 		return int(numtex) >= 0 ? numtex : 0;
 	}
 	return 0;

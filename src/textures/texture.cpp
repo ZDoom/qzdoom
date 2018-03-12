@@ -47,7 +47,6 @@
 #include "textures/textures.h"
 #include "v_palette.h"
 
-typedef bool (*CheckFunc)(FileReader & file);
 typedef FTexture * (*CreateFunc)(FileReader & file, int lumpnum);
 
 struct TexCreateInfo
@@ -99,7 +98,7 @@ FTexture * FTexture::CreateTexture (int lumpnum, int usetype)
 
 	if (lumpnum == -1) return NULL;
 
-	FWadLump data = Wads.OpenLumpNum (lumpnum);
+	auto data = Wads.OpenLumpReader (lumpnum);
 
 	for(size_t i = 0; i < countof(CreateInfo); i++)
 	{
