@@ -298,8 +298,9 @@ SndFileSong::SndFileSong(FileReader &reader, SoundDecoder *decoder, uint32_t loo
 	if (!startass) loop_start = Scale(loop_start, SampleRate, 1000);
 	if (!endass) loop_end = Scale(loop_end, SampleRate, 1000);
 
+	const uint32_t sampleLength = (uint32_t)decoder->getSampleLength();
 	Loop_Start = loop_start;
-	Loop_End = clamp<uint32_t>(loop_end, 0, (uint32_t)decoder->getSampleLength());
+	Loop_End = sampleLength == 0 ? loop_end : clamp<uint32_t>(loop_end, 0, sampleLength);
 	Reader = std::move(reader);
 	Decoder = decoder;
 	Channels = iChannels == ChannelConfig_Stereo? 2:1;
@@ -419,12 +420,17 @@ bool SndFileSong::Read(SoundStream *stream, void *vbuff, int ilen, void *userdat
 		// This looks a bit more complicated than necessary because libmpg123 will not read the full requested length for the last block in the file.
 		if (currentpos + framestoread > song->Loop_End)
 		{
-			size_t endblock = (song->Loop_End - currentpos) * song->Channels * 2;
-			size_t endlen = song->Decoder->read(buff, endblock);
+			// Loop can be very short, make sure the current position doesn't exceed it
+			if (currentpos < song->Loop_End)
+			{
+				size_t endblock = (song->Loop_End - currentpos) * song->Channels * 2;
+				size_t endlen = song->Decoder->read(buff, endblock);
 
-			// Even if zero bytes was read give it a chance to start from the beginning
-			buff = buff + endlen;
-			len -= endlen;
+				// Even if zero bytes was read give it a chance to start from the beginning
+				buff += endlen;
+				len -= endlen;
+			}
+
 			song->Decoder->seek(song->Loop_Start, false, true);
 		}
 		while (len > 0)

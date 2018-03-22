@@ -1,3 +1,16 @@
+
+#ifdef NO_SEND_STATS
+
+void D_DoAnonStats()
+{
+}
+
+void D_ConfirmSendStats()
+{
+}
+
+#else // !NO_SEND_STATS
+
 #if defined(_WIN32)
 #define _WIN32_WINNT 0x0501
 #define WIN32_LEAN_AND_MEAN
@@ -5,6 +18,11 @@
 #include <winsock2.h>
 extern int sys_ostype;
 #else
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#else // !__APPLE__
+#include <SDL.h>
+#endif // __APPLE__
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -20,12 +38,13 @@ extern int sys_ostype;
 
 EXTERN_CVAR(Bool, vid_glswfb)
 extern int currentrenderer;
+CVAR(Int, sys_statsenabled, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOSET)
 CVAR(String, sys_statshost, "gzstats.drdteam.org", CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOSET)
 CVAR(Int, sys_statsport, 80, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOSET)
 
 // Each machine will only send two  reports, one when started with hardware rendering and one when started with software rendering.
-#define CHECKVERSION 330
-#define CHECKVERSIONSTR "330"
+#define CHECKVERSION 331
+#define CHECKVERSIONSTR "331"
 CVAR(Int, sentstats_swr_done, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOSET)
 CVAR(Int, sentstats_hwr_done, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOSET)
 
@@ -48,6 +67,11 @@ bool I_HTTPRequest(const char* request)
 	SOCKET Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	struct hostent *host;
 	host = gethostbyname(sys_statshost.GetHumanString());
+	if (host == nullptr)
+	{
+		DPrintf(DMSG_ERROR, "Error looking up hostname.\n");
+		return false;
+	}
 	SOCKADDR_IN SockAddr;
 	SockAddr.sin_port = htons(sys_statsport);
 	SockAddr.sin_family = AF_INET;
@@ -113,18 +137,15 @@ bool I_HTTPRequest(const char* request)
 		return false;
 	}
 
-	char buffer[1024];
-	sprintf(buffer, "%s", request);
-	Printf("Buffer: %s", buffer);
-	n = write(sockfd, (char*)buffer, (int)strlen(request));
+	n = write(sockfd, request, strlen(request));
 	if (n<0)
 	{
 		DPrintf(DMSG_ERROR, "Error writing to socket.\n");
 		close(sockfd);
 		return false;
 	}
-	bzero(buffer, 1024);
 
+	char buffer[1024] = {};
 	n = read(sockfd, buffer, 1023);
 	close(sockfd);
 	DPrintf(DMSG_NOTIFY, "Stats send successful.\n");
@@ -185,12 +206,49 @@ static int GetOSVersion()
 #endif
 }
 
+
+#ifdef _WIN32
+
+static int  GetCoreInfo()
+{
+	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer = NULL;
+	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION ptr = NULL;
+	DWORD returnLength = 0;
+	int cores = 0;
+	uint32_t byteOffset = 0;
+
+	auto rc = GetLogicalProcessorInformation(buffer, &returnLength);
+
+	if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+	{
+		buffer = (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION)malloc(returnLength);
+		if (!GetLogicalProcessorInformation(buffer, &returnLength)) return 0;
+	}
+	else
+	{
+		return 0;
+	}
+
+	ptr = buffer;
+
+	while (byteOffset + sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION) <= returnLength)
+	{
+		if (ptr->Relationship == RelationProcessorCore) cores++;
+		byteOffset += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+		ptr++;
+	}
+	free(buffer);
+	return cores < 2 ? 0 : cores < 4 ? 1 : cores < 6 ? 2 : cores < 8 ? 3 : 4;
+}
+
+#else
 static int GetCoreInfo()
 {
 	int cores = std::thread::hardware_concurrency();
 	if (CPU.HyperThreading) cores /= 2;
 	return cores < 2? 0 : cores < 4? 1 : cores < 6? 2 : cores < 8? 3 : 4;
 }
+#endif
 
 static int GetRenderInfo()
 {
@@ -227,6 +285,11 @@ static void D_DoHTTPRequest(const char *request)
 
 void D_DoAnonStats()
 {
+	if (sys_statsenabled != 1)
+	{
+		return;
+	}
+
 	static bool done = false;	// do this only once per session.
 	if (done) return;
 	done = true;
@@ -236,9 +299,62 @@ void D_DoAnonStats()
 	if (currentrenderer == 1 && sentstats_hwr_done >= CHECKVERSION) return;
 
 	static char requeststring[1024];
-	sprintf(requeststring, "GET /stats.php?render=%i&cores=%i&os=%i HTTP/1.1\nHost: %s\nConnection: close\nUser-Agent: %s %s\n\n",
-		GetRenderInfo(), GetCoreInfo(), GetOSVersion(), sys_statshost.GetHumanString(), GAMENAME, VERSIONSTR);
+	mysnprintf(requeststring, sizeof requeststring, "GET /stats.py?render=%i&cores=%i&os=%i&renderconfig=%i HTTP/1.1\nHost: %s\nConnection: close\nUser-Agent: %s %s\n\n",
+		GetRenderInfo(), GetCoreInfo(), GetOSVersion(), currentrenderer, sys_statshost.GetHumanString(), GAMENAME, VERSIONSTR);
 	DPrintf(DMSG_NOTIFY, "Sending %s", requeststring);
 	std::thread t1(D_DoHTTPRequest, requeststring);
 	t1.detach();
 }
+
+void D_ConfirmSendStats()
+{
+	if (sys_statsenabled >= 0)
+	{
+		return;
+	}
+
+	// TODO: texts
+	static const char *const MESSAGE_TEXT = "send stats?";
+	static const char *const TITLE_TEXT = GAMENAME;
+
+	UCVarValue enabled = { 0 };
+
+#ifdef _WIN32
+	extern HWND Window;
+	enabled.Int = MessageBox(Window, MESSAGE_TEXT, TITLE_TEXT, MB_ICONQUESTION | MB_YESNO) == IDYES;
+#elif defined __APPLE__
+	const CFStringRef messageString = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, MESSAGE_TEXT, kCFStringEncodingASCII, kCFAllocatorNull);
+	const CFStringRef titleString = CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, TITLE_TEXT, kCFStringEncodingASCII, kCFAllocatorNull);
+	if (messageString != nullptr && titleString != nullptr)
+	{
+		CFOptionFlags response;
+		const SInt32 result = CFUserNotificationDisplayAlert(0, kCFUserNotificationNoteAlertLevel, nullptr, nullptr, nullptr,
+			titleString, messageString, CFSTR("Yes"), CFSTR("No"), nullptr, &response);
+		enabled.Int = result == 0 && (response & 3) == kCFUserNotificationDefaultResponse;
+		CFRelease(titleString);
+		CFRelease(messageString);
+	}
+#else // !__APPLE__
+	const SDL_MessageBoxButtonData buttons[] =
+	{
+		{ SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 0, "Yes" },
+		{ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 1, "No" },
+	};
+	const SDL_MessageBoxData messageboxdata =
+	{
+		SDL_MESSAGEBOX_INFORMATION,
+		nullptr,
+		TITLE_TEXT,
+		MESSAGE_TEXT,
+		SDL_arraysize(buttons),
+		buttons,
+		nullptr
+	};
+	int buttonid;
+	enabled.Int = SDL_ShowMessageBox(&messageboxdata, &buttonid) == 0 && buttonid == 0;
+#endif // _WIN32
+
+	sys_statsenabled.ForceSet(enabled, CVAR_Int);
+}
+
+#endif // NO_SEND_STATS
