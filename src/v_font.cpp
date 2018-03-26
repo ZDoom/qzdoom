@@ -177,8 +177,8 @@ class FFontChar1 : public FTexture
 {
 public:
    FFontChar1 (FTexture *sourcelump);
-   const uint8_t *GetColumn (unsigned int column, const Span **spans_out);
-   const uint8_t *GetPixels ();
+   const uint8_t *GetColumn(FRenderStyle style, unsigned int column, const Span **spans_out);
+   const uint8_t *GetPixels (FRenderStyle style);
    void SetSourceRemap(const uint8_t *sourceremap);
    void Unload ();
    ~FFontChar1 ();
@@ -198,8 +198,8 @@ public:
 	FFontChar2 (int sourcelump, int sourcepos, int width, int height, int leftofs=0, int topofs=0);
 	~FFontChar2 ();
 
-	const uint8_t *GetColumn (unsigned int column, const Span **spans_out);
-	const uint8_t *GetPixels ();
+	const uint8_t *GetColumn(FRenderStyle style, unsigned int column, const Span **spans_out);
+	const uint8_t *GetPixels (FRenderStyle style);
 	void SetSourceRemap(const uint8_t *sourceremap);
 	void Unload ();
 
@@ -332,7 +332,7 @@ FFont *V_GetFont(const char *name)
 		}
 		if (font == NULL)
 		{
-			FTextureID picnum = TexMan.CheckForTexture (name, FTexture::TEX_Any);
+			FTextureID picnum = TexMan.CheckForTexture (name, ETextureType::Any);
 			if (picnum.isValid())
 			{
 				font = new FSinglePicFont (name);
@@ -390,15 +390,15 @@ FFont::FFont (const char *name, const char *nametemplate, int first, int count, 
 		charlumps[i] = NULL;
 		mysnprintf (buffer, countof(buffer), nametemplate, i + start);
 
-		lump = TexMan.CheckForTexture(buffer, FTexture::TEX_MiscPatch);
+		lump = TexMan.CheckForTexture(buffer, ETextureType::MiscPatch);
 		if (doomtemplate && lump.isValid() && i + start == 121)
 		{ // HACKHACK: Don't load STCFN121 in doom(2), because
 		  // it's not really a lower-case 'y' but a '|'.
 		  // Because a lot of wads with their own font seem to foolishly
 		  // copy STCFN121 and make it a '|' themselves, wads must
 		  // provide STCFN120 (x) and STCFN122 (z) for STCFN121 to load as a 'y'.
-			if (!TexMan.CheckForTexture("STCFN120", FTexture::TEX_MiscPatch).isValid() ||
-				!TexMan.CheckForTexture("STCFN122", FTexture::TEX_MiscPatch).isValid())
+			if (!TexMan.CheckForTexture("STCFN120", ETextureType::MiscPatch).isValid() ||
+				!TexMan.CheckForTexture("STCFN122", ETextureType::MiscPatch).isValid())
 			{
 				// insert the incorrectly named '|' graphic in its correct position.
 				if (count > 124-start) charlumps[124-start] = TexMan[lump];
@@ -559,7 +559,7 @@ void RecordTextureColors (FTexture *pic, uint8_t *usedcolors)
 	for (x = pic->GetWidth() - 1; x >= 0; x--)
 	{
 		const FTexture::Span *spans;
-		const uint8_t *column = pic->GetColumn (x, &spans);
+		const uint8_t *column = pic->GetColumn(DefaultRenderStyle(), x, &spans);	// This shouldn't use the spans...
 
 		while (spans->Length != 0)
 		{
@@ -973,6 +973,9 @@ void FFont::LoadTranslations()
 // means all the characters of a font have a better chance of being packed
 // into the same hardware texture.
 //
+// (Note that this is a rather dumb implementation. The atlasing should
+// occur at a higher level, independently of the renderer being used.)
+//
 //==========================================================================
 
 void FFont::Preload() const
@@ -989,7 +992,7 @@ void FFont::Preload() const
 		FTexture *pic = GetChar(i, &foo);
 		if (pic != NULL)
 		{
-			pic->GetNative(false);
+			pic->GetNative(pic->GetFormat(), false);
 		}
 	}
 }
@@ -1569,7 +1572,7 @@ void FSingleLumpFont::FixupPalette (uint8_t *identity, double *luminosity, const
 FSinglePicFont::FSinglePicFont(const char *picname) :
 	FFont(-1) // Since lump is only needed for priority information we don't need to worry about this here.
 {
-	FTextureID picnum = TexMan.CheckForTexture (picname, FTexture::TEX_Any);
+	FTextureID picnum = TexMan.CheckForTexture (picname, ETextureType::Any);
 
 	if (!picnum.isValid())
 	{
@@ -1636,7 +1639,7 @@ int FSinglePicFont::GetCharWidth (int code) const
 FFontChar1::FFontChar1 (FTexture *sourcelump)
 : SourceRemap (NULL)
 {
-	UseType = FTexture::TEX_FontChar;
+	UseType = ETextureType::FontChar;
 	BaseTexture = sourcelump;
 
 	// now copy all the properties from the base texture
@@ -1649,9 +1652,11 @@ FFontChar1::FFontChar1 (FTexture *sourcelump)
 //
 // FFontChar1 :: GetPixels
 //
+// Render style is not relevant for fonts. This must not use it!
+//
 //==========================================================================
 
-const uint8_t *FFontChar1::GetPixels ()
+const uint8_t *FFontChar1::GetPixels (FRenderStyle)
 {
 	if (Pixels == NULL)
 	{
@@ -1666,12 +1671,12 @@ const uint8_t *FFontChar1::GetPixels ()
 //
 //==========================================================================
 
-void FFontChar1::MakeTexture ()
+void FFontChar1::MakeTexture ()	
 {
 	// Make the texture as normal, then remap it so that all the colors
 	// are at the low end of the palette
 	Pixels = new uint8_t[Width*Height];
-	const uint8_t *pix = BaseTexture->GetPixels();
+	const uint8_t *pix = BaseTexture->GetPixels(DefaultRenderStyle());
 
 	if (!SourceRemap)
 	{
@@ -1692,14 +1697,14 @@ void FFontChar1::MakeTexture ()
 //
 //==========================================================================
 
-const uint8_t *FFontChar1::GetColumn (unsigned int column, const Span **spans_out)
+const uint8_t *FFontChar1::GetColumn(FRenderStyle, unsigned int column, const Span **spans_out)
 {
 	if (Pixels == NULL)
 	{
 		MakeTexture ();
 	}
 
-	BaseTexture->GetColumn(column, spans_out);
+	BaseTexture->GetColumn(DefaultRenderStyle(), column, spans_out);
 	return Pixels + column*Height;
 }
 
@@ -1753,7 +1758,7 @@ FFontChar1::~FFontChar1 ()
 FFontChar2::FFontChar2 (int sourcelump, int sourcepos, int width, int height, int leftofs, int topofs)
 : SourceLump (sourcelump), SourcePos (sourcepos), Pixels (0), Spans (0), SourceRemap(NULL)
 {
-	UseType = TEX_FontChar;
+	UseType = ETextureType::FontChar;
 	Width = width;
 	Height = height;
 	LeftOffset = leftofs;
@@ -1797,9 +1802,11 @@ void FFontChar2::Unload ()
 //
 // FFontChar2 :: GetPixels
 //
+// Like for FontChar1, the render style has no relevance here as well.
+//
 //==========================================================================
 
-const uint8_t *FFontChar2::GetPixels ()
+const uint8_t *FFontChar2::GetPixels (FRenderStyle)
 {
 	if (Pixels == NULL)
 	{
@@ -1814,7 +1821,7 @@ const uint8_t *FFontChar2::GetPixels ()
 //
 //==========================================================================
 
-const uint8_t *FFontChar2::GetColumn (unsigned int column, const Span **spans_out)
+const uint8_t *FFontChar2::GetColumn(FRenderStyle, unsigned int column, const Span **spans_out)
 {
 	if (Pixels == NULL)
 	{
@@ -2263,7 +2270,7 @@ void V_InitCustomFonts()
 					if (format == 1) goto wrong;
 					FTexture **p = &lumplist[*(unsigned char*)sc.String];
 					sc.MustGetString();
-					FTextureID texid = TexMan.CheckForTexture(sc.String, FTexture::TEX_MiscPatch);
+					FTextureID texid = TexMan.CheckForTexture(sc.String, ETextureType::MiscPatch);
 					if (texid.Exists())
 					{
 						*p = TexMan[texid];

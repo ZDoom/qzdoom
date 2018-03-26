@@ -639,6 +639,22 @@ elseif( FLUIDSYNTH_FOUND )
 	add_definitions( -DHAVE_FLUIDSYNTH )
 endif()
 
+option( SEND_ANON_STATS "Enable sending of anonymous hardware statistics" ON )
+
+if( NOT SEND_ANON_STATS )
+	add_definitions( -DNO_SEND_STATS )
+endif()
+
+# OPLMIDI needs for USE_LEGACY_EMULATOR macro to be correctly built
+add_definitions(-DOPNMIDI_USE_LEGACY_EMULATOR)
+
+# Disable ADLMIDI's and OPNMIDI's MIDI Sequencer, MUS and XMI converters
+add_definitions(-DADLMIDI_DISABLE_MUS_SUPPORT -DADLMIDI_DISABLE_XMI_SUPPORT -DADLMIDI_DISABLE_MIDI_SEQUENCER)
+add_definitions(-DOPNMIDI_DISABLE_MUS_SUPPORT -DOPNMIDI_DISABLE_XMI_SUPPORT -DOPNMIDI_DISABLE_MIDI_SEQUENCER)
+
+# Disable ADLMIDI's MIDI Sequencer, MUS and XMI converters
+add_definitions(-DADLMIDI_DISABLE_MUS_SUPPORT -DADLMIDI_DISABLE_XMI_SUPPORT -DADLMIDI_DISABLE_MIDI_SEQUENCER)
+
 # Project files should be aware of the header files. We can GLOB these since
 # there's generally a new cpp for every header so this file will get changed
 if( WIN32 )
@@ -660,6 +676,10 @@ file( GLOB HEADER_FILES
 	g_inventory/*.h
 	intermission/*.h
 	menu/*.h
+	sound/adlmidi/*.h*
+	sound/opnmidi/*.h*
+	sound/oplsynth/*.h
+	sound/oplsynth/dosbox/*.h
 	posix/*.h
 	posix/cocoa/*.h
 	posix/sdl/*.h
@@ -678,6 +698,7 @@ file( GLOB HEADER_FILES
 	sound/midisources/*.h
 	sound/oplsynth/*.h
 	sound/oplsynth/dosbox/*.h
+	sound/thirdparty/*.h
 	sound/timidity/*.h
 	sound/timiditypp/*.h
 	sound/wildmidi/*.h
@@ -845,7 +866,20 @@ set( FASTMATH_SOURCES
 	gl/models/gl_models.cpp
 	r_data/models/models.cpp
 	r_data/matrix.cpp
-
+	sound/adlmidi/adldata.cpp
+	sound/adlmidi/adlmidi.cpp
+	sound/adlmidi/adlmidi_load.cpp
+	sound/adlmidi/adlmidi_midiplay.cpp
+	sound/adlmidi/adlmidi_opl3.cpp
+	sound/adlmidi/adlmidi_private.cpp
+	sound/adlmidi/dbopl.cpp
+	sound/adlmidi/nukedopl3.c
+	sound/opnmidi/opnmidi.cpp
+	sound/opnmidi/opnmidi_load.cpp
+	sound/opnmidi/opnmidi_midiplay.cpp
+	sound/opnmidi/opnmidi_opn2.cpp
+	sound/opnmidi/opnmidi_private.cpp
+	sound/opnmidi/Ym2612_ChipEmu.cpp
 )
 
 set (PCH_SOURCES
@@ -1091,6 +1125,7 @@ set (PCH_SOURCES
 	textures/flattexture.cpp
 	textures/imgztexture.cpp
 	textures/jpegtexture.cpp
+	textures/md5check.cpp
 	textures/multipatchtexture.cpp
 	textures/patchtexture.cpp
 	textures/pcxtexture.cpp
@@ -1104,6 +1139,7 @@ set (PCH_SOURCES
 	textures/tgatexture.cpp
 	textures/warptexture.cpp
 	textures/skyboxtexture.cpp
+	textures/worldtexture.cpp
 	xlat/parse_xlat.cpp
 	fragglescript/t_func.cpp
 	fragglescript/t_load.cpp
@@ -1149,8 +1185,10 @@ set (PCH_SOURCES
 	sound/i_music.cpp
 	sound/i_sound.cpp
 	sound/i_soundfont.cpp
+	sound/mididevices/music_adlmidi_mididevice.cpp
 	sound/mididevices/music_opldumper_mididevice.cpp
 	sound/mididevices/music_opl_mididevice.cpp
+	sound/mididevices/music_opnmidi_mididevice.cpp
 	sound/mididevices/music_timiditypp_mididevice.cpp
 	sound/mididevices/music_fluidsynth_mididevice.cpp
 	sound/mididevices/music_softsynth_mididevice.cpp
@@ -1315,7 +1353,6 @@ if( MSVC )
 		COMMENT "Adding manifest..."
 	)
 
-	create_default_target_launcher( zdoom WORKING_DIRECTORY ${ZDOOM_OUTPUT_DIR} )
 endif()
 
 if( NOT WIN32 AND NOT APPLE )
@@ -1362,6 +1399,8 @@ install(TARGETS zdoom
 		COMPONENT "Game executable")
 
 source_group("Audio Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/.+")
+source_group("Audio Files\\ADL MIDI" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/adlmidi/.+")
+source_group("Audio Files\\OPN MIDI" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/opnmidi/.+")
 source_group("Audio Files\\OPL Synth" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/oplsynth/.+")
 source_group("Audio Files\\OPL Synth\\DOSBox" FILES sound/oplsynth/dosbox/opl.cpp sound/oplsynth/dosbox/opl.h)
 source_group("Audio Files\\Timidity" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/timidity/.+")
@@ -1370,6 +1409,7 @@ source_group("Audio Files\\WildMidi" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE
 source_group("Audio Files\\MIDI Devices" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/mididevices/.+")
 source_group("Audio Files\\MIDI Sources" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/midisources/.+")
 source_group("Audio Files\\Music formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/musicformats/.+")
+source_group("Audio Files\\Third-party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/thirdparty/.+")
 source_group("External\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/math/.+")
 source_group("External\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/.+")
 source_group("External\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sfmt/.+")

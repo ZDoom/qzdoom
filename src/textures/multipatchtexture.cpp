@@ -148,24 +148,21 @@ struct FPatchLookup
 //
 //==========================================================================
 
-class FMultiPatchTexture : public FTexture
+class FMultiPatchTexture : public FWorldTexture
 {
 public:
 	FMultiPatchTexture (const void *texdef, FPatchLookup *patchlookup, int maxpatchnum, bool strife, int deflump);
-	FMultiPatchTexture (FScanner &sc, int usetype);
+	FMultiPatchTexture (FScanner &sc, ETextureType usetype);
 	~FMultiPatchTexture ();
 
-	const uint8_t *GetColumn (unsigned int column, const Span **spans_out);
-	const uint8_t *GetPixels ();
-	FTextureFormat GetFormat();
-	bool UseBasePalette() ;
-	void Unload ();
-	virtual void SetFrontSkyLayer ();
+	FTextureFormat GetFormat() override;
+	bool UseBasePalette() override;
+	virtual void SetFrontSkyLayer () override;
 
-	int CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCopyInfo *inf = NULL);
-	int GetSourceLump() { return DefinitionLump; }
-	FTexture *GetRedirect(bool wantwarped);
-	FTexture *GetRawTexture();
+	int CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCopyInfo *inf = NULL) override;
+	int GetSourceLump() override { return DefinitionLump; }
+	FTexture *GetRedirect(bool wantwarped) override;
+	FTexture *GetRawTexture() override;
 	void ResolvePatches();
 
 protected:
@@ -188,7 +185,7 @@ protected:
 	struct TexInit
 	{
 		FString TexName;
-		int UseType = TEX_Null;
+		ETextureType UseType = ETextureType::Null;
 		bool Silent = false;
 		bool HasLine = false;
 		bool UseOffsets = false;
@@ -198,10 +195,16 @@ protected:
 	int NumParts;
 	TexPart *Parts;
 	TexInit *Inits;
-	bool bRedirect:1;
-	bool bTranslucentPatches:1;
+	bool bRedirect;
+	bool bTranslucentPatches;
 
-	void MakeTexture ();
+	uint8_t *MakeTexture (FRenderStyle style);
+
+	// The getters must optionally redirect if it's a simple one-patch texture.
+	const uint8_t *GetPixels(FRenderStyle style) override { return bRedirect ? Parts->Texture->GetPixels(style) : FWorldTexture::GetPixels(style); }
+	const uint8_t *GetColumn(FRenderStyle style, unsigned int col, const Span **out) override
+		{ return bRedirect ? Parts->Texture->GetColumn(style, col, out) : FWorldTexture::GetColumn(style, col, out); }
+
 
 private:
 	void CheckForHacks ();
@@ -250,7 +253,7 @@ FMultiPatchTexture::FMultiPatchTexture (const void *texdef, FPatchLookup *patchl
 		I_FatalError ("Bad texture directory");
 	}
 
-	UseType = FTexture::TEX_Wall;
+	UseType = ETextureType::Wall;
 	Parts = NumParts > 0 ? new TexPart[NumParts] : nullptr;
 	Inits = NumParts > 0 ? new TexInit[NumParts] : nullptr;
 	Width = SAFESHORT(mtexture.d->width);
@@ -286,7 +289,7 @@ FMultiPatchTexture::FMultiPatchTexture (const void *texdef, FPatchLookup *patchl
 		Parts[i].OriginY = LittleShort(mpatch.d->originy);
 		Parts[i].Texture = nullptr;
 		Inits[i].TexName = patchlookup[LittleShort(mpatch.d->patch)].Name;
-		Inits[i].UseType = TEX_WallPatch;
+		Inits[i].UseType = ETextureType::WallPatch;
 		if (strife)
 			mpatch.s++;
 		else
@@ -323,11 +326,6 @@ FMultiPatchTexture::~FMultiPatchTexture ()
 		delete[] Inits;
 		Inits = nullptr;
 	}
-	if (Spans != NULL)
-	{
-		FreeSpans (Spans);
-		Spans = NULL;
-	}
 }
 
 //==========================================================================
@@ -347,87 +345,12 @@ void FMultiPatchTexture::SetFrontSkyLayer ()
 
 //==========================================================================
 //
-// FMultiPatchTexture :: Unload
-//
-//==========================================================================
-
-void FMultiPatchTexture::Unload ()
-{
-	if (Pixels != NULL)
-	{
-		delete[] Pixels;
-		Pixels = NULL;
-	}
-	FTexture::Unload();
-}
-
-//==========================================================================
-//
-// FMultiPatchTexture :: GetPixels
-//
-//==========================================================================
-
-const uint8_t *FMultiPatchTexture::GetPixels ()
-{
-	if (bRedirect)
-	{
-		return Parts->Texture->GetPixels ();
-	}
-	if (Pixels == NULL)
-	{
-		MakeTexture ();
-	}
-	return Pixels;
-}
-
-//==========================================================================
-//
-// FMultiPatchTexture :: GetColumn
-//
-//==========================================================================
-
-const uint8_t *FMultiPatchTexture::GetColumn (unsigned int column, const Span **spans_out)
-{
-	if (bRedirect)
-	{
-		return Parts->Texture->GetColumn (column, spans_out);
-	}
-	if (Pixels == NULL)
-	{
-		MakeTexture ();
-	}
-	if ((unsigned)column >= (unsigned)Width)
-	{
-		if (WidthMask + 1 == Width)
-		{
-			column &= WidthMask;
-		}
-		else
-		{
-			column %= Width;
-		}
-	}
-	if (spans_out != NULL)
-	{
-		if (Spans == NULL)
-		{
-			Spans = CreateSpans (Pixels);
-		}
-		*spans_out = Spans[column];
-	}
-	return Pixels + column*Height;
-}
-
-
-//==========================================================================
-//
 // GetBlendMap
 //
 //==========================================================================
 
 uint8_t *GetBlendMap(PalEntry blend, uint8_t *blendwork)
 {
-
 	switch (blend.a==0 ? int(blend) : -1)
 	{
 	case BLEND_ICEMAP:
@@ -480,39 +403,46 @@ uint8_t *GetBlendMap(PalEntry blend, uint8_t *blendwork)
 //
 //==========================================================================
 
-void FMultiPatchTexture::MakeTexture ()
+uint8_t *FMultiPatchTexture::MakeTexture (FRenderStyle style)
 {
 	// Add a little extra space at the end if the texture's height is not
 	// a power of 2, in case somebody accidentally makes it repeat vertically.
 	int numpix = Width * Height + (1 << HeightBits) - Height;
 	uint8_t blendwork[256];
-	bool hasTranslucent = false;
+	bool buildrgb = bComplex;
 
-	Pixels = new uint8_t[numpix];
+	auto Pixels = new uint8_t[numpix];
 	memset (Pixels, 0, numpix);
 
-	for (int i = 0; i < NumParts; ++i)
+	if (style.Flags & STYLEF_RedIsAlpha)
 	{
-		if (Parts[i].op != OP_COPY)
+		buildrgb = !UseBasePalette();
+	}
+	else
+	{
+		// For regular textures we can use paletted compositing if all patches are just being copied because they all can create a paletted buffer.
+		if (!buildrgb) for (int i = 0; i < NumParts; ++i)
 		{
-			hasTranslucent = true;
+			if (Parts[i].op != OP_COPY)
+			{
+				buildrgb = true;
+			}
 		}
 	}
 
-	if (!hasTranslucent)
-	{
+	if (!buildrgb)
+	{	
 		for (int i = 0; i < NumParts; ++i)
 		{
 			if (Parts[i].Texture->bHasCanvas) continue;	// cannot use camera textures as patch.
 		
-			uint8_t *trans = Parts[i].Translation ? Parts[i].Translation->Remap : NULL;
+			uint8_t *trans = Parts[i].Translation? Parts[i].Translation->Remap : nullptr;
 			{
 				if (Parts[i].Blend != 0)
 				{
 					trans = GetBlendMap(Parts[i].Blend, blendwork);
 				}
-				Parts[i].Texture->CopyToBlock (Pixels, Width, Height,
-					Parts[i].OriginX, Parts[i].OriginY, Parts[i].Rotate, trans);
+				Parts[i].Texture->CopyToBlock (Pixels, Width, Height, Parts[i].OriginX, Parts[i].OriginY, Parts[i].Rotate, trans, style);
 			}
 		}
 	}
@@ -531,7 +461,7 @@ void FMultiPatchTexture::MakeTexture ()
 			{
 				if (*out == 0 && in[3] != 0)
 				{
-					*out = RGB256k.RGB[in[2]>>2][in[1]>>2][in[0]>>2];
+					*out = RGBToPalette(style, in[2], in[1], in[0]);
 				}
 				out += Height;
 				in += 4;
@@ -539,6 +469,7 @@ void FMultiPatchTexture::MakeTexture ()
 		}
 		delete [] buffer;
 	}
+	return Pixels;
 }
 
 //===========================================================================
@@ -755,14 +686,6 @@ void FMultiPatchTexture::CheckForHacks ()
 				break;
 			}
 		}
-
-		if (i == NumParts)
-		{
-			for (i = 0; i < NumParts; ++i)
-			{
-				Parts[i].Texture->HackHack(256);
-			}
-		}
 	}
 }
 
@@ -924,7 +847,7 @@ void FTextureManager::AddTexturesLump (const void *lumpdata, int lumpsize, int d
 			FMultiPatchTexture *tex = new FMultiPatchTexture ((const uint8_t *)maptex + offset, patchlookup, numpatches, isStrife, deflumpnum);
 			if (i == 1 && texture1)
 			{
-				tex->UseType = FTexture::TEX_FirstDefined;
+				tex->UseType = ETextureType::FirstDefined;
 			}
 			TexMan.AddTexture (tex);
 			StartScreen->Progress();
@@ -1144,7 +1067,7 @@ void FMultiPatchTexture::ParsePatch(FScanner &sc, TexPart & part, TexInit &init)
 //
 //==========================================================================
 
-FMultiPatchTexture::FMultiPatchTexture (FScanner &sc, int usetype)
+FMultiPatchTexture::FMultiPatchTexture (FScanner &sc, ETextureType usetype)
 : Pixels (0), Spans(0), Parts(0), bRedirect(false), bTranslucentPatches(false)
 {
 	TArray<TexPart> parts;
@@ -1200,7 +1123,7 @@ FMultiPatchTexture::FMultiPatchTexture (FScanner &sc, int usetype)
 			}
 			else if (sc.Compare("NullTexture"))
 			{
-				UseType = FTexture::TEX_Null;
+				UseType = ETextureType::Null;
 			}
 			else if (sc.Compare("NoDecals"))
 			{
@@ -1214,7 +1137,7 @@ FMultiPatchTexture::FMultiPatchTexture (FScanner &sc, int usetype)
 				if (init.TexName.IsNotEmpty())
 				{
 					parts.Push(part);
-					init.UseType = TEX_WallPatch;
+					init.UseType = ETextureType::WallPatch;
 					init.Silent = bSilent;
 					init.HasLine = true;
 					init.sc = sc;
@@ -1231,7 +1154,7 @@ FMultiPatchTexture::FMultiPatchTexture (FScanner &sc, int usetype)
 				if (init.TexName.IsNotEmpty())
 				{
 					parts.Push(part);
-					init.UseType = TEX_Sprite;
+					init.UseType = ETextureType::Sprite;
 					init.Silent = bSilent;
 					init.HasLine = true;
 					init.sc = sc;
@@ -1248,7 +1171,7 @@ FMultiPatchTexture::FMultiPatchTexture (FScanner &sc, int usetype)
 				if (init.TexName.IsNotEmpty())
 				{
 					parts.Push(part);
-					init.UseType = TEX_MiscPatch;
+					init.UseType = ETextureType::MiscPatch;
 					init.Silent = bSilent;
 					init.HasLine = true;
 					init.sc = sc;
@@ -1283,7 +1206,7 @@ FMultiPatchTexture::FMultiPatchTexture (FScanner &sc, int usetype)
 	
 	if (Width <= 0 || Height <= 0)
 	{
-		UseType = FTexture::TEX_Null;
+		UseType = ETextureType::Null;
 		Printf("Texture %s has invalid dimensions (%d, %d)\n", Name.GetChars(), Width, Height);
 		Width = Height = 1;
 	}
@@ -1378,7 +1301,7 @@ void FMultiPatchTexture::ResolvePatches()
 }
 
 
-void FTextureManager::ParseXTexture(FScanner &sc, int usetype)
+void FTextureManager::ParseXTexture(FScanner &sc, ETextureType usetype)
 {
 	FTexture *tex = new FMultiPatchTexture(sc, usetype);
 	TexMan.AddTexture (tex);

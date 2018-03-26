@@ -37,7 +37,7 @@
 FSkyBox::FSkyBox() 
 { 
 	faces[0]=faces[1]=faces[2]=faces[3]=faces[4]=faces[5]=NULL; 
-	UseType=TEX_Override;
+	UseType = ETextureType::Override;
 	gl_info.bSkybox = true;
 	fliptop = false;
 }
@@ -59,9 +59,9 @@ FSkyBox::~FSkyBox()
 //
 //-----------------------------------------------------------------------------
 
-const uint8_t *FSkyBox::GetColumn (unsigned int column, const Span **spans_out)
+const uint8_t *FSkyBox::GetColumn(FRenderStyle style, unsigned int column, const Span **spans_out)
 {
-	if (faces[0]) return faces[0]->GetColumn(column, spans_out);
+	if (faces[0]) return faces[0]->GetColumn(style, column, spans_out);
 	return NULL;
 }
 
@@ -71,9 +71,9 @@ const uint8_t *FSkyBox::GetColumn (unsigned int column, const Span **spans_out)
 //
 //-----------------------------------------------------------------------------
 
-const uint8_t *FSkyBox::GetPixels ()
+const uint8_t *FSkyBox::GetPixels (FRenderStyle style)
 {
-	if (faces[0]) return faces[0]->GetPixels();
+	if (faces[0]) return faces[0]->GetPixels(style);
 	return NULL;
 }
 
@@ -136,7 +136,7 @@ void ParseGldefSkybox(FScanner &sc)
 		sc.MustGetString();
 		if (facecount<6) 
 		{
-			sb->faces[facecount] = TexMan[TexMan.GetTexture(sc.String, FTexture::TEX_Wall, FTextureManager::TEXMAN_TryAny|FTextureManager::TEXMAN_Overridable)];
+			sb->faces[facecount] = TexMan[TexMan.GetTexture(sc.String, ETextureType::Wall, FTextureManager::TEXMAN_TryAny|FTextureManager::TEXMAN_Overridable)];
 		}
 		facecount++;
 	}
@@ -181,7 +181,7 @@ void ParseVavoomSkybox()
 
 				maplump = Wads.CheckNumForFullName(sc.String, true);
 
-				FTexture *tex = TexMan.FindTexture(sc.String, FTexture::TEX_Wall, FTextureManager::TEXMAN_TryAny);
+				FTexture *tex = TexMan.FindTexture(sc.String, ETextureType::Wall, FTextureManager::TEXMAN_TryAny);
 				if (tex == NULL)
 				{
 					sc.ScriptMessage("Texture '%s' not found in Vavoom skybox '%s'\n", sc.String, sb->Name.GetChars());

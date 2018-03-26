@@ -52,7 +52,7 @@ typedef FTexture * (*CreateFunc)(FileReader & file, int lumpnum);
 struct TexCreateInfo
 {
 	CreateFunc TryCreate;
-	int usetype;
+	ETextureType usetype;
 };
 
 uint8_t FTexture::GrayMap[256];
@@ -80,20 +80,20 @@ FTexture *AutomapTexture_TryCreate(FileReader &, int lumpnum);
 
 // Examines the lump contents to decide what type of texture to create,
 // and creates the texture.
-FTexture * FTexture::CreateTexture (int lumpnum, int usetype)
+FTexture * FTexture::CreateTexture (int lumpnum, ETextureType usetype)
 {
 	static TexCreateInfo CreateInfo[]={
-		{ IMGZTexture_TryCreate,		TEX_Any },
-		{ PNGTexture_TryCreate,			TEX_Any },
-		{ JPEGTexture_TryCreate,		TEX_Any },
-		{ DDSTexture_TryCreate,			TEX_Any },
-		{ PCXTexture_TryCreate,			TEX_Any },
-		{ TGATexture_TryCreate,			TEX_Any },
-		{ RawPageTexture_TryCreate,		TEX_MiscPatch },
-		{ FlatTexture_TryCreate,		TEX_Flat },
-		{ PatchTexture_TryCreate,		TEX_Any },
-		{ EmptyTexture_TryCreate,		TEX_Any },
-		{ AutomapTexture_TryCreate,		TEX_MiscPatch },
+		{ IMGZTexture_TryCreate,		ETextureType::Any },
+		{ PNGTexture_TryCreate,			ETextureType::Any },
+		{ JPEGTexture_TryCreate,		ETextureType::Any },
+		{ DDSTexture_TryCreate,			ETextureType::Any },
+		{ PCXTexture_TryCreate,			ETextureType::Any },
+		{ TGATexture_TryCreate,			ETextureType::Any },
+		{ RawPageTexture_TryCreate,		ETextureType::MiscPatch },
+		{ FlatTexture_TryCreate,		ETextureType::Flat },
+		{ PatchTexture_TryCreate,		ETextureType::Any },
+		{ EmptyTexture_TryCreate,		ETextureType::Any },
+		{ AutomapTexture_TryCreate,		ETextureType::MiscPatch },
 	};
 
 	if (lumpnum == -1) return NULL;
@@ -102,13 +102,13 @@ FTexture * FTexture::CreateTexture (int lumpnum, int usetype)
 
 	for(size_t i = 0; i < countof(CreateInfo); i++)
 	{
-		if ((CreateInfo[i].usetype == usetype || CreateInfo[i].usetype == TEX_Any))
+		if ((CreateInfo[i].usetype == usetype || CreateInfo[i].usetype == ETextureType::Any))
 		{
 			FTexture * tex = CreateInfo[i].TryCreate(data, lumpnum);
 			if (tex != NULL) 
 			{
 				tex->UseType = usetype;
-				if (usetype == FTexture::TEX_Flat) 
+				if (usetype == ETextureType::Flat) 
 				{
 					int w = tex->GetWidth();
 					int h = tex->GetHeight();
@@ -134,7 +134,7 @@ FTexture * FTexture::CreateTexture (int lumpnum, int usetype)
 	return NULL;
 }
 
-FTexture * FTexture::CreateTexture (const char *name, int lumpnum, int usetype)
+FTexture * FTexture::CreateTexture (const char *name, int lumpnum, ETextureType usetype)
 {
 	FTexture *tex = CreateTexture(lumpnum, usetype);
 	if (tex != NULL && name != NULL) {
@@ -148,9 +148,9 @@ FTexture * FTexture::CreateTexture (const char *name, int lumpnum, int usetype)
 FTexture::FTexture (const char *name, int lumpnum)
 : LeftOffset(0), TopOffset(0),
   WidthBits(0), HeightBits(0), Scale(1,1), SourceLump(lumpnum),
-  UseType(TEX_Any), bNoDecals(false), bNoRemap0(false), bWorldPanning(false),
+  UseType(ETextureType::Any), bNoDecals(false), bNoRemap0(false), bWorldPanning(false),
   bMasked(true), bAlphaTexture(false), bHasCanvas(false), bWarped(0), bComplex(false), bMultiPatch(false), bKeepAround(false),
-  Rotations(0xFFFF), SkyOffset(0), Width(0), Height(0), WidthMask(0), Native(NULL)
+	Rotations(0xFFFF), SkyOffset(0), Width(0), Height(0), WidthMask(0)
 {
 	id.SetInvalid();
 	if (name != NULL)
@@ -183,19 +183,20 @@ void FTexture::Unload()
 const uint32_t *FTexture::GetColumnBgra(unsigned int column, const Span **spans_out)
 {
 	const uint32_t *pixels = GetPixelsBgra();
+	if (pixels == nullptr) return nullptr;
 
 	column %= Width;
 
 	if (spans_out != nullptr)
-		GetColumn(column, spans_out);
+		GetColumn(DefaultRenderStyle(), column, spans_out);	// This isn't the right way to create the spans.
 	return pixels + column * Height;
 }
 
 const uint32_t *FTexture::GetPixelsBgra()
 {
-	if (PixelsBgra.empty() || CheckModified())
+	if (PixelsBgra.empty() || CheckModified(DefaultRenderStyle()))
 	{
-		if (!GetColumn(0, nullptr))
+		if (!GetColumn(DefaultRenderStyle(), 0, nullptr))
 			return nullptr;
 
 		FBitmap bitmap;
@@ -206,7 +207,7 @@ const uint32_t *FTexture::GetPixelsBgra()
 	return PixelsBgra.data();
 }
 
-bool FTexture::CheckModified ()
+bool FTexture::CheckModified (FRenderStyle)
 {
 	return false;
 }
@@ -248,10 +249,6 @@ void FTexture::CalcBitSize ()
 	HeightBits = i;
 }
 
-void FTexture::HackHack (int newheight)
-{
-}
-
 FTexture::Span **FTexture::CreateSpans (const uint8_t *pixels) const
 {
 	Span **spans, *span;
@@ -286,6 +283,7 @@ FTexture::Span **FTexture::CreateSpans (const uint8_t *pixels) const
 			newspan = true;
 			for (y = numrows; y > 0; --y)
 			{
+
 				if (*data_p++ == 0)
 				{
 					if (!newspan)
@@ -554,14 +552,15 @@ void FTexture::GenerateBgraMipmapsFast()
 	}
 }
 
-void FTexture::CopyToBlock (uint8_t *dest, int dwidth, int dheight, int xpos, int ypos, int rotate, const uint8_t *translation)
+void FTexture::CopyToBlock (uint8_t *dest, int dwidth, int dheight, int xpos, int ypos, int rotate, const uint8_t *translation, FRenderStyle style)
 {
-	const uint8_t *pixels = GetPixels();
+	const uint8_t *pixels = GetPixels(style);
 	int srcwidth = Width;
 	int srcheight = Height;
 	int step_x = Height;
 	int step_y = 1;
 	FClipRect cr = {0, 0, dwidth, dheight};
+	if (style.Flags & STYLEF_RedIsAlpha) translation = nullptr;	// do not apply translations to alpha textures.
 
 	if (ClipCopyPixelRect(&cr, xpos, ypos, pixels, srcwidth, srcheight, step_x, step_y, rotate))
 	{
@@ -712,43 +711,40 @@ void FTexture::FlipNonSquareBlockRemap (uint8_t *dst, const uint8_t *src, int x,
 	}
 }
 
-FNativeTexture *FTexture::GetNative(bool wrapping)
+FNativeTexture *FTexture::GetNative(FTextureFormat fmt, bool wrapping)
 {
-	if (Native != NULL)
+	if (Native[fmt] != NULL)
 	{
-		if (!Native->CheckWrapping(wrapping))
+		if (!Native[fmt]->CheckWrapping(wrapping))
 		{ // Texture's wrapping mode is not compatible.
 		  // Destroy it and get a new one.
-			delete Native;
+			delete Native[fmt];
 		}
 		else
 		{
-			if (CheckModified())
+			if (CheckModified(DefaultRenderStyle()))
 			{
-				Native->Update();
+				Native[fmt]->Update();
 			}
-			return Native;
+			return Native[fmt];
 		}
 	}
-	Native = screen->CreateTexture(this, wrapping);
-	return Native;
+	Native[fmt] = screen->CreateTexture(this, fmt, wrapping);
+	return Native[fmt];
 }
 
 void FTexture::KillNative()
 {
-	if (Native != NULL)
+	for (auto &nat : Native)
 	{
-		delete Native;
-		Native = NULL;
+		if (nat != nullptr)
+		{
+			delete nat;
+			nat = nullptr;
+		}
 	}
 }
 
-// For this generic implementation, we just call GetPixels and copy that data
-// to the buffer. Texture formats that can do better than paletted images
-// should provide their own implementation that may preserve the original
-// color data. Note that the buffer expects row-major data, since that's
-// generally more convenient for any non-Doom image formats, and it doesn't
-// need to be used by any of Doom's column drawing routines.
 void FTexture::FillBuffer(uint8_t *buff, int pitch, int height, FTextureFormat fmt)
 {
 	const uint8_t *pix;
@@ -761,7 +757,7 @@ void FTexture::FillBuffer(uint8_t *buff, int pitch, int height, FTextureFormat f
 	{
 	case TEX_Pal:
 	case TEX_Gray:
-		pix = GetPixels();
+		pix = GetPixels(fmt == TEX_Pal? DefaultRenderStyle() : LegacyRenderStyles[STYLE_Shaded]);
 		stride = pitch - w;
 		for (y = 0; y < h; ++y)
 		{
@@ -805,14 +801,14 @@ int FTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCopyI
 {
 	PalEntry *palette = screen->GetPalette();
 	for(int i=1;i<256;i++) palette[i].a = 255;	// set proper alpha values
-	bmp->CopyPixelData(x, y, GetPixels(), Width, Height, Height, 1, rotate, palette, inf);
+	bmp->CopyPixelData(x, y, GetPixels(DefaultRenderStyle()), Width, Height, Height, 1, rotate, palette, inf);
 	for(int i=1;i<256;i++) palette[i].a = 0;
 	return 0;
 }
 
 int FTexture::CopyTrueColorTranslated(FBitmap *bmp, int x, int y, int rotate, PalEntry *remap, FCopyInfo *inf)
 {
-	bmp->CopyPixelData(x, y, GetPixels(), Width, Height, Height, 1, rotate, remap, inf);
+	bmp->CopyPixelData(x, y, GetPixels(DefaultRenderStyle()), Width, Height, Height, 1, rotate, remap, inf);
 	return 0;
 }
 
@@ -923,7 +919,7 @@ int FTexture::CheckRealHeight()
 
 	for (int i = 0; i < GetWidth(); ++i)
 	{
-		GetColumn(i, &span);
+		GetColumn(DefaultRenderStyle(), i, &span);
 		while (span->Length != 0)
 		{
 			if (span->TopOffset < miny)
@@ -953,7 +949,7 @@ FDummyTexture::FDummyTexture ()
 	HeightBits = 6;
 	WidthBits = 6;
 	WidthMask = 63;
-	UseType = TEX_Null;
+	UseType = ETextureType::Null;
 }
 
 void FDummyTexture::SetSize (int width, int height)
@@ -963,16 +959,15 @@ void FDummyTexture::SetSize (int width, int height)
 	CalcBitSize ();
 }
 
-// This must never be called
-const uint8_t *FDummyTexture::GetColumn (unsigned int column, const Span **spans_out)
+// These only get called from the texture precacher which discards the result.
+const uint8_t *FDummyTexture::GetColumn(FRenderStyle style, unsigned int column, const Span **spans_out)
 {
-	return NULL;
+	return nullptr;
 }
 
-// And this also must never be called
-const uint8_t *FDummyTexture::GetPixels ()
+const uint8_t *FDummyTexture::GetPixels(FRenderStyle style)
 {
-	return NULL;
+	return nullptr;
 }
 
 //==========================================================================
@@ -988,7 +983,7 @@ CCMD (printspans)
 	if (argv.argc() != 2)
 		return;
 
-	FTextureID picnum = TexMan.CheckForTexture (argv[1], FTexture::TEX_Any);
+	FTextureID picnum = TexMan.CheckForTexture (argv[1], ETextureType::Any);
 	if (!picnum.Exists())
 	{
 		Printf ("Unknown texture %s\n", argv[1]);
@@ -999,7 +994,7 @@ CCMD (printspans)
 	{
 		const FTexture::Span *spans;
 		Printf ("%4d:", x);
-		tex->GetColumn (x, &spans);
+		tex->GetColumn(DefaultRenderStyle(), x, &spans);
 		while (spans->Length != 0)
 		{
 			Printf (" (%4d,%4d)", spans->TopOffset, spans->TopOffset+spans->Length-1);
@@ -1008,4 +1003,7 @@ CCMD (printspans)
 		Printf ("\n");
 	}
 }
+
 #endif
+
+

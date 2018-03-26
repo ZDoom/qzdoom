@@ -135,9 +135,9 @@ class FPaletteTester : public FTexture
 public:
 	FPaletteTester ();
 
-	const uint8_t *GetColumn(unsigned int column, const Span **spans_out);
-	const uint8_t *GetPixels();
-	bool CheckModified();
+	const uint8_t *GetColumn(FRenderStyle, unsigned int column, const Span **spans_out) override;
+	const uint8_t *GetPixels(FRenderStyle);
+	bool CheckModified(FRenderStyle);
 	void SetTranslation(int num);
 
 protected:
@@ -983,7 +983,7 @@ FPaletteTester::FPaletteTester()
 //
 //==========================================================================
 
-bool FPaletteTester::CheckModified()
+bool FPaletteTester::CheckModified(FRenderStyle)
 {
 	return CurTranslation != WantTranslation;
 }
@@ -1008,7 +1008,7 @@ void FPaletteTester::SetTranslation(int num)
 //
 //==========================================================================
 
-const uint8_t *FPaletteTester::GetColumn (unsigned int column, const Span **spans_out)
+const uint8_t *FPaletteTester::GetColumn(FRenderStyle, unsigned int column, const Span **spans_out)
 {
 	if (CurTranslation != WantTranslation)
 	{
@@ -1028,7 +1028,7 @@ const uint8_t *FPaletteTester::GetColumn (unsigned int column, const Span **span
 //
 //==========================================================================
 
-const uint8_t *FPaletteTester::GetPixels ()
+const uint8_t *FPaletteTester::GetPixels (FRenderStyle)
 {
 	if (CurTranslation != WantTranslation)
 	{
@@ -1161,10 +1161,12 @@ void DFrameBuffer::DrawBlendingRect()
 // DFrameBuffer :: CreateTexture
 //
 // Creates a native texture for a game texture, if supported.
+// The hardware renderer does not use this interface because it is 
+// far too limited
 //
 //==========================================================================
 
-FNativeTexture *DFrameBuffer::CreateTexture(FTexture *gametex, bool wrapping)
+FNativeTexture *DFrameBuffer::CreateTexture(FTexture *gametex, FTextureFormat fmt, bool wrapping)
 {
 	return NULL;
 }
@@ -1261,6 +1263,12 @@ FNativePalette::~FNativePalette()
 
 FNativeTexture::~FNativeTexture()
 {
+	// Remove link from the game texture
+	if (mGameTex != nullptr)
+	{
+		mGameTex->Native[mFormat] = nullptr;
+	}
+
 }
 
 bool FNativeTexture::CheckWrapping(bool wrapping)
