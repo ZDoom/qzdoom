@@ -31,7 +31,6 @@
 #include "p_local.h"
 #include "p_effect.h"
 #include "vectors.h"
-#include "gl/gl_functions.h"
 #include "g_level.h"
 #include "g_levellocals.h"
 #include "actorinlines.h"
@@ -39,7 +38,6 @@
 #include "gl/system/gl_cvars.h"
 #include "gl/renderer/gl_renderer.h"
 #include "gl/renderer/gl_lightdata.h"
-#include "gl/data/gl_data.h"
 #include "gl/dynlights/gl_dynlight.h"
 #include "gl/scene/gl_drawinfo.h"
 #include "gl/scene/gl_portal.h"
@@ -47,8 +45,6 @@
 #include "gl/textures/gl_material.h"
 #include "gl/dynlights/gl_lightbuffer.h"
 
-FDynLightData modellightdata;
-int modellightindex = -1;
 
 template<class T>
 T smoothstep(const T edge0, const T edge1, const T x)
@@ -82,13 +78,13 @@ void gl_SetDynSpriteLight(AActor *self, float x, float y, float z, subsector_t *
 
 			// This is a performance critical section of code where we cannot afford to let the compiler decide whether to inline the function or not.
 			// This will do the calculations explicitly rather than calling one of AActor's utility functions.
-			if (Displacements.size > 0)
+			if (level.Displacements.size > 0)
 			{
 				int fromgroup = light->Sector->PortalGroup;
 				int togroup = subsec->sector->PortalGroup;
 				if (fromgroup == togroup || fromgroup == 0 || togroup == 0) goto direct;
 
-				DVector2 offset = Displacements.getOffset(fromgroup, togroup);
+				DVector2 offset = level.Displacements.getOffset(fromgroup, togroup);
 				L = FVector3(x - light->X() - offset.X, y - light->Y() - offset.Y, z - light->Z());
 			}
 			else
@@ -141,7 +137,6 @@ void gl_SetDynSpriteLight(AActor *self, float x, float y, float z, subsector_t *
 		node = node->nextLight;
 	}
 	gl_RenderState.SetDynLight(out[0], out[1], out[2]);
-	modellightindex = -1;
 }
 
 void gl_SetDynSpriteLight(AActor *thing, particle_t *particle)
@@ -201,11 +196,12 @@ void BSPWalkCircle(float x, float y, float radiusSquared, const Callback &callba
 
 int gl_SetDynModelLight(AActor *self, int dynlightindex)
 {
+	static FDynLightData modellightdata;	// If this ever gets multithreaded, this variable must either be made non-static or thread_local.
+
 	// For deferred light mode this function gets called twice. First time for list upload, and second for draw.
 	if (gl.lightmethod == LM_DEFERRED && dynlightindex != -1)
 	{
 		gl_RenderState.SetDynLight(0, 0, 0);
-		modellightindex = dynlightindex;
 		return dynlightindex;
 	}
 
@@ -263,7 +259,6 @@ int gl_SetDynModelLight(AActor *self, int dynlightindex)
 	if (gl.lightmethod != LM_DEFERRED)
 	{
 		gl_RenderState.SetDynLight(0, 0, 0);
-		modellightindex = dynlightindex;
 	}
 	return dynlightindex;
 }
