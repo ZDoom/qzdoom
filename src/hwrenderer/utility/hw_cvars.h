@@ -1,14 +1,8 @@
+#pragma once
 
-
-#ifndef _GL_INTERN_H
-#define _GL_INTERN_H
 
 #include "r_defs.h"
 #include "c_cvars.h"
-
-#ifdef _MSC_VER
-#pragma warning(disable:4244)
-#endif
 
 EXTERN_CVAR(Bool,gl_enhanced_nightvision)
 EXTERN_CVAR(Int, screenblocks);
@@ -23,7 +17,7 @@ EXTERN_CVAR(Int, gl_weaponlight)
 
 EXTERN_CVAR (Bool, gl_lights);
 EXTERN_CVAR (Bool, gl_attachedlights);
-EXTERN_CVAR (Bool, gl_lights_checkside);
+
 EXTERN_CVAR (Bool, gl_light_sprites);
 EXTERN_CVAR (Bool, gl_light_particles);
 EXTERN_CVAR (Bool, gl_light_shadowmap);
@@ -63,4 +57,16 @@ EXTERN_CVAR(Float, gl_ssao_blur_amount)
 EXTERN_CVAR(Int, gl_debug_level)
 EXTERN_CVAR(Bool, gl_debug_breakpoint)
 
-#endif // _GL_INTERN_H
+
+EXTERN_CVAR(Bool, gl_usecolorblending)
+EXTERN_CVAR(Bool, gl_spritebrightfog)
+EXTERN_CVAR(Bool, gl_sprite_blend)
+EXTERN_CVAR(Int, gl_spriteclip)
+EXTERN_CVAR(Float, gl_sclipthreshold)
+EXTERN_CVAR(Float, gl_sclipfactor)
+EXTERN_CVAR(Int, gl_particles_style)
+EXTERN_CVAR(Int, gl_billboard_mode)
+EXTERN_CVAR(Bool, gl_billboard_faces_camera)
+EXTERN_CVAR(Bool, gl_billboard_particles)
+EXTERN_CVAR(Int, gl_enhanced_nv_stealth)
+EXTERN_CVAR(Int, gl_fuzztype)

@@ -27,31 +27,21 @@
 */
 
 #include "gl/system/gl_system.h"
-#include "m_swap.h"
 #include "v_video.h"
-#include "doomstat.h"
 #include "m_png.h"
-#include "m_crc32.h"
-#include "vectors.h"
-#include "v_palette.h"
 #include "templates.h"
-#include "textures/skyboxtexture.h"
 
 #include "gl/system/gl_interface.h"
 #include "gl/system/gl_framebuffer.h"
 #include "gl/renderer/gl_renderer.h"
 #include "gl/renderer/gl_renderbuffers.h"
-#include "gl/renderer/gl_renderstate.h"
-#include "gl/renderer/gl_lightdata.h"
-#include "gl/textures/gl_hwtexture.h"
 #include "gl/textures/gl_samplers.h"
-#include "gl/utility/gl_clock.h"
+#include "hwrenderer/utility/hw_clock.h"
 #include "gl/data/gl_vertexbuffer.h"
+#include "gl/models/gl_models.h"
 #include "gl_debug.h"
 #include "r_videoscale.h"
 
-EXTERN_CVAR (Float, vid_brightness)
-EXTERN_CVAR (Float, vid_contrast)
 EXTERN_CVAR (Bool, vid_vsync)
 
 CVAR(Bool, gl_aalines, false, CVAR_ARCHIVE)
@@ -60,12 +50,11 @@ FGLRenderer *GLRenderer;
 
 void gl_LoadExtensions();
 void gl_PrintStartupLog();
-void gl_SetupMenu();
 
 CUSTOM_CVAR(Int, vid_hwgamma, 2, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
 	if (self < 0 || self > 2) self = 2;
-	if (GLRenderer != NULL && GLRenderer->framebuffer != NULL) GLRenderer->framebuffer->DoSetGamma();
+	if (screen != nullptr) screen->SetGamma();
 }
 
 //==========================================================================
@@ -94,8 +83,9 @@ OpenGLFrameBuffer::OpenGLFrameBuffer(void *hMonitor, int width, int height, int 
 	InitializeState();
 	mDebug = std::make_shared<FGLDebug>();
 	mDebug->Update();
-	gl_SetupMenu();
-	DoSetGamma();
+	SetGamma();
+	hwcaps = gl.flags;
+	if (gl.legacyMode) hwcaps |= RFL_NO_SHADERS;
 }
 
 OpenGLFrameBuffer::~OpenGLFrameBuffer()
@@ -329,7 +319,7 @@ void OpenGLFrameBuffer::SetVSync(bool vsync)
 //
 //===========================================================================
 
-void OpenGLFrameBuffer::DoSetGamma()
+void OpenGLFrameBuffer::SetGamma()
 {
 	bool useHWGamma = m_supportsGamma && ((vid_hwgamma == 0) || (vid_hwgamma == 2 && IsFullscreen()));
 	if (useHWGamma)
@@ -337,21 +327,7 @@ void OpenGLFrameBuffer::DoSetGamma()
 		uint16_t gammaTable[768];
 
 		// This formula is taken from Doomsday
-		float gamma = clamp<float>(Gamma, 0.1f, 4.f);
-		float contrast = clamp<float>(vid_contrast, 0.1f, 3.f);
-		float bright = clamp<float>(vid_brightness, -0.8f, 0.8f);
-
-		double invgamma = 1 / gamma;
-		double norm = pow(255., invgamma - 1);
-
-		for (int i = 0; i < 256; i++)
-		{
-			double val = i * contrast - (contrast - 1) * 127;
-			val += bright * 128;
-			if(gamma != 1) val = pow(val, invgamma) / norm;
-
-			gammaTable[i] = gammaTable[i + 256] = gammaTable[i + 512] = (uint16_t)clamp<double>(val*256, 0, 0xffff);
-		}
+		BuildGammaTable(gammaTable);
 		SetGammaTable(gammaTable);
 
 		HWGammaActive = true;
@@ -361,24 +337,6 @@ void OpenGLFrameBuffer::DoSetGamma()
 		ResetGammaTable();
 		HWGammaActive = false;
 	}
-}
-
-bool OpenGLFrameBuffer::SetGamma(float gamma)
-{
-	DoSetGamma();
-	return true;
-}
-
-bool OpenGLFrameBuffer::SetBrightness(float bright)
-{
-	DoSetGamma();
-	return true;
-}
-
-bool OpenGLFrameBuffer::SetContrast(float contrast)
-{
-	DoSetGamma();
-	return true;
 }
 
 //===========================================================================
@@ -396,6 +354,41 @@ void OpenGLFrameBuffer::SetTextureFilterMode()
 {
 	if (GLRenderer != nullptr && GLRenderer->mSamplerManager != nullptr) GLRenderer->mSamplerManager->SetTextureFilterMode();
 }
+
+IHardwareTexture *OpenGLFrameBuffer::CreateHardwareTexture(FTexture *tex) 
+{ 
+	return new FHardwareTexture(tex->bNoCompress);
+}
+
+FModelRenderer *OpenGLFrameBuffer::CreateModelRenderer(int mli) 
+{
+	return new FGLModelRenderer(mli);
+}
+
+
+void OpenGLFrameBuffer::UnbindTexUnit(int no)
+{
+	FHardwareTexture::Unbind(no);
+}
+
+void OpenGLFrameBuffer::FlushTextures()
+{
+	if (GLRenderer) GLRenderer->FlushTextures();
+}
+
+void OpenGLFrameBuffer::TextureFilterChanged()
+{
+	if (GLRenderer != NULL && GLRenderer->mSamplerManager != NULL) GLRenderer->mSamplerManager->SetTextureFilterMode();
+}
+
+void OpenGLFrameBuffer::ResetFixedColormap()
+{
+	if (GLRenderer != nullptr && GLRenderer->mShaderManager != nullptr)
+	{
+		GLRenderer->mShaderManager->ResetFixedColormap();
+	}
+}
+
 
 void OpenGLFrameBuffer::UpdatePalette()
 {
@@ -454,10 +447,9 @@ void OpenGLFrameBuffer::SetClearColor(int color)
 //
 //
 //==========================================================================
-bool OpenGLFrameBuffer::Begin2D(bool copy3d)
+void OpenGLFrameBuffer::Begin2D(bool copy3d)
 {
 	Super::Begin2D(copy3d);
-	ClearClipRect();
 	gl_RenderState.mViewMatrix.loadIdentity();
 	gl_RenderState.mProjectionMatrix.ortho(0, GetWidth(), GetHeight(), 0, -1.0f, 1.0f);
 	gl_RenderState.ApplyMatrices();
@@ -476,7 +468,6 @@ bool OpenGLFrameBuffer::Begin2D(bool copy3d)
 
 	if (GLRenderer != NULL)
 			GLRenderer->Begin2D();
-	return true;
 }
 
 //===========================================================================
@@ -549,7 +540,6 @@ void OpenGLFrameBuffer::GameRestart()
 	memcpy (SourcePalette, GPalette.BaseColors, sizeof(PalEntry)*256);
 	UpdatePalette ();
 	ScreenshotBuffer = NULL;
-	GLRenderer->GetSpecialTextures();
 }
 
 

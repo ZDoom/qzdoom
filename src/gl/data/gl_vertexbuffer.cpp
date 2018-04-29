@@ -29,9 +29,6 @@
 #include "doomtype.h"
 #include "p_local.h"
 #include "r_state.h"
-#include "m_argv.h"
-#include "c_cvars.h"
-#include "g_levellocals.h"
 #include "gl/system/gl_interface.h"
 #include "gl/renderer/gl_renderer.h"
 #include "gl/shaders/gl_shader.h"
@@ -160,13 +157,9 @@ FFlatVertexBuffer::FFlatVertexBuffer(int width, int height)
 	mIndex = mCurIndex = 0;
 	mNumReserved = NUM_RESERVED;
 
-	if (gl.buffermethod == BM_DEFERRED)
-	{
-		Map();
-		memcpy(map, &vbo_shadowdata[0], mNumReserved * sizeof(FFlatVertex));
-		Unmap();
-	}
-
+	Map();
+	memcpy(map, &vbo_shadowdata[0], mNumReserved * sizeof(FFlatVertex));
+	Unmap();
 }
 
 FFlatVertexBuffer::~FFlatVertexBuffer()

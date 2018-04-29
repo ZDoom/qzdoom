@@ -26,7 +26,8 @@
 #include <string.h>
 #include "gl/system/gl_interface.h"
 #include "r_data/matrix.h"
-#include "gl/textures/gl_material.h"
+#include "hwrenderer/scene//hw_drawstructs.h"
+#include "hwrenderer/textures/hw_material.h"
 #include "c_cvars.h"
 #include "r_defs.h"
 #include "r_data/r_translate.h"
@@ -34,6 +35,7 @@
 
 class FVertexBuffer;
 class FShader;
+struct GLSectorPlane;
 extern TArray<VSMatrix> gl_MatrixStack;
 
 EXTERN_CVAR(Bool, gl_direct_state_change)
@@ -82,7 +84,6 @@ class FRenderState
 	bool mBrightmapEnabled;
 	bool mColorMask[4];
 	bool currentColorMask[4];
-	int mLightIndex;
 	int mSpecialEffect;
 	int mTextureMode;
 	int mDesaturation;
@@ -327,11 +328,6 @@ public:
 		}
 	}
 
-	void SetLightIndex(int n)
-	{
-		mLightIndex = n;
-	}
-
 	void EnableBrightmap(bool on)
 	{
 		mBrightmapEnabled = on;
@@ -536,6 +532,15 @@ public:
 	// Backwards compatibility crap follows
 	void ApplyFixedFunction();
 	void DrawColormapOverlay();
+
+	void SetPlaneTextureRotation(GLSectorPlane *plane, FMaterial *texture)
+	{
+		if (hw_SetPlaneTextureRotation(plane, texture, mTextureMatrix))
+		{
+			EnableTextureMatrix(true);
+		}
+	}
+
 };
 
 extern FRenderState gl_RenderState;

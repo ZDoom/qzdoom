@@ -27,13 +27,9 @@
 
 #include "gl/system/gl_system.h"
 #include "files.h"
-#include "m_swap.h"
 #include "v_video.h"
-#include "r_data/r_translate.h"
 #include "m_png.h"
-#include "m_crc32.h"
 #include "w_wad.h"
-#include "vectors.h"
 #include "doomstat.h"
 #include "i_time.h"
 #include "p_effect.h"
@@ -42,7 +38,7 @@
 
 #include "gl/system/gl_interface.h"
 #include "gl/system/gl_framebuffer.h"
-#include "gl/system/gl_cvars.h"
+#include "hwrenderer/utility/hw_cvars.h"
 #include "gl/system/gl_debug.h"
 #include "gl/renderer/gl_renderer.h"
 #include "gl/renderer/gl_lightdata.h"
@@ -52,8 +48,6 @@
 #include "gl/scene/gl_drawinfo.h"
 #include "gl/scene/gl_scenedrawer.h"
 #include "gl/scene/gl_swscene.h"
-#include "gl/scene/gl_portal.h"
-#include "gl/shaders/gl_shader.h"
 #include "gl/shaders/gl_ambientshader.h"
 #include "gl/shaders/gl_bloomshader.h"
 #include "gl/shaders/gl_blurshader.h"
@@ -64,13 +58,9 @@
 #include "gl/shaders/gl_presentshader.h"
 #include "gl/shaders/gl_present3dRowshader.h"
 #include "gl/shaders/gl_shadowmapshader.h"
-#include "gl/shaders/gl_postprocessshader.h"
 #include "gl/shaders/gl_postprocessshaderinstance.h"
 #include "gl/stereo3d/gl_stereo3d.h"
-#include "gl/textures/gl_material.h"
 #include "gl/textures/gl_samplers.h"
-#include "gl/utility/gl_clock.h"
-#include "gl/models/gl_models.h"
 #include "gl/dynlights/gl_lightbuffer.h"
 #include "r_videoscale.h"
 
@@ -105,7 +95,6 @@ FGLRenderer::FGLRenderer(OpenGLFrameBuffer *fb)
 	mViewVector = FVector2(0,0);
 	mVBO = nullptr;
 	mSkyVBO = nullptr;
-	gl_spriteindex = 0;
 	mShaderManager = nullptr;
 	mLights = nullptr;
 	mTonemapPalette = nullptr;
@@ -167,8 +156,6 @@ void FGLRenderer::Initialize(int width, int height)
 	{
 		legacyShaders = new LegacyShaderContainer;
 	}
-
-	GetSpecialTextures();
 
 	// needed for the core profile, because someone decided it was a good idea to remove the default VAO.
 	if (!gl.legacyMode)
@@ -238,16 +225,6 @@ FGLRenderer::~FGLRenderer()
 	delete mCustomPostProcessShaders;
 	delete mFXAAShader;
 	delete mFXAALumaShader;
-}
-
-
-void FGLRenderer::GetSpecialTextures()
-{
-	if (gl.legacyMode) glLight = TexMan.CheckForTexture("glstuff/gllight.png", ETextureType::MiscPatch);
-	glPart2 = TexMan.CheckForTexture("glstuff/glpart2.png", ETextureType::MiscPatch);
-	glPart = TexMan.CheckForTexture("glstuff/glpart.png", ETextureType::MiscPatch);
-	mirrorTexture = TexMan.CheckForTexture("glstuff/mirror.png", ETextureType::MiscPatch);
-
 }
 
 //==========================================================================

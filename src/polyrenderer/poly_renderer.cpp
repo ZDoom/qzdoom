@@ -62,11 +62,6 @@ void PolyRenderer::RenderView(player_t *player, DCanvas *target)
 
 	RenderTarget = target;
 	RenderToCanvas = false;
-	int width = SCREENWIDTH;
-	int height = SCREENHEIGHT;
-	float trueratio;
-	ActiveRatio(width, height, &trueratio);
-	//viewport->SetViewport(&Thread, width, height, trueratio);
 
 	RenderActorView(player->mo, false);
 
@@ -78,24 +73,40 @@ void PolyRenderer::RenderView(player_t *player, DCanvas *target)
 
 void PolyRenderer::RenderViewToCanvas(AActor *actor, DCanvas *canvas, int x, int y, int width, int height, bool dontmaplines)
 {
-	const bool savedviewactive = viewactive;
+	// Save a bunch of silly globals:
+	auto savedViewpoint = Viewpoint;
+	auto savedViewwindow = Viewwindow;
+	auto savedviewwindowx = viewwindowx;
+	auto savedviewwindowy = viewwindowy;
+	auto savedviewwidth = viewwidth;
+	auto savedviewheight = viewheight;
+	auto savedviewactive = viewactive;
+	auto savedRenderTarget = RenderTarget;
 
-	viewwidth = width;
+	// Setup the view:
 	RenderTarget = canvas;
 	RenderToCanvas = true;
 	R_SetWindow(Viewpoint, Viewwindow, 12, width, height, height, true);
-	//viewport->SetViewport(&Thread, width, height, Viewwindow.WidescreenRatio);
 	viewwindowx = x;
 	viewwindowy = y;
 	viewactive = true;
 	
+	// Render:
 	RenderActorView(actor, dontmaplines);
 	Threads.MainThread()->FlushDrawQueue();
 	DrawerThreads::WaitForWorkers();
 
-	RenderTarget = nullptr;
 	RenderToCanvas = false;
+
+	// Restore silly globals:
+	Viewpoint = savedViewpoint;
+	Viewwindow = savedViewwindow;
+	viewwindowx = savedviewwindowx;
+	viewwindowy = savedviewwindowy;
+	viewwidth = savedviewwidth;
+	viewheight = savedviewheight;
 	viewactive = savedviewactive;
+	RenderTarget = savedRenderTarget;
 }
 
 void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
@@ -116,6 +127,13 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 	P_FindParticleSubsectors();
 	PO_LinkToSubsectors();
 
+	static bool firstcall = true;
+	if (firstcall)
+	{
+		swrenderer::R_InitFuzzTable(RenderTarget->GetPitch());
+		firstcall = false;
+	}
+
 	swrenderer::R_UpdateFuzzPosFrameStart();
 
 	if (APART(R_OldBlend)) NormalLight.Maps = realcolormaps.Maps;
@@ -126,28 +144,30 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 	PolyCameraLight::Instance()->SetCamera(Viewpoint, RenderTarget, actor);
 	//Viewport->SetupFreelook();
 
-	ActorRenderFlags savedflags = Viewpoint.camera->renderflags;
-	// Never draw the player unless in chasecam mode
-	if (!Viewpoint.showviewer)
-		Viewpoint.camera->renderflags |= RF_INVISIBLE;
+	ActorRenderFlags savedflags = 0;
+	if (Viewpoint.camera)
+	{
+		savedflags = Viewpoint.camera->renderflags;
+
+		// Never draw the player unless in chasecam mode
+		if (!Viewpoint.showviewer)
+			Viewpoint.camera->renderflags |= RF_INVISIBLE;
+	}
 
 	ScreenTriangle::FuzzStart = (ScreenTriangle::FuzzStart + 14) % FUZZTABLE;
 
 	ClearBuffers();
 	SetSceneViewport();
-	SetupPerspectiveMatrix();
 
-	PolyPortalViewpoint mainViewpoint;
-	mainViewpoint.WorldToView = WorldToView;
-	mainViewpoint.WorldToClip = WorldToClip;
+	PolyPortalViewpoint mainViewpoint = SetupPerspectiveMatrix();
 	mainViewpoint.StencilValue = GetNextStencilValue();
-	mainViewpoint.PortalPlane = PolyClipPlane(0.0f, 0.0f, 0.0f, 1.0f);
+	Scene.CurrentViewpoint = &mainViewpoint;
 	Scene.Render(&mainViewpoint);
-	Skydome.Render(Threads.MainThread(), WorldToView, WorldToClip);
-	Scene.RenderTranslucent(&mainViewpoint);
 	PlayerSprites.Render(Threads.MainThread());
+	Scene.CurrentViewpoint = nullptr;
 
-	Viewpoint.camera->renderflags = savedflags;
+	if (Viewpoint.camera)
+		Viewpoint.camera->renderflags = savedflags;
 	interpolator.RestoreInterpolations ();
 	
 	NetUpdate();
@@ -189,15 +209,8 @@ void PolyRenderer::SetSceneViewport()
 	}
 }
 
-void PolyRenderer::SetupPerspectiveMatrix()
+PolyPortalViewpoint PolyRenderer::SetupPerspectiveMatrix(bool mirror)
 {
-	static bool bDidSetup = false;
-
-	if (!bDidSetup)
-	{
-		bDidSetup = true;
-	}
-
 	// We have to scale the pitch to account for the pixel stretching, because the playsim doesn't know about this and treats it as 1:1.
 	double radPitch = Viewpoint.Angles.Pitch.Normalized180().Radians();
 	double angx = cos(radPitch);
@@ -208,9 +221,12 @@ void PolyRenderer::SetupPerspectiveMatrix()
 
 	float ratio = Viewwindow.WidescreenRatio;
 	float fovratio = (Viewwindow.WidescreenRatio >= 1.3f) ? 1.333333f : ratio;
+
 	float fovy = (float)(2 * DAngle::ToDegrees(atan(tan(Viewpoint.FieldOfView.Radians() / 2) / fovratio)).Degrees);
 
-	WorldToView =
+	PolyPortalViewpoint portalViewpoint;
+
+	portalViewpoint.WorldToView =
 		Mat4f::Rotate((float)Viewpoint.Angles.Roll.Radians(), 0.0f, 0.0f, 1.0f) *
 		Mat4f::Rotate(adjustedPitch, 1.0f, 0.0f, 0.0f) *
 		Mat4f::Rotate(adjustedViewAngle, 0.0f, -1.0f, 0.0f) *
@@ -218,7 +234,14 @@ void PolyRenderer::SetupPerspectiveMatrix()
 		Mat4f::SwapYZ() *
 		Mat4f::Translate((float)-Viewpoint.Pos.X, (float)-Viewpoint.Pos.Y, (float)-Viewpoint.Pos.Z);
 
-	WorldToClip = Mat4f::Perspective(fovy, ratio, 5.0f, 65535.0f, Handedness::Right, ClipZRange::NegativePositiveW) * WorldToView;
+	portalViewpoint.Mirror = mirror;
+
+	if (mirror)
+		portalViewpoint.WorldToView = Mat4f::Scale(-1.0f, 1.0f, 1.0f) * portalViewpoint.WorldToView;
+
+	portalViewpoint.WorldToClip = Mat4f::Perspective(fovy, ratio, 5.0f, 65535.0f, Handedness::Right, ClipZRange::NegativePositiveW) * portalViewpoint.WorldToView;
+
+	return portalViewpoint;
 }
 
 cycle_t PolyCullCycles, PolyOpaqueCycles, PolyMaskedCycles, PolyDrawerWaitCycles;

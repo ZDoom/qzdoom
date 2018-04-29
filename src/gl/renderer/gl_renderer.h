@@ -9,6 +9,10 @@
 #include "gl/dynlights/gl_shadowmap.h"
 #include <functional>
 
+#ifdef _MSC_VER
+#pragma warning(disable:4244)
+#endif
+
 struct particle_t;
 class FCanvasTexture;
 class FFlatVertexBuffer;
@@ -46,27 +50,6 @@ class FShadowMapShader;
 class FCustomPostProcessShaders;
 class GLSceneDrawer;
 class SWSceneDrawer;
-
-inline float DEG2RAD(float deg)
-{
-	return deg * float(M_PI / 180.0);
-}
-
-inline float RAD2DEG(float deg)
-{
-	return deg * float(180. / M_PI);
-}
-
-enum SectorRenderFlags
-{
-	// This is used to avoid creating too many drawinfos
-	SSRF_RENDERFLOOR = 1,
-	SSRF_RENDERCEILING = 2,
-	SSRF_RENDER3DPLANES = 4,
-	SSRF_RENDERALL = 7,
-	SSRF_PROCESSED = 8,
-	SSRF_SEEN = 16,
-};
 
 struct GL_IRECT
 {
@@ -126,7 +109,6 @@ public:
 	AActor *mViewActor;
 	FShaderManager *mShaderManager;
 	FSamplerManager *mSamplerManager;
-	int gl_spriteindex;
 	unsigned int mFBID;
 	unsigned int mVAOID;
 	int mOldFBID;
@@ -156,13 +138,6 @@ public:
 	FCustomPostProcessShaders *mCustomPostProcessShaders;
 
 	FShadowMap mShadowMap;
-
-	FTextureID glLight;
-	FTextureID glPart2;
-	FTextureID glPart;
-	FTextureID mirrorTexture;
-	
-	float mSky1Pos, mSky2Pos;
 
 	FRotator mAngles;
 	FVector2 mViewVector;
@@ -213,7 +188,6 @@ public:
 	void CopyToBackbuffer(const GL_IRECT *bounds, bool applyGamma);
 	void DrawPresentTexture(const GL_IRECT &box, bool applyGamma);
 	void Flush();
-	void GetSpecialTextures();
 	void Draw2D(F2DDrawer *data);
 	void RenderTextureView(FCanvasTexture *tex, AActor *Viewpoint, double FOV);
 	void WriteSavePic(player_t *player, FileWriter *file, int width, int height);
@@ -228,24 +202,11 @@ public:
 		double originx, double originy, double scalex, double scaley,
 		DAngle rotation, const FColormap &colormap, PalEntry flatcolor, int lightlevel, int bottomclip);
 
-	int PTM_BestColor (const uint32_t *pal_in, int r, int g, int b, int first, int num);
-
 	static float GetZNear() { return 5.f; }
 	static float GetZFar() { return 65536.f; }
 };
 
-enum area_t
-{
-	area_normal,
-	area_below,
-	area_above,
-	area_default
-};
-
-
-// Global functions. Make them members of GLRenderer later?
-bool gl_CheckClip(side_t * sidedef, sector_t * frontsector, sector_t * backsector);
-sector_t * gl_FakeFlat(sector_t * sec, sector_t * dest, area_t in_area, bool back);
+#include "hwrenderer/scene/hw_fakeflat.h"
 
 struct TexFilter_s
 {

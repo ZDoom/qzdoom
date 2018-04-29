@@ -38,11 +38,8 @@
 #include "doomstat.h"
 #include "i_system.h"
 #include "w_wad.h"
-#include "w_zip.h"
-#include "v_palette.h"
 #include "m_argv.h"
 #include "m_misc.h"
-#include "c_cvars.h"
 #include "sc_man.h"
 #include "v_video.h"
 #include "gameconfigfile.h"
@@ -196,6 +193,12 @@ void FIWadManager::ParseIWadInfo(const char *fn, const char *data, int datasize,
 					else if (!sttype.CompareNoCase("STRIFE"))
 						iwad->StartupType = FStartupInfo::StrifeStartup;
 					else iwad->StartupType = FStartupInfo::DefaultStartup;
+				}
+				else if (sc.Compare("StartupSong"))
+				{
+					sc.MustGetStringName("=");
+					sc.MustGetString();
+					iwad->Song = sc.String;
 				}
 				else
 				{
@@ -769,6 +772,7 @@ const FIWADInfo *FIWadManager::FindIWAD(TArray<FString> &wadfiles, const char *i
 		DoomStartupInfo.FgColor = iwad_info->FgColor;
 	}
 	if (DoomStartupInfo.Type == 0) DoomStartupInfo.Type = iwad_info->StartupType;
+	if (DoomStartupInfo.Song.IsEmpty()) DoomStartupInfo.Song = iwad_info->Song;
 	I_SetIWADInfo();
 	return iwad_info;
 }

@@ -31,11 +31,10 @@
 #include "v_video.h"
 #include "doomstat.h"
 #include "d_player.h"
-#include "g_level.h"
 #include "g_levellocals.h"
 
 #include "gl/system/gl_interface.h"
-#include "gl/system/gl_cvars.h"
+#include "hwrenderer/utility/hw_cvars.h"
 #include "gl/renderer/gl_renderer.h"
 #include "gl/renderer/gl_lightdata.h"
 #include "gl/renderer/gl_renderstate.h"
@@ -43,10 +42,9 @@
 #include "gl/scene/gl_drawinfo.h"
 #include "gl/scene/gl_scenedrawer.h"
 #include "gl/models/gl_models.h"
-#include "gl/shaders/gl_shader.h"
-#include "gl/textures/gl_material.h"
 #include "gl/renderer/gl_quaddrawer.h"
 #include "gl/stereo3d/gl_stereo3d.h"
+#include "gl/dynlights/gl_lightbuffer.h"
 
 EXTERN_CVAR (Bool, r_drawplayersprites)
 EXTERN_CVAR(Float, transsouls)
@@ -275,10 +273,10 @@ void GLSceneDrawer::DrawPlayerSprites(sector_t * viewsector, bool hudModelStep)
 	}
 	else
 	{
-		fakesec = gl_FakeFlat(viewsector, &fs, in_area, false);
+		fakesec = hw_FakeFlat(viewsector, &fs, in_area, false);
 
 		// calculate light level for weapon sprites
-		lightlevel = gl_ClampLight(fakesec->lightlevel);
+		lightlevel = hw_ClampLight(fakesec->lightlevel);
 
 		// calculate colormap for weapon sprites
 		if (viewsector->e->XFloor.ffloors.Size() && !(level.flags3 & LEVEL3_NOCOLOREDSPRITELIGHTING))
@@ -300,7 +298,7 @@ void GLSceneDrawer::DrawPlayerSprites(sector_t * viewsector, bool hudModelStep)
 				if (lightbottom<player->viewz) 
 				{
 					cm = lightlist[i].extra_colormap;
-					lightlevel = gl_ClampLight(*lightlist[i].p_lightlevel);
+					lightlevel = hw_ClampLight(*lightlist[i].p_lightlevel);
 					break;
 				}
 			}
@@ -311,7 +309,7 @@ void GLSceneDrawer::DrawPlayerSprites(sector_t * viewsector, bool hudModelStep)
 			if (level.flags3 & LEVEL3_NOCOLOREDSPRITELIGHTING) cm.ClearColor();
 		}
 
-		lightlevel = gl_CalcLightLevel(lightlevel, getExtraLight(), true);
+		lightlevel = hw_CalcLightLevel(lightlevel, getExtraLight(), true);
 
 		if (level.lightmode == 8 || lightlevel < 92)
 		{
@@ -452,10 +450,16 @@ void GLSceneDrawer::DrawPlayerSprites(sector_t * viewsector, bool hudModelStep)
 				if (gl_lights && GLRenderer->mLightCount && FixedColormap == CM_DEFAULT && gl_light_sprites)
 				{
 					FSpriteModelFrame *smf = playermo->player->ReadyWeapon ? gl_FindModelFrame(playermo->player->ReadyWeapon->GetClass(), psp->GetState()->sprite, psp->GetState()->GetFrame(), false) : nullptr;
-					if (smf)
+					if (smf && !gl.legacyMode)
+					{
 						gl_SetDynModelLight(playermo, weapondynlightindex[psp]);
+					}
 					else
-						gl_SetDynSpriteLight(playermo, NULL);
+					{
+						float out[3];
+						gl_drawinfo->GetDynSpriteLight(playermo, nullptr, out);
+						gl_RenderState.SetDynLight(out[0], out[1], out[2]);
+					}
 				}
 				SetColor(ll, 0, cmc, trans, true);
 			}

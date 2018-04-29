@@ -41,25 +41,19 @@
 #include "c_dispatch.h"
 #include "c_console.h"
 #include "v_video.h"
-#include "m_swap.h"
 #include "w_wad.h"
-#include "v_text.h"
 #include "s_sound.h"
 #include "gi.h"
 #include "doomstat.h"
 #include "g_level.h"
 #include "d_net.h"
-#include "colormatcher.h"
-#include "v_palette.h"
 #include "d_player.h"
 #include "serializer.h"
-#include "gstrings.h"
 #include "r_utility.h"
 #include "cmdlib.h"
 #include "g_levellocals.h"
 #include "vm.h"
 #include "p_acs.h"
-#include "r_data/r_translate.h"
 #include "sbarinfo.h"
 #include "events.h"
 
@@ -658,7 +652,6 @@ void DBaseStatusBar::AttachMessage (DHUDMessageBase *msg, uint32_t id, int layer
 {
 	DHUDMessageBase *old = NULL;
 	DHUDMessageBase **prev;
-	DObject *container = this;
 
 	old = (id == 0 || id == 0xFFFFFFFF) ? NULL : DetachMessage (id);
 	if (old != NULL)
@@ -679,14 +672,13 @@ void DBaseStatusBar::AttachMessage (DHUDMessageBase *msg, uint32_t id, int layer
 	// it gets drawn back to front.)
 	while (*prev != NULL && (*prev)->SBarID > id)
 	{
-		container = *prev;
 		prev = &(*prev)->Next;
 	}
 
 	msg->Next = *prev;
 	msg->SBarID = id;
 	*prev = msg;
-	GC::WriteBarrier(container, msg);
+	GC::WriteBarrier(msg);
 }
 
 DEFINE_ACTION_FUNCTION(DBaseStatusBar, AttachMessage)

@@ -28,23 +28,10 @@
 #include "gl/system/gl_system.h"
 #include "gi.h"
 #include "m_png.h"
-#include "m_random.h"
-#include "st_stuff.h"
-#include "dobject.h"
-#include "doomstat.h"
-#include "g_level.h"
-#include "r_data/r_interpolate.h"
 #include "r_utility.h"
 #include "d_player.h"
-#include "p_effect.h"
-#include "sbar.h"
-#include "po_man.h"
-#include "r_utility.h"
-#include "p_local.h"
-#include "colormatcher.h"
-#include "gl/system/gl_interface.h"
 #include "gl/system/gl_framebuffer.h"
-#include "gl/system/gl_cvars.h"
+#include "hwrenderer/utility/hw_cvars.h"
 #include "gl/system/gl_debug.h"
 #include "gl/renderer/gl_lightdata.h"
 #include "gl/renderer/gl_renderstate.h"
@@ -60,9 +47,9 @@
 #include "gl/shaders/gl_lensshader.h"
 #include "gl/shaders/gl_fxaashader.h"
 #include "gl/shaders/gl_presentshader.h"
-#include "gl/shaders/gl_postprocessshader.h"
 #include "gl/shaders/gl_postprocessshaderinstance.h"
 #include "gl/stereo3d/gl_stereo3d.h"
+#include "gl/textures/gl_hwtexture.h"
 #include "r_videoscale.h"
 
 //==========================================================================
@@ -614,7 +601,8 @@ void FGLRenderer::CreateTonemapPalette()
 			{
 				for (int b = 0; b < 64; b++)
 				{
-					PalEntry color = GPalette.BaseColors[(uint8_t)PTM_BestColor((uint32_t *)GPalette.BaseColors, (r << 2) | (r >> 4), (g << 2) | (g >> 4), (b << 2) | (b >> 4), 0, 256)];
+					PalEntry color = GPalette.BaseColors[(uint8_t)PTM_BestColor((uint32_t *)GPalette.BaseColors, (r << 2) | (r >> 4), (g << 2) | (g >> 4), (b << 2) | (b >> 4), 
+						gl_paltonemap_reverselookup, gl_paltonemap_powtable, 0, 256)];
 					int index = ((r * 64 + g) * 64 + b) * 4;
 					lut[index] = color.b;
 					lut[index + 1] = color.g;
@@ -925,43 +913,5 @@ void FGLRenderer::ClearBorders()
 		glClear(GL_COLOR_BUFFER_BIT);
 	}
 	glDisable(GL_SCISSOR_TEST);
-}
-
-
-// [SP] Re-implemented BestColor for more precision rather than speed. This function is only ever called once until the game palette is changed.
-
-int FGLRenderer::PTM_BestColor (const uint32_t *pal_in, int r, int g, int b, int first, int num)
-{
-	const PalEntry *pal = (const PalEntry *)pal_in;
-	static double powtable[256];
-	static bool firstTime = true;
-	static float trackpowtable = 0.;
-
-	double fbestdist = DBL_MAX, fdist;
-	int bestcolor = 0;
-
-	if (firstTime || trackpowtable != gl_paltonemap_powtable)
-	{
-		trackpowtable = gl_paltonemap_powtable;
-		firstTime = false;
-		for (int x = 0; x < 256; x++) powtable[x] = pow((double)x/255, (double)gl_paltonemap_powtable);
-	}
-
-	for (int color = first; color < num; color++)
-	{
-		double x = powtable[abs(r-pal[color].r)];
-		double y = powtable[abs(g-pal[color].g)];
-		double z = powtable[abs(b-pal[color].b)];
-		fdist = x + y + z;
-		if (color == first || ((gl_paltonemap_reverselookup)?(fdist <= fbestdist):(fdist < fbestdist)))
-		{
-			if (fdist == 0 && !gl_paltonemap_reverselookup)
-				return color;
-
-			fbestdist = fdist;
-			bestcolor = color;
-		}
-	}
-	return bestcolor;
 }
 

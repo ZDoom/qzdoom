@@ -37,26 +37,16 @@
 
 #include "doomtype.h"
 #include "v_video.h"
-#include "m_swap.h"
 #include "r_defs.h"
 #include "r_utility.h"
 #include "r_renderer.h"
-#include "r_data/r_translate.h"
 #include "doomstat.h"
-#include "v_palette.h"
 #include "gi.h"
 #include "g_level.h"
-#include "st_stuff.h"
 #include "sbar.h"
 
-#include "i_system.h"
 #include "i_video.h"
-#include "templates.h"
-#include "d_net.h"
-#include "colormatcher.h"
-#include "r_data/colormaps.h"
 #include "g_levellocals.h"
-#include "textures.h"
 #include "vm.h"
 
 CUSTOM_CVAR(Int, uiscale, 0, CVAR_ARCHIVE | CVAR_NOINITCALL)
@@ -367,15 +357,9 @@ static inline double ListGetDouble(Va_List &tags)
 	return va_arg(tags.list, double);
 }
 
-// These two options are only being used by the D3D version of the HUD weapon drawer, they serve no purpose anywhere else.
 static inline FSpecialColormap * ListGetSpecialColormap(Va_List &tags)
 {
 	return va_arg(tags.list, FSpecialColormap *);
-}
-
-static inline FColormapStyle * ListGetColormapStyle(Va_List &tags)
-{
-	return va_arg(tags.list, FColormapStyle *);
 }
 
 static void ListEnd(VMVa_List &tags)
@@ -406,12 +390,6 @@ static inline double ListGetDouble(VMVa_List &tags)
 }
 
 static inline FSpecialColormap * ListGetSpecialColormap(VMVa_List &tags)
-{
-	ThrowAbortException(X_OTHER, "Invalid tag in draw function");
-	return nullptr;
-}
-
-static inline FColormapStyle * ListGetColormapStyle(VMVa_List &tags)
 {
 	ThrowAbortException(X_OTHER, "Invalid tag in draw function");
 	return nullptr;

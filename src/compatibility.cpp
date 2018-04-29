@@ -41,20 +41,17 @@
 
 #include "compatibility.h"
 #include "sc_man.h"
-#include "cmdlib.h"
-#include "doomdef.h"
-#include "doomdata.h"
 #include "doomstat.h"
 #include "c_dispatch.h"
 #include "gi.h"
 #include "g_level.h"
 #include "p_lnspec.h"
 #include "p_tags.h"
-#include "r_state.h"
 #include "w_wad.h"
 #include "textures.h"
 #include "g_levellocals.h"
 #include "vm.h"
+#include "actor.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -72,28 +69,6 @@ enum
 	SLOT_COMPAT,
 	SLOT_COMPAT2,
 	SLOT_BCOMPAT
-};
-
-enum
-{
-	CP_END,
-	CP_CLEARFLAGS,
-	CP_SETFLAGS,
-	CP_SETSPECIAL,
-	CP_CLEARSPECIAL,
-	CP_SETACTIVATION,
-	CP_SETSECTOROFFSET,
-	CP_SETSECTORSPECIAL,
-	CP_SETWALLYSCALE,
-	CP_SETWALLTEXTURE,
-	CP_SETTHINGZ,
-	CP_SETTAG,
-	CP_SETTHINGFLAGS,
-	CP_SETVERTEX,
-	CP_SETTHINGSKILLS,
-	CP_SETSECTORTEXTURE,
-	CP_SETSECTORLIGHT,
-	CP_SETLINESECTORREF,
 };
 
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
@@ -397,6 +372,22 @@ DEFINE_ACTION_FUNCTION(DLevelCompatibility, SetThingSkills)
 	return 0;
 }
 
+DEFINE_ACTION_FUNCTION(DLevelCompatibility, SetThingXY)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(thing);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+
+	if ((unsigned)thing < MapThingsConverted.Size())
+	{
+		auto& pos = MapThingsConverted[thing].pos;
+		pos.X = x;
+		pos.Y = y;
+	}
+	return 0;
+}
+
 DEFINE_ACTION_FUNCTION(DLevelCompatibility, SetThingZ)
 {
 	PARAM_PROLOGUE;
@@ -457,6 +448,13 @@ DEFINE_ACTION_FUNCTION(DLevelCompatibility, SetLineSectorRef)
 	}
 	ForceNodeBuild = true;
 	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(DLevelCompatibility, GetDefaultActor)
+{
+	PARAM_PROLOGUE;
+	PARAM_NAME(actorclass);
+	ACTION_RETURN_OBJECT(GetDefaultByName(actorclass));
 }
 
 

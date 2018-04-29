@@ -30,13 +30,10 @@
 #include "tarray.h"
 #include "doomtype.h"
 #include "m_argv.h"
-#include "zstring.h"
 #include "version.h"
-#include "i_system.h"
-#include "v_text.h"
-#include "r_data/r_translate.h"
+#include "v_video.h"
 #include "gl/system/gl_interface.h"
-#include "gl/system/gl_cvars.h"
+#include "hwrenderer/utility/hw_cvars.h"
 
 void gl_PatchMenu();
 static TArray<FString>  m_Extensions;

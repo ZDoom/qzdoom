@@ -28,12 +28,11 @@
 #include "gl_stereo_leftright.h"
 #include "vectors.h" // RAD2DEG
 #include "doomtype.h" // M_PI
-#include "gl/system/gl_cvars.h"
+#include "hwrenderer/utility/hw_cvars.h"
 #include "gl/system/gl_system.h"
 #include "gl/renderer/gl_renderstate.h"
 #include "gl/renderer/gl_renderer.h"
 #include "gl/renderer/gl_renderbuffers.h"
-#include <cmath>
 
 EXTERN_CVAR(Float, vr_screendist)
 EXTERN_CVAR(Float, vr_hunits_per_meter)

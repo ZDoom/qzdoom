@@ -34,22 +34,13 @@
 
 #include "a_pickups.h"
 #include "thingdef.h"
-#include "sc_man.h"
 #include "c_console.h"
-#include "c_dispatch.h"
-#include "doomerrors.h"
 #include "w_wad.h"
-#include "cmdlib.h"
-#include "m_alloc.h"
 #include "zcc_parser.h"
 #include "zcc-parse.h"
 #include "zcc_compile.h"
 #include "v_text.h"
 #include "p_lnspec.h"
-#include "i_system.h"
-#include "gdtoa.h"
-#include "backend/vmbuilder.h"
-#include "types.h"
 
 FSharedStringArena VMStringConstants;
 bool isActor(PContainerType *type);
@@ -1241,6 +1232,7 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 		if (field->Flags & ZCC_Protected) varflags |= VARF_Protected;
 		if (field->Flags & ZCC_Deprecated) varflags |= VARF_Deprecated;
 		if (field->Flags & ZCC_ReadOnly) varflags |= VARF_ReadOnly;
+		if (field->Flags & ZCC_Internal) varflags |= VARF_InternalAccess;
 		if (field->Flags & ZCC_Transient) varflags |= VARF_Transient;
 		if (mVersion >= MakeVersion(2, 4, 0))
 		{
@@ -2327,7 +2319,7 @@ void ZCCCompiler::CompileFunction(ZCC_StructWork *c, ZCC_FuncDeclarator *f, bool
 			} while (t != f->Type);
 		}
 
-		int notallowed = ZCC_Latent | ZCC_Meta | ZCC_ReadOnly | ZCC_Abstract;
+		int notallowed = ZCC_Latent | ZCC_Meta | ZCC_ReadOnly | ZCC_Abstract | ZCC_Internal;
 
 		if (f->Flags & notallowed)
 		{

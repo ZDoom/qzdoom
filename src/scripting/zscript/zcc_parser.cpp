@@ -33,12 +33,8 @@
 
 #include "dobject.h"
 #include "sc_man.h"
-#include "c_console.h"
-#include "c_dispatch.h"
 #include "w_wad.h"
 #include "cmdlib.h"
-#include "m_alloc.h"
-#include "i_system.h"
 #include "m_argv.h"
 #include "v_text.h"
 #include "version.h"
@@ -149,6 +145,7 @@ static void InitTokenMap()
 	TOKENDEF (TK_Deprecated,	ZCC_DEPRECATED);
 	TOKENDEF (TK_Version,		ZCC_VERSION);
 	TOKENDEF (TK_ReadOnly,		ZCC_READONLY);
+	TOKENDEF (TK_Internal,		ZCC_INTERNAL);
 	TOKENDEF ('{',				ZCC_LBRACE);
 	TOKENDEF ('}',				ZCC_RBRACE);
 	TOKENDEF (TK_Struct,		ZCC_STRUCT);

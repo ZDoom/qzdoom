@@ -30,21 +30,12 @@
 #include "c_dispatch.h"
 #include "p_local.h"
 #include "p_effect.h"
-#include "vectors.h"
 #include "g_level.h"
 #include "g_levellocals.h"
 #include "actorinlines.h"
-
-#include "gl/system/gl_cvars.h"
-#include "gl/renderer/gl_renderer.h"
-#include "gl/renderer/gl_lightdata.h"
-#include "gl/dynlights/gl_dynlight.h"
-#include "gl/scene/gl_drawinfo.h"
-#include "gl/scene/gl_portal.h"
-#include "gl/shaders/gl_shader.h"
-#include "gl/textures/gl_material.h"
-#include "gl/dynlights/gl_lightbuffer.h"
-
+#include "hwrenderer/dynlights/hw_dynlightdata.h"
+#include "hwrenderer/dynlights/hw_shadowmap.h"
+#include "hwrenderer/scene/hw_drawinfo.h"
 
 template<class T>
 T smoothstep(const T edge0, const T edge1, const T x)
@@ -59,13 +50,13 @@ T smoothstep(const T edge0, const T edge1, const T x)
 //
 //==========================================================================
 
-void gl_SetDynSpriteLight(AActor *self, float x, float y, float z, subsector_t * subsec)
+void HWDrawInfo::GetDynSpriteLight(AActor *self, float x, float y, float z, subsector_t * subsec, float *out)
 {
 	ADynamicLight *light;
 	float frac, lr, lg, lb;
 	float radius;
-	float out[3] = { 0.0f, 0.0f, 0.0f };
 	
+	out[0] = out[1] = out[2] = 0.f;
 	// Go through both light lists
 	FLightNode * node = subsec->lighthead;
 	while (node)
@@ -114,7 +105,7 @@ void gl_SetDynSpriteLight(AActor *self, float x, float y, float z, subsector_t *
 					frac *= (float)smoothstep(light->SpotOuterAngle.Cos(), light->SpotInnerAngle.Cos(), cosDir);
 				}
 
-				if (frac > 0 && GLRenderer->mShadowMap.ShadowTest(light, { x, y, z }))
+				if (frac > 0 && (!light->shadowmapped || mShadowMap->ShadowTest(light, { x, y, z })))
 				{
 					lr = light->GetRed() / 255.0f;
 					lg = light->GetGreen() / 255.0f;
@@ -136,18 +127,17 @@ void gl_SetDynSpriteLight(AActor *self, float x, float y, float z, subsector_t *
 		}
 		node = node->nextLight;
 	}
-	gl_RenderState.SetDynLight(out[0], out[1], out[2]);
 }
 
-void gl_SetDynSpriteLight(AActor *thing, particle_t *particle)
+void HWDrawInfo::GetDynSpriteLight(AActor *thing, particle_t *particle, float *out)
 {
 	if (thing != NULL)
 	{
-		gl_SetDynSpriteLight(thing, thing->X(), thing->Y(), thing->Center(), thing->subsector);
+		GetDynSpriteLight(thing, thing->X(), thing->Y(), thing->Center(), thing->subsector, out);
 	}
 	else if (particle != NULL)
 	{
-		gl_SetDynSpriteLight(NULL, particle->Pos.X, particle->Pos.Y, particle->Pos.Z, particle->subsector);
+		GetDynSpriteLight(NULL, particle->Pos.X, particle->Pos.Y, particle->Pos.Z, particle->subsector, out);
 	}
 }
 
@@ -194,31 +184,19 @@ void BSPWalkCircle(float x, float y, float radiusSquared, const Callback &callba
 		BSPNodeWalkCircle(level.HeadNode(), x, y, radiusSquared, callback);
 }
 
-int gl_SetDynModelLight(AActor *self, int dynlightindex)
+// static so that we build up a reserve (memory allocations stop)
+// For multithread processing each worker thread needs its own copy, though.
+static thread_local TArray<ADynamicLight*> addedLightsArray; 
+
+void hw_GetDynModelLight(AActor *self, FDynLightData &modellightdata)
 {
-	static FDynLightData modellightdata;	// If this ever gets multithreaded, this variable must either be made non-static or thread_local.
-
-	// For deferred light mode this function gets called twice. First time for list upload, and second for draw.
-	if (gl.lightmethod == LM_DEFERRED && dynlightindex != -1)
-	{
-		gl_RenderState.SetDynLight(0, 0, 0);
-		return dynlightindex;
-	}
-
-	// Legacy render path gets the old flat model light
-	if (gl.lightmethod == LM_LEGACY)
-	{
-		gl_SetDynSpriteLight(self, nullptr);
-		return -1;
-	}
-
 	modellightdata.Clear();
 
 	if (self)
 	{
-		static std::vector<ADynamicLight*> addedLights; // static so that we build up a reserve (memory allocations stop)
+		auto &addedLights = addedLightsArray;	// avoid going through the thread local storage for each use.
 
-		addedLights.clear();
+		addedLights.Clear();
 
 		float x = self->X();
 		float y = self->Y();
@@ -244,8 +222,8 @@ int gl_SetDynModelLight(AActor *self, int dynlightindex)
 					{
 						if (std::find(addedLights.begin(), addedLights.end(), light) == addedLights.end()) // Check if we already added this light from a different subsector
 						{
-							gl_AddLightToList(group, light, modellightdata);
-							addedLights.push_back(light);
+							modellightdata.AddLightToList(group, light);
+							addedLights.Push(light);
 						}
 					}
 				}
@@ -253,12 +231,4 @@ int gl_SetDynModelLight(AActor *self, int dynlightindex)
 			}
 		});
 	}
-
-	dynlightindex = GLRenderer->mLights->UploadLights(modellightdata);
-
-	if (gl.lightmethod != LM_DEFERRED)
-	{
-		gl_RenderState.SetDynLight(0, 0, 0);
-	}
-	return dynlightindex;
 }

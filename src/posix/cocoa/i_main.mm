@@ -35,7 +35,6 @@
 #include "s_sound.h"
 
 #include <sys/sysctl.h>
-#include <unistd.h>
 
 // Avoid collision between DObject class and Objective-C
 #define Class ObjectClass
@@ -44,10 +43,8 @@
 #include "c_cvars.h"
 #include "cmdlib.h"
 #include "d_main.h"
-#include "doomerrors.h"
 #include "i_system.h"
 #include "m_argv.h"
-#include "s_sound.h"
 #include "st_console.h"
 #include "version.h"
 
@@ -148,9 +145,6 @@ static void I_DetectOS()
 	
 	if (10 == majorVersion) switch (minorVersion)
 	{
-		case  4: name = "Mac OS X Tiger";        break;
-		case  5: name = "Mac OS X Leopard";      break;
-		case  6: name = "Mac OS X Snow Leopard"; break;
 		case  7: name = "Mac OS X Lion";         break;
 		case  8: name = "OS X Mountain Lion";    break;
 		case  9: name = "OS X Mavericks";        break;
