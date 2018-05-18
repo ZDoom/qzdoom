@@ -241,7 +241,7 @@ UNSAFE_CCMD(recordmap)
 {
 	if (netgame)
 	{
-		Printf("You cannot record a new game while in a netgame.");
+		Printf("You cannot record a new game while in a netgame.\n");
 		return;
 	}
 	if (argv.argc() > 2)
@@ -1483,6 +1483,7 @@ void G_InitLevelLocals ()
 	level.Music = info->Music;
 	level.musicorder = info->musicorder;
 	level.MusicVolume = 1.f;
+	level.HasHeightSecs = false;
 
 	level.LevelName = level.info->LookupLevelName();
 	level.NextMap = info->NextMap;
@@ -2031,6 +2032,67 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, Vec3Diff)
 	PARAM_FLOAT(z2);
 	ACTION_RETURN_VEC3(VecDiff(DVector3(x1, y1, z1), DVector3(x2, y2, z2)));
 }
+
+DEFINE_ACTION_FUNCTION(FLevelLocals, Vec2Offset)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(dx);
+	PARAM_FLOAT(dy);
+	PARAM_BOOL_DEF(absolute);
+	if (absolute)
+	{
+		ACTION_RETURN_VEC2(DVector2(x + dx, y + dy));
+	}
+	else
+	{
+		DVector2 v = P_GetOffsetPosition(x, y, dx, dy);
+		ACTION_RETURN_VEC2(v);
+	}
+}
+
+DEFINE_ACTION_FUNCTION(FLevelLocals, Vec2OffsetZ)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(dx);
+	PARAM_FLOAT(dy);
+	PARAM_FLOAT(atz);
+	PARAM_BOOL_DEF(absolute);
+	if (absolute)
+	{
+		ACTION_RETURN_VEC3(DVector3(x + dx, y + dy, atz));
+	}
+	else
+	{
+		DVector2 v = P_GetOffsetPosition(x, y, dx, dy);
+		ACTION_RETURN_VEC3(DVector3(v, atz));
+	}
+}
+
+DEFINE_ACTION_FUNCTION(FLevelLocals, Vec3Offset)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(z);
+	PARAM_FLOAT(dx);
+	PARAM_FLOAT(dy);
+	PARAM_FLOAT(dz);
+	PARAM_BOOL_DEF(absolute);
+	if (absolute)
+	{
+		ACTION_RETURN_VEC3(DVector3(x + dx, y + dy, z + dz));
+	}
+	else
+	{
+		DVector2 v = P_GetOffsetPosition(x, y, dx, dy);
+		ACTION_RETURN_VEC3(DVector3(v, z + dz));
+	}
+}
+
 
 //==========================================================================
 //

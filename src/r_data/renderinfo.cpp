@@ -26,7 +26,6 @@
 **
 **/
 
-#include "gl/system/gl_system.h"
 #include "doomtype.h"
 #include "p_local.h"
 #include "p_spec.h"
@@ -248,7 +247,7 @@ static void PrepareSectorData()
 
 	for (auto &sub : level.subsectors)
 	{
-		sub.render_sector->subsectorcount++;
+		sub.sectorindex = (uint16_t)sub.render_sector->subsectorcount++;
 	}
 
 	for (auto &sec : level.sectors) 

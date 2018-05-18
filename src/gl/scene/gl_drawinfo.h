@@ -2,6 +2,7 @@
 #define __GL_DRAWINFO_H
 
 #include "hwrenderer/scene/hw_drawlist.h"
+#include "hwrenderer/scene/hw_weapon.h"
 
 #ifdef _MSC_VER
 #pragma warning(disable:4244)
@@ -48,7 +49,6 @@ enum Drawpasses
 {
 	GLPASS_ALL,			// Main pass with dynamic lights
 	GLPASS_LIGHTSONLY,	// only collect dynamic lights
-	GLPASS_PLAIN,		// Main pass without dynamic lights
 	GLPASS_DECALS,		// Draws a decal
 	GLPASS_TRANSLUCENT,	// Draws translucent objects
 	
@@ -68,6 +68,7 @@ struct FDrawInfo : public HWDrawInfo
 	
 	FDrawInfo * next;
 	HWDrawList drawlists[GLDL_TYPES];
+	TArray<HUDSprite> hudsprites;	// These may just be stored by value.
 	TArray<GLDecal *> decals[2];	// the second slot is for mirrors which get rendered in a separate pass.
 	HWDrawList *dldrawlists = NULL;	// only gets allocated when needed.
 	
@@ -80,8 +81,10 @@ struct FDrawInfo : public HWDrawInfo
 	void AddPortal(GLWall *w, int portaltype) override;
 	void AddFlat(GLFlat *flat, bool fog) override;
 	void AddSprite(GLSprite *sprite, bool translucent) override;
+	void AddHUDSprite(HUDSprite *huds) override;
 
 	std::pair<FFlatVertex *, unsigned int> AllocVertices(unsigned int count) override;
+	int UploadLights(FDynLightData &data) override;
 
 	// Legacy GL only. 
 	bool PutWallCompat(GLWall *wall, int passflag);
@@ -121,6 +124,8 @@ struct FDrawInfo : public HWDrawInfo
 
 	// Sprite drawer
 	void DrawSprite(GLSprite *sprite, int pass);
+	void DrawPSprite(HUDSprite *huds);
+	void DrawPlayerSprites(bool hudModelStep);
 
 	void DoDrawSorted(HWDrawList *dl, SortNode * head);
 	void DrawSorted(int listindex);

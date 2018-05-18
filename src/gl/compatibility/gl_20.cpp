@@ -28,7 +28,7 @@
 **
 */
 
-#include "gl/system/gl_system.h"
+#include "gl_load/gl_system.h"
 #include "menu/menu.h"
 #include "r_utility.h"
 #include "g_levellocals.h"
@@ -37,7 +37,7 @@
 
 #include "gl/renderer/gl_renderer.h"
 #include "gl/renderer/gl_lightdata.h"
-#include "gl/system/gl_interface.h"
+#include "gl_load/gl_interface.h"
 #include "hwrenderer/utility/hw_cvars.h"
 #include "gl/renderer/gl_renderstate.h"
 #include "gl/scene/gl_drawinfo.h"
@@ -353,7 +353,14 @@ void FRenderState::ApplyFixedFunction()
 //
 //==========================================================================
 
-void gl_FillScreen();
+void gl_FillScreen()
+{
+	gl_RenderState.AlphaFunc(GL_GEQUAL, 0.f);
+	gl_RenderState.EnableTexture(false);
+	gl_RenderState.Apply();
+	// The fullscreen quad is stored at index 4 in the main vertex buffer.
+	GLRenderer->mVBO->RenderArray(GL_TRIANGLE_STRIP, FFlatVertexBuffer::FULLSCREEN_INDEX, 4);
+}
 
 void FRenderState::DrawColormapOverlay()
 {
@@ -424,7 +431,7 @@ bool gl_SetupLight(int group, Plane & p, ADynamicLight * light, FVector3 & nearP
 	float dist = fabsf(p.DistToPoint(lpos.X, lpos.Z, lpos.Y));
 	float radius = light->GetRadius();
 
-	if (V_IsHardwareRenderer() && gl.legacyMode && (light->lightflags & LF_ATTENUATE))
+	if (V_IsHardwareRenderer() && (light->lightflags & LF_ATTENUATE))
 	{
 		radius *= 0.66f;
 	}
@@ -432,7 +439,7 @@ bool gl_SetupLight(int group, Plane & p, ADynamicLight * light, FVector3 & nearP
 
 	if (radius <= 0.f) return false;
 	if (dist > radius) return false;
-	if (checkside && p.PointOnSide(lpos.X, lpos.Z, lpos.Y))
+	if (p.PointOnSide(lpos.X, lpos.Z, lpos.Y))
 	{
 		return false;
 	}
@@ -755,11 +762,6 @@ static bool PrepareLight(GLWall *wall, ADynamicLight * light, int pass)
 	auto normal = glseg.Normal();
 	p.Set(normal, -normal.X * glseg.x1 - normal.Z * glseg.y1);
 
-	if (!p.ValidNormal())
-	{
-		return false;
-	}
-
 	if (!gl_SetupLight(wall->seg->frontsector->PortalGroup, p, light, nearPt, up, right, scale, true, pass != GLPASS_LIGHTTEX))
 	{
 		return false;
@@ -817,6 +819,9 @@ void FDrawInfo::RenderLightsCompat(GLWall *wall, int pass)
 		return;
 	}
 
+	auto vertcountsave = wall->vertcount;
+	auto vertindexsave = wall->vertindex;
+
 	texcoord save[4];
 	memcpy(save, wall->tcs, sizeof(wall->tcs));
 	while (node)
@@ -833,12 +838,14 @@ void FDrawInfo::RenderLightsCompat(GLWall *wall, int pass)
 		if (PrepareLight(wall, light, pass))
 		{
 			wall->vertcount = 0;
+			wall->MakeVertices(this, false);
 			RenderWall(wall, GLWall::RWF_TEXTURED);
 		}
 		node = node->nextLight;
 	}
 	memcpy(wall->tcs, save, sizeof(wall->tcs));
-	wall->vertcount = 0;
+	wall->vertcount = vertcountsave;
+	wall->vertindex = vertindexsave;
 }
 
 //==========================================================================
@@ -857,8 +864,8 @@ void GLSceneDrawer::RenderMultipassStuff()
 	gl_RenderState.EnableTexture(false);
 	gl_RenderState.EnableBrightmap(false);
 	gl_RenderState.Apply();
-	gl_drawinfo->dldrawlists[GLLDL_WALLS_PLAIN].DrawWalls(gl_drawinfo, GLPASS_PLAIN);
-	gl_drawinfo->dldrawlists[GLLDL_FLATS_PLAIN].DrawFlats(gl_drawinfo, GLPASS_PLAIN);
+	gl_drawinfo->dldrawlists[GLLDL_WALLS_PLAIN].DrawWalls(gl_drawinfo, GLPASS_ALL);
+	gl_drawinfo->dldrawlists[GLLDL_FLATS_PLAIN].DrawFlats(gl_drawinfo, GLPASS_ALL);
 
 	// Part 2: masked geometry. This is set up so that only pixels with alpha>0.5 will show
 	// This creates a blank surface that only fills the nontransparent parts of the texture
@@ -866,22 +873,22 @@ void GLSceneDrawer::RenderMultipassStuff()
 	gl_RenderState.SetTextureMode(TM_MASK);
 	gl_RenderState.EnableBrightmap(true);
 	gl_RenderState.AlphaFunc(GL_GEQUAL, gl_mask_threshold);
-	gl_drawinfo->dldrawlists[GLLDL_WALLS_MASKED].DrawWalls(gl_drawinfo, GLPASS_PLAIN);
-	gl_drawinfo->dldrawlists[GLLDL_FLATS_MASKED].DrawFlats(gl_drawinfo, GLPASS_PLAIN);
+	gl_drawinfo->dldrawlists[GLLDL_WALLS_MASKED].DrawWalls(gl_drawinfo, GLPASS_ALL);
+	gl_drawinfo->dldrawlists[GLLDL_FLATS_MASKED].DrawFlats(gl_drawinfo, GLPASS_ALL);
 
 	// Part 3: The base of fogged surfaces, including the texture
 	gl_RenderState.EnableBrightmap(false);
 	gl_RenderState.SetTextureMode(TM_MODULATE);
 	gl_RenderState.AlphaFunc(GL_GEQUAL, 0);
-	gl_drawinfo->dldrawlists[GLLDL_WALLS_FOG].DrawWalls(gl_drawinfo, GLPASS_PLAIN);
-	gl_drawinfo->dldrawlists[GLLDL_FLATS_FOG].DrawFlats(gl_drawinfo, GLPASS_PLAIN);
+	gl_drawinfo->dldrawlists[GLLDL_WALLS_FOG].DrawWalls(gl_drawinfo, GLPASS_ALL);
+	gl_drawinfo->dldrawlists[GLLDL_FLATS_FOG].DrawFlats(gl_drawinfo, GLPASS_ALL);
 	gl_RenderState.AlphaFunc(GL_GEQUAL, gl_mask_threshold);
-	gl_drawinfo->dldrawlists[GLLDL_WALLS_FOGMASKED].DrawWalls(gl_drawinfo, GLPASS_PLAIN);
-	gl_drawinfo->dldrawlists[GLLDL_FLATS_FOGMASKED].DrawFlats(gl_drawinfo, GLPASS_PLAIN);
+	gl_drawinfo->dldrawlists[GLLDL_WALLS_FOGMASKED].DrawWalls(gl_drawinfo, GLPASS_ALL);
+	gl_drawinfo->dldrawlists[GLLDL_FLATS_FOGMASKED].DrawFlats(gl_drawinfo, GLPASS_ALL);
 
 	// second pass: draw lights
 	glDepthMask(false);
-	if (GLRenderer->mLightCount && !FixedColormap)
+	if (level.HasDynamicLights && !FixedColormap)
 	{
 		if (gl_SetupLightTexture())
 		{

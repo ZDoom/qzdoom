@@ -362,13 +362,6 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 		endif ()
 	endif ()
 
-	# With standard Apple tools -stdlib=libc++ needs to be specified in order to get
-	# C++11 support using SDKs 10.7 and 10.8.
-	if ( APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" )
-		set( CMAKE_CXX_FLAGS "-stdlib=libc++ ${CMAKE_CXX_FLAGS}" )
-		set( CMAKE_EXE_LINKER_FLAGS "-stdlib=libc++ ${CMAKE_EXE_LINKER_FLAGS}" )
-	endif ()
-
 	# Remove extra warnings when using the official DirectX headers.
 	# Also, TDM-GCC 4.4.0 no longer accepts glibc-style printf formats as valid,
 	# which is a royal pain. The previous version I had been using was fine with them.
@@ -801,6 +794,7 @@ set( NOT_COMPILED_SOURCE_FILES
 # Enable fast math for some sources
 set( FASTMATH_SOURCES
 	swrenderer/r_all.cpp
+	swrenderer/r_swscene.cpp
 	polyrenderer/poly_all.cpp
 	sound/oplsynth/opl_mus_player.cpp
 	sound/mpg123_decoder.cpp
@@ -822,7 +816,6 @@ set( FASTMATH_SOURCES
 	gl/scene/gl_skydome.cpp
 	gl/scene/gl_weapon.cpp
 	gl/scene/gl_scene.cpp
-	gl/scene/gl_swscene.cpp
 	gl/scene/gl_portal.cpp
 	gl/scene/gl_walls_draw.cpp
 	gl_load/gl_load.c
@@ -838,6 +831,7 @@ set( FASTMATH_SOURCES
 	hwrenderer/scene/hw_spritelight.cpp
 	hwrenderer/scene/hw_walls.cpp
 	hwrenderer/scene/hw_walls_vertex.cpp
+	hwrenderer/scene/hw_weapon.cpp
 	r_data/models/models.cpp
 	r_data/matrix.cpp
 	sound/adlmidi/adldata.cpp
@@ -1052,7 +1046,7 @@ set (PCH_SOURCES
 	gl/stereo3d/gl_quadstereo.cpp
 	gl/stereo3d/gl_sidebyside3d.cpp
 	gl/stereo3d/gl_interleaved3d.cpp
-	gl/system/gl_interface.cpp
+	gl_load/gl_interface.cpp
 	gl/system/gl_framebuffer.cpp
 	gl/system/gl_debug.cpp
 	gl/system/gl_wipe.cpp
@@ -1062,6 +1056,8 @@ set (PCH_SOURCES
 	hwrenderer/dynlights/hw_aabbtree.cpp
 	hwrenderer/dynlights/hw_shadowmap.cpp
 	hwrenderer/scene/hw_skydome.cpp
+	hwrenderer/postprocessing/hw_postprocess_cvars.cpp
+	hwrenderer/postprocessing/hw_postprocessshader.cpp
 	hwrenderer/textures/hw_material.cpp
 	hwrenderer/textures/hw_precache.cpp
 	hwrenderer/utility/hw_clock.cpp
@@ -1140,6 +1136,7 @@ set (PCH_SOURCES
 	r_data/models/models_md3.cpp
 	r_data/models/models_md2.cpp
 	r_data/models/models_voxel.cpp
+	r_data/models/models_ue1.cpp
 	scripting/symbols.cpp
 	scripting/types.cpp
 	scripting/thingdef.cpp

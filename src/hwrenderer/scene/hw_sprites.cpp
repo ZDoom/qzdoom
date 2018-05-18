@@ -25,7 +25,6 @@
 **
 */
 
-#include "gl/system/gl_system.h"
 #include "p_local.h"
 #include "p_effect.h"
 #include "g_level.h"
@@ -50,6 +49,7 @@
 #include "hwrenderer/utility/hw_clock.h"
 #include "hwrenderer/utility/hw_lighting.h"
 #include "hwrenderer/textures/hw_material.h"
+#include "hwrenderer/dynlights/hw_dynlightdata.h"
 
 extern TArray<spritedef_t> sprites;
 extern TArray<spriteframe_t> SpriteFrames;
@@ -217,6 +217,16 @@ bool GLSprite::CalculateVertices(HWDrawInfo *di, FVector3 *v)
 
 inline void GLSprite::PutSprite(HWDrawInfo *di, bool translucent)
 {
+	// That's a lot of checks...
+	if (modelframe && RenderStyle.BlendOp != STYLEOP_Shadow && gl_light_sprites && level.HasDynamicLights && di->FixedColormap == CM_DEFAULT && !fullbright && !(screen->hwcaps & RFL_NO_SHADERS))
+	{
+		hw_GetDynModelLight(actor, lightdata);
+		dynlightindex = di->UploadLights(lightdata);
+	}
+	else
+		dynlightindex = -1;
+
+
 	di->AddSprite(this, translucent);
 }
 
@@ -309,7 +319,7 @@ void GLSprite::PerformSpriteClipAdjustment(AActor *thing, const DVector2 &thingp
 				}
 			}
 		}
-		else if (thing->Sector->heightsec && !(thing->Sector->heightsec->MoreFlags & SECF_IGNOREHEIGHTSEC))
+		else if (thing->Sector->GetHeightSec())
 		{
 			if (thing->flags2&MF2_ONMOBJ && thing->floorz ==
 				thing->Sector->heightsec->floorplane.ZatPoint(thingpos))

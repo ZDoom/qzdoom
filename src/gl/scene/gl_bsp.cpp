@@ -99,11 +99,11 @@ void GLSceneDrawer::AddLine (seg_t *seg, bool portalclip)
 
 	if (seg->sidedef == NULL)
 	{
-		if (!(currentsubsector->flags & SSECF_DRAWN))
+		if (!(currentsubsector->flags & SSECMF_DRAWN))
 		{
 			if (clipper.SafeCheckRange(startAngle, endAngle)) 
 			{
-				currentsubsector->flags |= SSECF_DRAWN;
+				currentsubsector->flags |= SSECMF_DRAWN;
 			}
 		}
 		return;
@@ -113,7 +113,7 @@ void GLSceneDrawer::AddLine (seg_t *seg, bool portalclip)
 	{
 		return;
 	}
-	currentsubsector->flags |= SSECF_DRAWN;
+	currentsubsector->flags |= SSECMF_DRAWN;
 
 	uint8_t ispoly = uint8_t(seg->sidedef->Flags & WALLF_POLYOBJ);
 
@@ -137,10 +137,10 @@ void GLSceneDrawer::AddLine (seg_t *seg, bool portalclip)
 			}
 			backsector=currentsector;
 		}
-		else
+ 		else
 		{
 			// clipping checks are only needed when the backsector is not the same as the front sector
-			in_area = hw_CheckViewArea(in_area, seg->v1, seg->v2, seg->frontsector, seg->backsector);
+			if (in_area == area_default) in_area = hw_CheckViewArea(seg->v1, seg->v2, seg->frontsector, seg->backsector);
 
 			backsector = hw_FakeFlat(seg->backsector, &bs, in_area, true);
 
@@ -289,7 +289,7 @@ void GLSceneDrawer::AddLines(subsector_t * sub, sector_t * sector)
 		{
 			if (seg->linedef == NULL)
 			{
-				if (!(sub->flags & SSECF_DRAWN)) AddLine (seg, GLRenderer->mClipPortal != NULL);
+				if (!(sub->flags & SSECMF_DRAWN)) AddLine (seg, GLRenderer->mClipPortal != NULL);
 			}
 			else if (!(seg->sidedef->Flags & WALLF_POLYOBJ)) 
 			{
@@ -485,7 +485,7 @@ void GLSceneDrawer::DoSubsector(subsector_t * sub)
 		{
 			RenderThings(sub, fakesector);
 		}
-		sector->MoreFlags |= SECF_DRAWN;
+		sector->MoreFlags |= SECMF_DRAWN;
 	}
 
 	if (gl_render_flats)
@@ -497,7 +497,7 @@ void GLSceneDrawer::DoSubsector(subsector_t * sub)
 			// but undetermined heightsec state. This can only happen if the
 			// subsector is obstructed but not excluded due to a large bounding box.
 			// Due to the way a BSP works such a subsector can never be visible
-			if (!sector->heightsec || sector->heightsec->MoreFlags & SECF_IGNOREHEIGHTSEC || in_area!=area_default)
+			if (!sector->GetHeightSec() || in_area!=area_default)
 			{
 				if (sector != sub->render_sector)
 				{

@@ -25,7 +25,7 @@
 **
 */
 
-#include "gl/system/gl_system.h"
+#include "gl_load/gl_system.h"
 #include "a_sharedglobal.h"
 #include "r_defs.h"
 #include "r_sky.h"
@@ -37,7 +37,7 @@
 #include "p_lnspec.h"
 #include "hwrenderer/dynlights/hw_dynlightdata.h"
 
-#include "gl/system/gl_interface.h"
+#include "gl_load/gl_interface.h"
 #include "hwrenderer/utility/hw_cvars.h"
 #include "gl/renderer/gl_renderer.h"
 #include "gl/renderer/gl_lightdata.h"
@@ -174,6 +174,7 @@ void FDrawInfo::DrawSubsectors(GLFlat *flat, int pass, bool processlights, bool 
 	int dli = flat->dynlightindex;
 
 	gl_RenderState.Apply();
+	if (gl.legacyMode) processlights = false;
 	if (flat->vboindex >= 0)
 	{
 		int index = flat->vboindex;
@@ -288,8 +289,7 @@ void FDrawInfo::DrawFlat(GLFlat *flat, int pass, bool trans)	// trans only has m
 
 	switch (pass)
 	{
-	case GLPASS_PLAIN:			// Single-pass rendering
-	case GLPASS_ALL:			// Same, but also creates the dynlight data.
+	case GLPASS_ALL:	// Single-pass rendering
 		mDrawer->SetColor(flat->lightlevel, rel, flat->Colormap,1.0f);
 		mDrawer->SetFog(flat->lightlevel, rel, &flat->Colormap, false);
 		if (!flat->gltexture->tex->isFullbright())

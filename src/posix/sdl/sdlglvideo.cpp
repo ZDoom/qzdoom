@@ -45,7 +45,7 @@
 #include "videomodes.h"
 #include "hardware.h"
 #include "gl_sysfb.h"
-#include "gl/system/gl_system.h"
+#include "gl_load/gl_system.h"
 #include "r_defs.h"
 
 #include "gl/renderer/gl_renderer.h"
@@ -392,11 +392,6 @@ SystemFrameBuffer::~SystemFrameBuffer ()
 
 void SystemFrameBuffer::InitializeState()
 {
-}
-
-bool SystemFrameBuffer::CanUpdate ()
-{
-	return true;
 }
 
 void SystemFrameBuffer::SetGammaTable(uint16_t *tbl)
