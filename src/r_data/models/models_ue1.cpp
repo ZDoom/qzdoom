@@ -46,7 +46,7 @@ bool FUE1Model::Load( const char *filename, int lumpnum, const char *buffer, int
 	FMemLump lump2;
 	const char *buffer2;
 	FString realfilename = Wads.GetLumpFullName(lumpnum);
-	if ( realfilename.IndexOf("_d.3d") == realfilename.Len()-5 )
+	if ( (size_t)realfilename.IndexOf("_d.3d") == realfilename.Len()-5 )
 	{
 		realfilename.Substitute("_d.3d","_a.3d");
 		lumpnum2 = Wads.CheckNumForFullName(realfilename);
@@ -98,9 +98,9 @@ void FUE1Model::LoadGeometry()
 		{
 			UE1Vertex Vert;
 			// unpack position
-			Vert.Pos.X = unpackuvert(averts[j+i*numVerts],0);
-			Vert.Pos.Y = unpackuvert(averts[j+i*numVerts],1);
-			Vert.Pos.Z = unpackuvert(averts[j+i*numVerts],2);
+			Vert.Pos = FVector3(unpackuvert(averts[j+i*numVerts],0),
+				unpackuvert(averts[j+i*numVerts],1),
+				unpackuvert(averts[j+i*numVerts],2));
 			// push vertex (without normals, will be calculated later)
 			verts.Push(Vert);
 		}
@@ -114,10 +114,7 @@ void FUE1Model::LoadGeometry()
 			Poly.V[j] = dpolys[i].vertices[j];
 		// unpack coords
 		for ( int j=0; j<3; j++ )
-		{
-			Poly.C[j].S = dpolys[i].uv[j][0]/255.f;
-			Poly.C[j].T = dpolys[i].uv[j][1]/255.f;
-		}
+			Poly.C[j] = FVector2(dpolys[i].uv[j][0]/255.f,dpolys[i].uv[j][1]/255.f);
 		Poly.texNum = dpolys[i].texnum;
 		// push
 		polys.Push(Poly);
@@ -129,39 +126,22 @@ void FUE1Model::LoadGeometry()
 	{
 		for ( int j=0; j<numVerts; j++ )
 		{
-			UE1Vector nsum = {0,0,0};
-			float total = 0.;
+			FVector3 nsum = FVector3(0,0,0);
 			for ( int k=0; k<numPolys; k++ )
 			{
 				if ( (polys[k].V[0] != j) && (polys[k].V[1] != j) && (polys[k].V[2] != j) ) continue;
-				UE1Vector vert[3], dir[2], norm;
+				FVector3 vert[3], dir[2], norm;
 				// compute facet normal
 				for ( int l=0; l<3; l++ )
 					vert[l] = verts[polys[k].V[l]+numVerts*i].Pos;
-				dir[0].X = vert[1].X-vert[0].X;
-				dir[0].Y = vert[1].Y-vert[0].Y;
-				dir[0].Z = vert[1].Z-vert[0].Z;
-				dir[1].X = vert[2].X-vert[0].X;
-				dir[1].Y = vert[2].Y-vert[0].Y;
-				dir[1].Z = vert[2].Z-vert[0].Z;
-				norm.X = dir[0].Y*dir[1].Z-dir[0].Z*dir[1].Y;
-				norm.Y = dir[0].Z*dir[1].X-dir[0].X*dir[1].Z;
-				norm.Z = dir[0].X*dir[1].Y-dir[0].Y*dir[1].X;
-				float s = (float)sqrt(norm.X*norm.X+norm.Y*norm.Y+norm.Z*norm.Z);
-				if ( s != 0.f )
-				{
-					norm.X /= s;
-					norm.Y /= s;
-					norm.Z /= s;
-				}
-				nsum.X += norm.X;
-				nsum.Y += norm.Y;
-				nsum.Z += norm.Z;
-				total+=1.f;
+				dir[0] = vert[1]-vert[0];
+				dir[1] = vert[2]-vert[0];
+				dir[0].MakeUnit();
+				dir[1].MakeUnit();
+				norm = dir[0]^dir[1];
+				nsum += norm.Unit();
 			}
-			verts[j+numVerts*i].Normal.X = nsum.X/total;
-			verts[j+numVerts*i].Normal.Y = nsum.Y/total;
-			verts[j+numVerts*i].Normal.Z = nsum.Z/total;
+			verts[j+numVerts*i].Normal = nsum.Unit();
 		}
 	}
 	// populate skin groups
@@ -218,7 +198,7 @@ void FUE1Model::RenderFrame( FModelRenderer *renderer, FTexture *skin, int frame
 			}
 		}
 		renderer->SetMaterial(sskin,false,translation);
-		mVBuf->SetupFrame(renderer,vofs+frame*fsize,vofs+frame2*fsize,vsize);
+		GetVertexBuffer(renderer)->SetupFrame(renderer,vofs+frame*fsize,vofs+frame2*fsize,vsize);
 		renderer->DrawArrays(0,vsize);
 		vofs += vsize;
 	}
@@ -227,14 +207,15 @@ void FUE1Model::RenderFrame( FModelRenderer *renderer, FTexture *skin, int frame
 
 void FUE1Model::BuildVertexBuffer( FModelRenderer *renderer )
 {
-	if ( mVBuf != NULL )
+	if (GetVertexBuffer(renderer))
 		return;
 	int vsize = 0;
 	for ( int i=0; i<numGroups; i++ )
 		vsize += groups[i].numPolys*3;
 	vsize *= numFrames;
-	mVBuf = renderer->CreateVertexBuffer(false,numFrames==1);
-	FModelVertex *vptr = mVBuf->LockVertexBuffer(vsize);
+	auto vbuf = renderer->CreateVertexBuffer(false,numFrames==1);
+	SetVertexBuffer(renderer, vbuf);
+	FModelVertex *vptr = vbuf->LockVertexBuffer(vsize);
 	int vidx = 0;
 	for ( int i=0; i<numFrames; i++ )
 	{
@@ -242,18 +223,18 @@ void FUE1Model::BuildVertexBuffer( FModelRenderer *renderer )
 		{
 			for ( int k=0; k<groups[j].numPolys; k++ )
 			{
-				for ( int l=0; l<3; l++ )
+				for ( int l=2; l>=0; l-- )
 				{
 					UE1Vertex V = verts[polys[groups[j].P[k]].V[l]+i*numVerts];
-					UE1Coord C = polys[groups[j].P[k]].C[l];
+					FVector2 C = polys[groups[j].P[k]].C[l];
 					FModelVertex *vert = &vptr[vidx++];
-					vert->Set(V.Pos.X,V.Pos.Y,V.Pos.Z,C.S,C.T);
+					vert->Set(V.Pos.X,V.Pos.Y,V.Pos.Z,C.X,C.Y);
 					vert->SetNormal(V.Normal.X,V.Normal.Y,V.Normal.Z);
 				}
 			}
 		}
 	}
-	mVBuf->UnlockVertexBuffer();
+	vbuf->UnlockVertexBuffer();
 }
 
 void FUE1Model::AddSkins( uint8_t *hitlist )

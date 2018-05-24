@@ -33,9 +33,6 @@
 #include "actorinlines.h"
 #include "i_time.h"
 
-void gl_FlushModels();
-bool polymodelsInUse;
-
 void PolyRenderModel(PolyRenderThread *thread, const Mat4f &worldToClip, uint32_t stencilValue, float x, float y, float z, FSpriteModelFrame *smf, AActor *actor)
 {
 	PolyModelRenderer renderer(thread, worldToClip, stencilValue);
@@ -52,11 +49,6 @@ void PolyRenderHUDModel(PolyRenderThread *thread, const Mat4f &worldToClip, uint
 
 PolyModelRenderer::PolyModelRenderer(PolyRenderThread *thread, const Mat4f &worldToClip, uint32_t stencilValue) : Thread(thread), WorldToClip(worldToClip), StencilValue(stencilValue)
 {
-	if (!polymodelsInUse)
-	{
-		gl_FlushModels();
-		polymodelsInUse = true;
-	}
 }
 
 void PolyModelRenderer::BeginDrawModel(AActor *actor, FSpriteModelFrame *smf, const VSMatrix &objectToWorldMatrix)
@@ -64,10 +56,12 @@ void PolyModelRenderer::BeginDrawModel(AActor *actor, FSpriteModelFrame *smf, co
 	ModelActor = actor;
 	const_cast<VSMatrix &>(objectToWorldMatrix).copy(ObjectToWorld.Matrix);
 	SetTransform();
+	PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, true);
 }
 
 void PolyModelRenderer::EndDrawModel(AActor *actor, FSpriteModelFrame *smf)
 {
+	PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, false);
 	ModelActor = nullptr;
 }
 
@@ -106,12 +100,14 @@ void PolyModelRenderer::BeginDrawHUDModel(AActor *actor, const VSMatrix &objectT
 	const_cast<VSMatrix &>(objectToWorldMatrix).copy(ObjectToWorld.Matrix);
 	SetTransform();
 	PolyTriangleDrawer::SetWeaponScene(Thread->DrawQueue, true);
+	PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, true);
 }
 
 void PolyModelRenderer::EndDrawHUDModel(AActor *actor)
 {
 	ModelActor = nullptr;
 	PolyTriangleDrawer::SetWeaponScene(Thread->DrawQueue, false);
+	PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, false);
 }
 
 void PolyModelRenderer::SetInterpolation(double interpolation)

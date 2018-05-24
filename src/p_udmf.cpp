@@ -1107,6 +1107,14 @@ public:
 				Flag(ld->flags, ML_3DMIDTEX_IMPASS, key);
 				continue;
 
+			case NAME_Revealed:
+				Flag(ld->flags, ML_REVEALED, key);
+				continue;
+
+			case NAME_AutomapStyle:
+				ld->automapstyle = AutomapLineStyle(CheckInt(key));
+				continue;
+
 			case NAME_MoreIds:
 				// delay parsing of the tag string until parsing of the sector is complete
 				// This ensures that the ID is always the first tag in the list.
@@ -1375,6 +1383,7 @@ public:
 		sec->sectornum = index;
 		sec->damageinterval = 32;
 		sec->terrainnum[sector_t::ceiling] = sec->terrainnum[sector_t::floor] = -1;
+		sec->ibocount = -1;
 		memset(sec->SpecialColors, -1, sizeof(sec->SpecialColors));
 		if (floordrop) sec->Flags = SECF_FLOORDROP;
 		// killough 3/7/98: end changes
