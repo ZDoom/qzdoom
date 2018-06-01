@@ -108,6 +108,38 @@ class RectDrawArgs;
 
 enum class TriBlendMode
 {
+	Opaque,
+	Skycap,
+	FogBoundary,
+	SrcColor,
+	Fill,
+	Normal,
+	Fuzzy,
+	Stencil,
+	Translucent,
+	Add,
+	Shaded,
+	TranslucentStencil,
+	Shadow,
+	Subtract,
+	AddStencil,
+	AddShaded,
+	OpaqueTranslated,
+	SrcColorTranslated,
+	NormalTranslated,
+	StencilTranslated,
+	TranslucentTranslated,
+	AddTranslated,
+	ShadedTranslated,
+	TranslucentStencilTranslated,
+	ShadowTranslated,
+	SubtractTranslated,
+	AddStencilTranslated,
+	AddShadedTranslated
+};
+
+enum class RectBlendMode
+{
 	TextureOpaque,
 	TextureMasked,
 	TextureAdd,
@@ -142,8 +174,6 @@ public:
 
 	static void(*SpanDrawers8[])(int y, int x0, int x1, const TriDrawTriangleArgs *args);
 	static void(*SpanDrawers32[])(int y, int x0, int x1, const TriDrawTriangleArgs *args);
-	static void(*TriDrawers8[])(int, int, uint32_t, uint32_t, const TriDrawTriangleArgs *);
-	static void(*TriDrawers32[])(int, int, uint32_t, uint32_t, const TriDrawTriangleArgs *);
 	static void(*RectDrawers8[])(const void *, int, int, int, const RectDrawArgs *, PolyTriangleThreadData *);
 	static void(*RectDrawers32[])(const void *, int, int, int, const RectDrawArgs *, PolyTriangleThreadData *);
 
@@ -220,6 +250,22 @@ namespace TriScreenDrawerModes
 	struct SkycapSampler { static const int Mode = (int)Samplers::Skycap; };
 	struct FuzzSampler { static const int Mode = (int)Samplers::Fuzz; };
 	struct FogBoundarySampler { static const int Mode = (int)Samplers::FogBoundary; };
+
+	enum SWOptFlags
+	{
+		SWOPT_DynLights = 1,
+		SWOPT_ColoredFog = 2,
+		SWOPT_FixedLight = 4
+	};
+
+	struct DrawerOpt { static const int Flags = 0; };
+	struct DrawerOptF { static const int Flags = SWOPT_FixedLight; };
+	struct DrawerOptC { static const int Flags = SWOPT_ColoredFog; };
+	struct DrawerOptCF { static const int Flags = SWOPT_ColoredFog | SWOPT_FixedLight; };
+	struct DrawerOptL { static const int Flags = SWOPT_DynLights; };
+	struct DrawerOptLC { static const int Flags = SWOPT_DynLights | SWOPT_ColoredFog; };
+	struct DrawerOptLF { static const int Flags = SWOPT_DynLights | SWOPT_FixedLight; };
+	struct DrawerOptLCF { static const int Flags = SWOPT_DynLights | SWOPT_ColoredFog | SWOPT_FixedLight; };
 
 	static const int fuzzcolormap[FUZZTABLE] =
 	{
