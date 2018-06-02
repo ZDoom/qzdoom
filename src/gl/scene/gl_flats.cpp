@@ -207,11 +207,15 @@ void FDrawInfo::ProcessLights(GLFlat *flat, bool istrans)
 void FDrawInfo::DrawSubsectors(GLFlat *flat, int pass, bool processlights, bool istrans)
 {
 	int dli = flat->dynlightindex;
+	auto vcount = flat->sector->ibocount;
 
 	gl_RenderState.Apply();
-	if (gl.legacyMode) processlights = false;
+	if (gl.legacyMode)
+	{
+		processlights = false;
+		goto legacy;
+	}
 
-	auto vcount = flat->sector->ibocount;
 	if (vcount > 0 && !gl_RenderState.GetClipLineShouldBeActive())
 	{
 		if (processlights) SetupSectorLights(flat, GLPASS_ALL, &dli);
@@ -243,6 +247,7 @@ void FDrawInfo::DrawSubsectors(GLFlat *flat, int pass, bool processlights, bool 
 	}
 	else
 	{
+		legacy:
 		// Draw the subsectors belonging to this sector
 		for (int i=0; i<flat->sector->subsectorcount; i++)
 		{
