@@ -501,7 +501,7 @@ public:
 	// Calculate gamma table
 	void CalcGamma(float gamma, uint8_t gammalookup[256]);
 
-	virtual void SetViewportRects(IntRect *bounds);
+	virtual void SetOutputViewport(IntRect *bounds);
 	int ScreenToWindowX(int x);
 	int ScreenToWindowY(int y);
 

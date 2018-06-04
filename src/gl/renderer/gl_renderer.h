@@ -100,8 +100,6 @@ public:
 	int mOldFBID;
 
 	FGLRenderBuffers *mBuffers;
-	FGLRenderBuffers *mScreenBuffers;
-	FGLRenderBuffers *mSaveBuffers;
 	FLinearDepthShader *mLinearDepthShader;
 	FSSAOShader *mSSAOShader;
 	FDepthBlurShader *mDepthBlurShader;

@@ -272,7 +272,7 @@ namespace swrenderer
 		void Execute(DrawerThread *thread) override
 		{
 			auto zbuffer = PolyZBuffer::Instance();
-			int pitch = PolyStencilBuffer::Instance()->Width();
+			int pitch = PolyStencilBuffer::Instance()->BlockWidth() * 8;
 			float *values = zbuffer->Values() + y * pitch + x;
 			int cnt = count;
 
@@ -316,7 +316,7 @@ namespace swrenderer
 				return;
 
 			auto zbuffer = PolyZBuffer::Instance();
-			int pitch = PolyStencilBuffer::Instance()->Width();
+			int pitch = PolyStencilBuffer::Instance()->BlockWidth() * 8;
 			float *values = zbuffer->Values() + y * pitch;
 			int end = x2;
 

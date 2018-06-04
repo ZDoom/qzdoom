@@ -6504,6 +6504,9 @@ DEFINE_ACTION_FUNCTION(AActor, GetFloorTerrain)
 
 bool P_HitWater (AActor * thing, sector_t * sec, const DVector3 &pos, bool checkabove, bool alert, bool force)
 {
+	if (thing->flags3 & MF3_DONTSPLASH)
+		return false;
+
 	if (thing->player && (thing->player->cheats & CF_PREDICTING))
 		return false;
 
@@ -6592,50 +6595,47 @@ foundone:
 	if (thing->Mass < 10)
 		smallsplash = true;
 
-	if (!(thing->flags3 & MF3_DONTSPLASH))
+	if (smallsplash && splash->SmallSplash)
 	{
-		if (smallsplash && splash->SmallSplash)
+		mo = Spawn (splash->SmallSplash, pos, ALLOW_REPLACE);
+		if (mo) mo->Floorclip += splash->SmallSplashClip;
+	}
+	else
+	{
+		if (splash->SplashChunk)
 		{
-			mo = Spawn(splash->SmallSplash, pos, ALLOW_REPLACE);
-			if (mo) mo->Floorclip += splash->SmallSplashClip;
-		}
-		else
-		{
-			if (splash->SplashChunk)
+			mo = Spawn (splash->SplashChunk, pos, ALLOW_REPLACE);
+			mo->target = thing;
+			if (splash->ChunkXVelShift != 255)
 			{
-				mo = Spawn(splash->SplashChunk, pos, ALLOW_REPLACE);
-				mo->target = thing;
-				if (splash->ChunkXVelShift != 255)
-				{
-					mo->Vel.X = (pr_chunk.Random2() << splash->ChunkXVelShift) / 65536.;
-				}
-				if (splash->ChunkYVelShift != 255)
-				{
-					mo->Vel.Y = (pr_chunk.Random2() << splash->ChunkYVelShift) / 65536.;
-				}
-				mo->Vel.Z = splash->ChunkBaseZVel + (pr_chunk() << splash->ChunkZVelShift) / 65536.;
+				mo->Vel.X = (pr_chunk.Random2() << splash->ChunkXVelShift) / 65536.;
 			}
-			if (splash->SplashBase)
+			if (splash->ChunkYVelShift != 255)
 			{
-				mo = Spawn(splash->SplashBase, pos, ALLOW_REPLACE);
+				mo->Vel.Y = (pr_chunk.Random2() << splash->ChunkYVelShift) / 65536.;
 			}
-			if (thing->player && !splash->NoAlert && alert)
-			{
-				P_NoiseAlert(thing, thing, true);
-			}
+			mo->Vel.Z = splash->ChunkBaseZVel + (pr_chunk() << splash->ChunkZVelShift) / 65536.;
 		}
-		if (mo)
+		if (splash->SplashBase)
 		{
-			S_Sound(mo, CHAN_ITEM, smallsplash ?
-				splash->SmallSplashSound : splash->NormalSplashSound,
-				1, ATTN_IDLE);
+			mo = Spawn (splash->SplashBase, pos, ALLOW_REPLACE);
 		}
-		else
+		if (thing->player && !splash->NoAlert && alert)
 		{
-			S_Sound(pos, CHAN_ITEM, smallsplash ?
-				splash->SmallSplashSound : splash->NormalSplashSound,
-				1, ATTN_IDLE);
+			P_NoiseAlert (thing, thing, true);
 		}
+	}
+	if (mo)
+	{
+		S_Sound (mo, CHAN_ITEM, smallsplash ?
+			splash->SmallSplashSound : splash->NormalSplashSound,
+			1, ATTN_IDLE);
+	}
+	else
+	{
+		S_Sound (pos, CHAN_ITEM, smallsplash ?
+			splash->SmallSplashSound : splash->NormalSplashSound,
+			1, ATTN_IDLE);
 	}
 
 	// Don't let deep water eat missiles
@@ -6675,6 +6675,9 @@ bool P_HitFloor (AActor *thing)
 		P_DamageMobj (thing, NULL, NULL, thing->health, NAME_Crush, DMG_FORCED);  // kill object
 		return false;
 	}
+
+	if (thing->flags3 & MF3_DONTSPLASH)
+		return false;
 
 	// don't splash if landing on the edge above water/lava/etc....
 	DVector3 pos;

@@ -52,7 +52,9 @@ struct TriDrawTriangleArgs
 	ShadedTriVertex *v3;
 	int32_t clipright;
 	int32_t clipbottom;
-	uint8_t *stencilbuffer;
+	uint8_t *stencilValues;
+	uint32_t *stencilMasks;
+	int32_t stencilPitch;
 	float *zbuffer;
 	const PolyDrawArgs *uniforms;
 	bool destBgra;
@@ -136,10 +138,39 @@ enum class TriBlendMode
 	AddShadedTranslated
 };
 
+enum class RectBlendMode
+{
+	TextureOpaque,
+	TextureMasked,
+	TextureAdd,
+	TextureSub,
+	TextureRevSub,
+	TextureAddSrcColor,
+	TranslatedOpaque,
+	TranslatedMasked,
+	TranslatedAdd,
+	TranslatedSub,
+	TranslatedRevSub,
+	TranslatedAddSrcColor,
+	Shaded,
+	AddShaded,
+	Stencil,
+	AddStencil,
+	FillOpaque,
+	FillAdd,
+	FillSub,
+	FillRevSub,
+	FillAddSrcColor,
+	Skycap,
+	Fuzz,
+	FogBoundary
+};
+
 class ScreenTriangle
 {
 public:
 	static void Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadData *thread);
+	static void DrawSWRender(const TriDrawTriangleArgs *args, PolyTriangleThreadData *thread);
 
 	static void(*SpanDrawers8[])(int y, int x0, int x1, const TriDrawTriangleArgs *args);
 	static void(*SpanDrawers32[])(int y, int x0, int x1, const TriDrawTriangleArgs *args);
@@ -190,6 +221,35 @@ namespace TriScreenDrawerModes
 	struct StyleSubtractTranslated { static const int BlendOp = STYLEOP_RevSub, BlendSrc = STYLEALPHA_Src, BlendDest = STYLEALPHA_One,    Flags = 0, SWFlags = SWSTYLEF_Translated; };
 	struct StyleAddStencilTranslated { static const int BlendOp = STYLEOP_Add,  BlendSrc = STYLEALPHA_Src, BlendDest = STYLEALPHA_One,    Flags = STYLEF_ColorIsFixed, SWFlags = SWSTYLEF_Translated; };
 	struct StyleAddShadedTranslated { static const int BlendOp = STYLEOP_Add,   BlendSrc = STYLEALPHA_Src, BlendDest = STYLEALPHA_One,    Flags = STYLEF_RedIsAlpha | STYLEF_ColorIsFixed, SWFlags = SWSTYLEF_Translated; };
+
+	enum class BlendModes { Opaque, Masked, AddClamp, SubClamp, RevSubClamp, AddSrcColorOneMinusSrcColor, Shaded, AddClampShaded };
+	struct OpaqueBlend { static const int Mode = (int)BlendModes::Opaque; };
+	struct MaskedBlend { static const int Mode = (int)BlendModes::Masked; };
+	struct AddClampBlend { static const int Mode = (int)BlendModes::AddClamp; };
+	struct SubClampBlend { static const int Mode = (int)BlendModes::SubClamp; };
+	struct RevSubClampBlend { static const int Mode = (int)BlendModes::RevSubClamp; };
+	struct AddSrcColorBlend { static const int Mode = (int)BlendModes::AddSrcColorOneMinusSrcColor; };
+	struct ShadedBlend { static const int Mode = (int)BlendModes::Shaded; };
+	struct AddClampShadedBlend { static const int Mode = (int)BlendModes::AddClampShaded; };
+
+	enum class FilterModes { Nearest, Linear };
+	struct NearestFilter { static const int Mode = (int)FilterModes::Nearest; };
+	struct LinearFilter { static const int Mode = (int)FilterModes::Linear; };
+
+	enum class ShadeMode { None, Simple, Advanced };
+	struct NoShade { static const int Mode = (int)ShadeMode::None; };
+	struct SimpleShade { static const int Mode = (int)ShadeMode::Simple; };
+	struct AdvancedShade { static const int Mode = (int)ShadeMode::Advanced; };
+
+	enum class Samplers { Texture, Fill, Shaded, Stencil, Translated, Skycap, Fuzz, FogBoundary };
+	struct TextureSampler { static const int Mode = (int)Samplers::Texture; };
+	struct FillSampler { static const int Mode = (int)Samplers::Fill; };
+	struct ShadedSampler { static const int Mode = (int)Samplers::Shaded; };
+	struct StencilSampler { static const int Mode = (int)Samplers::Stencil; };
+	struct TranslatedSampler { static const int Mode = (int)Samplers::Translated; };
+	struct SkycapSampler { static const int Mode = (int)Samplers::Skycap; };
+	struct FuzzSampler { static const int Mode = (int)Samplers::Fuzz; };
+	struct FogBoundarySampler { static const int Mode = (int)Samplers::FogBoundary; };
 
 	enum SWOptFlags
 	{

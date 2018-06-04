@@ -115,6 +115,9 @@ CUSTOM_CVAR(Bool, vid_autoswitch, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_
 EXTERN_CVAR(Bool, gl_smooth_rendered)
 
 
+RenderBufferOptions rbOpts;
+
+
 // ---------------------------------------------------------------------------
 
 
@@ -541,6 +544,20 @@ void CocoaVideo::SetFullscreenMode(const int width, const int height)
 		? [screen convertRectToBacking:screenFrame]
 		: screenFrame;
 
+	const float  displayWidth  = displayRect.size.width;
+	const float  displayHeight = displayRect.size.height;
+
+	const float pixelScaleFactorX = displayWidth  / static_cast<float>(width );
+	const float pixelScaleFactorY = displayHeight / static_cast<float>(height);
+
+	rbOpts.pixelScale = MIN(pixelScaleFactorX, pixelScaleFactorY);
+
+	rbOpts.width  = width  * rbOpts.pixelScale;
+	rbOpts.height = height * rbOpts.pixelScale;
+
+	rbOpts.shiftX = (displayWidth  - rbOpts.width ) / 2.0f;
+	rbOpts.shiftY = (displayHeight - rbOpts.height) / 2.0f;
+
 	if (!m_fullscreen)
 	{
 		[m_window setLevel:LEVEL_FULLSCREEN];
@@ -554,6 +571,14 @@ void CocoaVideo::SetFullscreenMode(const int width, const int height)
 
 void CocoaVideo::SetWindowedMode(const int width, const int height)
 {
+	rbOpts.pixelScale = 1.0f;
+
+	rbOpts.width  = static_cast<float>(width );
+	rbOpts.height = static_cast<float>(height);
+
+	rbOpts.shiftX = 0.0f;
+	rbOpts.shiftY = 0.0f;
+
 	const NSSize windowPixelSize = NSMakeSize(width, height);
 	const NSSize windowSize = vid_hidpi
 		? [[m_window contentView] convertSizeFromBacking:windowPixelSize]
@@ -595,6 +620,8 @@ void CocoaVideo::SetMode(const int width, const int height, const bool fullscree
 	{
 		SetWindowedMode(width, height);
 	}
+
+	rbOpts.dirty = true;
 
 	const NSSize viewSize = I_GetContentViewSize(m_window);
 

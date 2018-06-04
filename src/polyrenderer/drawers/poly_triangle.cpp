@@ -52,7 +52,7 @@ bool PolyTriangleDrawer::IsBgra()
 	return isBgraRenderTarget;
 }
 
-void PolyTriangleDrawer::SetViewport(const DrawerCommandQueuePtr &queue, int x, int y, int width, int height, DCanvas *canvas)
+void PolyTriangleDrawer::SetViewport(const DrawerCommandQueuePtr &queue, int x, int y, int width, int height, DCanvas *canvas, bool span_drawers)
 {
 	uint8_t *dest = (uint8_t*)canvas->GetPixels();
 	int dest_width = canvas->GetWidth();
@@ -74,7 +74,7 @@ void PolyTriangleDrawer::SetViewport(const DrawerCommandQueuePtr &queue, int x, 
 	dest_width = clamp(viewport_x + viewport_width, 0, dest_width - offsetx);
 	dest_height = clamp(viewport_y + viewport_height, 0, dest_height - offsety);
 
-	queue->Push<PolySetViewportCommand>(viewport_x, viewport_y, viewport_width, viewport_height, dest, dest_width, dest_height, dest_pitch, dest_bgra);
+	queue->Push<PolySetViewportCommand>(viewport_x, viewport_y, viewport_width, viewport_height, dest, dest_width, dest_height, dest_pitch, dest_bgra, span_drawers);
 }
 
 void PolyTriangleDrawer::SetTransform(const DrawerCommandQueuePtr &queue, const Mat4f *objectToClip)
@@ -99,7 +99,7 @@ void PolyTriangleDrawer::SetWeaponScene(const DrawerCommandQueuePtr &queue, bool
 
 /////////////////////////////////////////////////////////////////////////////
 
-void PolyTriangleThreadData::SetViewport(int x, int y, int width, int height, uint8_t *new_dest, int new_dest_width, int new_dest_height, int new_dest_pitch, bool new_dest_bgra)
+void PolyTriangleThreadData::SetViewport(int x, int y, int width, int height, uint8_t *new_dest, int new_dest_width, int new_dest_height, int new_dest_pitch, bool new_dest_bgra, bool new_span_drawers)
 {
 	viewport_x = x;
 	viewport_y = y;
@@ -110,6 +110,7 @@ void PolyTriangleThreadData::SetViewport(int x, int y, int width, int height, ui
 	dest_height = new_dest_height;
 	dest_pitch = new_dest_pitch;
 	dest_bgra = new_dest_bgra;
+	span_drawers = new_span_drawers;
 	ccw = true;
 	weaponScene = false;
 }
@@ -131,7 +132,9 @@ void PolyTriangleThreadData::DrawElements(const PolyDrawArgs &drawargs)
 	args.clipbottom = dest_height;
 	args.uniforms = &drawargs;
 	args.destBgra = dest_bgra;
-	args.stencilbuffer = PolyStencilBuffer::Instance()->Values();
+	args.stencilPitch = PolyStencilBuffer::Instance()->BlockWidth();
+	args.stencilValues = PolyStencilBuffer::Instance()->Values();
+	args.stencilMasks = PolyStencilBuffer::Instance()->Masks();
 	args.zbuffer = PolyZBuffer::Instance()->Values();
 	args.depthOffset = weaponScene ? 1.0f : 0.0f;
 
@@ -188,7 +191,9 @@ void PolyTriangleThreadData::DrawArrays(const PolyDrawArgs &drawargs)
 	args.clipbottom = dest_height;
 	args.uniforms = &drawargs;
 	args.destBgra = dest_bgra;
-	args.stencilbuffer = PolyStencilBuffer::Instance()->Values();
+	args.stencilPitch = PolyStencilBuffer::Instance()->BlockWidth();
+	args.stencilValues = PolyStencilBuffer::Instance()->Values();
+	args.stencilMasks = PolyStencilBuffer::Instance()->Masks();
 	args.zbuffer = PolyZBuffer::Instance()->Values();
 	args.depthOffset = weaponScene ? 1.0f : 0.0f;
 
@@ -374,7 +379,10 @@ void PolyTriangleThreadData::DrawShadedTriangle(const ShadedTriVertex *vert, boo
 			args->v3 = &clippedvert[i - 2];
 			if (IsFrontfacing(args) == ccw && args->CalculateGradients())
 			{
-				ScreenTriangle::Draw(args, this);
+				if (!span_drawers)
+					ScreenTriangle::Draw(args, this);
+				else
+					ScreenTriangle::DrawSWRender(args, this);
 			}
 		}
 	}
@@ -387,7 +395,10 @@ void PolyTriangleThreadData::DrawShadedTriangle(const ShadedTriVertex *vert, boo
 			args->v3 = &clippedvert[i];
 			if (IsFrontfacing(args) != ccw && args->CalculateGradients())
 			{
-				ScreenTriangle::Draw(args, this);
+				if (!span_drawers)
+					ScreenTriangle::Draw(args, this);
+				else
+					ScreenTriangle::DrawSWRender(args, this);
 			}
 		}
 	}
@@ -620,14 +631,14 @@ void PolySetWeaponSceneCommand::Execute(DrawerThread *thread)
 
 /////////////////////////////////////////////////////////////////////////////
 
-PolySetViewportCommand::PolySetViewportCommand(int x, int y, int width, int height, uint8_t *dest, int dest_width, int dest_height, int dest_pitch, bool dest_bgra)
-	: x(x), y(y), width(width), height(height), dest(dest), dest_width(dest_width), dest_height(dest_height), dest_pitch(dest_pitch), dest_bgra(dest_bgra)
+PolySetViewportCommand::PolySetViewportCommand(int x, int y, int width, int height, uint8_t *dest, int dest_width, int dest_height, int dest_pitch, bool dest_bgra, bool span_drawers)
+	: x(x), y(y), width(width), height(height), dest(dest), dest_width(dest_width), dest_height(dest_height), dest_pitch(dest_pitch), dest_bgra(dest_bgra), span_drawers(span_drawers)
 {
 }
 
 void PolySetViewportCommand::Execute(DrawerThread *thread)
 {
-	PolyTriangleThreadData::Get(thread)->SetViewport(x, y, width, height, dest, dest_width, dest_height, dest_pitch, dest_bgra);
+	PolyTriangleThreadData::Get(thread)->SetViewport(x, y, width, height, dest, dest_width, dest_height, dest_pitch, dest_bgra, span_drawers);
 }
 
 /////////////////////////////////////////////////////////////////////////////
