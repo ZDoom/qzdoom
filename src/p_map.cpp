@@ -930,7 +930,10 @@ bool PIT_CheckLine(FMultiBlockLinesIterator &mit, FMultiBlockLinesIterator::Chec
 	bool NotBlocked = ((tm.thing->flags3 & MF3_NOBLOCKMONST)
 		|| ((i_compatflags & COMPATF_NOBLOCKFRIENDS) && (tm.thing->flags & MF_FRIENDLY)));
 
-	if (!(Projectile) || (ld->flags & (ML_BLOCKEVERYTHING | ML_BLOCKPROJECTILE)))
+	uint32_t ProjectileBlocking = ML_BLOCKEVERYTHING | ML_BLOCKPROJECTILE;
+	if ( tm.thing->flags8 & MF8_BLOCKASPLAYER ) ProjectileBlocking |= ML_BLOCK_PLAYERS | ML_BLOCKING;
+
+	if (!(Projectile) || (ld->flags & ProjectileBlocking) )
 	{
 		if (ld->flags & ML_RAILING)
 		{
@@ -938,7 +941,7 @@ bool PIT_CheckLine(FMultiBlockLinesIterator &mit, FMultiBlockLinesIterator::Chec
 		}
 		else if ((ld->flags & (ML_BLOCKING | ML_BLOCKEVERYTHING)) || 				// explicitly blocking everything
 			(!(NotBlocked) && (ld->flags & ML_BLOCKMONSTERS)) || 				// block monsters only
-			(tm.thing->player != NULL && (ld->flags & ML_BLOCK_PLAYERS)) ||		// block players
+			(((tm.thing->player != NULL) || (tm.thing->flags8 & MF8_BLOCKASPLAYER)) && (ld->flags & ML_BLOCK_PLAYERS)) ||		// block players
 			((Projectile) && (ld->flags & ML_BLOCKPROJECTILE)) ||				// block projectiles
 			((tm.thing->flags & MF_FLOAT) && (ld->flags & ML_BLOCK_FLOATERS)))	// block floaters
 		{
@@ -3100,7 +3103,7 @@ void FSlide::SlideTraverse(const DVector2 &start, const DVector2 &end)
 		{
 			goto isblocking;
 		}
-		if (li->flags & ML_BLOCK_PLAYERS && slidemo->player != NULL)
+		if (li->flags & ML_BLOCK_PLAYERS && ((slidemo->player != NULL) || (slidemo->flags8 & MF8_BLOCKASPLAYER)))
 		{
 			goto isblocking;
 		}
@@ -4195,11 +4198,38 @@ struct aim_t
 			thingtoppitch = -VecToAngle(dist, th->Top() - shootz);
 
 			if (thingtoppitch > bottompitch)
-				continue;					// shot over the thing
+			{
+				// Check for a hit from above
+				if (shootz > th->Top())
+				{
+					double exitfrac = ExitPoint(th);
+					if (exitfrac > 0.)
+					{
+						double exitdist = attackrange * exitfrac;
+						thingtoppitch = -VecToAngle(exitdist, th->Top() - shootz);
+						if (thingtoppitch > bottompitch) continue;
+					}
+					else continue;					// shot over the thing
+				}
+				else continue;					// shot over the thing
+			}
 
 			thingbottompitch = -VecToAngle(dist, th->Z() - shootz);
 
 			if (thingbottompitch < toppitch)
+			{
+				// Check for a hit from below
+				if (shootz < th->Z())
+				{
+					double exitfrac = ExitPoint(th);
+					if (exitfrac > 0.)
+					{
+						double exitdist = attackrange * exitfrac;
+						thingbottompitch = -VecToAngle(exitdist, th->Z() - shootz);
+						if (thingbottompitch < toppitch) continue;
+					}
+					else continue;					// shot over the thing
+				}
 				continue;					// shot under the thing
 
 			if (crossedffloors)
