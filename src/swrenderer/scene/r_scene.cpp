@@ -159,8 +159,6 @@ namespace swrenderer
 		if (r_models)
 			MainThread()->Viewport->SetupPolyViewport(MainThread());
 
-		FRenderViewpoint origviewpoint = MainThread()->Viewport->viewpoint;
-
 		ActorRenderFlags savedflags = MainThread()->Viewport->viewpoint.camera->renderflags;
 		// Never draw the player unless in chasecam mode
 		if (!MainThread()->Viewport->viewpoint.showviewer)
@@ -169,12 +167,6 @@ namespace swrenderer
 		}
 
 		RenderThreadSlices();
-
-		// Mirrors fail to restore the original viewpoint -- we need it for the HUD weapon to draw correctly.
-		MainThread()->Viewport->viewpoint = origviewpoint;
-		if (r_models)
-			MainThread()->Viewport->SetupPolyViewport(MainThread());
-
 		RenderPSprites();
 
 		MainThread()->Viewport->viewpoint.camera->renderflags = savedflags;
@@ -267,7 +259,7 @@ namespace swrenderer
 		thread->OpaquePass->ResetFakingUnderwater(); // [RH] Hack to make windows into underwater areas possible
 		thread->Portal->SetMainPortal();
 
-		PolyTriangleDrawer::SetViewport(thread->DrawQueue, viewwindowx, viewwindowy, viewwidth, viewheight, thread->Viewport->RenderTarget, true);
+		PolyTriangleDrawer::SetViewport(thread->DrawQueue, viewwindowx, viewwindowy, viewwidth, viewheight, thread->Viewport->RenderTarget);
 
 		// Cull things outside the range seen by this thread
 		VisibleSegmentRenderer visitor;

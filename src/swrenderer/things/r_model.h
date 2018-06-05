@@ -47,24 +47,22 @@ namespace swrenderer
 		float x, y, z;
 		FSpriteModelFrame *smf;
 		AActor *actor;
-		Mat4f WorldToClip;
-		bool MirrorWorldToClip;
 	};
 
 	class SWModelRenderer : public FModelRenderer
 	{
 	public:
-		SWModelRenderer(RenderThread *thread, Fake3DTranslucent clip3DFloor, Mat4f *worldToClip, bool mirrorWorldToClip);
+		SWModelRenderer(RenderThread *thread, Fake3DTranslucent clip3DFloor);
 
 		ModelRendererType GetType() const override { return SWModelRendererType; }
 
-		void BeginDrawModel(AActor *actor, FSpriteModelFrame *smf, const VSMatrix &objectToWorldMatrix) override;
+		void BeginDrawModel(AActor *actor, FSpriteModelFrame *smf, const VSMatrix &objectToWorldMatrix, bool mirrored) override;
 		void EndDrawModel(AActor *actor, FSpriteModelFrame *smf) override;
 		IModelVertexBuffer *CreateVertexBuffer(bool needindex, bool singleframe) override;
 		void SetVertexBuffer(IModelVertexBuffer *buffer) override;
 		void ResetVertexBuffer() override;
 		VSMatrix GetViewToWorldMatrix() override;
-		void BeginDrawHUDModel(AActor *actor, const VSMatrix &objectToWorldMatrix) override;
+		void BeginDrawHUDModel(AActor *actor, const VSMatrix &objectToWorldMatrix, bool mirrored) override;
 		void EndDrawHUDModel(AActor *actor) override;
 		void SetInterpolation(double interpolation) override;
 		void SetMaterial(FTexture *skin, bool clampNoFilter, int translation) override;
@@ -83,8 +81,6 @@ namespace swrenderer
 		unsigned int *IndexBuffer = nullptr;
 		TriVertex *VertexBuffer = nullptr;
 		float InterpolationFactor = 0.0;
-		Mat4f *WorldToClip = nullptr;
-		bool MirrorWorldToClip = false;
 	};
 
 	class SWModelVertexBuffer : public IModelVertexBuffer
