@@ -25,7 +25,6 @@
 **
 */
 
-#include "actorinlines.h"
 #include "c_dispatch.h"
 #include "p_local.h"
 #include "p_effect.h"
