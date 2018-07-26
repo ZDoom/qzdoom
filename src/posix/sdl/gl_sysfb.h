@@ -5,14 +5,14 @@
 
 #include "v_video.h"
 
-class SystemFrameBuffer : public DFrameBuffer
+class SystemGLFrameBuffer : public DFrameBuffer
 {
 	typedef DFrameBuffer Super;
 
 public:
 	// this must have the same parameters as the Windows version, even if they are not used!
-	SystemFrameBuffer (void *hMonitor, int width, int height, int, int, bool fullscreen, bool bgra);
-	~SystemFrameBuffer ();
+	SystemGLFrameBuffer (void *hMonitor, bool fullscreen);
+	~SystemGLFrameBuffer ();
 
 	void ForceBuffering (bool force);
 
@@ -21,23 +21,21 @@ public:
 	virtual void SetVSync( bool vsync );
 	void SwapBuffers();
 	
-	void NewRefreshRate ();
-
 	friend class SDLGLVideo;
 
-	int GetClientWidth();
-	int GetClientHeight();
+	int GetClientWidth() override;
+	int GetClientHeight() override;
+	void ToggleFullscreen(bool yes) override;
+	void SetWindowSize(int client_w, int client_h);
 
 	SDL_Window *GetSDLWindow() { return Screen; }
-
-	virtual int GetTrueHeight() { return GetClientHeight(); }
+	void GetWindowBordersSize(int &top, int &left);
 
 protected:
 	void SetGammaTable(uint16_t *tbl);
 	void ResetGammaTable();
-	void InitializeState();
 
-	SystemFrameBuffer () {}
+	SystemGLFrameBuffer () {}
 	uint8_t GammaTable[3][256];
 	bool UpdatePending;
 
@@ -49,6 +47,14 @@ protected:
 
 	Uint16 m_origGamma[3][256];
 	bool m_supportsGamma;
+
+	static const int MIN_WIDTH = 320;
+	static const int MIN_HEIGHT = 200;
+
+	typedef DECLSPEC int SDLCALL (*SDL_GetWindowBordersSizePtr)(SDL_Window *, int *, int *, int *, int *);
+
+	SDL_GetWindowBordersSizePtr SDL_GetWindowBordersSize_;
+	void *sdl_lib;
 };
 
 #endif // __POSIX_SDL_GL_SYSFB_H__
