@@ -121,7 +121,7 @@ class DMenuDescriptor : public DObject
 {
 	DECLARE_CLASS(DMenuDescriptor, DObject)
 public:
-	FName mMenuName;
+	FName mMenuName = NAME_None;
 	FString mNetgameMessage;
 	PClass *mClass = nullptr;
 	bool mProtected = false;
@@ -265,6 +265,7 @@ public:
 	bool mMouseCapture;
 	bool mBackbuttonSelected;
 	bool DontDim;
+	static int InMenu;
 
 	DMenu(DMenu *parent = NULL);
 	bool TranslateKeyboardEvents();
@@ -287,7 +288,7 @@ class DMenuItemBase : public DObject
 	DECLARE_CLASS(DMenuItemBase, DObject)
 public:
 	double mXpos, mYpos;
-	FNameNoInit mAction;
+	FName mAction;
 	bool mEnabled;
 
 	bool Activate();
@@ -336,6 +337,7 @@ void M_Init (void);
 void M_CreateMenus();
 void M_ActivateMenu(DMenu *menu);
 void M_ClearMenus ();
+void M_PreviousMenu ();
 void M_ParseMenuDefs();
 void M_StartupSkillMenu(FGameStartup *gs);
 void M_StartControlPanel (bool makeSound);

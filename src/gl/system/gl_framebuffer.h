@@ -20,7 +20,7 @@ public:
 	~OpenGLFrameBuffer();
 
 	void InitializeState();
-	void Update();
+	void Update() override;
 
 	// Color correction
 	void SetGamma();
@@ -44,52 +44,26 @@ public:
     IUniformBuffer *CreateUniformBuffer(size_t size, bool staticuse = false) override;
 	IShaderProgram *CreateShaderProgram() override;
 
-
 	// Retrieves a buffer containing image data for a screenshot.
 	// Hint: Pitch can be negative for upside-down images, in which case buffer
 	// points to the last row in the buffer, which will be the first row output.
 	virtual void GetScreenshotBuffer(const uint8_t *&buffer, int &pitch, ESSType &color_type, float &gamma) override;
 
-	bool WipeStartScreen(int type);
-	void WipeEndScreen();
-	bool WipeDo(int ticks);
-	void WipeCleanup();
 	void Swap();
 	bool IsHWGammaActive() const { return HWGammaActive; }
 
 	void SetVSync(bool vsync);
 
 	void Draw2D() override;
+	void PostProcessScene(int fixedcm, const std::function<void()> &afterBloomDrawEndScene2D) override;
 
 	bool HWGammaActive = false;			// Are we using hardware or software gamma?
 	std::shared_ptr<FGLDebug> mDebug;	// Debug API
+    
+    FTexture *WipeStartScreen() override;
+    FTexture *WipeEndScreen() override;
 private:
 	int camtexcount = 0;
-
-	class Wiper
-	{
-
-	protected:
-		FSimpleVertexBuffer *mVertexBuf;
-
-		void MakeVBO(OpenGLFrameBuffer *fb);
-
-	public:
-		Wiper();
-		virtual ~Wiper();
-		virtual bool Run(int ticks, OpenGLFrameBuffer *fb) = 0;
-	};
-
-	class Wiper_Melt;			friend class Wiper_Melt;
-	class Wiper_Burn;			friend class Wiper_Burn;
-	class Wiper_Crossfade;		friend class Wiper_Crossfade;
-
-	Wiper *ScreenWipe;
-	FHardwareTexture *wipestartscreen;
-	FHardwareTexture *wipeendscreen;
-
-
-public:
 };
 
 

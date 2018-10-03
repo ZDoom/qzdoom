@@ -78,8 +78,6 @@ CVAR (Float, sv_damagefactormobj, 1.0, CVAR_SERVERINFO|CVAR_CHEAT)
 CVAR (Float, sv_damagefactorfriendly, 1.0, CVAR_SERVERINFO|CVAR_CHEAT)
 CVAR (Float, sv_damagefactorplayer, 1.0, CVAR_SERVERINFO|CVAR_CHEAT)
 
-FName MeansOfDeath;
-
 //
 // GET STUFF
 //
@@ -182,27 +180,24 @@ void SexMessage (const char *from, char *to, int gender, const char *victim, con
 // [RH]
 // ClientObituary: Show a message when a player dies
 //
-void ClientObituary (AActor *self, AActor *inflictor, AActor *attacker, int dmgflags)
+void ClientObituary (AActor *self, AActor *inflictor, AActor *attacker, int dmgflags, FName MeansOfDeath)
 {
-	FName mod;
 	FString ret;
-	const char *message;
-	const char *messagename;
 	char gendermessage[1024];
 
 	// No obituaries for non-players, voodoo dolls or when not wanted
-	if (self->player == NULL || self->player->mo != self || !show_obituaries)
+	if (self->player == nullptr || self->player->mo != self || !show_obituaries)
 		return;
 
 	// Treat voodoo dolls as unknown deaths
 	if (inflictor && inflictor->player && inflictor->player->mo != inflictor)
 		MeansOfDeath = NAME_None;
 
-	mod = MeansOfDeath;
-	message = NULL;
-	messagename = NULL;
+	FName mod = MeansOfDeath;
+	const char *message = nullptr;
+	const char *messagename = nullptr;
 
-	if (attacker == NULL || attacker->player != NULL)
+	if (attacker == nullptr || attacker->player != nullptr)
 	{
 		if (mod == NAME_Telefrag)
 		{
@@ -284,7 +279,7 @@ void ClientObituary (AActor *self, AActor *inflictor, AActor *attacker, int dmgf
 //
 EXTERN_CVAR (Int, fraglimit)
 
-void AActor::Die (AActor *source, AActor *inflictor, int dmgflags)
+void AActor::Die (AActor *source, AActor *inflictor, int dmgflags, FName MeansOfDeath)
 {
 	// Handle possible unmorph on death
 	bool wasgibbed = (health < GetGibHealth());
@@ -303,7 +298,7 @@ void AActor::Die (AActor *source, AActor *inflictor, int dmgflags)
 					realthis->health = realgibhealth -1; // if morphed was gibbed, so must original be (where allowed)l
 				}
 			}
-			realthis->CallDie(source, inflictor, dmgflags);
+			realthis->CallDie(source, inflictor, dmgflags, MeansOfDeath);
 		}
 		return;
 	}
@@ -555,7 +550,7 @@ void AActor::Die (AActor *source, AActor *inflictor, int dmgflags)
 	if (player)
 	{
 		// [RH] Death messages
-		ClientObituary (this, inflictor, source, dmgflags);
+		ClientObituary (this, inflictor, source, dmgflags, MeansOfDeath);
 
 		// [ZZ] fire player death hook
 		E_PlayerDied(int(player - players));
@@ -728,18 +723,19 @@ DEFINE_ACTION_FUNCTION(AActor, Die)
 	PARAM_OBJECT(source, AActor);
 	PARAM_OBJECT(inflictor, AActor);
 	PARAM_INT_DEF(dmgflags);
-	self->Die(source, inflictor, dmgflags);
+	PARAM_NAME_DEF(MeansOfDeath);
+	self->Die(source, inflictor, dmgflags, MeansOfDeath);
 	return 0;
 }
 
-void AActor::CallDie(AActor *source, AActor *inflictor, int dmgflags)
+void AActor::CallDie(AActor *source, AActor *inflictor, int dmgflags, FName MeansOfDeath)
 {
 	IFVIRTUAL(AActor, Die)
 	{
-		VMValue params[4] = { (DObject*)this, source, inflictor, dmgflags };
-		VMCall(func, params, 4, nullptr, 0);
+		VMValue params[] = { (DObject*)this, source, inflictor, dmgflags, MeansOfDeath.GetIndex() };
+		VMCall(func, params, 5, nullptr, 0);
 	}
-	else return Die(source, inflictor, dmgflags);
+	else return Die(source, inflictor, dmgflags, MeansOfDeath);
 }
 
 
@@ -936,6 +932,7 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 	{ // Shouldn't happen
 		return 0;
 	}
+	FName MeansOfDeath = mod;
 
 	// Rather than unnecessarily call the function over and over again, let's be a little more efficient.
 	// But first, check and see if it's even needed, which it won't be if pain must not be triggered.
@@ -1015,7 +1012,6 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 			flags |= DMG_NO_ARMOR;
 	}
 	
-	MeansOfDeath = mod;
 	// [RH] Andy Baker's Stealth monsters
 	if (target->flags & MF_STEALTH)
 	{
@@ -1510,7 +1506,7 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 			E_WorldThingDamaged(target, inflictor, source, realdamage, mod, flags, angle);
 			needevent = false;
 
-			target->CallDie (source, inflictor, flags);
+			target->CallDie (source, inflictor, flags, MeansOfDeath);
 			return realdamage;
 		}
 	}
@@ -1641,7 +1637,7 @@ DEFINE_ACTION_FUNCTION(AActor, DamageMobj)
 	int realdamage = DamageMobj(self, inflictor, source, damage, mod, flags, angle, needevent);
 	if (realdamage && needevent)
 	{
-		E_WorldThingDamaged(self, inflictor, source, realdamage, mod, flags, angle);
+	E_WorldThingDamaged(self, inflictor, source, realdamage, mod, flags, angle);
 	}
 	ACTION_RETURN_INT(realdamage);
 }
@@ -1663,8 +1659,8 @@ int P_DamageMobj(AActor *target, AActor *inflictor, AActor *source, int damage, 
 		int realdamage = DamageMobj(target, inflictor, source, damage, mod, flags, angle, needevent);
 		if (realdamage && needevent)
 		{
-			// [ZZ] event handlers only need the resultant damage (they can't do anything about it anyway)
-			E_WorldThingDamaged(target, inflictor, source, realdamage, mod, flags, angle);
+		// [ZZ] event handlers only need the resultant damage (they can't do anything about it anyway)
+		E_WorldThingDamaged(target, inflictor, source, realdamage, mod, flags, angle);
 		}
 		return realdamage;
 	}

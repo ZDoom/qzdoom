@@ -2,7 +2,7 @@
  ** i_main.mm
  **
  **---------------------------------------------------------------------------
- ** Copyright 2012-2015 Alexey Lysiuk
+ ** Copyright 2012-2018 Alexey Lysiuk
  ** All rights reserved.
  **
  ** Redistribution and use in source and binary forms, with or without
@@ -56,7 +56,6 @@ CVAR (Bool, i_soundinbackground, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 EXTERN_CVAR(Int,  vid_defwidth )
 EXTERN_CVAR(Int,  vid_defheight)
 EXTERN_CVAR(Bool, vid_vsync    )
-EXTERN_CVAR(Bool, fullscreen   )
 
 
 // ---------------------------------------------------------------------------
@@ -260,7 +259,6 @@ int OriginalMain(int argc, char** argv)
 	vid_defwidth  = static_cast<int>(screenSize.width);
 	vid_defheight = static_cast<int>(screenSize.height);
 	vid_vsync     = true;
-	fullscreen    = true;
 
 	OriginalMainExcept(argc, argv);
 
@@ -407,23 +405,23 @@ extern bool AppActive;
 
 	NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
 
-    while (true)
-    {
-        NSEvent* event = [NSApp nextEventMatchingMask:NSAnyEventMask
+	while (true)
+	{
+		NSEvent* event = [NSApp nextEventMatchingMask:NSAnyEventMask
 											untilDate:[NSDate dateWithTimeIntervalSinceNow:0]
 											   inMode:NSDefaultRunLoopMode
 											  dequeue:YES];
-        if (nil == event)
-        {
-            break;
-        }
+		if (nil == event)
+		{
+			break;
+		}
 
 		I_ProcessEvent(event);
 
 		[NSApp sendEvent:event];
 	}
-    
-    [NSApp updateWindows];
+
+	[NSApp updateWindows];
 
 	[pool release];
 }

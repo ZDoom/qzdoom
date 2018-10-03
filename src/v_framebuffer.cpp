@@ -227,7 +227,7 @@ void DFrameBuffer::DrawRateStuff ()
 
 			int textScale = active_con_scale();
 
-			chars = mysnprintf (fpsbuff, countof(fpsbuff), "%2llu ms (%3llu fps)", howlong, LastCount);
+			chars = mysnprintf (fpsbuff, countof(fpsbuff), "%2llu ms (%3llu fps)", (unsigned long long)howlong, (unsigned long long)LastCount);
 			rate_x = Width / textScale - ConFont->StringWidth(&fpsbuff[0]);
 			Clear (rate_x * textScale, 0, Width, ConFont->GetHeight() * textScale, GPalette.BlackIndex, 0);
 			DrawText (ConFont, CR_WHITE, rate_x, 0, (char *)&fpsbuff[0],
@@ -320,9 +320,9 @@ void DFrameBuffer::SetVSync (bool vsync)
 //
 //==========================================================================
 
-bool DFrameBuffer::WipeStartScreen(int type)
+FTexture *DFrameBuffer::WipeStartScreen()
 {
-	return false;
+	return nullptr;
 }
 
 //==========================================================================
@@ -334,33 +334,9 @@ bool DFrameBuffer::WipeStartScreen(int type)
 //
 //==========================================================================
 
-void DFrameBuffer::WipeEndScreen()
+FTexture *DFrameBuffer::WipeEndScreen()
 {
-}
-
-//==========================================================================
-//
-// DFrameBuffer :: WipeDo
-//
-// Draws one frame of a screenwipe. Should be called no more than 35
-// times per second. If called less than that, ticks indicates how many
-// ticks have passed since the last call.
-//
-//==========================================================================
-
-bool DFrameBuffer::WipeDo(int ticks)
-{
-	return false;
-}
-
-//==========================================================================
-//
-// DFrameBuffer :: WipeCleanup
-//
-//==========================================================================
-
-void DFrameBuffer::WipeCleanup()
-{
+    return nullptr;
 }
 
 //==========================================================================

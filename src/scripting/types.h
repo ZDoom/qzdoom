@@ -238,10 +238,10 @@ protected:
 class PContainerType : public PCompoundType
 {
 public:
-	PTypeBase		*Outer;			// object this type is contained within
-	FName			TypeName;		// this type's name
+	PTypeBase		*Outer = nullptr;			// object this type is contained within
+	FName			TypeName = NAME_None;		// this type's name
 
-	PContainerType() : Outer(NULL) 
+	PContainerType()
 	{
 		mDescriptiveName = "ContainerType";
 		Flags |= TYPE_Container;
@@ -485,6 +485,7 @@ public:
 
 	void SetDefaultValue(void *base, unsigned offset, TArray<FTypeAndOffset> *special) override;
 	void SetPointer(void *base, unsigned offset, TArray<size_t> *special) override;
+	void SetPointerArray(void *base, unsigned offset, TArray<size_t> *ptrofs = NULL) override;
 };
 
 class PStaticArray : public PArray

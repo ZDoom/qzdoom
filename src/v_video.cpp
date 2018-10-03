@@ -65,8 +65,15 @@
 #include "vm.h"
 #include "r_videoscale.h"
 #include "i_time.h"
+#include "version.h"
 
 EXTERN_CVAR(Bool, cl_capfps)
+
+CVAR(Int, win_x, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Int, win_y, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Int, win_w, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Int, win_h, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool, win_maximized, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 
 CUSTOM_CVAR(Int, vid_maxfps, 200, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
@@ -103,8 +110,6 @@ EXTERN_CVAR(Bool, r_blendmethod)
 int active_con_scale();
 
 FRenderer *SWRenderer;
-
-EXTERN_CVAR (Bool, fullscreen)
 
 #define DBGBREAK assert(0)
 
@@ -875,9 +880,14 @@ void IVideo::DumpAdapters ()
 	Printf("Multi-monitor support unavailable.\n");
 }
 
-CUSTOM_CVAR(Bool, fullscreen, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
+CUSTOM_CVAR(Bool, fullscreen, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
 	setmodeneeded = true;
+}
+
+CUSTOM_CVAR(Bool, vid_hdr, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
+{
+	Printf("This won't take effect until " GAMENAME " is restarted.\n");
 }
 
 CCMD(vid_listadapters)
@@ -885,6 +895,8 @@ CCMD(vid_listadapters)
 	if (Video != NULL)
 		Video->DumpAdapters();
 }
+
+bool vid_hdr_active = false;
 
 DEFINE_GLOBAL(SmallFont)
 DEFINE_GLOBAL(SmallFont2)

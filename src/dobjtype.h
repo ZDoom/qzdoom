@@ -42,7 +42,7 @@ public:
 	void WriteAllFields(FSerializer &ar, const void *addr) const;
 	bool ReadAllFields(FSerializer &ar, void *addr) const;
 	void InitializeDefaults();
-	int FindVirtualIndex(FName name, PPrototype *proto);
+	int FindVirtualIndex(FName name, PFunction::Variant *variant, PFunction *parentfunc);
 	PSymbol *FindSymbol(FName symname, bool searchparents) const;
 	PField *AddField(FName name, PType *type, uint32_t flags);
 
@@ -58,8 +58,8 @@ public:
 	uint8_t				*Meta = nullptr;			// Per-class static script data
 	unsigned			 Size = sizeof(DObject);
 	unsigned			 MetaSize = 0;
-	FName				 TypeName;
-	FName				 SourceLumpName;
+	FName				 TypeName = NAME_None;
+	FName				 SourceLumpName = NAME_None;
 	bool				 bRuntimeClass = false;	// class was defined at run-time, not compile-time
 	bool				 bDecorateClass = false;	// may be subject to some idiosyncracies due to DECORATE backwards compatibility
 	bool				 bAbstract = false;

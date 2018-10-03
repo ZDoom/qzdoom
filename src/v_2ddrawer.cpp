@@ -242,6 +242,7 @@ bool F2DDrawer::SetStyle(FTexture *tex, DrawParms &parms, PalEntry &vertexcolor,
 		else if (quad.mDrawMode == DTM_Invert) quad.mDrawMode = DTM_InvertOpaque;
 	}
 	quad.mRenderStyle = parms.style;	// this  contains the blend mode and blend equation settings.
+    if (parms.burn) quad.mFlags |= DTF_Burn;
 	return true;
 }
 
@@ -425,12 +426,17 @@ void F2DDrawer::AddPoly(FTexture *texture, FVector2 *points, int npoints,
 	// Convert a light level into an unbounded colormap index (shade). 
 	// Why the +12? I wish I knew, but experimentation indicates it
 	// is necessary in order to best reproduce Doom's original lighting.
-	double map = (NUMCOLORMAPS * 2.) - ((lightlevel + 12) * (NUMCOLORMAPS / 128.));
-	double fadelevel = clamp((map - 12) / NUMCOLORMAPS, 0.0, 1.0);
-	// handle the brighter light modes of the hardware renderer.
-	if (vid_rendermode == 4 && (level.lightmode < 2 || level.lightmode == 4))
+	double fadelevel;
+
+	// The hardware renderer's light modes 0, 1 and 4 use a linear light scale which must be used here as well. Otherwise the automap gets too dark.
+	if (vid_rendermode != 4 || (level.lightmode >= 2 && level.lightmode != 4))
 	{
-		fadelevel = pow(fadelevel, 1.3);
+		double map = (NUMCOLORMAPS * 2.) - ((lightlevel + 12) * (NUMCOLORMAPS / 128.));
+		fadelevel = clamp((map - 12) / NUMCOLORMAPS, 0.0, 1.0);
+	}
+	else
+	{
+		fadelevel = 1. - clamp(lightlevel, 0, 255) / 255.f;
 	}
 
 	RenderCommand poly;
@@ -581,6 +587,46 @@ void F2DDrawer::AddLine(int x1, int y1, int x2, int y2, int palcolor, uint32_t c
 	dg.mVertIndex = (int)mVertices.Reserve(2);
 	mVertices[dg.mVertIndex].Set(x1, y1, 0, 0, 0, p);
 	mVertices[dg.mVertIndex+1].Set(x2, y2, 0, 0, 0, p);
+	AddCommand(&dg);
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+void F2DDrawer::AddThickLine(int x1, int y1, int x2, int y2, double thickness, uint32_t color)
+{
+	PalEntry p = (PalEntry)color;
+
+	DVector2 point0(x1, y1);
+	DVector2 point1(x2, y2);
+
+	DVector2 delta = point1 - point0;
+	DVector2 perp(-delta.Y, delta.X);
+	perp.MakeUnit();
+	perp *= thickness / 2;
+
+	DVector2 corner0 = point0 + perp;
+	DVector2 corner1 = point0 - perp;
+	DVector2 corner2 = point1 + perp;
+	DVector2 corner3 = point1 - perp;
+
+	RenderCommand dg;
+
+	dg.mType = DrawTypeTriangles;
+	dg.mVertCount = 4;
+	dg.mVertIndex = (int)mVertices.Reserve(4);
+	dg.mRenderStyle = LegacyRenderStyles[STYLE_Translucent];
+	auto ptr = &mVertices[dg.mVertIndex];
+	ptr->Set(corner0.X, corner0.Y, 0, 0, 0, p); ptr++;
+	ptr->Set(corner1.X, corner1.Y, 0, 0, 0, p); ptr++;
+	ptr->Set(corner2.X, corner2.Y, 0, 0, 0, p); ptr++;
+	ptr->Set(corner3.X, corner3.Y, 0, 0, 0, p); ptr++;
+	dg.mIndexIndex = mIndices.Size();
+	dg.mIndexCount += 6;
+	AddIndices(dg.mVertIndex, 6, 0, 1, 2, 1, 3, 2);
 	AddCommand(&dg);
 }
 

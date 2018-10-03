@@ -3,6 +3,7 @@ in vec2 TexCoord;
 layout(location=0) out vec4 FragColor;
 
 layout(binding=0) uniform sampler2D InputTexture;
+layout(binding=1) uniform sampler2D DitherTexture;
 
 vec4 ApplyGamma(vec4 c)
 {
@@ -17,7 +18,16 @@ vec4 ApplyGamma(vec4 c)
 	return vec4(val, c.a);
 }
 
+vec4 Dither(vec4 c)
+{
+	if (ColorScale == 0.0)
+		return c;
+	vec2 texSize = vec2(textureSize(DitherTexture, 0));
+	float threshold = texture(DitherTexture, gl_FragCoord.xy / texSize).r;
+	return vec4(floor(c.rgb * ColorScale + threshold) / ColorScale, c.a);
+}
+
 void main()
 {
-	FragColor = ApplyGamma(texture(InputTexture, TexCoord));
+	FragColor = Dither(ApplyGamma(texture(InputTexture, TexCoord)));
 }

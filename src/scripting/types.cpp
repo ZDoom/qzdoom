@@ -1593,10 +1593,8 @@ PClassPointer *NewClassPointer(PClass *restrict)
 //==========================================================================
 
 PEnum::PEnum(FName name, PTypeBase *outer)
-: PInt(4, false)
+: PInt(4, false), Outer(outer), EnumName(name)
 {
-	EnumName = name;
-	Outer = outer;
 	Flags |= TYPE_IntNotInt;
 	mDescriptiveName.Format("Enum<%s>", name.GetChars());
 }
@@ -1745,6 +1743,23 @@ void PArray::SetPointer(void *base, unsigned offset, TArray<size_t> *special)
 	for (unsigned i = 0; i < ElementCount; ++i)
 	{
 		ElementType->SetPointer(base, offset + i*ElementSize, special);
+	}
+}
+
+//==========================================================================
+//
+// PArray :: SetPointerArray
+//
+//==========================================================================
+
+void PArray::SetPointerArray(void *base, unsigned offset, TArray<size_t> *special)
+{
+	if (ElementType->isStruct())
+	{
+		for (unsigned int i = 0; i < ElementCount; ++i)
+		{
+			ElementType->SetPointerArray(base, offset + ElementSize * i, special);
+		}
 	}
 }
 

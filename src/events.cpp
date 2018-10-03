@@ -38,6 +38,7 @@
 #include "actor.h"
 #include "c_dispatch.h"
 #include "d_net.h"
+#include "info.h"
 
 DStaticEventHandler* E_FirstEventHandler = nullptr;
 DStaticEventHandler* E_LastEventHandler = nullptr;
@@ -506,6 +507,22 @@ bool E_CheckRequireMouse()
 	return false;
 }
 
+bool E_CheckReplacement( PClassActor *replacee, PClassActor **replacement )
+{
+	bool final = false;
+	for (DStaticEventHandler *handler = E_FirstEventHandler; handler; handler = handler->next)
+		handler->CheckReplacement(replacee,replacement,&final);
+	return final;
+}
+
+void E_NewGame()
+{
+	for (DStaticEventHandler* handler = E_FirstEventHandler; handler; handler = handler->next)
+	{
+		handler->NewGame();
+	}
+}
+
 // normal event loopers (non-special, argument-less)
 DEFINE_EVENT_LOOPER(RenderFrame)
 DEFINE_EVENT_LOOPER(WorldLightning)
@@ -570,6 +587,10 @@ DEFINE_FIELD_X(ConsoleEvent, FConsoleEvent, Player)
 DEFINE_FIELD_X(ConsoleEvent, FConsoleEvent, Name)
 DEFINE_FIELD_X(ConsoleEvent, FConsoleEvent, Args)
 DEFINE_FIELD_X(ConsoleEvent, FConsoleEvent, IsManual)
+
+DEFINE_FIELD_X(ReplaceEvent, FReplaceEvent, Replacee)
+DEFINE_FIELD_X(ReplaceEvent, FReplaceEvent, Replacement)
+DEFINE_FIELD_X(ReplaceEvent, FReplaceEvent, IsFinal)
 
 DEFINE_ACTION_FUNCTION(DStaticEventHandler, SetOrder)
 {
@@ -652,6 +673,10 @@ DEFINE_EMPTY_HANDLER(DStaticEventHandler, PostUiTick);
 
 DEFINE_EMPTY_HANDLER(DStaticEventHandler, ConsoleProcess);
 DEFINE_EMPTY_HANDLER(DStaticEventHandler, NetworkProcess);
+
+DEFINE_EMPTY_HANDLER(DStaticEventHandler, CheckReplacement);
+
+DEFINE_EMPTY_HANDLER(DStaticEventHandler, NewGame)
 
 // ===========================================
 //
@@ -1120,6 +1145,34 @@ void DStaticEventHandler::ConsoleProcess(int player, FString name, int arg1, int
 			VMValue params[2] = { (DStaticEventHandler*)this, &e };
 			VMCall(func, params, 2, nullptr, 0);
 		}
+	}
+}
+
+void DStaticEventHandler::CheckReplacement( PClassActor *replacee, PClassActor **replacement, bool *final )
+{
+	IFVIRTUAL(DStaticEventHandler, CheckReplacement)
+	{
+		// don't create excessive DObjects if not going to be processed anyway
+		if (func == DStaticEventHandler_CheckReplacement_VMPtr)
+			return;
+		FReplaceEvent e = { replacee, *replacement, *final };
+		VMValue params[2] = { (DStaticEventHandler*)this, &e };
+		VMCall(func, params, 2, nullptr, 0);
+		if ( e.Replacement != replacee ) // prevent infinite recursion
+			*replacement = e.Replacement;
+		*final = e.IsFinal;
+	}
+}
+
+void DStaticEventHandler::NewGame()
+{
+	IFVIRTUAL(DStaticEventHandler, NewGame)
+	{
+		// don't create excessive DObjects if not going to be processed anyway
+		if (func == DStaticEventHandler_NewGame_VMPtr)
+			return;
+		VMValue params[1] = { (DStaticEventHandler*)this };
+		VMCall(func, params, 1, nullptr, 0);
 	}
 }
 

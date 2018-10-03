@@ -1,3 +1,4 @@
+#define NO_SEND_STATS
 #ifdef NO_SEND_STATS
 
 void D_DoAnonStats()
@@ -270,8 +271,12 @@ static int GetCoreInfo()
 static int GetRenderInfo()
 {
 	auto info = gl_getInfo();
-	if (info.first < 3.3) return 3;	// Legacy OpenGL. Don't care about Intel HD 3000 on Windows being run in 'risky' mode.
-	if (!info.second) return 4;
+	if (info.first < 3.3) return 0;
+	if (!info.second)
+	{
+		if ((screen->hwcaps & (RFL_SHADER_STORAGE_BUFFER | RFL_BUFFER_STORAGE)) == (RFL_SHADER_STORAGE_BUFFER | RFL_BUFFER_STORAGE)) return 3;
+		return 4;
+	}
 	return 5;
 }
 

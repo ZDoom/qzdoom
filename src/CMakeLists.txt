@@ -1044,6 +1044,7 @@ set (PCH_SOURCES
 	g_statusbar/shared_sbar.cpp
 	gl/data/gl_vertexbuffer.cpp
 	gl/data/gl_uniformbuffer.cpp
+	gl/data/gl_viewpointbuffer.cpp
 	gl/dynlights/gl_lightbuffer.cpp
 	gl/dynlights/gl_shadowmap.cpp
 	gl/models/gl_models.cpp
@@ -1061,7 +1062,6 @@ set (PCH_SOURCES
 	gl_load/gl_interface.cpp
 	gl/system/gl_framebuffer.cpp
 	gl/system/gl_debug.cpp
-	gl/system/gl_wipe.cpp
 	gl/textures/gl_hwtexture.cpp
 	gl/textures/gl_samplers.cpp
 	hwrenderer/data/flatvertices.cpp
@@ -1089,6 +1089,7 @@ set (PCH_SOURCES
 	menu/messagebox.cpp
 	menu/optionmenu.cpp
 	menu/playermenu.cpp
+	menu/resolutionmenu.cpp
 	resourcefiles/ancientzip.cpp
 	resourcefiles/file_7z.cpp
 	resourcefiles/file_grp.cpp
@@ -1153,6 +1154,7 @@ set (PCH_SOURCES
 	r_data/models/models_md2.cpp
 	r_data/models/models_voxel.cpp
 	r_data/models/models_ue1.cpp
+	r_data/models/models_obj.cpp
 	scripting/symbols.cpp
 	scripting/types.cpp
 	scripting/thingdef.cpp

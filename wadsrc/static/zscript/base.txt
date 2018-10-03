@@ -194,6 +194,7 @@ struct Screen native
 	native static vararg void DrawChar(Font font, int normalcolor, double x, double y, int character, ...);
 	native static vararg void DrawText(Font font, int normalcolor, double x, double y, String text, ...);
 	native static void DrawLine(int x0, int y0, int x1, int y1, Color color);
+	native static void DrawThickLine(int x0, int y0, int x1, int y1, double thickness, Color color);
 	native static void DrawFrame(int x, int y, int w, int h);
 	native static Vector2, Vector2 VirtualToRealCoords(Vector2 pos, Vector2 size, Vector2 vsize, bool vbottom=false, bool handleaspect=true);
 	native static double GetAspectRatio();
@@ -668,6 +669,7 @@ struct LevelLocals native
 
 	native static clearscope vector2 Vec2Diff(vector2 v1, vector2 v2);
 	native static clearscope vector3 Vec3Diff(vector3 v1, vector3 v2);
+	native static clearscope vector3 SphericalCoords(vector3 viewpoint, vector3 targetPos, vector2 viewAngles = (0, 0), bool absolute = false);	
 	
 	native static clearscope vector2 Vec2Offset(vector2 pos, vector2 dir, bool absolute = false);
 	native static clearscope vector3 Vec2OffsetZ(vector2 pos, vector2 dir, double atz, bool absolute = false);
@@ -814,7 +816,8 @@ struct StringStruct native
 	native int CharCodeAt(int pos) const;
 	native String Filter();
 	native int IndexOf(String substr, int startIndex = 0) const;
-	native int LastIndexOf(String substr, int endIndex = 2147483647) const;
+	deprecated("3.5.1") native int LastIndexOf(String substr, int endIndex = 2147483647) const;
+	native int RightIndexOf(String substr, int endIndex = 2147483647) const;
 	native void ToUpper();
 	native void ToLower();
 	native int ToInt(int base = 0) const;

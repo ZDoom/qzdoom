@@ -1539,7 +1539,7 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 		// MBF bouncer might have a non-0 damage value, but they must not deal damage on impact either.
 		if ((tm.thing->BounceFlags & BOUNCE_Actors) && (tm.thing->IsZeroDamage() || !(tm.thing->flags & MF_MISSILE)))
 		{
-			return (tm.thing->target == thing || !(thing->flags & MF_SOLID));
+			return ((tm.thing->target == thing && !(tm.thing->flags8 & MF8_HITOWNER)) || !(thing->flags & MF_SOLID));
 		}
 
 		switch (tm.thing->SpecialMissileHit(thing))
@@ -1554,8 +1554,8 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 
 		if (tm.thing->target != NULL)
 		{
-			if (thing == tm.thing->target)
-			{ // Don't missile self
+			if (thing == tm.thing->target && !(tm.thing->flags8 & MF8_HITOWNER))
+			{ // Don't missile self -- [MK] unless explicitly allowed
 				return true;
 			}
 
@@ -4482,7 +4482,7 @@ DEFINE_ACTION_FUNCTION(AActor, AimLineAttack)
 struct Origin
 {
 	AActor *Caller;
-	FNameNoInit PuffSpecies;
+	FName PuffSpecies;
 	bool hitGhosts;
 	bool MThruSpecies;
 	bool ThruSpecies;
@@ -4752,11 +4752,18 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 
 				// We must pass the unreplaced puff type here 
 				puff = P_SpawnPuff(t1, pufftype, bleedpos, trace.SrcAngleFromTarget, trace.SrcAngleFromTarget - 90, 2, puffFlags | PF_HITTHING, trace.Actor);
-
-				if (nointeract)
-				{
-					return puff;
-				}
+			}
+			if (victim != NULL)
+			{
+				victim->linetarget = trace.Actor;
+				victim->attackAngleFromSource = trace.SrcAngleFromTarget;
+				// With arbitrary portals this cannot be calculated so using the actual attack angle is the only option.
+				victim->angleFromSource = trace.unlinked ? victim->attackAngleFromSource : t1->AngleTo(trace.Actor);
+				victim->unlinked = trace.unlinked;
+			}
+			if (nointeract)
+			{
+				return puff;
 			}
 
 			// Allow puffs to inflict poison damage, so that hitscans can poison, too.
@@ -4831,14 +4838,7 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 					P_TraceBleed(newdam > 0 ? newdam : damage, trace.HitPos, trace.Actor, trace.SrcAngleFromTarget, pitch);
 				}
 			}
-			if (victim != NULL)
-			{
-				victim->linetarget = trace.Actor;
-				victim->attackAngleFromSource = trace.SrcAngleFromTarget;
-				// With arbitrary portals this cannot be calculated so using the actual attack angle is the only option.
-				victim->angleFromSource = trace.unlinked? victim->attackAngleFromSource : t1->AngleTo(trace.Actor);
-				victim->unlinked = trace.unlinked;
-			}
+			
 		}
 		if (trace.Crossed3DWater || trace.CrossedWater)
 		{
@@ -4969,9 +4969,21 @@ bool P_LineTrace(AActor *t1, DAngle angle, double distance,
 	}
 
 	ActorFlags aflags = (flags & TRF_ALLACTORS) ? ActorFlags::FromInt(0xFFFFFFFF) : MF_SHOOTABLE;
-	int lflags = 0;
-	if ( !(flags & TRF_THRUBLOCK) ) lflags |= ML_BLOCKEVERYTHING;
-	if ( !(flags & TRF_THRUHITSCAN) ) lflags |= ML_BLOCKHITSCAN;
+	if ( flags & TRF_SOLIDACTORS ) aflags |= MF_SOLID;
+	int lflags = ML_BLOCKEVERYTHING|ML_BLOCKHITSCAN;
+	if ( flags & TRF_BLOCKUSE ) lflags |= ML_BLOCKUSE;
+	if ( flags & TRF_BLOCKSELF )
+	{
+		bool Projectile = ( (t1->flags&MF_MISSILE) || (t1->BounceFlags&BOUNCE_MBF) );
+		bool NotBlocked = ( (t1->flags3&MF3_NOBLOCKMONST) || ( (i_compatflags&COMPATF_NOBLOCKFRIENDS) && (t1->flags&MF_FRIENDLY) ) );
+		if ( Projectile ) lflags |= ML_BLOCKPROJECTILE;
+		if ( !Projectile || (t1->flags8&MF8_BLOCKASPLAYER) ) lflags |= ML_BLOCKING;
+		if ( !NotBlocked ) lflags |= ML_BLOCKMONSTERS;
+		if ( t1->player || (t1->flags8&MF8_BLOCKASPLAYER) ) lflags |= ML_BLOCKING|ML_BLOCK_PLAYERS;
+		if ( t1->flags&MF_FLOAT ) lflags |= ML_BLOCK_FLOATERS;
+	}
+	if ( flags & TRF_THRUBLOCK ) lflags &= ~ML_BLOCKEVERYTHING;
+	if ( flags & TRF_THRUHITSCAN ) lflags &= ~ML_BLOCKHITSCAN;
 	int tflags = TRACE_ReportPortals;
 	if ( flags & TRF_NOSKY ) tflags |= TRACE_NoSky;
 
@@ -5078,6 +5090,7 @@ AActor *P_LinePickActor(AActor *t1, DAngle angle, double distance, DAngle pitch,
 	TData.MThruSpecies = false;
 	TData.ThruActors = false;
 	TData.ThruSpecies = false;
+	TData.PuffSpecies = NAME_None;
 	
 	if (Trace(t1->PosAtZ(shootz), t1->Sector, direction, distance,
 		actorMask, wallMask, t1, trace, TRACE_NoSky | TRACE_PortalRestrict, CheckForActor, &TData))
@@ -5295,7 +5308,7 @@ struct RailData
 	AActor *Caller;
 	TArray<SRailHit> RailHits;
 	TArray<SPortalHit> PortalHits;
-	FNameNoInit PuffSpecies;
+	FName PuffSpecies;
 	bool StopAtOne;
 	bool StopAtInvul;
 	bool ThruGhosts;
@@ -6162,7 +6175,7 @@ int P_RadiusAttack(AActor *bombspot, AActor *bombsource, int bombdamage, int bom
 				{
 					//[MC] Don't count actors saved by buddha if already at 1 health.
 					int prehealth = thing->health;
-					newdam = P_DamageMobj(thing, bombspot, bombsource, damage, bombmod);
+					newdam = P_DamageMobj(thing, bombspot, bombsource, damage, bombmod, DMG_EXPLOSION);
 					if (thing->health < prehealth)	count++;
 				}
 				else if (thing->player == NULL && (!(flags & RADF_NOIMPACTDAMAGE) && !(thing->flags7 & MF7_DONTTHRUST)))
@@ -6214,7 +6227,7 @@ int P_RadiusAttack(AActor *bombspot, AActor *bombsource, int bombdamage, int bom
 			{ // OK to damage; target is in direct path
 				//[MC] Don't count actors saved by buddha if already at 1 health.
 				int prehealth = thing->health;
-				int newdam = P_DamageMobj(thing, bombspot, bombsource, damage, bombmod);
+				int newdam = P_DamageMobj(thing, bombspot, bombsource, damage, bombmod, DMG_EXPLOSION);
 				P_TraceBleed(newdam > 0 ? newdam : damage, thing, bombspot);
 				if (thing->health < prehealth)	count++;
 			}

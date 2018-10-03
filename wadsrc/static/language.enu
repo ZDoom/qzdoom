@@ -2265,6 +2265,19 @@ VIDMNU_SCALEFACTOR		= "Scale Factor";
 VIDMNU_ENTERTEXT		= "Press ENTER to set mode";
 VIDMNU_TESTTEXT1		= "T to test mode for 5 seconds";
 VIDMNU_TESTTEXT2		= "Please wait 5 seconds...";
+VIDMNU_USELINEAR		= "Use Linear Scaling (Fullscreen)";
+VIDMNU_CUSTOMRES		= "Custom Resolution Mode";
+VIDMNU_CUSTOMX			= "Custom Width";
+VIDMNU_CUSTOMY			= "Custom Height";
+VIDMNU_APPLYW			= "Apply Changes (Windowed)";
+VIDMNU_APPLYFS			= "Apply Changes (Fullscreen)";
+VIDMNU_RESPRESET		= "Choose Resolution Preset";
+VIDMNU_RESPRESETTTL		= "Custom Resolution Presets";
+VIDMNU_RESPRESETHEAD	= "Preset Resolution Modes";
+VIDMNU_ASPECT43			= "4:3 Aspect";
+VIDMNU_ASPECT54			= "5:4 Aspect";
+VIDMNU_ASPECT169		= "16:9 Aspect";
+VIDMNU_ASPECT1610		= "16:10 Aspect";
 
 // Network Options
 NETMNU_TITLE					= "NETWORK OPTIONS";
@@ -2758,6 +2771,7 @@ GLTEXMNU_ANISOTROPIC	= "Anisotropic filter";
 GLTEXMNU_TEXFORMAT 		= "Texture Format";
 GLTEXMNU_ENABLEHIRES 	= "Enable hires textures";
 GLTEXMNU_HQRESIZE 		= "High Quality Resize mode";
+GLTEXMNU_HQRESIZEWARN 	= "This mode requires %d times more video memory";
 GLTEXMNU_RESIZETEX 		= "Resize textures";
 GLTEXMNU_RESIZESPR 		= "Resize sprites";
 GLTEXMNU_RESIZEFNT 		= "Resize fonts";
@@ -2803,9 +2817,12 @@ GLPREFMNU_LENS					= "Lens distortion effect";
 GLPREFMNU_SSAO					= "Ambient occlusion quality";
 GLPREFMNU_SSAO_PORTALS			= "Portals with AO";
 GLPREFMNU_FXAA					= "FXAA Quality";
+GLPREFMNU_DITHER				= "Dither output";
 GLPREFMNU_PALTONEMAPORDER		= "Tonemap Palette Order";
 GLPREFMNU_PALTONEMAPPOWER		= "Tonemap Palette Exponent";
 GLPREFMNU_SWLMBANDED			= "Banded SW Lightmode";
+GLPREFMNU_VRIPD					= "Distance Between Your Eyes";
+GLPREFMNU_VRSCREENDIST			= "Distance From Your Screen";
 
 // Option Values
 OPTVAL_SMART 				= "Smart";
@@ -2854,12 +2871,25 @@ OPTVAL_ROUND 				= "Round";
 OPTVAL_SCALE2X 				= "Scale2x";
 OPTVAL_SCALE3X 				= "Scale3x";
 OPTVAL_SCALE4X 				= "Scale4x";
+OPTVAL_NORMAL2X				= "Normal2x";
+OPTVAL_NORMAL3X				= "Normal3x";
+OPTVAL_NORMAL4X				= "Normal4x";
 OPTVAL_HQ2X 				= "hq2x";
 OPTVAL_HQ3X 				= "hq3x";
 OPTVAL_HQ4X 				= "hq4x";
 OPTVAL_HQ2XMMX 				= "hq2x MMX";
 OPTVAL_HQ3XMMX 				= "hq3x MMX";
 OPTVAL_HQ4XMMX 				= "hq4x MMX";
+OPTVAL_2XBRZ 				= "2xBRZ";
+OPTVAL_3XBRZ 				= "3xBRZ";
+OPTVAL_4XBRZ 				= "4xBRZ";
+OPTVAL_5XBRZ 				= "5xBRZ";
+OPTVAL_6XBRZ 				= "6xBRZ";
+OPTVAL_OLD_2XBRZ 			= "Old 2xBRZ";
+OPTVAL_OLD_3XBRZ 			= "Old 3xBRZ";
+OPTVAL_OLD_4XBRZ 			= "Old 4xBRZ";
+OPTVAL_OLD_5XBRZ 			= "Old 5xBRZ";
+OPTVAL_OLD_6XBRZ 			= "Old 6xBRZ";
 OPTVAL_RADIAL 				= "Radial";
 OPTVAL_PIXELFUZZ 			= "Pixel fuzz";
 OPTVAL_SMOOTHFUZZ 			= "Smooth fuzz";
@@ -2890,8 +2920,6 @@ OPTVAL_HIGH					= "High";
 OPTVAL_EXTREME				= "Extreme";
 OPTVAL_OBVERSEFIRST			= "Obverse";
 OPTVAL_REVERSEFIRST			= "Reverse";
-
-// QZDoom exclusive:
 
 DSPLYMNU_TCOPT		= "TrueColor Options";
 

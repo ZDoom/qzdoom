@@ -62,23 +62,14 @@ extern "C" {
     __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;	
 }
 
-CVAR(Int, win_x, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Int, win_y, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Int, win_w, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Int, win_h, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Bool, win_maximized, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-
 EXTERN_CVAR(Int, vid_defwidth)
 EXTERN_CVAR(Int, vid_defheight)
-EXTERN_CVAR(Bool, fullscreen)
-
 
 //==========================================================================
 //
 // Windows framebuffer
 //
 //==========================================================================
-
 
 //==========================================================================
 //
@@ -286,14 +277,14 @@ void SystemBaseFrameBuffer::SetWindowSize(int w, int h)
 //
 //==========================================================================
 
-void SystemBaseFrameBuffer::PositionWindow(bool fullscreen)
+void SystemBaseFrameBuffer::PositionWindow(bool fullscreen, bool initialcall)
 {
 	RECT r;
 	LONG style, exStyle;
 
 	RECT monRect;
 
-	if (!m_Fullscreen && fullscreen) SaveWindowedPos();
+	if (!m_Fullscreen && fullscreen && !initialcall) SaveWindowedPos();
 	if (m_Monitor)
 	{
 		MONITORINFOEX mi;
@@ -304,6 +295,13 @@ void SystemBaseFrameBuffer::PositionWindow(bool fullscreen)
 			strcpy(m_displayDeviceNameBuffer, mi.szDevice);
 			m_displayDeviceName = m_displayDeviceNameBuffer;
 			monRect = mi.rcMonitor;
+
+			// Set the default windowed size if not specified yet.
+			if (win_w < 0 || win_h < 0)
+			{
+				win_w = int(monRect.right - monRect.left) * 8 / 10;
+				win_h = int(monRect.bottom - monRect.top) * 8 / 10;
+			}
 		}
 	}
 
@@ -355,7 +353,7 @@ SystemBaseFrameBuffer::SystemBaseFrameBuffer(void *hMonitor, bool fullscreen) : 
 {
 	m_Monitor = hMonitor;
 	m_displayDeviceName = 0;
-	PositionWindow(fullscreen);
+	PositionWindow(fullscreen, true);
 
 	HDC hDC = GetDC(Window);
 

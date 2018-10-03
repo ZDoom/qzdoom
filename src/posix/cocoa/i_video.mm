@@ -88,12 +88,6 @@ EXTERN_CVAR(Bool, vid_vsync)
 EXTERN_CVAR(Bool, vid_hidpi)
 EXTERN_CVAR(Int,  vid_defwidth)
 EXTERN_CVAR(Int,  vid_defheight)
-EXTERN_CVAR(Bool, fullscreen)
-
-CVAR(Int, win_x, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Int, win_y, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Int, win_w, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Int, win_h, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CUSTOM_CVAR(Bool, vid_autoswitch, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
@@ -406,6 +400,8 @@ void SystemGLFrameBuffer::SetWindowSize(int width, int height)
 	win_h = height + GetTitleBarHeight();
 
 	SetMode(false, m_hiDPI);
+
+	[m_window center];
 }
 
 int SystemGLFrameBuffer::GetTitleBarHeight() const
@@ -499,12 +495,19 @@ void SystemGLFrameBuffer::SetWindowedMode()
 	const NSSize minimumFrameSize = NSMakeSize(minimumFrameWidth, minimumFrameHeight);
 	[m_window setMinSize:minimumFrameSize];
 
-	const bool isFrameValid = win_x >= 0 && win_y >= 0
+	const bool isFrameValid = win_x != -1 && win_y != -1
 		&& win_w >= minimumFrameWidth && win_h >= minimumFrameHeight;
-	const NSRect frameSize = isFrameValid
-		? NSMakeRect(win_x, win_y, win_w, win_h)
-		: NSMakeRect(0, 0, vid_defwidth, vid_defheight);
 
+	if (!isFrameValid)
+	{
+		const NSRect screenSize = [[NSScreen mainScreen] frame];
+		win_x = screenSize.origin.x + screenSize.size.width  / 10;
+		win_y = screenSize.origin.y + screenSize.size.height / 10;
+		win_w = screenSize.size.width  * 8 / 10;
+		win_h = screenSize.size.height * 8 / 10 + GetTitleBarHeight();
+	}
+
+	const NSRect frameSize = NSMakeRect(win_x, win_y, win_w, win_h);
 	[m_window setFrame:frameSize display:YES];
 	[m_window enterFullscreenOnZoom];
 	[m_window exitAppOnClose];

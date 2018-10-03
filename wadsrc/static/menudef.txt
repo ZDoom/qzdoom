@@ -1927,6 +1927,49 @@ OptionMenu VideoModeMenu protected
 	Option "$VIDMNU_CROPASPECT",		"vid_cropaspect", "CropAspect"
 	Option "$VIDMNU_SCALEMODE",			"vid_scalemode", "ScaleModes"
 	Slider "$VIDMNU_SCALEFACTOR",		"vid_scalefactor", 0.25, 2.0, 0.25, 2
+
+	StaticText ""
+	StaticText "$VIDMNU_CUSTOMRES"
+	TextField "$VIDMNU_CUSTOMX", menu_resolution_custom_width
+	TextField "$VIDMNU_CUSTOMY", menu_resolution_custom_height
+	Option "$VIDMNU_USELINEAR", "vid_scale_customlinear", "YesNo"
+	StaticText ""
+	Command "$VIDMNU_APPLYW", "menu_resolution_commit_changes 0"
+	Command "$VIDMNU_APPLYFS", "menu_resolution_commit_changes 1"
+	StaticText ""
+
+	SubMenu "$VIDMNU_RESPRESET", CustomResolutionMenu
+}
+
+OptionMenu CustomResolutionMenu protected
+{
+	Title "$VIDMNU_RESPRESETTTL"
+	
+	StaticText "$VIDMNU_RESPRESETHEAD"
+	StaticText ""
+	StaticText "$VIDMNU_ASPECT43"
+	Command "320x240", "menu_resolution_set_custom 320 240"
+	Command "640x480", "menu_resolution_set_custom 640 480"
+	Command "1024x768", "menu_resolution_set_custom 1024 768"
+	Command "1280x960", "menu_resolution_set_custom 1280 960"
+	Command "1600x1200", "menu_resolution_set_custom 1600 1200"
+	StaticText ""
+	StaticText "$VIDMNU_ASPECT54"
+	Command "1280x1024", "menu_resolution_set_custom 1280 1024"
+	StaticText ""
+	StaticText "$VIDMNU_ASPECT169"
+	Command "960x540", "menu_resolution_set_custom 960 540"
+	Command "(720p HD)   1280x720", "menu_resolution_set_custom 1280 720"
+	Command "1366x768", "menu_resolution_set_custom 1366 768"
+	Command "(1080p HD) 1920x1080", "menu_resolution_set_custom 1920 1080"
+	Command "(1440p HD)  2560x1440", "menu_resolution_set_custom 2560 1440"
+	StaticText ""
+	StaticText "$VIDMNU_ASPECT1610"
+	Command "960x600", "menu_resolution_set_custom 960 600"
+	Command "1280x800", "menu_resolution_set_custom 1280 800"
+	Command "1440x900", "menu_resolution_set_custom 1440 900"
+	Command "1680x1050", "menu_resolution_set_custom 1680 1050"
+	Command "1920x1200", "menu_resolution_set_custom 1920 1200"
 }
 
 /*=======================================
@@ -2065,6 +2108,15 @@ OptionValue "Precision"
 	1, "$OPTVAL_QUALITY"
 }
 
+OptionValue "DitherModes"
+{
+	0, "$OPTVAL_OFF"
+	-1, "$OPTVAL_ON"
+	6, "6 BPC"
+	8, "8 BPC"
+	10, "10 BPC"
+	12, "12 BPC"
+}
 
 OptionValue "Hz"
 {
@@ -2103,12 +2155,19 @@ OptionValue "HqResizeModes"
    7, "$OPTVAL_HQ2XMMX"
    8, "$OPTVAL_HQ3XMMX"
    9, "$OPTVAL_HQ4XMMX"
-   10, "xBRZ 2x"
-   11, "xBRZ 3x"
-   12, "xBRZ 4x"
-   13, "xBRZ_old 2x"
-   14, "xBRZ_old 3x"
-   15, "xBRZ_old 4x"
+   10, "$OPTVAL_2XBRZ"
+   11, "$OPTVAL_3XBRZ"
+   12, "$OPTVAL_4XBRZ"
+   18, "$OPTVAL_5XBRZ"
+   19, "$OPTVAL_6XBRZ"
+   13, "$OPTVAL_OLD_2XBRZ"
+   14, "$OPTVAL_OLD_3XBRZ"
+   15, "$OPTVAL_OLD_4XBRZ"
+   16, "$OPTVAL_OLD_5XBRZ"
+   17, "$OPTVAL_OLD_6XBRZ"
+   20, "$OPTVAL_NORMAL2X"
+   21, "$OPTVAL_NORMAL3X"
+   22, "$OPTVAL_NORMAL4X"
 }
 
 OptionValue "HqResizeModesNoMMX"
@@ -2120,12 +2179,16 @@ OptionValue "HqResizeModesNoMMX"
    4, "$OPTVAL_HQ2X"
    5, "$OPTVAL_HQ3X"
    6, "$OPTVAL_HQ4X"
-   10, "xBRZ 2x"
-   11, "xBRZ 3x"
-   12, "xBRZ 4x"
-   13, "xBRZ_old 2x"
-   14, "xBRZ_old 3x"
-   15, "xBRZ_old 4x"
+   10, "$OPTVAL_2XBRZ"
+   11, "$OPTVAL_3XBRZ"
+   12, "$OPTVAL_4XBRZ"
+   18, "$OPTVAL_5XBRZ"
+   19, "$OPTVAL_6XBRZ"
+   13, "$OPTVAL_OLD_2XBRZ"
+   14, "$OPTVAL_OLD_3XBRZ"
+   15, "$OPTVAL_OLD_4XBRZ"
+   16, "$OPTVAL_OLD_5XBRZ"
+   17, "$OPTVAL_OLD_6XBRZ"
 }
 
 OptionValue "FogMode"
@@ -2189,12 +2252,15 @@ OptionMenu "GLTextureGLOptions" protected
 	{
 		Option "$GLTEXMNU_HQRESIZE",		gl_texture_hqresize,			"HqResizeModesNoMMX"
 	}
+	StaticText "!HQRESIZE_WARNING!"
+
 	Option "$GLTEXMNU_RESIZETEX",		gl_texture_hqresize_textures,	"OnOff"
 	Option "$GLTEXMNU_RESIZESPR",		gl_texture_hqresize_sprites,	"OnOff"
 	Option "$GLTEXMNU_RESIZEFNT",		gl_texture_hqresize_fonts,		"OnOff"
 	Option "$GLTEXMNU_PRECACHETEX",		gl_precache,					"YesNo"
 	Option "$GLTEXMNU_TRIMSPREDGE",		gl_trimsprites,					"OnOff"
 	Option "$GLTEXMNU_SORTDRAWLIST", 	gl_sort_textures,				"YesNo"
+	Class "GLTextureGLOptions"
 }
 
 OptionMenu "GLLightOptions" protected
@@ -2238,6 +2304,8 @@ OptionMenu "OpenGLOptions" protected
 	{
 		Option "$GLPREFMNU_VRQUADSTEREO",			vr_enable_quadbuffered,			"OnOff"
 	}
+	Slider "$GLPREFMNU_VRIPD",					vr_ipd,							0.041, 0.073, 0.001, 3
+	Slider "$GLPREFMNU_VRSCREENDIST",			vr_screendist,					0.2, 10.0, 0.1, 1
 	StaticText " "
 	Option "$GLPREFMNU_MULTISAMPLE", 			gl_multisample,					"Multisample"
 	Option "$GLPREFMNU_TONEMAP", 				gl_tonemap,						"TonemapModes"
@@ -2246,6 +2314,7 @@ OptionMenu "OpenGLOptions" protected
 	Option "$GLPREFMNU_SSAO",		 			gl_ssao,						"SSAOModes"
 	Slider "$GLPREFMNU_SSAO_PORTALS",			gl_ssao_portals,				0.0, 4.0, 1.0, 0
 	Option "$GLPREFMNU_FXAA",		 			gl_fxaa,						"FXAAQuality"
+	Option "$GLPREFMNU_DITHER",		 			gl_dither_bpc,					"DitherModes"
 	StaticText " "
 	Slider "$GLPREFMNU_PALTONEMAPPOWER",		gl_paltonemap_powtable,			0.2, 3.0, 0.1, 1
 	Option "$GLPREFMNU_PALTONEMAPORDER",		gl_paltonemap_reverselookup,	"LookupOrder"

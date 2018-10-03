@@ -40,6 +40,7 @@
 #include "r_utility.h"
 #include "r_data/models/models.h"
 #include "r_data/models/models_ue1.h"
+#include "r_data/models/models_obj.h"
 #include "i_time.h"
 
 #ifdef _MSC_VER
@@ -69,7 +70,12 @@ void FModelRenderer::RenderModel(float x, float y, float z, FSpriteModelFrame *s
 	float pitch = 0;
 	float roll = 0;
 	double rotateOffset = 0;
-	float angle = actor->Angles.Yaw.Degrees;
+	DRotator angles;
+	if (actor->renderflags & RF_INTERPOLATEANGLES) // [Nash] use interpolated angles
+		angles = actor->InterpolatedAngles(ticFrac);
+	else
+		angles = actor->Angles;
+	float angle = angles.Yaw.Degrees;
 
 	// [BB] Workaround for the missing pitch information.
 	if ((smf->flags & MDL_PITCHFROMMOMENTUM))
@@ -110,11 +116,11 @@ void FModelRenderer::RenderModel(float x, float y, float z, FSpriteModelFrame *s
 	// If both flags MDL_USEACTORPITCH and MDL_PITCHFROMMOMENTUM are set, the pitch sums up the actor pitch and the velocity vector pitch.
 	if (smf->flags & MDL_USEACTORPITCH)
 	{
-		double d = actor->Angles.Pitch.Degrees;
+		double d = angles.Pitch.Degrees;
 		if (smf->flags & MDL_BADROTATION) pitch += d;
 		else pitch -= d;
 	}
-	if (smf->flags & MDL_USEACTORROLL) roll += actor->Angles.Roll.Degrees;
+	if (smf->flags & MDL_USEACTORROLL) roll += angles.Roll.Degrees;
 
 	VSMatrix objectToWorldMatrix;
 	objectToWorldMatrix.loadIdentity();
@@ -124,13 +130,6 @@ void FModelRenderer::RenderModel(float x, float y, float z, FSpriteModelFrame *s
 
 	// [Nash] take SpriteRotation into account
 	angle += actor->SpriteRotation.Degrees;
-
-	if (actor->renderflags & RF_INTERPOLATEANGLES)
-	{
-		// [Nash] use interpolated angles
-		DRotator Angles = actor->InterpolatedAngles(ticFrac);
-		angle = Angles.Yaw.Degrees;
-	}
 
 	// Applying model transformations:
 	// 1) Applying actor angle, pitch and roll to the model
@@ -421,7 +420,7 @@ static unsigned FindModel(const char * path, const char * modelfile)
 	FMemLump lumpd = Wads.ReadLump(lump);
 	char * buffer = (char*)lumpd.GetMem();
 
-	if ( (size_t)fullname.IndexOf("_d.3d") == fullname.Len()-5 )
+	if ( (size_t)fullname.LastIndexOf("_d.3d") == fullname.Len()-5 )
 	{
 		FString anivfile = fullname.GetChars();
 		anivfile.Substitute("_d.3d","_a.3d");
@@ -430,7 +429,7 @@ static unsigned FindModel(const char * path, const char * modelfile)
 			model = new FUE1Model;
 		}
 	}
-	else if ( (size_t)fullname.IndexOf("_a.3d") == fullname.Len()-5 )
+	else if ( (size_t)fullname.LastIndexOf("_a.3d") == fullname.Len()-5 )
 	{
 		FString datafile = fullname.GetChars();
 		datafile.Substitute("_a.3d","_d.3d");
@@ -438,6 +437,10 @@ static unsigned FindModel(const char * path, const char * modelfile)
 		{
 			model = new FUE1Model;
 		}
+	}
+	else if ( (size_t)fullname.LastIndexOf(".obj") == fullname.Len() - 4 )
+	{
+		model = new FOBJModel;
 	}
 	else if (!memcmp(buffer, "DMDM", 4))
 	{
