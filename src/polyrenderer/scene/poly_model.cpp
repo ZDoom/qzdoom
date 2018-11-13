@@ -70,7 +70,7 @@ void PolyModelRenderer::AddLights(AActor *actor)
 
 		BSPWalkCircle(x, y, radiusSquared, [&](subsector_t *subsector) // Iterate through all subsectors potentially touched by actor
 		{
-			FLightNode * node = subsector->lighthead;
+			FLightNode * node = subsector->section->lighthead;
 			while (node) // check all lights touching a subsector
 			{
 				ADynamicLight *light = node->lightsource;
@@ -142,14 +142,6 @@ void PolyModelRenderer::EndDrawModel(AActor *actor, FSpriteModelFrame *smf)
 IModelVertexBuffer *PolyModelRenderer::CreateVertexBuffer(bool needindex, bool singleframe)
 {
 	return new PolyModelVertexBuffer(needindex, singleframe);
-}
-
-void PolyModelRenderer::SetVertexBuffer(IModelVertexBuffer *buffer)
-{
-}
-
-void PolyModelRenderer::ResetVertexBuffer()
-{
 }
 
 VSMatrix PolyModelRenderer::GetViewToWorldMatrix()

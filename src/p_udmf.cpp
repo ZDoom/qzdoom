@@ -1120,6 +1120,21 @@ public:
 				tagstring = CheckString(key);
 				break;
 
+			case NAME_Health:
+				ld->health = CheckInt(key);
+				break;
+
+			case NAME_DamageSpecial:
+				Flag(ld->activation, SPAC_Damage, key);
+				break;
+
+			case NAME_DeathSpecial:
+				Flag(ld->activation, SPAC_Death, key);
+				break;
+
+			case NAME_HealthGroup:
+				ld->healthgroup = CheckInt(key);
+				break;
 
 			default:
 				break;
@@ -1208,6 +1223,7 @@ public:
 		{
 			FName key = ParseKey();
 			switch(key)
+
 			{
 			case NAME_Offsetx:
 				texOfs[0] = CheckInt(key);
@@ -1319,6 +1335,79 @@ public:
 				Flag(sd->Flags, WALLF_NOAUTODECALS, key);
 				continue;
 
+			case NAME_nogradient_top:
+				Flag(sd->textures[side_t::top].flags, side_t::part::NoGradient, key);
+				break;
+
+			case NAME_flipgradient_top:
+				Flag(sd->textures[side_t::top].flags, side_t::part::FlipGradient, key);
+				break;
+
+			case NAME_clampgradient_top:
+				Flag(sd->textures[side_t::top].flags, side_t::part::ClampGradient, key);
+				break;
+
+			case NAME_useowncolors_top:
+				Flag(sd->textures[side_t::top].flags, side_t::part::UseOwnColors, key);
+				break;
+
+			case NAME_uppercolor_top:
+				sd->SetSpecialColor(side_t::top, 0, CheckInt(key));
+				break;
+
+			case NAME_lowercolor_top:
+				sd->SetSpecialColor(side_t::top, 1, CheckInt(key));
+				break;
+
+			case NAME_nogradient_mid:
+				Flag(sd->textures[side_t::mid].flags, side_t::part::NoGradient, key);
+				break;
+
+			case NAME_flipgradient_mid:
+				Flag(sd->textures[side_t::mid].flags, side_t::part::FlipGradient, key);
+				break;
+
+			case NAME_clampgradient_mid:
+				Flag(sd->textures[side_t::mid].flags, side_t::part::ClampGradient, key);
+				break;
+
+			case NAME_useowncolors_mid:
+				Flag(sd->textures[side_t::mid].flags, side_t::part::UseOwnColors, key);
+				break;
+
+			case NAME_uppercolor_mid:
+				sd->SetSpecialColor(side_t::mid, 0, CheckInt(key));
+				break;
+
+			case NAME_lowercolor_mid:
+				sd->SetSpecialColor(side_t::mid, 1, CheckInt(key));
+				break;
+
+			case NAME_nogradient_bottom:
+				Flag(sd->textures[side_t::bottom].flags, side_t::part::NoGradient, key);
+				break;
+
+			case NAME_flipgradient_bottom:
+				Flag(sd->textures[side_t::bottom].flags, side_t::part::FlipGradient, key);
+				break;
+
+			case NAME_clampgradient_bottom:
+				Flag(sd->textures[side_t::bottom].flags, side_t::part::ClampGradient, key);
+				break;
+
+			case NAME_useowncolors_bottom:
+				Flag(sd->textures[side_t::bottom].flags, side_t::part::UseOwnColors, key);
+				break;
+
+			case NAME_uppercolor_bottom:
+				sd->SetSpecialColor(side_t::bottom, 0, CheckInt(key));
+				break;
+
+			case NAME_lowercolor_bottom:
+				sd->SetSpecialColor(side_t::bottom, 1, CheckInt(key));
+				break;
+
+
 			default:
 				break;
 
@@ -1361,7 +1450,6 @@ public:
 		double scroll_floor_x = 0;
 		double scroll_floor_y = 0;
 		FName scroll_floor_type = NAME_None;
-
 
 		memset(sec, 0, sizeof(*sec));
 		sec->lightlevel = 160;
@@ -1675,19 +1763,19 @@ public:
 					break;
 
 				case NAME_floorglowcolor:
-					sec->planes[sector_t::floor].GlowColor = CheckInt(key);
+					sec->SetGlowColor(sector_t::floor, CheckInt(key));
 					break;
 
 				case NAME_floorglowheight:
-					sec->planes[sector_t::floor].GlowHeight = (float)CheckFloat(key);
+					sec->SetGlowHeight(sector_t::floor, (float)CheckFloat(key));
 					break;
 
 				case NAME_ceilingglowcolor:
-					sec->planes[sector_t::ceiling].GlowColor = CheckInt(key);
+					sec->SetGlowColor(sector_t::ceiling, CheckInt(key));
 					break;
 
 				case NAME_ceilingglowheight:
-					sec->planes[sector_t::ceiling].GlowHeight = (float)CheckFloat(key);
+					sec->SetGlowHeight(sector_t::ceiling, (float)CheckFloat(key));
 					break;
 
 				case NAME_Noattack:
@@ -1769,6 +1857,30 @@ public:
 				// These two are used by Eternity for something I do not understand.
 				//case NAME_portal_ceil_useglobaltex:
 				//case NAME_portal_floor_useglobaltex:
+
+				case NAME_HealthFloor:
+					sec->healthfloor = CheckInt(key);
+					break;
+
+				case NAME_HealthCeiling:
+					sec->healthceiling = CheckInt(key);
+					break;
+
+				case NAME_Health3D:
+					sec->health3d = CheckInt(key);
+					break;
+
+				case NAME_HealthFloorGroup:
+					sec->healthfloorgroup = CheckInt(key);
+					break;
+
+				case NAME_HealthCeilingGroup:
+					sec->healthceilinggroup = CheckInt(key);
+					break;
+
+				case NAME_Health3DGroup:
+					sec->health3dgroup = CheckInt(key);
+					break;
 					
 				default:
 					break;
@@ -2007,15 +2119,11 @@ public:
 
 	void ParseTextMap(MapData *map)
 	{
-		char *buffer = new char[map->Size(ML_TEXTMAP)];
-
 		isTranslated = true;
 		isExtended = false;
 		floordrop = false;
 
-		map->Read(ML_TEXTMAP, buffer);
-		sc.OpenMem(Wads.GetLumpFullName(map->lumpnum), buffer, map->Size(ML_TEXTMAP));
-		delete [] buffer;
+		sc.OpenMem(Wads.GetLumpFullName(map->lumpnum), map->Read(ML_TEXTMAP));
 		sc.SetCMode(true);
 		if (sc.CheckString("namespace"))
 		{

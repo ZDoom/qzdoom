@@ -1,5 +1,6 @@
 in vec4 pixelpos;
 in vec3 glowdist;
+in vec3 gradientdist;
 
 in vec4 vWorldNormal;
 in vec4 vEyeNormal;
@@ -76,7 +77,7 @@ vec4 getTexel(vec2 st)
 	//
 	switch (uTextureMode)
 	{
-		case 1:	// TM_MASK
+		case 1:	// TM_STENCIL
 			texel.rgb = vec3(1.0,1.0,1.0);
 			break;
 			
@@ -88,7 +89,7 @@ vec4 getTexel(vec2 st)
 			texel = vec4(1.0-texel.r, 1.0-texel.b, 1.0-texel.g, texel.a);
 			break;
 			
-		case 4:	// TM_REDTOALPHA
+		case 4:	// TM_ALPHATEXTURE
 		{
 			float gray = grayscale(texel);
 			texel = vec4(1.0, 1.0, 1.0, gray*texel.a);
@@ -111,7 +112,7 @@ vec4 getTexel(vec2 st)
 
 	}
 	if (uObjectColor2.a == 0.0) texel *= uObjectColor;
-	else texel *= mix(uObjectColor, uObjectColor2, glowdist.z);
+	else texel *= mix(uObjectColor, uObjectColor2, gradientdist.z);
 
 	return desaturate(texel);
 }

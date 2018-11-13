@@ -878,17 +878,6 @@ DEFINE_ACTION_FUNCTION(_Sector, SetFade)
 //
 //=====================================================================================
 
-void sector_t::SetSpecialColor(int slot, int r, int g, int b)
-{
-	SpecialColors[slot] = PalEntry(255, r, g, b);
-}
-
-void sector_t::SetSpecialColor(int slot, PalEntry rgb)
-{
-	rgb.a = 255;
-	SpecialColors[slot] = rgb;
-}
-
 DEFINE_ACTION_FUNCTION(_Sector, SetSpecialColor)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(sector_t);
@@ -2241,6 +2230,26 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	 ACTION_RETURN_INT(self->Index());
  }
 
+ //=====================================================================================
+//
+//
+//=====================================================================================
+
+ DEFINE_ACTION_FUNCTION(_Side, SetSpecialColor)
+ {
+	 PARAM_SELF_STRUCT_PROLOGUE(side_t);
+	 PARAM_INT(tier);
+	 PARAM_INT(position);
+	 PARAM_COLOR(color);
+	 if (tier >= 0 && tier < 3 && position >= 0 && position < 2)
+	 {
+		 color.a = 255;
+		 self->SetSpecialColor(tier, position, color);
+	 }
+	 return 0;
+ }
+
+
  DEFINE_ACTION_FUNCTION(_Vertex, Index)
  {
 	 PARAM_SELF_STRUCT_PROLOGUE(vertex_t);
@@ -2652,6 +2661,10 @@ DEFINE_FIELD_X(Sector, sector_t, damageamount)
 DEFINE_FIELD_X(Sector, sector_t, damageinterval)
 DEFINE_FIELD_X(Sector, sector_t, leakydamage)
 DEFINE_FIELD_X(Sector, sector_t, ZoneNumber)
+DEFINE_FIELD_X(Sector, sector_t, healthceiling)
+DEFINE_FIELD_X(Sector, sector_t, healthfloor)
+DEFINE_FIELD_X(Sector, sector_t, healthceilinggroup)
+DEFINE_FIELD_X(Sector, sector_t, healthfloorgroup)
 DEFINE_FIELD_X(Sector, sector_t, MoreFlags)
 DEFINE_FIELD_X(Sector, sector_t, Flags)
 DEFINE_FIELD_X(Sector, sector_t, SecActTarget)
@@ -2675,6 +2688,8 @@ DEFINE_FIELD_X(Line, line_t, validcount)
 DEFINE_FIELD_X(Line, line_t, locknumber)
 DEFINE_FIELD_X(Line, line_t, portalindex)
 DEFINE_FIELD_X(Line, line_t, portaltransferred)
+DEFINE_FIELD_X(Line, line_t, health)
+DEFINE_FIELD_X(Line, line_t, healthgroup)
 
 DEFINE_FIELD_X(Side, side_t, sector)
 DEFINE_FIELD_X(Side, side_t, linedef)
