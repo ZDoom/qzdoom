@@ -45,6 +45,8 @@
 #include "scripting/backend/scopebarrier.h"
 
 class DObject;
+union VMOP;
+class VMScriptFunction;
 
 extern FMemArena ClassDataAllocator;
 
@@ -104,6 +106,7 @@ public:
 
 // This must be a separate function because the VC compiler would otherwise allocate memory on the stack for every separate instance of the exception object that may get thrown.
 void ThrowAbortException(EVMAbortException reason, const char *moreinfo, ...);
+void ThrowAbortException(VMScriptFunction *sfunc, VMOP *line, EVMAbortException reason, const char *moreinfo, ...);
 
 struct VMReturn
 {
@@ -327,6 +330,8 @@ public:
 
 	class PPrototype *Proto;
 
+	int(*ScriptCall)(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret) = nullptr;
+
 	VMFunction(FName name = NAME_None) : ImplicitArgs(0), Name(name), Proto(NULL)
 	{
 		AllFunctions.Push(this);
@@ -358,12 +363,15 @@ public:
 	typedef int (*NativeCallType)(VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret);
 
 	// 8 is VARF_Native. I can't write VARF_Native because of circular references between this and dobject/dobjtype.
-	VMNativeFunction() : NativeCall(NULL) { VarFlags = 8; }
-	VMNativeFunction(NativeCallType call) : NativeCall(call) { VarFlags = 8; }
-	VMNativeFunction(NativeCallType call, FName name) : VMFunction(name), NativeCall(call) { VarFlags = 8; }
+	VMNativeFunction() : NativeCall(NULL) { VarFlags = 8; ScriptCall = &VMNativeFunction::NativeScriptCall; }
+	VMNativeFunction(NativeCallType call) : NativeCall(call) { VarFlags = 8; ScriptCall = &VMNativeFunction::NativeScriptCall; }
+	VMNativeFunction(NativeCallType call, FName name) : VMFunction(name), NativeCall(call) { VarFlags = 8; ScriptCall = &VMNativeFunction::NativeScriptCall; }
 
 	// Return value is the number of results.
 	NativeCallType NativeCall;
+
+private:
+	static int NativeScriptCall(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret);
 };
 
 int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, int numresults/*, VMException **trap = NULL*/);

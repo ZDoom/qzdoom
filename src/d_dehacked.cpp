@@ -64,6 +64,9 @@
 #include "v_text.h"
 #include "backend/vmbuilder.h"
 #include "types.h"
+#include "m_argv.h"
+
+void JitDumpLog(FILE *file, VMScriptFunction *func);
 
 // [SO] Just the way Randy said to do it :)
 // [RH] Made this CVAR_SERVERINFO
@@ -813,6 +816,25 @@ void SetDehParams(FState *state, int codepointer)
 		sfunc->ImplicitArgs = numargs;
 		state->SetAction(sfunc);
 		sfunc->PrintableName.Format("Dehacked.%s.%d.%d", MBFCodePointers[codepointer].name.GetChars(), value1, value2);
+
+		if (Args->CheckParm("-dumpdisasm"))
+		{
+			FILE *dump = fopen("disasm.txt", "a");
+			if (dump != nullptr)
+			{
+				DumpFunction(dump, sfunc, sfunc->PrintableName.GetChars(), (int)sfunc->PrintableName.Len());
+			}
+			fclose(dump);
+		}
+		if (Args->CheckParm("-dumpjit"))
+		{
+			FILE *dump = fopen("dumpjit.txt", "a");
+			if (dump != nullptr)
+			{
+				JitDumpLog(dump, sfunc);
+			}
+			fclose(dump);
+		}
 	}
 }
 

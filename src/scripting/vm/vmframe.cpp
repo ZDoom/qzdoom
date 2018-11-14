@@ -40,6 +40,15 @@
 #include "templates.h"
 #include "vmintern.h"
 #include "types.h"
+#include "jit.h"
+#include "c_cvars.h"
+#include "version.h"
+
+CUSTOM_CVAR(Bool, vm_jit, true, CVAR_NOINITCALL)
+{
+	Printf("You must restart " GAMENAME " for this change to take effect.\n");
+	Printf("This cvar is currently not saved. You must specify it on the command line.");
+}
 
 cycle_t VMCycles[10];
 int VMCalls[10];
@@ -49,7 +58,6 @@ IMPLEMENT_CLASS(VMException, false, false)
 #endif
 
 TArray<VMFunction *> VMFunction::AllFunctions;
-
 
 VMScriptFunction::VMScriptFunction(FName name)
 {
@@ -73,6 +81,7 @@ VMScriptFunction::VMScriptFunction(FName name)
 	NumKonstA = 0;
 	MaxParam = 0;
 	NumArgs = 0;
+	ScriptCall = &VMScriptFunction::FirstScriptCall;
 }
 
 VMScriptFunction::~VMScriptFunction()
@@ -204,6 +213,46 @@ int VMScriptFunction::PCToLine(const VMOP *pc)
 		}
 	}
 	return -1;
+}
+
+int VMScriptFunction::FirstScriptCall(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret)
+{
+	if (vm_jit)
+	{
+		func->ScriptCall = JitCompile(static_cast<VMScriptFunction*>(func));
+		if (!func->ScriptCall)
+			func->ScriptCall = VMExec;
+	}
+	else
+	{
+		func->ScriptCall = VMExec;
+	}
+
+	return func->ScriptCall(func, params, numparams, ret, numret);
+}
+
+int VMNativeFunction::NativeScriptCall(VMFunction *func, VMValue *params, int numparams, VMReturn *returns, int numret)
+{
+	try
+	{
+		VMCycles[0].Unclock();
+		numret = static_cast<VMNativeFunction *>(func)->NativeCall(params, func->DefaultArgs, numparams, returns, numret);
+		VMCycles[0].Clock();
+
+		return numret;
+	}
+	catch (CVMAbortException &err)
+	{
+		err.MaybePrintMessage();
+		err.stacktrace.AppendFormat("Called from %s\n", func->PrintableName.GetChars());
+		VMThrowException(std::current_exception());
+		return 0;
+	}
+	catch (...)
+	{
+		VMThrowException(std::current_exception());
+		return 0;
+	}
 }
 
 //===========================================================================
@@ -418,6 +467,32 @@ VMFrame *VMFrameStack::PopFrame()
 
 //===========================================================================
 //
+// The jitted code does not implement C++ exception handling.
+// Catch them, longjmp out of the jitted functions, perform vmframe cleanup
+// then rethrow the C++ exception
+//
+//===========================================================================
+
+thread_local JitExceptionInfo *CurrentJitExceptInfo;
+
+void VMThrowException(std::exception_ptr cppException)
+{
+	CurrentJitExceptInfo->cppException = cppException;
+	longjmp(CurrentJitExceptInfo->sjljbuf, 1);
+}
+
+static void VMRethrowException(JitExceptionInfo *exceptInfo)
+{
+	int c = exceptInfo->vmframes;
+	VMFrameStack *stack = &GlobalVMStack;
+	for (int i = 0; i < c; i++)
+		stack->PopFrame();
+
+	std::rethrow_exception(exceptInfo->cppException);
+}
+
+//===========================================================================
+//
 // VMFrameStack :: Call
 //
 // Calls a function, either native or scripted. If an exception occurs while
@@ -430,8 +505,9 @@ VMFrame *VMFrameStack::PopFrame()
 
 int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, int numresults/*, VMException **trap*/)
 {
-	bool allocated = false;
+#if 0
 	try
+#endif
 	{	
 		if (func->VarFlags & VARF_Native)
 		{
@@ -455,25 +531,32 @@ int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, 
 			else
 			{
 				VMCycles[0].Clock();
-				VMCalls[0]++;
-				auto &stack = GlobalVMStack;
-				stack.AllocFrame(static_cast<VMScriptFunction *>(func));
-				allocated = true;
-				VMFillParams(params, stack.TopFrame(), numparams);
-				int numret = VMExec(&stack, code, results, numresults);
-				stack.PopFrame();
-				VMCycles[0].Unclock();
-				return numret;
+
+				JitExceptionInfo *prevExceptInfo = CurrentJitExceptInfo;
+				JitExceptionInfo newExceptInfo;
+				CurrentJitExceptInfo = &newExceptInfo;
+				if (setjmp(CurrentJitExceptInfo->sjljbuf) == 0)
+				{
+					auto sfunc = static_cast<VMScriptFunction *>(func);
+					int numret = sfunc->ScriptCall(sfunc, params, numparams, results, numresults);
+					CurrentJitExceptInfo = prevExceptInfo;
+					VMCycles[0].Unclock();
+					return numret;
+				}
+				else
+				{
+					VMCycles[0].Unclock();
+					auto exceptInfo = CurrentJitExceptInfo;
+					CurrentJitExceptInfo = prevExceptInfo;
+					VMRethrowException(exceptInfo);
+					return 0;
+				}
 			}
 		}
 	}
 #if 0
 	catch (VMException *exception)
 	{
-		if (allocated)
-		{
-			PopFrame();
-		}
 		if (trap != NULL)
 		{
 			*trap = exception;
@@ -482,14 +565,6 @@ int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, 
 		throw;
 	}
 #endif
-	catch (...)
-	{
-		if (allocated)
-		{
-			GlobalVMStack.PopFrame();
-		}
-		throw;
-	}
 }
 
 // Exception stuff for the VM is intentionally placed there, because having this in vmexec.cpp would subject it to inlining
@@ -567,6 +642,16 @@ void ThrowAbortException(EVMAbortException reason, const char *moreinfo, ...)
 	va_list ap;
 	va_start(ap, moreinfo);
 	throw CVMAbortException(reason, moreinfo, ap);
+	va_end(ap);
+}
+
+void ThrowAbortException(VMScriptFunction *sfunc, VMOP *line, EVMAbortException reason, const char *moreinfo, ...)
+{
+	va_list ap;
+	va_start(ap, moreinfo);
+	CVMAbortException err(reason, moreinfo, ap);
+	err.stacktrace.AppendFormat("Called from %s at %s, line %d\n", sfunc->PrintableName.GetChars(), sfunc->SourceFileName.GetChars(), sfunc->PCToLine(line));
+	throw err;
 	va_end(ap);
 }
 

@@ -37,41 +37,28 @@
 #error vmexec.h must not be #included outside vmexec.cpp. Use vm.h instead.
 #endif
 
-static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
+static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 {
 #if COMPGOTO
 	static const void * const ops[256] =
 	{
-#define xx(op,sym,mode,alt,kreg,ktype) &&op
+#define xx(op,sym,mode,alt,kreg,ktype) &&op,
 #include "vmops.h"
 	};
 #endif
 	//const VMOP *exception_frames[MAX_TRY_DEPTH];
 	//int try_depth = 0;
 	VMFrame *f = stack->TopFrame();
-	VMScriptFunction *sfunc;
-	const VMRegisters reg(f);
-	const int *konstd;
-	const double *konstf;
-	const FString *konsts;
-	const FVoidObj *konsta;
+	VMScriptFunction *sfunc = static_cast<VMScriptFunction *>(f->Func);
+	const int *konstd = sfunc->KonstD;
+	const double *konstf = sfunc->KonstF;
+	const FString *konsts = sfunc->KonstS;
+	const FVoidObj *konsta = sfunc->KonstA;
+	const VMOP *pc = sfunc->Code;
 
-	if (f->Func != NULL && !(f->Func->VarFlags & VARF_Native))
-	{
-		sfunc = static_cast<VMScriptFunction *>(f->Func);
-		konstd = sfunc->KonstD;
-		konstf = sfunc->KonstF;
-		konsts = sfunc->KonstS;
-		konsta = sfunc->KonstA;
-	}
-	else
-	{
-		sfunc = NULL;
-		konstd = NULL;
-		konstf = NULL;
-		konsts = NULL;
-		konsta = NULL;
-	}
+	assert(!(f->Func->VarFlags & VARF_Native) && "Only script functions should ever reach VMExec");
+
+	const VMRegisters reg(f);
 
 	void *ptr;
 	double fb, fc;
@@ -723,20 +710,8 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 			}
 			else
 			{
-				VMCalls[0]++;
-				VMScriptFunction *script = static_cast<VMScriptFunction *>(call);
-				VMFrame *newf = stack->AllocFrame(script);
-				VMFillParams(reg.param + f->NumParam - b, newf, b);
-				try
-				{
-					numret = Exec(stack, script->Code, returns, C);
-				}
-				catch(...)
-				{
-					stack->PopFrame();
-					throw;
-				}
-				stack->PopFrame();
+				auto sfunc = static_cast<VMScriptFunction *>(call);
+				numret = sfunc->ScriptCall(sfunc, reg.param + f->NumParam - b, b, returns, C);
 			}
 			assert(numret == C && "Number of parameters returned differs from what was expected by the caller");
 			f->NumParam -= B;
@@ -777,21 +752,8 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 			}
 			else
 			{ // FIXME: Not a true tail call
-				VMCalls[0]++;
-				VMScriptFunction *script = static_cast<VMScriptFunction *>(call);
-				VMFrame *newf = stack->AllocFrame(script);
-				VMFillParams(reg.param + f->NumParam - B, newf, B);
-				try
-				{
-					numret = Exec(stack, script->Code, ret, numret);
-				}
-				catch(...)
-				{
-					stack->PopFrame();
-					throw;
-				}
-				stack->PopFrame();
-				return numret;
+				auto sfunc = static_cast<VMScriptFunction *>(call);
+				return sfunc->ScriptCall(sfunc, reg.param + f->NumParam - B, B, ret, numret);
 			}
 		}
 		NEXTOP;
@@ -2080,4 +2042,23 @@ static void SetReturn(const VMRegisters &reg, VMFrame *frame, VMReturn *ret, VM_
 		}
 		break;
 	}
+}
+
+static int Exec(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret)
+{
+	VMCalls[0]++;
+	VMFrameStack *stack = &GlobalVMStack;
+	VMFrame *newf = stack->AllocFrame(static_cast<VMScriptFunction*>(func));
+	VMFillParams(params, newf, numparams);
+	try
+	{
+		numret = ExecScriptFunc(stack, ret, numret);
+	}
+	catch (...)
+	{
+		stack->PopFrame();
+		throw;
+	}
+	stack->PopFrame();
+	return numret;
 }

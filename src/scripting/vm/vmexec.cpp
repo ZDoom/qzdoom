@@ -134,7 +134,7 @@ struct VMExec_Unchecked
 #undef assert
 #include <assert.h>
 
-int (*VMExec)(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret) =
+int (*VMExec)(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret) =
 #ifdef NDEBUG
 VMExec_Unchecked::Exec
 #else
