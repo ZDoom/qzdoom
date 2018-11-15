@@ -757,21 +757,27 @@ void JitCompiler::EmitMODF_RR()
 
 void JitCompiler::EmitMODF_RK()
 {
-	auto label = EmitThrowExceptionLabel(X_DIVISION_BY_ZERO);
-	cc.ptest(regF[C], regF[C]);
-	cc.je(label);
+	if (konstf[C] == 0.)
+	{
+		EmitThrowException(X_DIVISION_BY_ZERO);
+	}
+	else
+	{
+		auto tmpPtr = newTempIntPtr();
+		cc.mov(tmpPtr, asmjit::imm_ptr(&konstf[C]));
 
-	auto tmp = newTempXmmSd();
-	cc.movsd(tmp, asmjit::x86::ptr(ToMemAddress(&konstf[C])));
+		auto tmp = newTempXmmSd();
+		cc.movsd(tmp, asmjit::x86::qword_ptr(tmpPtr));
 
-	auto result = newResultXmmSd();
-	auto call = CreateCall<double, double, double>([](double a, double b) -> double {
-		return a - floor(a / b) * b;
-	});
-	call->setRet(0, result);
-	call->setArg(0, regF[B]);
-	call->setArg(1, tmp);
-	cc.movsd(regF[A], result);
+		auto result = newResultXmmSd();
+		auto call = CreateCall<double, double, double>([](double a, double b) -> double {
+			return a - floor(a / b) * b;
+		});
+		call->setRet(0, result);
+		call->setArg(0, regF[B]);
+		call->setArg(1, tmp);
+		cc.movsd(regF[A], result);
+	}
 }
 
 void JitCompiler::EmitMODF_KR()
@@ -1219,27 +1225,7 @@ void JitCompiler::EmitLENV2()
 void JitCompiler::EmitEQV2_R()
 {
 	EmitComparisonOpcode([&](bool check, asmjit::Label& fail, asmjit::Label& success) {
-		if (static_cast<bool>(A & CMP_APPROX)) I_FatalError("CMP_APPROX not implemented for EQV2_R.\n");
-
-		cc.ucomisd(regF[B], regF[C]);
-		if (check) {
-			cc.jp(success);
-			cc.jne(success);
-		}
-		else {
-			cc.jp(fail);
-			cc.jne(fail);
-		}
-
-		cc.ucomisd(regF[B + 1], regF[C + 1]);
-		if (check) {
-			cc.jp(success);
-			cc.je(fail);
-		}
-		else {
-			cc.jp(fail);
-			cc.jne(fail);
-		}
+		EmitVectorComparison<2> (check, fail, success);
 	});
 }
 
@@ -1406,37 +1392,7 @@ void JitCompiler::EmitLENV3()
 void JitCompiler::EmitEQV3_R()
 {
 	EmitComparisonOpcode([&](bool check, asmjit::Label& fail, asmjit::Label& success) {
-		if (static_cast<bool>(A & CMP_APPROX)) I_FatalError("CMP_APPROX not implemented for EQV3_R.\n");
-
-		cc.ucomisd(regF[B], regF[C]);
-		if (check) {
-			cc.jp(success);
-			cc.jne(success);
-		}
-		else {
-			cc.jp(fail);
-			cc.jne(fail);
-		}
-
-		cc.ucomisd(regF[B + 1], regF[C + 1]);
-		if (check) {
-			cc.jp(success);
-			cc.jne(success);
-		}
-		else {
-			cc.jp(fail);
-			cc.jne(fail);
-		}
-
-		cc.ucomisd(regF[B + 2], regF[C + 2]);
-		if (check) {
-			cc.jp(success);
-			cc.je(fail);
-		}
-		else {
-			cc.jp(fail);
-			cc.jne(fail);
-		}
+		EmitVectorComparison<3> (check, fail, success);
 	});
 }
 	
