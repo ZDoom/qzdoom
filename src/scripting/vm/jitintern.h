@@ -39,6 +39,12 @@ private:
 	#undef xx
 
 	void Setup();
+	void CreateRegisters();
+	void IncrementVMCalls();
+	void SetupFrame();
+	void SetupSimpleFrame();
+	void SetupSimpleFrameMissingArgs();
+	void SetupFullVMFrame();
 	void BindLabels();
 	void EmitOpcode();
 	void EmitPopFrame();
