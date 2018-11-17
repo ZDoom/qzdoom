@@ -1257,10 +1257,11 @@ public:
 class FxRandom : public FxExpression
 {
 protected:
-	bool EmitTail;
+	bool EmitTail = false;
 	FRandom *rng;
 	FxExpression *min, *max;
 
+	FxRandom(EFxType type, FRandom * r, const FScriptPosition &pos);
 public:
 
 	FxRandom(FRandom *, FxExpression *mi, FxExpression *ma, const FScriptPosition &pos, bool nowarn);
@@ -1763,6 +1764,7 @@ class FxVMFunctionCall : public FxExpression
 	PFunction *CallingFunction;
 
 	bool CheckAccessibility(const VersionInfo &ver);
+	bool UnravelVarArgAJump(FCompileContext&);
 
 public:
 	FxVMFunctionCall(FxExpression *self, PFunction *func, FArgumentList &args, const FScriptPosition &pos, bool novirtual);

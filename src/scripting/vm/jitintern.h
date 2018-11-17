@@ -38,6 +38,10 @@ private:
 	#include "vmops.h"
 	#undef xx
 
+	//static asmjit::FuncSignature CreateFuncSignature(VMScriptFunction *sfunc);
+	//static asmjit::CCFunc *CodegenThunk(asmjit::X86Compiler &cc, VMScriptFunction *sfunc, void *nativefunc);
+	//void SetupNative();
+
 	void Setup();
 	void CreateRegisters();
 	void IncrementVMCalls();
@@ -202,6 +206,8 @@ private:
 	asmjit::X86Gp newResultInt32() { return newTempRegister(regResultInt32, resultPosInt32, "resultDword", [&](const char *name) { return cc.newInt32(name); }); }
 	asmjit::X86Gp newResultIntPtr() { return newTempRegister(regResultIntPtr, resultPosIntPtr, "resultPtr", [&](const char *name) { return cc.newIntPtr(name); }); }
 	asmjit::X86Xmm newResultXmmSd() { return newTempRegister(regResultXmmSd, resultPosXmmSd, "resultXmmSd", [&](const char *name) { return cc.newXmmSd(name); }); }
+
+	void EmitReadBarrier();
 
 	void EmitNullPointerThrow(int index, EVMAbortException reason);
 	void EmitThrowException(EVMAbortException reason);
