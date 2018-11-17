@@ -209,8 +209,6 @@ struct VMValue
 		const FString *sp;
 	};
 
-	// Unfortunately, FString cannot be used directly.
-	// Fortunately, it is relatively simple.
 	const FString &s() const { return *sp; }
 
 	VMValue()
@@ -376,6 +374,12 @@ private:
 };
 
 int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, int numresults/*, VMException **trap = NULL*/);
+int VMCallWithDefaults(VMFunction *func, TArray<VMValue> &params, VMReturn *results, int numresults/*, VMException **trap = NULL*/);
+
+inline int VMCallAction(VMFunction *func, VMValue *params, int numparams, VMReturn *results, int numresults/*, VMException **trap = NULL*/)
+{
+	return VMCall(func, params, numparams, results, numresults);
+}
 
 // Use this in the prototype for a native function.
 #define VM_ARGS			VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret

@@ -492,21 +492,7 @@ void JitCompiler::SetupFrame()
 
 	if (sfunc->SpecialInits.Size() == 0 && sfunc->NumRegS == 0)
 	{
-		// This is a simple frame with no constructors or destructors. Allocate it on the stack ourselves.
-
-		auto vmstack = cc.newStack(sfunc->StackSize, 16, "vmstack");
-		cc.lea(vmframe, vmstack);
-
-		auto slowinit = cc.newLabel();
-		auto endinit = cc.newLabel();
-
-		cc.cmp(numargs, sfunc->NumArgs);
-		cc.jne(slowinit);
 		SetupSimpleFrame();
-		cc.jmp(endinit);
-		cc.bind(slowinit);
-		SetupSimpleFrameMissingArgs(); // Does this ever happen?
-		cc.bind(endinit);
 	}
 	else
 	{
@@ -517,6 +503,11 @@ void JitCompiler::SetupFrame()
 void JitCompiler::SetupSimpleFrame()
 {
 	using namespace asmjit;
+
+	// This is a simple frame with no constructors or destructors. Allocate it on the stack ourselves.
+
+	auto vmstack = cc.newStack(sfunc->StackSize, 16, "vmstack");
+	cc.lea(vmframe, vmstack);
 
 	int argsPos = 0;
 	int regd = 0, regf = 0, rega = 0;
@@ -569,72 +560,21 @@ void JitCompiler::SetupSimpleFrame()
 		cc.xor_(regA[i], regA[i]);
 }
 
-void JitCompiler::SetupSimpleFrameMissingArgs()
+static VMFrameStack *CreateFullVMFrame(VMScriptFunction *func, VMValue *args, int numargs)
 {
-	using namespace asmjit;
-
-	auto sfuncptr = newTempIntPtr();
-	cc.mov(sfuncptr, imm_ptr(sfunc));
-	if (cc.is64Bit())
-		cc.mov(x86::qword_ptr(vmframe, offsetof(VMFrame, Func)), sfuncptr);
-	else
-		cc.mov(x86::dword_ptr(vmframe, offsetof(VMFrame, Func)), sfuncptr);
-	cc.mov(x86::byte_ptr(vmframe, offsetof(VMFrame, NumRegD)), sfunc->NumRegD);
-	cc.mov(x86::byte_ptr(vmframe, offsetof(VMFrame, NumRegF)), sfunc->NumRegF);
-	cc.mov(x86::byte_ptr(vmframe, offsetof(VMFrame, NumRegS)), sfunc->NumRegS);
-	cc.mov(x86::byte_ptr(vmframe, offsetof(VMFrame, NumRegA)), sfunc->NumRegA);
-	cc.mov(x86::word_ptr(vmframe, offsetof(VMFrame, MaxParam)), sfunc->MaxParam);
-	cc.mov(x86::word_ptr(vmframe, offsetof(VMFrame, NumParam)), 0);
-
-	// Zero initialize the variables (retardedly stupid to do here - should be done by the compiler backend!!)
-	unsigned int clearbegin = (unsigned int)offsetof(VMFrame, NumParam) + 2;
-	unsigned int clearend = sfunc->StackSize;
-	unsigned int sseend = clearbegin + (clearend - clearbegin) / 16 * 16;
-	if (clearbegin < sseend)
+	try
 	{
-		auto zerosse = newTempXmmPd();
-		cc.xorpd(zerosse, zerosse);
-		for (unsigned int i = clearbegin; i < sseend; i += 16)
-			cc.movupd(x86::ptr(vmframe, i), zerosse);
+		VMFrameStack *stack = &GlobalVMStack;
+		VMFrame *newf = stack->AllocFrame(func);
+		CurrentJitExceptInfo->vmframes++;
+		VMFillParams(args, newf, numargs);
+		return stack;
 	}
-	if (sseend < clearend)
+	catch (...)
 	{
-		auto zero32 = newTempInt32();
-		cc.xor_(zero32, zero32);
-
-		unsigned int dwordend = sseend + (clearend - sseend) / 4 * 4;
-		for (unsigned int i = sseend; i < dwordend; i += 4)
-			cc.mov(asmjit::x86::dword_ptr(vmframe, i), zero32);
-
-		for (unsigned int i = dwordend; i < clearend; i++)
-			cc.mov(asmjit::x86::byte_ptr(vmframe, i), zero32.r8Lo());
+		VMThrowException(std::current_exception());
+		return nullptr;
 	}
-
-	auto fillParams = CreateCall<void, VMFrame *, VMValue *, int>([](VMFrame *newf, VMValue *args, int numargs) {
-		try
-		{
-			VMFillParams(args, newf, numargs);
-		}
-		catch (...)
-		{
-			VMThrowException(std::current_exception());
-		}
-	});
-	fillParams->setArg(0, vmframe);
-	fillParams->setArg(1, args);
-	fillParams->setArg(2, numargs);
-
-	for (int i = 0; i < sfunc->NumRegD; i++)
-		cc.mov(regD[i], x86::dword_ptr(vmframe, offsetD + i * sizeof(int32_t)));
-
-	for (int i = 0; i < sfunc->NumRegF; i++)
-		cc.movsd(regF[i], x86::qword_ptr(vmframe, offsetF + i * sizeof(double)));
-
-	for (int i = 0; i < sfunc->NumRegS; i++)
-		cc.lea(regS[i], x86::ptr(vmframe, offsetS + i * sizeof(FString)));
-
-	for (int i = 0; i < sfunc->NumRegA; i++)
-		cc.mov(regA[i], x86::ptr(vmframe, offsetA + i * sizeof(void*)));
 }
 
 void JitCompiler::SetupFullVMFrame()
@@ -642,21 +582,7 @@ void JitCompiler::SetupFullVMFrame()
 	using namespace asmjit;
 
 	stack = cc.newIntPtr("stack");
-	auto allocFrame = CreateCall<VMFrameStack *, VMScriptFunction *, VMValue *, int>([](VMScriptFunction *func, VMValue *args, int numargs) -> VMFrameStack* {
-		try
-		{
-			VMFrameStack *stack = &GlobalVMStack;
-			VMFrame *newf = stack->AllocFrame(func);
-			CurrentJitExceptInfo->vmframes++;
-			VMFillParams(args, newf, numargs);
-			return stack;
-		}
-		catch (...)
-		{
-			VMThrowException(std::current_exception());
-			return nullptr;
-		}
-	});
+	auto allocFrame = CreateCall<VMFrameStack *, VMScriptFunction *, VMValue *, int>(CreateFullVMFrame);
 	allocFrame->setRet(0, stack);
 	allocFrame->setArg(0, imm_ptr(sfunc));
 	allocFrame->setArg(1, args);
@@ -678,21 +604,24 @@ void JitCompiler::SetupFullVMFrame()
 		cc.mov(regA[i], x86::ptr(vmframe, offsetA + i * sizeof(void*)));
 }
 
+static void PopFullVMFrame(VMFrameStack *stack)
+{
+	try
+	{
+		stack->PopFrame();
+		CurrentJitExceptInfo->vmframes--;
+	}
+	catch (...)
+	{
+		VMThrowException(std::current_exception());
+	}
+}
+
 void JitCompiler::EmitPopFrame()
 {
 	if (sfunc->SpecialInits.Size() != 0 || sfunc->NumRegS != 0)
 	{
-		auto popFrame = CreateCall<void, VMFrameStack *>([](VMFrameStack *stack) {
-			try
-			{
-				stack->PopFrame();
-				CurrentJitExceptInfo->vmframes--;
-			}
-			catch (...)
-			{
-				VMThrowException(std::current_exception());
-			}
-		});
+		auto popFrame = CreateCall<void, VMFrameStack *>(PopFullVMFrame);
 		popFrame->setArg(0, stack);
 	}
 }

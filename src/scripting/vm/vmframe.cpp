@@ -221,10 +221,24 @@ int VMScriptFunction::PCToLine(const VMOP *pc)
 	return -1;
 }
 
+static bool CanJit(VMScriptFunction *func)
+{
+	// Asmjit has a 256 register limit. Stay safely away from it as the jit compiler uses a few for temporaries as well.
+	// Any function exceeding the limit will use the VM - a fair punishment to someone for writing a function so bloated ;)
+
+	int maxregs = 200;
+	if (func->NumRegA + func->NumRegD + func->NumRegF + func->NumRegS < maxregs)
+		return true;
+
+	Printf(TEXTCOLOR_ORANGE "%s is using too many registers (%d of max %d)! Function will not use native code.\n", func->PrintableName.GetChars(), func->NumRegA + func->NumRegD + func->NumRegF + func->NumRegS, maxregs);
+
+	return false;
+}
+
 int VMScriptFunction::FirstScriptCall(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret)
 {
 #ifdef ARCH_X64
-	if (vm_jit)
+	if (vm_jit && CanJit(static_cast<VMScriptFunction*>(func)))
 	{
 		func->ScriptCall = JitCompile(static_cast<VMScriptFunction*>(func));
 		if (!func->ScriptCall)
@@ -576,6 +590,18 @@ int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, 
 	}
 #endif
 }
+
+int VMCallWithDefaults(VMFunction *func, TArray<VMValue> &params, VMReturn *results, int numresults/*, VMException **trap = NULL*/)
+{
+	if (func->DefaultArgs.Size() > params.Size())
+	{
+		auto oldp = params.Size();
+		params.Resize(func->DefaultArgs.Size());
+		memcpy(&params[oldp], &func->DefaultArgs[oldp], (params.Size() - oldp) * sizeof(VMValue));
+	}
+	return VMCall(func, params.Data(), params.Size(), results, numresults);
+}
+
 
 // Exception stuff for the VM is intentionally placed there, because having this in vmexec.cpp would subject it to inlining
 // which we do not want because it increases the local stack requirements of Exec which are already too high.
