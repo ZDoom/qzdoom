@@ -259,7 +259,7 @@ void ExpEmit::Reuse(VMFunctionBuilder *build)
 //
 //==========================================================================
 
-static PSymbol *FindBuiltinFunction(FName funcname, VMNativeFunction::NativeCallType func)
+static PSymbol *FindBuiltinFunction(FName funcname, VMNativeFunction::NativeCallType func, const uint8_t *reginfo)
 {
 	PSymbol *sym = Namespaces.GlobalNamespace->Symbols.FindSymbol(funcname, false);
 	if (sym == nullptr)
@@ -267,6 +267,7 @@ static PSymbol *FindBuiltinFunction(FName funcname, VMNativeFunction::NativeCall
 		PSymbolVMFunction *symfunc = Create<PSymbolVMFunction>(funcname);
 		VMNativeFunction *calldec = new VMNativeFunction(func, funcname);
 		calldec->PrintableName = funcname.GetChars();
+		calldec->RegTypes = reginfo;
 		symfunc->Function = calldec;
 		sym = symfunc;
 		Namespaces.GlobalNamespace->Symbols.AddSymbol(sym);
@@ -5449,18 +5450,6 @@ FxRandom::~FxRandom()
 //
 //==========================================================================
 
-PPrototype *FxRandom::ReturnProto()
-{
-	EmitTail = true;
-	return FxExpression::ReturnProto();
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
 FxExpression *FxRandom::Resolve(FCompileContext &ctx)
 {
 	CHECKRESOLVED();
@@ -5482,7 +5471,7 @@ FxExpression *FxRandom::Resolve(FCompileContext &ctx)
 //
 //==========================================================================
 
-int BuiltinRandom(VMValue *param, int numparam, VMReturn *ret, int numret)
+int BuiltinRandom(VM_ARGS)
 {
 	PARAM_PROLOGUE;
 	PARAM_POINTER(rng, FRandom);
@@ -5499,34 +5488,21 @@ ExpEmit FxRandom::Emit(VMFunctionBuilder *build)
 {
 	// Call DecoRandom to generate a random number.
 	VMFunction *callfunc;
-	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinRandom, BuiltinRandom);
+	static const uint8_t reginfo[] = { REGT_POINTER, REGT_INT, REGT_INT };
+	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinRandom, BuiltinRandom, reginfo);
 
 	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	assert(min && max);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	if (build->FramePointer.Fixed) EmitTail = false;	// do not tail call if the stack is in use
-	int opcode = (EmitTail ? OP_TAIL_K : OP_CALL_K);
-
-	EmitterArray emitters;
+	FunctionCallEmitter emitters(callfunc);
 
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameter(build, min);
 	emitters.AddParameter(build, max);
-	int count = emitters.EmitParameters(build);
-	build->Emit(opcode, build->GetConstantAddress(callfunc), count, 1);
-
-	if (EmitTail)
-	{
-		ExpEmit call;
-		call.Final = true;
-		return call;
-	}
-
-	ExpEmit out(build, REGT_INT);
-	build->Emit(OP_RESULT, 0, REGT_INT, out.RegNum);
-	return out;
+	emitters.AddReturn(REGT_INT);
+	return emitters.EmitCall(build);
 }
 
 //==========================================================================
@@ -5620,21 +5596,20 @@ ExpEmit FxRandomPick::Emit(VMFunctionBuilder *build)
 
 	// Call BuiltinRandom to generate a random number.
 	VMFunction *callfunc;
-	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinRandom, BuiltinRandom);
+	static const uint8_t reginfo[] = { REGT_POINTER, REGT_INT, REGT_INT };
+	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinRandom, BuiltinRandom, reginfo);
 
 	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	EmitterArray emitters;
+	FunctionCallEmitter emitters(callfunc);
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameterIntConst(0);
 	emitters.AddParameterIntConst(choices.Size() - 1);
-	int count = emitters.EmitParameters(build);
-	build->Emit(OP_CALL_K, build->GetConstantAddress(callfunc), count, 1);
+	emitters.AddReturn(REGT_INT);
+	auto resultreg = emitters.EmitCall(build);
 
-	ExpEmit resultreg(build, REGT_INT);
-	build->Emit(OP_RESULT, 0, REGT_INT, resultreg.RegNum);
 	build->Emit(OP_IJMP, resultreg.RegNum, choices.Size());
 
 	// Free the result register now. The simple code generation algorithm should
@@ -5719,7 +5694,7 @@ FxFRandom::FxFRandom(FRandom *r, FxExpression *mi, FxExpression *ma, const FScri
 //
 //==========================================================================
 
-int BuiltinFRandom(VMValue *param, int numparam, VMReturn *ret, int numret)
+int BuiltinFRandom(VM_ARGS)
 {
 	PARAM_PROLOGUE;
 	PARAM_POINTER(rng, FRandom);
@@ -5740,33 +5715,20 @@ ExpEmit FxFRandom::Emit(VMFunctionBuilder *build)
 {
 	// Call the BuiltinFRandom function to generate a floating point random number..
 	VMFunction *callfunc;
-	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinFRandom, BuiltinFRandom);
+	static uint8_t reginfo[] = { REGT_POINTER, REGT_FLOAT, REGT_FLOAT };
+	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinFRandom, BuiltinFRandom, reginfo);
 
 	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	assert(min && max);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	if (build->FramePointer.Fixed) EmitTail = false;	// do not tail call if the stack is in use
-	int opcode = (EmitTail ? OP_TAIL_K : OP_CALL_K);
-
-	EmitterArray emitters;
+	FunctionCallEmitter emitters(callfunc);
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameter(build, min);
 	emitters.AddParameter(build, max);
-	int count = emitters.EmitParameters(build);
-	build->Emit(opcode, build->GetConstantAddress(callfunc), count, 1);
-
-	if (EmitTail)
-	{
-		ExpEmit call;
-		call.Final = true;
-		return call;
-	}
-
-	ExpEmit out(build, REGT_FLOAT);
-	build->Emit(OP_RESULT, 0, REGT_FLOAT, out.RegNum);
-	return out;
+	emitters.AddReturn(REGT_FLOAT);
+	return emitters.EmitCall(build);
 }
 
 //==========================================================================
@@ -5778,7 +5740,6 @@ ExpEmit FxFRandom::Emit(VMFunctionBuilder *build)
 FxRandom2::FxRandom2(FRandom *r, FxExpression *m, const FScriptPosition &pos, bool nowarn)
 : FxExpression(EFX_Random2, pos)
 {
-	EmitTail = false;
 	rng = r;
 	if (m) mask = new FxIntCast(m, nowarn);
 	else mask = new FxConstant(-1, pos);
@@ -5802,18 +5763,6 @@ FxRandom2::~FxRandom2()
 //
 //==========================================================================
 
-PPrototype *FxRandom2::ReturnProto()
-{
-	EmitTail = true;
-	return FxExpression::ReturnProto();
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
 FxExpression *FxRandom2::Resolve(FCompileContext &ctx)
 {
 	CHECKRESOLVED();
@@ -5827,7 +5776,7 @@ FxExpression *FxRandom2::Resolve(FCompileContext &ctx)
 //
 //==========================================================================
 
-int BuiltinRandom2(VMValue *param, int numparam, VMReturn *ret, int numret)
+int BuiltinRandom2(VM_ARGS)
 {
 	PARAM_PROLOGUE;
 	PARAM_POINTER(rng, FRandom);
@@ -5845,32 +5794,19 @@ ExpEmit FxRandom2::Emit(VMFunctionBuilder *build)
 {
 	// Call the BuiltinRandom function to generate the random number.
 	VMFunction *callfunc;
-	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinRandom2, BuiltinRandom2);
+	static uint8_t reginfo[] = { REGT_POINTER, REGT_INT };
+	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinRandom2, BuiltinRandom2, reginfo);
 
 	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	if (build->FramePointer.Fixed) EmitTail = false;	// do not tail call if the stack is in use
-	int opcode = (EmitTail ? OP_TAIL_K : OP_CALL_K);
-
-	EmitterArray emitters;
+	FunctionCallEmitter emitters(callfunc);
 
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameter(build, mask);
-	int count = emitters.EmitParameters(build);
-	build->Emit(opcode, build->GetConstantAddress(callfunc), count, 1);
-
-	if (EmitTail)
-	{
-		ExpEmit call;
-		call.Final = true;
-		return call;
-	}
-
-	ExpEmit out(build, REGT_INT);
-	build->Emit(OP_RESULT, 0, REGT_INT, out.RegNum);
-	return out;
+	emitters.AddReturn(REGT_INT);
+	return emitters.EmitCall(build);
 }
 
 //==========================================================================
@@ -5881,7 +5817,6 @@ ExpEmit FxRandom2::Emit(VMFunctionBuilder *build)
 FxRandomSeed::FxRandomSeed(FRandom * r, FxExpression *s, const FScriptPosition &pos, bool nowarn)
 	: FxExpression(EFX_Random, pos)
 {
-	EmitTail = false;
 	seed = new FxIntCast(s, nowarn);
 	rng = r;
 	ValueType = TypeVoid;
@@ -5918,7 +5853,7 @@ FxExpression *FxRandomSeed::Resolve(FCompileContext &ctx)
 //
 //==========================================================================
 
-int BuiltinRandomSeed(VMValue *param, int numparam, VMReturn *ret, int numret)
+int BuiltinRandomSeed(VM_ARGS)
 {
 	PARAM_PROLOGUE;
 	PARAM_POINTER(rng, FRandom)
@@ -5931,25 +5866,17 @@ ExpEmit FxRandomSeed::Emit(VMFunctionBuilder *build)
 {
 	// Call DecoRandom to generate a random number.
 	VMFunction *callfunc;
-	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinRandomSeed, BuiltinRandomSeed);
+	static uint8_t reginfo[] = { REGT_POINTER, REGT_INT };
+	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinRandomSeed, BuiltinRandomSeed, reginfo);
 
 	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	if (build->FramePointer.Fixed) EmitTail = false;	// do not tail call if the stack is in use
-	int opcode = (EmitTail ? OP_TAIL_K : OP_CALL_K);
-
-	EmitterArray emitters;
-
+	FunctionCallEmitter emitters(callfunc);
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameter(build, seed);
-	int count = emitters.EmitParameters(build);
-	build->Emit(opcode, build->GetConstantAddress(callfunc), count, 0);
-
-	ExpEmit call;
-	if (EmitTail) call.Final = true;
-	return call;
+	return emitters.EmitCall(build);
 }
 
 //==========================================================================
@@ -6387,7 +6314,7 @@ FxExpression *FxMemberIdentifier::Resolve(FCompileContext& ctx)
 					assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolConstNumeric)));
 					auto sn = static_cast<PSymbolConstNumeric*>(sym);
 
-					VMValue vmv;
+					TypedVMValue vmv;
 					if (sn->ValueType->isIntCompatible()) vmv = sn->Value;
 					else vmv = sn->Float;
 					auto x = new FxConstant(sn->ValueType, vmv, ScriptPosition);
@@ -6636,7 +6563,6 @@ FxClassDefaults::FxClassDefaults(FxExpression *X, const FScriptPosition &pos)
 	: FxExpression(EFX_ClassDefaults, pos)
 {
 	obj = X;
-	EmitTail = false;
 }
 
 FxClassDefaults::~FxClassDefaults()
@@ -8214,12 +8140,17 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 				}
 				if (isDynArrayObj && ((MethodName == NAME_Push && idx == 0) || (MethodName == NAME_Insert && idx == 1)))
 				{
-					// The DynArray_Obj declaration in dynarrays.txt doesn't support generics yet. Check the type here as if it did.
-					if (!static_cast<PObjectPointer*>(elementType)->PointedClass()->IsAncestorOf(static_cast<PObjectPointer*>(a->ValueType)->PointedClass()))
+					// Null pointers are always valid.
+					if (!a->isConstant() || static_cast<FxConstant*>(a)->GetValue().GetPointer() != nullptr)
 					{
-						ScriptPosition.Message(MSG_ERROR, "Type mismatch in function argument");
-						delete this;
-						return nullptr;
+						// The DynArray_Obj declaration in dynarrays.txt doesn't support generics yet. Check the type here as if it did.
+						if (!a->ValueType->isObjectPointer() ||
+							!static_cast<PObjectPointer*>(elementType)->PointedClass()->IsAncestorOf(static_cast<PObjectPointer*>(a->ValueType)->PointedClass()))
+						{
+							ScriptPosition.Message(MSG_ERROR, "Type mismatch in function argument");
+							delete this;
+							return nullptr;
+						}
 					}
 				}
 				if (a->IsDynamicArray())
@@ -8508,7 +8439,6 @@ FxActionSpecialCall::FxActionSpecialCall(FxExpression *self, int special, FArgum
 	{
 		ArgList.Push(new FxConstant(0, ScriptPosition));
 	}
-	EmitTail = false;
 }
 
 //==========================================================================
@@ -8520,18 +8450,6 @@ FxActionSpecialCall::FxActionSpecialCall(FxExpression *self, int special, FArgum
 FxActionSpecialCall::~FxActionSpecialCall()
 {
 	SAFE_DELETE(Self);
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-PPrototype *FxActionSpecialCall::ReturnProto()
-{
-	EmitTail = true;
-	return FxExpression::ReturnProto();
 }
 
 //==========================================================================
@@ -8607,7 +8525,7 @@ FxExpression *FxActionSpecialCall::Resolve(FCompileContext& ctx)
 //
 //==========================================================================
 
-int BuiltinCallLineSpecial(VMValue *param, int numparam, VMReturn *ret, int numret)
+int BuiltinCallLineSpecial(VM_ARGS)
 {
 	PARAM_PROLOGUE;
 	PARAM_INT(special);
@@ -8625,12 +8543,18 @@ ExpEmit FxActionSpecialCall::Emit(VMFunctionBuilder *build)
 {
 	unsigned i = 0;
 
-	EmitterArray emitters;
+	// Call the BuiltinCallLineSpecial function to perform the desired special.
+	static uint8_t reginfo[] = { REGT_INT, REGT_POINTER, REGT_INT, REGT_INT, REGT_INT, REGT_INT, REGT_INT };
+	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinCallLineSpecial, BuiltinCallLineSpecial, reginfo);
+
+	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
+	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
+	VMFunction *callfunc = ((PSymbolVMFunction *)sym)->Function;
+
+	FunctionCallEmitter emitters(callfunc);
 
 	emitters.AddParameterIntConst(abs(Special));			// pass special number
-
-	ExpEmit selfemit(Self->Emit(build));
-	emitters.AddParameterPointer(selfemit.RegNum, selfemit.Konst);
+	emitters.AddParameter(build, Self);
 
 	for (; i < ArgList.Size(); ++i)
 	{
@@ -8654,31 +8578,11 @@ ExpEmit FxActionSpecialCall::Emit(VMFunctionBuilder *build)
 			}
 		}
 	}
-	// Call the BuiltinCallLineSpecial function to perform the desired special.
-	VMFunction *callfunc;
-	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinCallLineSpecial, BuiltinCallLineSpecial);
-
-	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
-	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
-	callfunc = ((PSymbolVMFunction *)sym)->Function;
 	ArgList.DeleteAndClear();
 	ArgList.ShrinkToFit();
 
-	if (build->FramePointer.Fixed) EmitTail = false;	// do not tail call if the stack is in use
-	int count = emitters.EmitParameters(build);
-	selfemit.Free(build);
-	if (EmitTail)
-	{
-		build->Emit(OP_TAIL_K, build->GetConstantAddress(callfunc), count, 0);
-		ExpEmit call;
-		call.Final = true;
-		return call;
-	}
-
-	ExpEmit dest(build, REGT_INT);
-	build->Emit(OP_CALL_K, build->GetConstantAddress(callfunc), count, 1);
-	build->Emit(OP_RESULT, 0, REGT_INT, dest.RegNum);
-	return dest;
+	emitters.AddReturn(REGT_INT);
+	return emitters.EmitCall(build);
 }
 
 //==========================================================================
@@ -8717,7 +8621,7 @@ PPrototype *FxVMFunctionCall::ReturnProto()
 {
 	if (hasStringArgs) 
 		return FxExpression::ReturnProto();
-	EmitTail = true;
+
 	return Function->Variants[0].Proto;
 }
 
@@ -9068,12 +8972,10 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 	assert(build->Registers[REGT_POINTER].GetMostUsed() >= build->NumImplicits);
 	int count = 0;
 
-	if (build->FramePointer.Fixed) EmitTail = false;	// do not tail call if the stack is in use
-
 	if (count == 1)
 	{
 		ExpEmit reg;
-		if (CheckEmitCast(build, EmitTail, reg))
+		if (CheckEmitCast(build, false, reg))
 		{
 			ArgList.DeleteAndClear();
 			ArgList.ShrinkToFit();
@@ -9085,7 +8987,7 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 	bool staticcall = ((vmfunc->VarFlags & VARF_Final) || vmfunc->VirtualIndex == ~0u || NoVirtual);
 
 	count = 0;
-	EmitterArray emitters;
+	FunctionCallEmitter emitters(vmfunc);
 	// Emit code to pass implied parameters
 	ExpEmit selfemit;
 	if (Function->Variants[0].Flags & VARF_Method)
@@ -9156,77 +9058,18 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 			break;
 		}
 	}
-	count = emitters.EmitParameters(build);
-
 	ArgList.DeleteAndClear();
 	ArgList.ShrinkToFit();
 
-	// Get a constant register for this function
-	if (staticcall)
-	{
-		int funcaddr = build->GetConstantAddress(vmfunc);
-		// Emit the call
-		if (EmitTail)
-		{ // Tail call
-			build->Emit(OP_TAIL_K, funcaddr, count, 0);
-			ExpEmit call;
-			call.Final = true;
-			return call;
-		}
-		else if (vmfunc->Proto->ReturnTypes.Size() > 0)
-		{ // Call, expecting one result
-			build->Emit(OP_CALL_K, funcaddr, count, MAX(1, AssignCount));
-			goto handlereturns;
-		}
-		else
-		{ // Call, expecting no results
-			build->Emit(OP_CALL_K, funcaddr, count, 0);
-			return ExpEmit();
-		}
-	}
-	else
-	{
-		ExpEmit funcreg(build, REGT_POINTER);
+	if (!staticcall) emitters.SetVirtualReg(selfemit.RegNum);
+	int resultcount = vmfunc->Proto->ReturnTypes.Size() == 0 ? 0 : MAX(AssignCount, 1);
 
-		build->Emit(OP_VTBL, funcreg.RegNum, selfemit.RegNum, vmfunc->VirtualIndex);
-		if (EmitTail)
-		{ // Tail call
-			build->Emit(OP_TAIL, funcreg.RegNum, count, 0);
-			ExpEmit call;
-			call.Final = true;
-			return call;
-		}
-		else if (vmfunc->Proto->ReturnTypes.Size() > 0)
-		{ // Call, expecting one result
-			build->Emit(OP_CALL, funcreg.RegNum, count, MAX(1, AssignCount));
-			goto handlereturns;
-		}
-		else
-		{ // Call, expecting no results
-			build->Emit(OP_CALL, funcreg.RegNum, count, 0);
-			return ExpEmit();
-		}
-	}
-handlereturns:
-	if (AssignCount == 0)
+	assert((unsigned)resultcount <= vmfunc->Proto->ReturnTypes.Size());
+	for (int i = 0; i < resultcount; i++)
 	{
-		// Regular call, will not write to ReturnRegs
-		ExpEmit reg(build, vmfunc->Proto->ReturnTypes[0]->GetRegType(), vmfunc->Proto->ReturnTypes[0]->GetRegCount());
-		build->Emit(OP_RESULT, 0, EncodeRegType(reg), reg.RegNum);
-		return reg;
+		emitters.AddReturn(vmfunc->Proto->ReturnTypes[i]->GetRegType(), vmfunc->Proto->ReturnTypes[i]->GetRegCount());
 	}
-	else
-	{
-		// Multi-Assignment call, this must fill in the ReturnRegs array so that the multi-assignment operator can dispatch the return values.
-		assert((unsigned)AssignCount <= vmfunc->Proto->ReturnTypes.Size());
-		for (int i = 0; i < AssignCount; i++)
-		{
-			ExpEmit reg(build, vmfunc->Proto->ReturnTypes[i]->GetRegType(), vmfunc->Proto->ReturnTypes[i]->GetRegCount());
-			build->Emit(OP_RESULT, 0, EncodeRegType(reg), reg.RegNum);
-			ReturnRegs.Push(reg);
-		}
-	}
-	return ExpEmit();
+	return emitters.EmitCall(build, resultcount > 1? &ReturnRegs : nullptr);
 }
 
 //==========================================================================
@@ -10737,10 +10580,9 @@ ExpEmit FxReturnStatement::Emit(VMFunctionBuilder *build)
 		assert(pstr->mDestructor != nullptr);
 		ExpEmit reg(build, REGT_POINTER);
 		build->Emit(OP_ADDA_RK, reg.RegNum, build->FramePointer.RegNum, build->GetConstantInt(build->ConstructedStructs[i]->StackOffset));
-		EmitterArray emitters;
+		FunctionCallEmitter emitters(pstr->mDestructor);
 		emitters.AddParameter(reg, false);
-		int count = emitters.EmitParameters(build);
-		build->Emit(OP_CALL_K, build->GetConstantAddress(pstr->mDestructor), count, 0);
+		emitters.EmitCall(build);
 	}
 
 	// If we return nothing, use a regular RET opcode.
@@ -10907,7 +10749,7 @@ FxExpression *FxClassTypeCast::Resolve(FCompileContext &ctx)
 //
 //==========================================================================
 
-int BuiltinNameToClass(VMValue *param, int numparam, VMReturn *ret, int numret)
+int BuiltinNameToClass(VM_ARGS)
 {
 	PARAM_PROLOGUE;
 	PARAM_NAME(clsname);
@@ -10932,25 +10774,21 @@ ExpEmit FxClassTypeCast::Emit(VMFunctionBuilder *build)
 	{
 		return ExpEmit(build->GetConstantAddress(nullptr), REGT_POINTER, true);
 	}
-	ExpEmit clsname = basex->Emit(build);
-	assert(!clsname.Konst);
-	ExpEmit dest(build, REGT_POINTER);
-	EmitterArray emitters;
-	emitters.AddParameter(clsname, false);
-	emitters.AddParameterPointerConst(const_cast<PClass *>(desttype));
 
 	// Call the BuiltinNameToClass function to convert from 'name' to class.
 	VMFunction *callfunc;
-	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinNameToClass, BuiltinNameToClass);
+	static uint8_t reginfo[] = { REGT_INT, REGT_POINTER };
+	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinNameToClass, BuiltinNameToClass, reginfo);
 
 	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	int count = emitters.EmitParameters(build);
-	build->Emit(OP_CALL_K, build->GetConstantAddress(callfunc), count, 1);
-	build->Emit(OP_RESULT, 0, REGT_POINTER, dest.RegNum);
-	return dest;
+	FunctionCallEmitter emitters(callfunc);
+	emitters.AddParameter(build, basex);
+	emitters.AddParameterPointerConst(const_cast<PClass *>(desttype));
+	emitters.AddReturn(REGT_POINTER);
+	return emitters.EmitCall(build);
 }
 
 //==========================================================================
@@ -11033,7 +10871,7 @@ FxExpression *FxClassPtrCast::Resolve(FCompileContext &ctx)
 //
 //==========================================================================
 
-int BuiltinClassCast(VMValue *param, int numparam, VMReturn *ret, int numret)
+int BuiltinClassCast(VM_ARGS)
 {
 	PARAM_PROLOGUE;
 	PARAM_CLASS(from, DObject);
@@ -11045,22 +10883,20 @@ ExpEmit FxClassPtrCast::Emit(VMFunctionBuilder *build)
 {
 	ExpEmit clsname = basex->Emit(build);
 
-	EmitterArray emitters;
-
-	emitters.AddParameter(clsname, false);
-	emitters.AddParameterPointerConst(desttype);
-
 	VMFunction *callfunc;
-	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinClassCast, BuiltinClassCast);
+	static uint8_t reginfo[] = { REGT_POINTER, REGT_POINTER };
+	PSymbol *sym = FindBuiltinFunction(NAME_BuiltinClassCast, BuiltinClassCast, reginfo);
 
 	assert(sym->IsKindOf(RUNTIME_CLASS(PSymbolVMFunction)));
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
-	ExpEmit dest(build, REGT_POINTER);
-	int count = emitters.EmitParameters(build);
-	build->Emit(OP_CALL_K, build->GetConstantAddress(callfunc), count, 1);
-	build->Emit(OP_RESULT, 0, REGT_POINTER, dest.RegNum);
-	return dest;
+
+	FunctionCallEmitter emitters(callfunc);
+	emitters.AddParameter(clsname, false);
+	emitters.AddParameterPointerConst(desttype);
+
+	emitters.AddReturn(REGT_POINTER);
+	return emitters.EmitCall(build);
 }
 
 //==========================================================================
@@ -11433,10 +11269,9 @@ ExpEmit FxLocalVariableDeclaration::Emit(VMFunctionBuilder *build)
 			{
 				ExpEmit reg(build, REGT_POINTER);
 				build->Emit(OP_ADDA_RK, reg.RegNum, build->FramePointer.RegNum, build->GetConstantInt(StackOffset));
-				EmitterArray emitters;
+				FunctionCallEmitter emitters(pstr->mConstructor);
 				emitters.AddParameter(reg, false);
-				int count = emitters.EmitParameters(build);
-				build->Emit(OP_CALL_K, build->GetConstantAddress(pstr->mConstructor), count, 0);
+				emitters.EmitCall(build);
 			}
 			if (pstr->mDestructor != nullptr) build->ConstructedStructs.Push(this);
 		}
@@ -11460,10 +11295,9 @@ void FxLocalVariableDeclaration::Release(VMFunctionBuilder *build)
 			{
 				ExpEmit reg(build, REGT_POINTER);
 				build->Emit(OP_ADDA_RK, reg.RegNum, build->FramePointer.RegNum, build->GetConstantInt(StackOffset));
-				EmitterArray emitters;
+				FunctionCallEmitter emitters(pstr->mDestructor);
 				emitters.AddParameter(reg, false);
-				int count = emitters.EmitParameters(build);
-				build->Emit(OP_CALL_K, build->GetConstantAddress(pstr->mDestructor), count, 0);
+				emitters.EmitCall(build);
 			}
 			build->ConstructedStructs.Delete(build->ConstructedStructs.Find(this));
 		}

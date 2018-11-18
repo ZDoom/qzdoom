@@ -697,7 +697,7 @@ static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 				try
 				{
 					VMCycles[0].Unclock();
-					numret = static_cast<VMNativeFunction *>(call)->NativeCall(reg.param + f->NumParam - b, b, returns, C);
+					numret = static_cast<VMNativeFunction *>(call)->NativeCall(VM_INVOKE(reg.param + f->NumParam - b, b, returns, C, call->RegTypes));
 					VMCycles[0].Clock();
 				}
 				catch (CVMAbortException &err)
@@ -716,45 +716,6 @@ static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 			assert(numret == C && "Number of parameters returned differs from what was expected by the caller");
 			f->NumParam -= B;
 			pc += C;			// Skip RESULTs
-		}
-		NEXTOP;
-	OP(TAIL_K):
-		ASSERTKA(a);
-		ptr = konsta[a].o;
-		goto Do_TAILCALL;
-	OP(TAIL):
-		ASSERTA(a);
-		ptr = reg.a[a];
-	Do_TAILCALL:
-		// Whereas the CALL instruction uses its third operand to specify how many return values
-		// it expects, TAIL ignores its third operand and uses whatever was passed to this Exec call.
-		assert(B <= f->NumParam);
-		assert(C <= MAX_RETURNS);
-		{
-			VMFunction *call = (VMFunction *)ptr;
-
-			if (call->VarFlags & VARF_Native)
-			{
-				try
-				{
-					VMCycles[0].Unclock();
-					auto r = static_cast<VMNativeFunction *>(call)->NativeCall(reg.param + f->NumParam - B, B, ret, numret);
-					VMCycles[0].Clock();
-					return r;
-				}
-				catch (CVMAbortException &err)
-				{
-					err.MaybePrintMessage();
-					err.stacktrace.AppendFormat("Called from %s\n", call->PrintableName.GetChars());
-					// PrintParameters(reg.param + f->NumParam - B, B);
-					throw;
-				}
-			}
-			else
-			{ // FIXME: Not a true tail call
-				auto sfunc = static_cast<VMScriptFunction *>(call);
-				return sfunc->ScriptCall(sfunc, reg.param + f->NumParam - B, B, ret, numret);
-			}
 		}
 		NEXTOP;
 	OP(RET):

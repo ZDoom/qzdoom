@@ -383,10 +383,13 @@ asmjit::CCFunc *JitCompiler::Codegen()
 		int i = (int)(ptrdiff_t)(pc - sfunc->Code);
 		op = pc->op;
 
-		FString lineinfo;
-		lineinfo.Format("; line %d: %02x%02x%02x%02x %s", sfunc->PCToLine(pc), pc->op, pc->a, pc->b, pc->c, OpNames[op]);
-		cc.comment("", 0);
-		cc.comment(lineinfo.GetChars(), lineinfo.Len());
+		if (op != OP_PARAM && op != OP_PARAMI && op != OP_VTBL)
+		{
+			FString lineinfo;
+			lineinfo.Format("; line %d: %02x%02x%02x%02x %s", sfunc->PCToLine(pc), pc->op, pc->a, pc->b, pc->c, OpNames[op]);
+			cc.comment("", 0);
+			cc.comment(lineinfo.GetChars(), lineinfo.Len());
+		}
 
 		labels[i].cursor = cc.getCursor();
 		ResetTemp();
@@ -433,6 +436,37 @@ void JitCompiler::BindLabels()
 	cc.setCursor(cursor);
 }
 
+void JitCompiler::CheckVMFrame()
+{
+	if (!vmframeAllocated)
+	{
+		auto cursor = cc.getCursor();
+		cc.setCursor(vmframeCursor);
+
+		auto vmstack = cc.newStack(sfunc->StackSize, 16, "vmstack");
+		vmframe = cc.newIntPtr("vmframe");
+		cc.lea(vmframe, vmstack);
+
+		cc.setCursor(cursor);
+		vmframeAllocated = true;
+	}
+}
+
+asmjit::X86Gp JitCompiler::GetCallReturns()
+{
+	if (!callReturnsAllocated)
+	{
+		auto cursor = cc.getCursor();
+		cc.setCursor(callReturnsCursor);
+		auto stackalloc = cc.newStack(sizeof(VMReturn) * MAX_RETURNS, alignof(VMReturn), "stackalloc");
+		callReturns = cc.newIntPtr("callReturns");
+		cc.lea(callReturns, stackalloc);
+		cc.setCursor(cursor);
+		callReturnsAllocated = true;
+	}
+	return callReturns;
+}
+
 void JitCompiler::Setup()
 {
 	using namespace asmjit;
@@ -463,9 +497,7 @@ void JitCompiler::Setup()
 	cc.setArg(3, ret);
 	cc.setArg(4, numret);
 
-	auto stackalloc = cc.newStack(sizeof(VMReturn) * MAX_RETURNS, alignof(VMReturn), "stackalloc");
-	callReturns = cc.newIntPtr("callReturns");
-	cc.lea(callReturns, stackalloc);
+	callReturnsCursor = cc.getCursor();
 
 	konstd = sfunc->KonstD;
 	konstf = sfunc->KonstF;
@@ -489,8 +521,6 @@ void JitCompiler::SetupFrame()
 	offsetD = offsetA + (int)(sfunc->NumRegA * sizeof(void*));
 	offsetExtra = (offsetD + (int)(sfunc->NumRegD * sizeof(int32_t)) + 15) & ~15;
 
-	vmframe = cc.newIntPtr("vmframe");
-
 	if (sfunc->SpecialInits.Size() == 0 && sfunc->NumRegS == 0)
 	{
 		SetupSimpleFrame();
@@ -507,8 +537,7 @@ void JitCompiler::SetupSimpleFrame()
 
 	// This is a simple frame with no constructors or destructors. Allocate it on the stack ourselves.
 
-	auto vmstack = cc.newStack(sfunc->StackSize, 16, "vmstack");
-	cc.lea(vmframe, vmstack);
+	vmframeCursor = cc.getCursor();
 
 	int argsPos = 0;
 	int regd = 0, regf = 0, rega = 0;
@@ -589,8 +618,10 @@ void JitCompiler::SetupFullVMFrame()
 	allocFrame->setArg(1, args);
 	allocFrame->setArg(2, numargs);
 
+	vmframe = cc.newIntPtr("vmframe");
 	cc.mov(vmframe, x86::ptr(stack)); // stack->Blocks
 	cc.mov(vmframe, x86::ptr(vmframe, VMFrameStack::OffsetLastFrame())); // Blocks->LastFrame
+	vmframeAllocated = true;
 
 	for (int i = 0; i < sfunc->NumRegD; i++)
 		cc.mov(regD[i], x86::dword_ptr(vmframe, offsetD + i * sizeof(int32_t)));

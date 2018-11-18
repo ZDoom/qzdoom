@@ -4,6 +4,7 @@
 #include "dobject.h"
 #include "vmintern.h"
 #include <vector>
+#include <functional>
 
 class VMFunctionBuilder;
 class FxExpression;
@@ -163,13 +164,27 @@ extern FFunctionBuildList FunctionBuildList;
 //==========================================================================
 extern int EncodeRegType(ExpEmit reg);
 
-class EmitterArray
+class FunctionCallEmitter
 {
 	// std::function and TArray are not compatible so this has to use std::vector instead.
 	std::vector<std::function<int(VMFunctionBuilder *)>> emitters;
-	unsigned numparams = 0;
+	TArray<std::pair<int, int>> returns;
+	TArray<uint8_t> reginfo;
+	unsigned numparams = 0;	// This counts the number of pushed elements, which can differ from the number of emitters with vectors.
+	VMFunction *target = nullptr;
+	int virtualselfreg = -1;
 
 public:
+	FunctionCallEmitter(VMFunction *func)
+	{
+		target = func;
+	}
+
+	void SetVirtualReg(int virtreg)
+	{
+		virtualselfreg = virtreg;
+	}
+
 	void AddParameter(VMFunctionBuilder *build, FxExpression *operand);
 	void AddParameter(ExpEmit &emit, bool reference);
 	void AddParameterPointerConst(void *konst);
@@ -177,7 +192,11 @@ public:
 	void AddParameterFloatConst(double konst);
 	void AddParameterIntConst(int konst);
 	void AddParameterStringConst(const FString &konst);
-	int EmitParameters(VMFunctionBuilder *build);
+	ExpEmit EmitCall(VMFunctionBuilder *build, TArray<ExpEmit> *ReturnRegs = nullptr);
+	void AddReturn(int regtype, int regcount = 1)
+	{
+		returns.Push({ regtype, regcount });
+	}
 	unsigned Count() const
 	{
 		return numparams;

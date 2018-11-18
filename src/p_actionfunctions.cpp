@@ -175,7 +175,13 @@ bool AStateProvider::CallStateChain (AActor *actor, FState *state)
 
 				if (state->ActionFunc->DefaultArgs.Size() > 0)
 				{
-					auto index = actionParams.Append(state->ActionFunc->DefaultArgs);
+					auto defs = state->ActionFunc->DefaultArgs;
+					auto index = actionParams.Reserve(defs.Size());
+					for (unsigned i = 0; i < defs.Size(); i++)
+					{
+						actionParams[i + index] = defs[i];
+					}
+
 					if (state->ActionFunc->ImplicitArgs >= 1)
 					{
 						actionParams[index] = actor;
@@ -4497,13 +4503,6 @@ DEFINE_ACTION_FUNCTION(AActor, A_ChangeCountFlags)
 	return 0;
 }
 
-
-enum ERaise
-{
-	RF_TRANSFERFRIENDLINESS = 1,
-	RF_NOCHECKPOSITION = 2
-};
-
 //===========================================================================
 //
 // A_RaiseMaster
@@ -4514,10 +4513,9 @@ DEFINE_ACTION_FUNCTION(AActor, A_RaiseMaster)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(flags);
 
-	bool copy = !!(flags & RF_TRANSFERFRIENDLINESS);
 	if (self->master != NULL)
 	{
-		P_Thing_Raise(self->master, copy ? self : NULL, (flags & RF_NOCHECKPOSITION));
+		P_Thing_Raise(self->master, self, flags);
 	}
 	return 0;
 }
@@ -4535,12 +4533,11 @@ DEFINE_ACTION_FUNCTION(AActor, A_RaiseChildren)
 	TThinkerIterator<AActor> it;
 	AActor *mo;
 
-	bool copy = !!(flags & RF_TRANSFERFRIENDLINESS);
 	while ((mo = it.Next()) != NULL)
 	{
 		if (mo->master == self)
 		{
-			P_Thing_Raise(mo, copy ? self : NULL, (flags & RF_NOCHECKPOSITION));
+			P_Thing_Raise(mo, self, flags);
 		}
 	}
 	return 0;
@@ -4559,14 +4556,13 @@ DEFINE_ACTION_FUNCTION(AActor, A_RaiseSiblings)
 	TThinkerIterator<AActor> it;
 	AActor *mo;
 
-	bool copy = !!(flags & RF_TRANSFERFRIENDLINESS);
 	if (self->master != NULL)
 	{
 		while ((mo = it.Next()) != NULL)
 		{
 			if (mo->master == self->master && mo != self)
 			{
-				P_Thing_Raise(mo, copy ? self : NULL, (flags & RF_NOCHECKPOSITION));
+				P_Thing_Raise(mo, self, flags);
 			}
 		}
 	}
@@ -4582,7 +4578,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RaiseSelf)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(flags);
-	ACTION_RETURN_BOOL(P_Thing_Raise(self, NULL, (flags & RF_NOCHECKPOSITION)));
+	ACTION_RETURN_BOOL(P_Thing_Raise(self, self, flags));
 }
 
 //===========================================================================
@@ -4596,7 +4592,7 @@ DEFINE_ACTION_FUNCTION(AActor, RaiseActor)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(other, AActor);
 	PARAM_INT(flags);
-	ACTION_RETURN_BOOL(P_Thing_Raise(other, self, (flags & RF_NOCHECKPOSITION)));
+	ACTION_RETURN_BOOL(P_Thing_Raise(other, self, flags));
 }
 
 //===========================================================================

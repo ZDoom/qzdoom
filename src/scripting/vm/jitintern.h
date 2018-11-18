@@ -52,14 +52,12 @@ private:
 	void EmitOpcode();
 	void EmitPopFrame();
 
-	void EmitDoCall(asmjit::X86Gp ptr);
+	void EmitDoCall(asmjit::X86Gp ptr, VMFunction *target);
 	void EmitScriptCall(asmjit::X86Gp vmfunc, asmjit::X86Gp paramsptr);
+	void EmitVtbl(const VMOP *op);
 
-	void EmitDoTail(asmjit::X86Gp ptr);
-	void EmitScriptTailCall(asmjit::X86Gp vmfunc, asmjit::X86Gp result, asmjit::X86Gp paramsptr);
-
-	void StoreInOuts(int b);
-	void LoadInOuts(int b);
+	int StoreCallParams(bool simpleFrameTarget);
+	void LoadInOuts();
 	void LoadReturns(const VMOP *retval, int numret);
 	void FillReturns(const VMOP *retval, int numret);
 	void LoadCallResult(int type, int regnum, bool addrof);
@@ -239,9 +237,18 @@ private:
 	int offsetA;
 	int offsetD;
 	int offsetExtra;
-	asmjit::X86Gp vmframe;
-	int NumParam = 0; // Actually part of vmframe (f->NumParam), but nobody seems to read that?
+
 	TArray<const VMOP *> ParamOpcodes;
+
+	void CheckVMFrame();
+	asmjit::X86Gp GetCallReturns();
+
+	bool vmframeAllocated = false;
+	asmjit::CBNode *vmframeCursor = nullptr;
+	asmjit::X86Gp vmframe;
+
+	bool callReturnsAllocated = false;
+	asmjit::CBNode *callReturnsCursor = nullptr;
 	asmjit::X86Gp callReturns;
 
 	const int *konstd;
