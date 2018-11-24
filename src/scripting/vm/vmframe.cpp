@@ -80,6 +80,7 @@ void VMFunction::CreateRegUse()
 		return;
 	}
 	assert(Proto->isPrototype());
+
 	for (auto arg : Proto->ArgumentTypes)
 	{
 		count += arg? arg->GetRegCount() : 1;
@@ -87,14 +88,20 @@ void VMFunction::CreateRegUse()
 	uint8_t *regp;
 	RegTypes = regp = (uint8_t*)ClassDataAllocator.Alloc(count);
 	count = 0;
-	for (auto arg : Proto->ArgumentTypes)
+	for (unsigned i = 0; i < Proto->ArgumentTypes.Size(); i++)
 	{
+		auto arg = Proto->ArgumentTypes[i];
+		auto flg = ArgFlags.Size() > i ? ArgFlags[i] : 0;
 		if (arg == nullptr)
 		{
 			// Marker for start of varargs.
 			*regp++ = REGT_NIL;
 		}
-		else for (int i = 0; i < arg->GetRegCount(); i++)
+		else if ((flg & VARF_Out) && !arg->isPointer())
+		{
+			*regp++ = REGT_POINTER;
+		}
+		else for (int j = 0; j < arg->GetRegCount(); j++)
 		{
 			*regp++ = arg->GetRegType();
 		}
@@ -633,7 +640,10 @@ int VMCallWithDefaults(VMFunction *func, TArray<VMValue> &params, VMReturn *resu
 	{
 		auto oldp = params.Size();
 		params.Resize(func->DefaultArgs.Size());
-		memcpy(&params[oldp], &func->DefaultArgs[oldp], (params.Size() - oldp) * sizeof(VMValue));
+		for (unsigned i = oldp; i < params.Size(); i++)
+		{
+			params[i] = func->DefaultArgs[i];
+		}
 	}
 	return VMCall(func, params.Data(), params.Size(), results, numresults);
 }
