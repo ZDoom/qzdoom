@@ -1149,6 +1149,7 @@ set (PCH_SOURCES
 	r_data/models/models_ue1.cpp
 	r_data/models/models_obj.cpp
 	scripting/symbols.cpp
+	scripting/vmthunks.cpp
 	scripting/types.cpp
 	scripting/thingdef.cpp
 	scripting/thingdef_data.cpp
@@ -1165,6 +1166,7 @@ set (PCH_SOURCES
 	scripting/vm/vmexec.cpp
 	scripting/vm/vmframe.cpp
 	scripting/vm/jit.cpp
+	scripting/vm/jit_runtime.cpp
 	scripting/vm/jit_call.cpp
 	scripting/vm/jit_flow.cpp
 	scripting/vm/jit_load.cpp

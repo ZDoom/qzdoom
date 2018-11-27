@@ -53,6 +53,8 @@ extern FMemArena ClassDataAllocator;
 #define MAX_RETURNS		8	// Maximum number of results a function called by script code can return
 #define MAX_TRY_DEPTH	8	// Maximum number of nested TRYs in a single function
 
+void JitRelease();
+
 
 typedef unsigned char		VM_UBYTE;
 typedef signed char			VM_SBYTE;
@@ -426,6 +428,8 @@ public:
 			f->~VMFunction();
 		}
 		AllFunctions.Clear();
+		// also release any JIT data
+		JitRelease();
 	}
 	static void CreateRegUseInfo()
 	{
@@ -555,6 +559,7 @@ struct AFuncDesc
 	const char *FuncName;
 	actionf_p Function;
 	VMNativeFunction **VMPointer;
+	void *DirectNative;
 };
 
 #if defined(_MSC_VER)
@@ -575,10 +580,19 @@ struct AFuncDesc
 // Macros to handle action functions. These are here so that I don't have to
 // change every single use in case the parameters change.
 
+#define DEFINE_ACTION_FUNCTION_NATIVE(cls, name, native) \
+	static int AF_##cls##_##name(VM_ARGS); \
+	VMNativeFunction *cls##_##name##_VMPtr; \
+	static const AFuncDesc cls##_##name##_Hook = { #cls, #name, AF_##cls##_##name, &cls##_##name##_VMPtr, reinterpret_cast<void*>(native) }; \
+	extern AFuncDesc const *const cls##_##name##_HookPtr; \
+	MSVC_ASEG AFuncDesc const *const cls##_##name##_HookPtr GCC_ASEG = &cls##_##name##_Hook; \
+	static int AF_##cls##_##name(VM_ARGS)
+
+//#define DEFINE_ACTION_FUNCTION(cls, name) DEFINE_ACTION_FUNCTION_NATIVE(cls, name, nullptr)
 #define DEFINE_ACTION_FUNCTION(cls, name) \
 	static int AF_##cls##_##name(VM_ARGS); \
 	VMNativeFunction *cls##_##name##_VMPtr; \
-	static const AFuncDesc cls##_##name##_Hook = { #cls, #name, AF_##cls##_##name, &cls##_##name##_VMPtr }; \
+	static const AFuncDesc cls##_##name##_Hook = { #cls, #name, AF_##cls##_##name, &cls##_##name##_VMPtr, nullptr }; \
 	extern AFuncDesc const *const cls##_##name##_HookPtr; \
 	MSVC_ASEG AFuncDesc const *const cls##_##name##_HookPtr GCC_ASEG = &cls##_##name##_Hook; \
 	static int AF_##cls##_##name(VM_ARGS)
