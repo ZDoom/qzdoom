@@ -42,7 +42,7 @@ void JitCompiler::EmitVtbl(const VMOP *op)
 
 void JitCompiler::EmitCALL()
 {
-	EmitVMCall(regA[A]);
+	EmitVMCall(regA[A], nullptr);
 	pc += C; // Skip RESULTs
 }
 
@@ -62,13 +62,13 @@ void JitCompiler::EmitCALL_K()
 	{
 		auto ptr = newTempIntPtr();
 		cc.mov(ptr, asmjit::imm_ptr(target));
-		EmitVMCall(ptr);
+		EmitVMCall(ptr, target);
 	}
 
 	pc += C; // Skip RESULTs
 }
 
-void JitCompiler::EmitVMCall(asmjit::X86Gp vmfunc)
+void JitCompiler::EmitVMCall(asmjit::X86Gp vmfunc, VMFunction *target)
 {
 	using namespace asmjit;
 
@@ -97,6 +97,7 @@ void JitCompiler::EmitVMCall(asmjit::X86Gp vmfunc)
 	call->setArg(2, Imm(B));
 	call->setArg(3, GetCallReturns());
 	call->setArg(4, Imm(C));
+	call->setInlineComment(target ? target->PrintableName.GetChars() : "VMCall");
 
 	LoadInOuts();
 	LoadReturns(pc + 1, C);
@@ -323,7 +324,8 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 	}
 
 	asmjit::CBNode *cursorBefore = cc.getCursor();
-	auto call = cc.call(imm_ptr(target->DirectNativeCall), CreateFuncSignature(target));
+	auto call = cc.call(imm_ptr(target->DirectNativeCall), CreateFuncSignature());
+	call->setInlineComment(target->PrintableName.GetChars());
 	asmjit::CBNode *cursorAfter = cc.getCursor();
 	cc.setCursor(cursorBefore);
 
@@ -401,35 +403,77 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 		}
 	}
 
-	cc.setCursor(cursorAfter);
-
 	if (numparams != B)
 		I_FatalError("OP_CALL parameter count does not match the number of preceding OP_PARAM instructions\n");
 
+	// Note: the usage of newResultXX is intentional. Asmjit has a register allocation bug
+	// if the return virtual register is already allocated in an argument slot.
+
+	const VMOP *retval = pc + 1;
 	int numret = C;
-	if (numret > 1)
-		I_FatalError("Only one return parameter is supported for direct native calls\n");
 
-	if (numret == 1)
+	// Check if first return value was placed in the function's real return value slot
+	int startret = 1;
+	if (numret > 0)
 	{
-		const auto &retval = pc[1];
-		if (retval.op != OP_RESULT)
+		int type = retval[0].b;
+		switch (type)
 		{
-			I_FatalError("Expected OP_RESULT to follow OP_CALL\n");
+		case REGT_INT:
+		case REGT_FLOAT:
+		case REGT_POINTER:
+			break;
+		default:
+			startret = 0;
+			break;
 		}
+	}
 
-		int type = retval.b;
-		int regnum = retval.c;
+	// Pass return pointers as arguments
+	for (int i = startret; i < numret; ++i)
+	{
+		int type = retval[i].b;
+		int regnum = retval[i].c;
 
 		if (type & REGT_KONST)
 		{
 			I_FatalError("OP_RESULT with REGT_KONST is not allowed\n");
 		}
 
-		// Note: the usage of newResultXX is intentional. Asmjit has a register allocation bug
-		// if the return virtual register is already allocated in an argument slot.
+		CheckVMFrame();
+
+		auto regPtr = newTempIntPtr();
 
 		switch (type & REGT_TYPE)
+		{
+		case REGT_INT:
+			cc.lea(regPtr, x86::ptr(vmframe, offsetD + (int)(regnum * sizeof(int32_t))));
+			break;
+		case REGT_FLOAT:
+			cc.lea(regPtr, x86::ptr(vmframe, offsetF + (int)(regnum * sizeof(double))));
+			break;
+		case REGT_STRING:
+			cc.lea(regPtr, x86::ptr(vmframe, offsetS + (int)(regnum * sizeof(FString))));
+			break;
+		case REGT_POINTER:
+			cc.lea(regPtr, x86::ptr(vmframe, offsetA + (int)(regnum * sizeof(void*))));
+			break;
+		default:
+			I_FatalError("Unknown OP_RESULT type encountered\n");
+			break;
+		}
+
+		cc.setArg(numparams + i - startret, regPtr);
+	}
+
+	cc.setCursor(cursorAfter);
+
+	if (startret == 1 && numret > 0)
+	{
+		int type = retval[0].b;
+		int regnum = retval[0].c;
+
+		switch (type)
 		{
 		case REGT_INT:
 			tmp = newResultInt32();
@@ -443,13 +487,43 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 			break;
 		case REGT_POINTER:
 			tmp = newResultIntPtr();
+			call->setRet(0, tmp);
 			cc.mov(regA[regnum], tmp);
 			break;
-		case REGT_STRING:
+		}
+	}
+
+	// Move the result into virtual registers
+	for (int i = startret; i < numret; ++i)
+	{
+		int type = retval[i].b;
+		int regnum = retval[i].c;
+
+		switch (type)
+		{
+		case REGT_INT:
+			cc.mov(regD[regnum], asmjit::x86::dword_ptr(vmframe, offsetD + regnum * sizeof(int32_t)));
+			break;
+		case REGT_FLOAT:
+			cc.movsd(regF[regnum], asmjit::x86::qword_ptr(vmframe, offsetF + regnum * sizeof(double)));
+			break;
 		case REGT_FLOAT | REGT_MULTIREG2:
+			cc.movsd(regF[regnum], asmjit::x86::qword_ptr(vmframe, offsetF + regnum * sizeof(double)));
+			cc.movsd(regF[regnum + 1], asmjit::x86::qword_ptr(vmframe, offsetF + (regnum + 1) * sizeof(double)));
+			break;
 		case REGT_FLOAT | REGT_MULTIREG3:
+			cc.movsd(regF[regnum], asmjit::x86::qword_ptr(vmframe, offsetF + regnum * sizeof(double)));
+			cc.movsd(regF[regnum + 1], asmjit::x86::qword_ptr(vmframe, offsetF + (regnum + 1) * sizeof(double)));
+			cc.movsd(regF[regnum + 2], asmjit::x86::qword_ptr(vmframe, offsetF + (regnum + 2) * sizeof(double)));
+			break;
+		case REGT_STRING:
+			// We don't have to do anything in this case. String values are never moved to virtual registers.
+			break;
+		case REGT_POINTER:
+			cc.mov(regA[regnum], asmjit::x86::ptr(vmframe, offsetA + regnum * sizeof(void*)));
+			break;
 		default:
-			I_FatalError("Unsupported OP_RESULT type encountered in EmitNativeCall\n");
+			I_FatalError("Unknown OP_RESULT type encountered\n");
 			break;
 		}
 	}
@@ -457,79 +531,120 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 	ParamOpcodes.Clear();
 }
 
-asmjit::FuncSignature JitCompiler::CreateFuncSignature(VMFunction *func)
+asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 {
 	using namespace asmjit;
 
 	TArray<uint8_t> args;
 	FString key;
-	for (unsigned int i = 0; i < func->Proto->ArgumentTypes.Size(); i++)
+
+	// First add parameters as args to the signature
+
+	for (unsigned int i = 0; i < ParamOpcodes.Size(); i++)
 	{
-		const PType *type = func->Proto->ArgumentTypes[i];
-		if (func->ArgFlags.Size() && func->ArgFlags[i] & (VARF_Out | VARF_Ref))
-		{
-			args.Push(TypeIdOf<void*>::kTypeId);
-			key += "v";
-		}
-		else if (type == TypeVector2)
-		{
-			args.Push(TypeIdOf<double>::kTypeId);
-			args.Push(TypeIdOf<double>::kTypeId);
-			key += "ff";
-		}
-		else if (type == TypeVector3)
-		{
-			args.Push(TypeIdOf<double>::kTypeId);
-			args.Push(TypeIdOf<double>::kTypeId);
-			args.Push(TypeIdOf<double>::kTypeId);
-			key += "fff";
-		}
-		else if (type == TypeFloat64)
-		{
-			args.Push(TypeIdOf<double>::kTypeId);
-			key += "f";
-		}
-		else if (type == TypeString)
-		{
-			args.Push(TypeIdOf<void*>::kTypeId);
-			key += "s";
-		}
-		else if (type->isIntCompatible())
+		if (ParamOpcodes[i]->op == OP_PARAMI)
 		{
 			args.Push(TypeIdOf<int>::kTypeId);
 			key += "i";
 		}
-		else
+		else // OP_PARAM
 		{
-			args.Push(TypeIdOf<void*>::kTypeId);
-			key += "v";
+			int bc = ParamOpcodes[i]->i16u;
+			switch (ParamOpcodes[i]->a)
+			{
+			case REGT_NIL:
+			case REGT_POINTER:
+			case REGT_POINTER | REGT_KONST:
+			case REGT_STRING | REGT_ADDROF:
+			case REGT_INT | REGT_ADDROF:
+			case REGT_POINTER | REGT_ADDROF:
+			case REGT_FLOAT | REGT_ADDROF:
+				args.Push(TypeIdOf<void*>::kTypeId);
+				key += "v";
+				break;
+			case REGT_INT:
+			case REGT_INT | REGT_KONST:
+				args.Push(TypeIdOf<int>::kTypeId);
+				key += "i";
+				break;
+			case REGT_STRING:
+			case REGT_STRING | REGT_KONST:
+				args.Push(TypeIdOf<void*>::kTypeId);
+				key += "s";
+				break;
+			case REGT_FLOAT:
+			case REGT_FLOAT | REGT_KONST:
+				args.Push(TypeIdOf<double>::kTypeId);
+				key += "f";
+				break;
+			case REGT_FLOAT | REGT_MULTIREG2:
+				args.Push(TypeIdOf<double>::kTypeId);
+				args.Push(TypeIdOf<double>::kTypeId);
+				key += "ff";
+				break;
+			case REGT_FLOAT | REGT_MULTIREG3:
+				args.Push(TypeIdOf<double>::kTypeId);
+				args.Push(TypeIdOf<double>::kTypeId);
+				args.Push(TypeIdOf<double>::kTypeId);
+				key += "fff";
+				break;
+
+			default:
+				I_FatalError("Unknown REGT value passed to EmitPARAM\n");
+				break;
+			}
 		}
 	}
 
+	const VMOP *retval = pc + 1;
+	int numret = C;
+
 	uint32_t rettype = TypeIdOf<void>::kTypeId;
-	if (func->Proto->ReturnTypes.Size() > 0)
+
+	// Check if first return value can be placed in the function's real return value slot
+	int startret = 1;
+	if (numret > 0)
 	{
-		const PType *type = func->Proto->ReturnTypes[0];
-		if (type == TypeFloat64)
+		if (retval[0].op != OP_RESULT)
 		{
-			rettype = TypeIdOf<double>::kTypeId;
-			key += "rf";
+			I_FatalError("Expected OP_RESULT to follow OP_CALL\n");
 		}
-		else if (type == TypeString)
+
+		int type = retval[0].b;
+		switch (type)
 		{
-			rettype = TypeIdOf<void*>::kTypeId;
-			key += "rs";
-		}
-		else if (type->isIntCompatible())
-		{
+		case REGT_INT:
 			rettype = TypeIdOf<int>::kTypeId;
 			key += "ri";
-		}
-		else
-		{
+			break;
+		case REGT_FLOAT:
+			rettype = TypeIdOf<double>::kTypeId;
+			key += "rf";
+			break;
+		case REGT_STRING:
+			rettype = TypeIdOf<void*>::kTypeId;
+			key += "rs";
+			break;
+		case REGT_POINTER:
 			rettype = TypeIdOf<void*>::kTypeId;
 			key += "rv";
+			break;
+		default:
+			startret = 0;
+			break;
 		}
+	}
+
+	// Add any additional return values as function arguments
+	for (int i = startret; i < numret; ++i)
+	{
+		if (retval[i].op != OP_RESULT)
+		{
+			I_FatalError("Expected OP_RESULT to follow OP_CALL\n");
+		}
+
+		args.Push(TypeIdOf<void*>::kTypeId);
+		key += "v";
 	}
 
 	// FuncSignature only keeps a pointer to its args array. Store a copy of each args array variant.
