@@ -20,7 +20,7 @@ inline DVector3 AActor::PosRelative(sector_t *sec) const
 	return Pos() + level.Displacements.getOffset(Sector->PortalGroup, sec->PortalGroup);
 }
 
-inline DVector3 AActor::PosRelative(line_t *line) const
+inline DVector3 AActor::PosRelative(const line_t *line) const
 {
 	return Pos() + level.Displacements.getOffset(Sector->PortalGroup, line->frontsector->PortalGroup);
 }
@@ -46,11 +46,11 @@ inline double secplane_t::ZatPoint(const AActor *ac) const
 
 inline double sector_t::HighestCeilingAt(AActor *a, sector_t **resultsec)
 {
-	return HighestCeilingAt(a->Pos(), resultsec);
+	return ::HighestCeilingAt(this, a->X(), a->Y(), resultsec);
 }
 
 inline double sector_t::LowestFloorAt(AActor *a, sector_t **resultsec)
 {
-	return LowestFloorAt(a->Pos(), resultsec);
+	return ::LowestFloorAt(this, a->X(), a->Y(), resultsec);
 }
 

@@ -244,6 +244,7 @@ public:
 	// Add other types as needed.
 	inline bool &BoolVar(FName field);
 	inline int &IntVar(FName field);
+	inline FTextureID &TextureIDVar(FName field);
 	inline FSoundID &SoundVar(FName field);
 	inline PalEntry &ColorVar(FName field);
 	inline FName &NameVar(FName field);
@@ -376,8 +377,6 @@ T* Create(Args&&... args)
 }
 
 
-class AInventory;//
-
 // When you write to a pointer to an Object, you must call this for
 // proper bookkeeping in case the Object holding this pointer has
 // already been processed by the GC.
@@ -426,6 +425,8 @@ template<class T> T *dyn_cast(DObject *p)
 	return NULL;
 }
 
+
+
 template<class T> const T *dyn_cast(const DObject *p)
 {
 	return dyn_cast<T>(const_cast<DObject *>(p));
@@ -439,6 +440,11 @@ inline bool &DObject::BoolVar(FName field)
 inline int &DObject::IntVar(FName field)
 {
 	return *(int*)ScriptVar(field, nullptr);
+}
+
+inline FTextureID &DObject::TextureIDVar(FName field)
+{
+	return *(FTextureID*)ScriptVar(field, nullptr);
 }
 
 inline FSoundID &DObject::SoundVar(FName field)

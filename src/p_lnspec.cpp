@@ -2159,15 +2159,14 @@ FUNC(LS_Radius_Quake)
 FUNC(LS_UsePuzzleItem)
 // UsePuzzleItem (item, script)
 {
-	AInventory *item;
+	AActor *item;
 
 	if (!it) return false;
 
 	// Check player's inventory for puzzle item
-	auto pitype = PClass::FindActor(NAME_PuzzleItem);
 	for (item = it->Inventory; item != NULL; item = item->Inventory)
 	{
-		if (item->IsKindOf (pitype))
+		if (item->IsKindOf (NAME_PuzzleItem))
 		{
 			if (item->IntVar(NAME_PuzzleItemNumber) == arg0)
 			{
@@ -2961,7 +2960,7 @@ FUNC(LS_SetPlayerProperty)
 			{ // Take power from activator
 				if (power != 4)
 				{
-					AInventory *item = it->FindInventory(powers[power], true);
+					auto item = it->FindInventory(powers[power], true);
 					if (item != NULL)
 					{
 						item->Destroy ();
@@ -3001,7 +3000,7 @@ FUNC(LS_SetPlayerProperty)
 				{ // Take power
 					if (power != 4)
 					{
-						AInventory *item = players[i].mo->FindInventory (PClass::FindActor(powers[power]));
+						auto item = players[i].mo->FindInventory (PClass::FindActor(powers[power]));
 						if (item != NULL)
 						{
 							item->Destroy ();

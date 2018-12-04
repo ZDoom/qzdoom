@@ -54,6 +54,8 @@ CUSTOM_CVAR(Bool, vm_jit, true, CVAR_NOINITCALL)
 	Printf("You must restart " GAMENAME " for this change to take effect.\n");
 	Printf("This cvar is currently not saved. You must specify it on the command line.");
 }
+#else
+CVAR(Bool, vm_jit, false, CVAR_NOINITCALL|CVAR_NOSET)
 #endif
 
 cycle_t VMCycles[10];
@@ -312,13 +314,7 @@ int VMNativeFunction::NativeScriptCall(VMFunction *func, VMValue *params, int nu
 	{
 		err.MaybePrintMessage();
 		err.stacktrace.AppendFormat("Called from %s\n", func->PrintableName.GetChars());
-		VMThrowException(std::current_exception());
-		return 0;
-	}
-	catch (...)
-	{
-		VMThrowException(std::current_exception());
-		return 0;
+		throw;
 	}
 }
 
@@ -534,32 +530,6 @@ VMFrame *VMFrameStack::PopFrame()
 
 //===========================================================================
 //
-// The jitted code does not implement C++ exception handling.
-// Catch them, longjmp out of the jitted functions, perform vmframe cleanup
-// then rethrow the C++ exception
-//
-//===========================================================================
-
-thread_local JitExceptionInfo *CurrentJitExceptInfo;
-
-void VMThrowException(std::exception_ptr cppException)
-{
-	CurrentJitExceptInfo->cppException = cppException;
-	longjmp(CurrentJitExceptInfo->sjljbuf, 1);
-}
-
-static void VMRethrowException(JitExceptionInfo *exceptInfo)
-{
-	int c = exceptInfo->vmframes;
-	VMFrameStack *stack = &GlobalVMStack;
-	for (int i = 0; i < c; i++)
-		stack->PopFrame();
-
-	std::rethrow_exception(exceptInfo->cppException);
-}
-
-//===========================================================================
-//
 // VMFrameStack :: Call
 //
 // Calls a function, either native or scripted. If an exception occurs while
@@ -599,25 +569,10 @@ int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, 
 			{
 				VMCycles[0].Clock();
 
-				JitExceptionInfo *prevExceptInfo = CurrentJitExceptInfo;
-				JitExceptionInfo newExceptInfo;
-				CurrentJitExceptInfo = &newExceptInfo;
-				if (setjmp(CurrentJitExceptInfo->sjljbuf) == 0)
-				{
-					auto sfunc = static_cast<VMScriptFunction *>(func);
-					int numret = sfunc->ScriptCall(sfunc, params, numparams, results, numresults);
-					CurrentJitExceptInfo = prevExceptInfo;
-					VMCycles[0].Unclock();
-					return numret;
-				}
-				else
-				{
-					VMCycles[0].Unclock();
-					auto exceptInfo = CurrentJitExceptInfo;
-					CurrentJitExceptInfo = prevExceptInfo;
-					VMRethrowException(exceptInfo);
-					return 0;
-				}
+				auto sfunc = static_cast<VMScriptFunction *>(func);
+				int numret = sfunc->ScriptCall(sfunc, params, numparams, results, numresults);
+				VMCycles[0].Unclock();
+				return numret;
 			}
 		}
 	}
@@ -731,7 +686,9 @@ void ThrowAbortException(VMScriptFunction *sfunc, VMOP *line, EVMAbortException 
 {
 	va_list ap;
 	va_start(ap, moreinfo);
+
 	CVMAbortException err(reason, moreinfo, ap);
+
 	err.stacktrace.AppendFormat("Called from %s at %s, line %d\n", sfunc->PrintableName.GetChars(), sfunc->SourceFileName.GetChars(), sfunc->PCToLine(line));
 	throw err;
 	va_end(ap);

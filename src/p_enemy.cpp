@@ -62,7 +62,6 @@ static FRandom pr_scaredycat ("Anubis");
 	   FRandom pr_chase ("Chase");
 static FRandom pr_facetarget ("FaceTarget");
 static FRandom pr_railface ("RailFace");
-static FRandom pr_dropitem ("DropItem");
 static FRandom pr_look2 ("LookyLooky");
 static FRandom pr_look3 ("IGotHooky");
 static FRandom pr_slook ("SlooK");
@@ -79,6 +78,7 @@ static FRandom pr_enemystrafe("EnemyStrafe");
 // The result is that they tend to 'glide' across the floor
 // so this CVAR allows to switch it off.
 CVAR(Bool, nomonsterinterpolation, false, CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
+CVAR(Int, sv_dropstyle, 0, CVAR_SERVERINFO | CVAR_ARCHIVE);
 
 //
 // P_NewChaseDir related LUT.
@@ -267,71 +267,6 @@ DEFINE_ACTION_FUNCTION(AActor, SoundAlert)
 	P_NoiseAlert(target, self, splash, maxdist);
 	return 0;
 }
-
-//============================================================================
-//
-// P_DaggerAlert
-//
-//============================================================================
-
-void P_DaggerAlert(AActor *target, AActor *emitter)
-{
-	AActor *looker;
-	sector_t *sec = emitter->Sector;
-
-	if (emitter->LastHeard != NULL)
-		return;
-	if (emitter->health <= 0)
-		return;
-	if (!(emitter->flags3 & MF3_ISMONSTER))
-		return;
-	if (emitter->flags4 & MF4_INCOMBAT)
-		return;
-	emitter->flags4 |= MF4_INCOMBAT;
-
-	emitter->target = target;
-	FState *painstate = emitter->FindState(NAME_Pain, NAME_Dagger);
-	if (painstate != NULL)
-	{
-		emitter->SetState(painstate);
-	}
-
-	for (looker = sec->thinglist; looker != NULL; looker = looker->snext)
-	{
-		if (looker == emitter || looker == target)
-			continue;
-
-		if (looker->health <= 0)
-			continue;
-
-		if (!(looker->flags4 & MF4_SEESDAGGERS))
-			continue;
-
-		if (!(looker->flags4 & MF4_INCOMBAT))
-		{
-			if (!P_CheckSight(looker, target) && !P_CheckSight(looker, emitter))
-				continue;
-
-			looker->target = target;
-			if (looker->SeeSound)
-			{
-				S_Sound(looker, CHAN_VOICE, looker->SeeSound, 1, ATTN_NORM);
-			}
-			looker->SetState(looker->SeeState);
-			looker->flags4 |= MF4_INCOMBAT;
-		}
-	}
-}
-
-DEFINE_ACTION_FUNCTION(AActor, DaggerAlert)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_OBJECT(target, AActor);
-	// Note that the emitter is self, not the target of the alert! Target can be NULL.
-	P_DaggerAlert(target, self);
-	return 0;
-}
-
 
 //----------------------------------------------------------------------------
 //
@@ -1094,7 +1029,7 @@ void P_NewChaseDir(AActor * actor)
 			{
 				// melee range of player weapon is a parameter of the action function and cannot be checked here.
 				// Add a new weapon property?
-				ismeleeattacker = ((target->player->ReadyWeapon->WeaponFlags & WIF_MELEEWEAPON) && dist < 192);
+				ismeleeattacker = ((target->player->ReadyWeapon->IntVar(NAME_WeaponFlags) & WIF_MELEEWEAPON) && dist < 192);
 			}
 			if (ismeleeattacker)
 			{
@@ -3222,208 +3157,23 @@ DEFINE_ACTION_FUNCTION(AActor, A_MonsterRail)
 	return 0;
 }
 
-DEFINE_ACTION_FUNCTION(AActor, A_Scream)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	if (self->DeathSound)
-	{
-		// Check for bosses.
-		if (self->flags2 & MF2_BOSS)
-		{
-			// full volume
-			S_Sound (self, CHAN_VOICE, self->DeathSound, 1, ATTN_NONE);
-		}
-		else
-		{
-			S_Sound (self, CHAN_VOICE, self->DeathSound, 1, ATTN_NORM);
-		}
-	}
-	return 0;
-}
-
-DEFINE_ACTION_FUNCTION(AActor, A_XScream)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	if (self->player)
-		S_Sound (self, CHAN_VOICE, "*gibbed", 1, ATTN_NORM);
-	else
-		S_Sound (self, CHAN_VOICE, "misc/gibbed", 1, ATTN_NORM);
-	return 0;
-}
-
-//===========================================================================
-//
-// A_ActiveSound
-//
-//===========================================================================
-
-DEFINE_ACTION_FUNCTION(AActor, A_ActiveSound)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	if (self->ActiveSound)
-	{
-		S_Sound(self, CHAN_VOICE, self->ActiveSound, 1, ATTN_NORM);
-	}
-	return 0;
-}
-
-//---------------------------------------------------------------------------
-//
-// Modifies the drop amount of this item according to the current skill's
-// settings (also called by ADehackedPickup::TryPickup)
-//
-//---------------------------------------------------------------------------
-void ModifyDropAmount(AInventory *inv, int dropamount)
-{
-	auto flagmask = IF_IGNORESKILL;
-	double dropammofactor = G_SkillProperty(SKILLP_DropAmmoFactor);
-	// Default drop amount is half of regular amount * regular ammo multiplication
-	if (dropammofactor == -1) 
-	{
-		dropammofactor = 0.5;
-		flagmask = ItemFlag(0);
-	}
-
-	if (dropamount > 0)
-	{
-		if (flagmask != 0 && inv->IsKindOf(NAME_Ammo))
-		{
-			inv->Amount = int(dropamount * dropammofactor);
-			inv->ItemFlags |= IF_IGNORESKILL;
-		}
-		else
-		{
-			inv->Amount = dropamount;
-		}
-	}
-	else if (inv->IsKindOf (PClass::FindActor(NAME_Ammo)))
-	{
-		// Half ammo when dropped by bad guys.
-		int amount = inv->IntVar("DropAmount");
-		if (amount <= 0)
-		{
-			amount = MAX(1, int(inv->Amount * dropammofactor));
-		}
-		inv->Amount = amount;
-		inv->ItemFlags |= flagmask;
-	}
-	else if (inv->IsKindOf (PClass::FindActor(NAME_WeaponGiver)))
-	{
-		inv->FloatVar("AmmoFactor") = dropammofactor;
-		inv->ItemFlags |= flagmask;
-	}
-	else if (inv->IsKindOf(NAME_Weapon))
-	{
-		// The same goes for ammo from a weapon.
-		static_cast<AWeapon *>(inv)->AmmoGive1 = int(static_cast<AWeapon *>(inv)->AmmoGive1 * dropammofactor);
-		static_cast<AWeapon *>(inv)->AmmoGive2 = int(static_cast<AWeapon *>(inv)->AmmoGive2 * dropammofactor);
-		inv->ItemFlags |= flagmask;
-	}			
-	else if (inv->IsKindOf (PClass::FindClass(NAME_DehackedPickup)))
-	{
-		// For weapons and ammo modified by Dehacked we need to flag the item.
-		inv->BoolVar("droppedbymonster") = true;
-	}
-}
-
-// todo: make this a scripted virtual function so it can better deal with some of the classes involved.
-DEFINE_ACTION_FUNCTION(AInventory, ModifyDropAmount)
-{
-	PARAM_SELF_PROLOGUE(AInventory);
-	PARAM_INT(dropamount);
-	ModifyDropAmount(self, dropamount);
-	return 0;
-}
-
 //---------------------------------------------------------------------------
 //
 // PROC P_DropItem
 //
 //---------------------------------------------------------------------------
 
-CVAR(Int, sv_dropstyle, 0, CVAR_SERVERINFO | CVAR_ARCHIVE);
-
-AInventory *P_DropItem (AActor *source, PClassActor *type, int dropamount, int chance)
+AActor *P_DropItem (AActor *source, PClassActor *type, int dropamount, int chance)
 {
-	if (type != NULL && pr_dropitem() <= chance)
+	IFVM(Actor, A_DropItem)
 	{
-		AActor *mo;
-		double spawnz = 0;
-
-		if (!(i_compatflags & COMPATF_NOTOSSDROPS))
-		{
-			int style = sv_dropstyle;
-			if (style == 0)
-			{
-				style = gameinfo.defaultdropstyle;
-			}
-			if (style == 2)
-			{
-				spawnz = 24;
-			}
-			else
-			{
-				spawnz = source->Height / 2;
-			}
-		}
-		mo = Spawn(type, source->PosPlusZ(spawnz), ALLOW_REPLACE);
-		if (mo != NULL)
-		{
-			mo->flags |= MF_DROPPED;
-			mo->flags &= ~MF_NOGRAVITY;	// [RH] Make sure it is affected by gravity
-			if (!(i_compatflags & COMPATF_NOTOSSDROPS))
-			{
-				P_TossItem (mo);
-			}
-			if (mo->IsKindOf (RUNTIME_CLASS(AInventory)))
-			{
-				AInventory *inv = static_cast<AInventory *>(mo);
-				ModifyDropAmount(inv, dropamount);
-				inv->ItemFlags |= IF_TOSSED;
-
-				IFVIRTUALPTR(inv, AInventory, SpecialDropAction)
-				{
-					VMValue params[2] = { inv, source };
-					int retval;
-					VMReturn ret(&retval);
-					VMCall(func, params, 2, &ret, 1);
-					if (retval)
-					{
-						// The special action indicates that the item should not spawn
-						inv->Destroy();
-						return NULL;
-					}
-				}
-				return inv;
-			}
-			// we can't really return an AInventory pointer to a non-inventory item here, can we?
-		}
+		VMValue params[] = { source, type, dropamount, chance };
+		AActor *retval;
+		VMReturn ret((void**)&retval);
+		VMCall(func, params, 4, &ret, 1);
+		return retval;
 	}
 	return NULL;
-}
-
-//============================================================================
-//
-// P_TossItem
-//
-//============================================================================
-
-void P_TossItem (AActor *item)
-{
-	int style = sv_dropstyle;
-	if (style==0) style = gameinfo.defaultdropstyle;
-	
-	if (style==2)
-	{
-		item->Vel.X += pr_dropitem.Random2(7);
-		item->Vel.Y += pr_dropitem.Random2(7);
-	}
-	else
-	{
-		item->Vel.X += pr_dropitem.Random2() / 256.;
-		item->Vel.Y += pr_dropitem.Random2() / 256.;
-		item->Vel.Z = 5. + pr_dropitem() / 64.;
-	}
 }
 
 DEFINE_ACTION_FUNCTION(AActor, A_Pain)
@@ -3471,20 +3221,6 @@ DEFINE_ACTION_FUNCTION(AActor, A_Pain)
 	{
 		S_Sound (self, CHAN_VOICE, self->PainSound, 1, ATTN_NORM);
 	}
-	return 0;
-}
-
-//
-// A_Detonate
-// killough 8/9/98: same as A_Explode, except that the damage is variable
-//
-
-DEFINE_ACTION_FUNCTION(AActor, A_Detonate)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	int damage = self->GetMissileDamage(0, 1);
-	P_RadiusAttack (self, self->target, damage, damage, self->DamageType, RADF_HURTSOURCE);
-	P_CheckSplash(self, damage);
 	return 0;
 }
 
@@ -3643,7 +3379,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_BossDeath)
 //
 //----------------------------------------------------------------------------
 
-int P_Massacre (bool baddies)
+int P_Massacre (bool baddies, PClassActor *cls)
 {
 	// jff 02/01/98 'em' cheat - kill all monsters
 	// partially taken from Chi's .46 port
@@ -3653,7 +3389,7 @@ int P_Massacre (bool baddies)
 
 	int killcount = 0;
 	AActor *actor;
-	TThinkerIterator<AActor> iterator;
+	TThinkerIterator<AActor> iterator(cls? cls : RUNTIME_CLASS(AActor));
 
 	while ( (actor = iterator.Next ()) )
 	{

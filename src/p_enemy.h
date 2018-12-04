@@ -6,7 +6,6 @@
 
 struct sector_t;
 class AActor;
-class AInventory;
 class PClass;
 
 
@@ -46,7 +45,6 @@ struct FLookExParams
 	FState *seestate;
 };
 
-void P_DaggerAlert (AActor *target, AActor *emitter);
 bool P_HitFriend (AActor *self);
 void P_NoiseAlert (AActor *target, AActor *emmiter, bool splash=false, double maxdist=0);
 
@@ -54,7 +52,7 @@ bool P_CheckMeleeRange2 (AActor *actor);
 bool P_Move (AActor *actor);
 bool P_TryWalk (AActor *actor);
 void P_NewChaseDir (AActor *actor);
-AInventory *P_DropItem (AActor *source, PClassActor *type, int special, int chance);
+AActor *P_DropItem (AActor *source, PClassActor *type, int special, int chance);
 void P_TossItem (AActor *item);
 bool P_LookForPlayers (AActor *actor, INTBOOL allaround, FLookExParams *params);
 void A_Weave(AActor *self, int xyspeed, int zspeed, double xydist, double zdist);
@@ -68,7 +66,7 @@ void A_FaceTarget(AActor *actor);
 void A_Face(AActor *self, AActor *other, DAngle max_turn = 0., DAngle max_pitch = 270., DAngle ang_offset = 0., DAngle pitch_offset = 0., int flags = 0, double z_add = 0);
 
 bool CheckBossDeath (AActor *);
-int P_Massacre (bool baddies = false);
+int P_Massacre (bool baddies = false, PClassActor *cls = nullptr);
 bool P_CheckMissileRange (AActor *actor);
 
 #define SKULLSPEED (20.)

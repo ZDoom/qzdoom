@@ -62,6 +62,11 @@ DEFINE_FIELD_X(GameInfoStruct, gameinfo_t, statusscreen_coop)
 DEFINE_FIELD_X(GameInfoStruct, gameinfo_t, statusscreen_dm)
 DEFINE_FIELD_X(GameInfoStruct, gameinfo_t, mSliderColor)
 DEFINE_FIELD_X(GameInfoStruct, gameinfo_t, defaultbloodcolor)
+DEFINE_FIELD_X(GameInfoStruct, gameinfo_t, telefogheight)
+DEFINE_FIELD_X(GameInfoStruct, gameinfo_t, defKickback)
+DEFINE_FIELD_X(GameInfoStruct, gameinfo_t, healthpic)
+DEFINE_FIELD_X(GameInfoStruct, gameinfo_t, berserkpic)
+DEFINE_FIELD_X(GameInfoStruct, gameinfo_t, defaultdropstyle)
 
 const char *GameNames[17] =
 {

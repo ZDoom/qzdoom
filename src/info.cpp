@@ -50,6 +50,8 @@
 #include "d_player.h"
 #include "events.h"
 #include "types.h"
+#include "w_wad.h"
+#include "g_levellocals.h"
 
 extern void LoadActors ();
 extern void InitBotStuff();
@@ -129,6 +131,10 @@ void FState::CheckCallerType(AActor *self, AActor *stateowner)
 			ThrowAbortException(X_OTHER, "Bad function prototype in function call to %s", ActionFunc->PrintableName.GetChars());
 		}
 		auto cls = static_cast<PObjectPointer*>(requiredType)->PointedClass();
+		if (check == nullptr)
+		{
+			ThrowAbortException(X_OTHER, "%s called without valid caller. %s expected", ActionFunc->PrintableName.GetChars(), cls->TypeName.GetChars());
+		}
 		if (!check->IsKindOf(cls))
 		{
 			ThrowAbortException(X_OTHER, "Invalid class %s in function call to %s. %s expected", check->GetClass()->TypeName.GetChars(), ActionFunc->PrintableName.GetChars(), cls->TypeName.GetChars());
@@ -221,6 +227,10 @@ bool FState::CallAction(AActor *self, AActor *stateowner, FStateParamInfo *info,
 				}
 				err.stacktrace.AppendFormat("Called from %sstate %s in %s\n", callinfo, FState::StaticGetStateName(this).GetChars(), stateowner->GetClass()->TypeName.GetChars());
 			}
+			else
+			{
+				err.stacktrace.AppendFormat("Called from state %s\n", FState::StaticGetStateName(this).GetChars());
+			}
 
 			throw;
 		}
@@ -285,6 +295,80 @@ DEFINE_ACTION_FUNCTION(AActor, GetSpriteIndex)
 
 //==========================================================================
 //
+// Load alt HUD icons. This is meant to be an override of the item's own settings.
+//
+//==========================================================================
+
+static void LoadAltHudStuff()
+{
+	// Now read custom icon overrides
+	int lump, lastlump = 0;
+
+	switch (gameinfo.gametype)
+	{
+	case GAME_Heretic:
+	case GAME_Hexen:
+		gameinfo.healthpic = TexMan.CheckForTexture("ARTIPTN2", ETextureType::MiscPatch).GetIndex();
+		gameinfo.berserkpic = -1;
+		break;
+
+	case GAME_Strife:
+		gameinfo.healthpic = TexMan.CheckForTexture("I_MDKT", ETextureType::MiscPatch).GetIndex();
+		gameinfo.berserkpic = -1;
+		break;
+
+	default:
+		gameinfo.healthpic = TexMan.CheckForTexture("MEDIA0", ETextureType::Sprite).GetIndex();
+		gameinfo.berserkpic = TexMan.CheckForTexture("PSTRA0", ETextureType::Sprite).GetIndex();
+		break;
+	}
+
+	while ((lump = Wads.FindLump("ALTHUDCF", &lastlump)) != -1)
+	{
+		FScanner sc(lump);
+		while (sc.GetString())
+		{
+			if (sc.Compare("Health"))
+			{
+				sc.MustGetString();
+				FTextureID tex = TexMan.CheckForTexture(sc.String, ETextureType::MiscPatch);
+				if (tex.isValid()) gameinfo.healthpic = tex.GetIndex();
+			}
+			else if (sc.Compare("Berserk"))
+			{
+				sc.MustGetString();
+				FTextureID tex = TexMan.CheckForTexture(sc.String, ETextureType::MiscPatch);
+				if (tex.isValid()) gameinfo.berserkpic = tex.GetIndex();
+			}
+			else
+			{
+				PClass *ti = PClass::FindClass(sc.String);
+				if (!ti)
+				{
+					Printf("Unknown item class '%s' in ALTHUDCF\n", sc.String);
+				}
+				else if (!ti->IsDescendantOf(NAME_Inventory))
+				{
+					Printf("Invalid item class '%s' in ALTHUDCF\n", sc.String);
+					ti = NULL;
+				}
+				sc.MustGetString();
+				FTextureID tex;
+
+				if (!sc.Compare("0") && !sc.Compare("NULL") && !sc.Compare(""))
+				{
+					tex = TexMan.CheckForTexture(sc.String, ETextureType::MiscPatch);
+				}
+				else tex.SetInvalid();
+
+				if (ti) GetDefaultByType(ti)->TextureIDVar(NAME_AltHUDIcon) = tex;
+			}
+		}
+	}
+}
+
+//==========================================================================
+//
 // PClassActor :: StaticInit										STATIC
 //
 //==========================================================================
@@ -314,6 +398,7 @@ void PClassActor::StaticInit()
 	if (!batchrun) Printf ("LoadActors: Load actor definitions.\n");
 	ClearStrifeTypes();
 	LoadActors ();
+	LoadAltHudStuff();
 	InitBotStuff();
 
 	// reinit GLOBAL static stuff from gameinfo, once classes are loaded.
@@ -363,29 +448,6 @@ bool PClassActor::SetReplacement(FName replaceName)
 		}
 	}
 	return true;
-}
-
-//==========================================================================
-//
-// PClassActor :: Finalize
-//
-// Installs the parsed states and does some sanity checking
-//
-//==========================================================================
-
-void AActor::Finalize(FStateDefinitions &statedef)
-{
-	try
-	{
-		statedef.FinishStates(GetClass());
-	}
-	catch (CRecoverableError &)
-	{
-		statedef.MakeStateDefines(nullptr);
-		throw;
-	}
-	statedef.InstallStates(GetClass(), this);
-	statedef.MakeStateDefines(nullptr);
 }
 
 //==========================================================================

@@ -32,6 +32,9 @@ struct event_t;
 
 #include "dobjgc.h"
 
+
+class AActor;
+
 //
 // GAME
 //
@@ -95,8 +98,7 @@ void G_AddViewPitch (int look, bool mouse = false);
 // Adds to consoleplayer's viewangle if allowed
 void G_AddViewAngle (int yaw, bool mouse = false);
 
-class AInventory;
-extern const AInventory *SendItemUse, *SendItemDrop;
+extern const AActor *SendItemUse, *SendItemDrop;
 extern int SendItemDropAmount;
 
 const int SAVEPICWIDTH = 216;

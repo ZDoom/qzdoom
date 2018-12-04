@@ -489,7 +489,9 @@ void VMFunctionBuilder::RegAvailability::Return(int reg, int count)
 		mask <<= firstbit;
 		// If we are trying to return registers that are already free,
 		// it probably means that the caller messed up somewhere.
-		assert((Used[firstword] & mask) == mask);
+		// Unfortunately this can happen if an 'action' function gets called from a non-action context,
+		// because for that case it pushes the self pointer a second time without reallocating, so it gets freed twice.
+		//assert((Used[firstword] & mask) == mask);
 		Used[firstword] &= ~mask;
 	}
 	else
@@ -803,7 +805,6 @@ VMFunction *FFunctionBuildList::AddFunction(PNamespace *gnspc, const VersionInfo
 
 void FFunctionBuildList::Build()
 {
-	int errorcount = 0;
 	int codesize = 0;
 	int datasize = 0;
 	FILE *dump = nullptr;
@@ -912,7 +913,8 @@ void FFunctionBuildList::Build()
 	}
 	VMFunction::CreateRegUseInfo();
 	FScriptPosition::StrictErrors = false;
-	if (Args->CheckParm("-dumpjit")) DumpJit();
+
+	if (FScriptPosition::ErrorCounter == 0 && Args->CheckParm("-dumpjit")) DumpJit();
 	mItems.Clear();
 	mItems.ShrinkToFit();
 	FxAlloc.FreeAllBlocks();
@@ -1068,25 +1070,28 @@ ExpEmit FunctionCallEmitter::EmitCall(VMFunctionBuilder *build, TArray<ExpEmit> 
 	}
 
 
+
 	if (virtualselfreg == -1)
 	{
-		build->Emit(OP_CALL_K, build->GetConstantAddress(target), paramcount, returns.Size());
+		build->Emit(OP_CALL_K, build->GetConstantAddress(target), paramcount, vm_jit ? target->Proto->ReturnTypes.Size() : returns.Size());
 	}
 	else
 	{
 		ExpEmit funcreg(build, REGT_POINTER);
 
 		build->Emit(OP_VTBL, funcreg.RegNum, virtualselfreg, target->VirtualIndex);
-		build->Emit(OP_CALL, funcreg.RegNum, paramcount, returns.Size());
+		build->Emit(OP_CALL, funcreg.RegNum, paramcount, vm_jit? target->Proto->ReturnTypes.Size() : returns.Size());
 	}
 
 	assert(returns.Size() < 2 || ReturnRegs != nullptr);
+
+	ExpEmit retreg;
 	for (unsigned i = 0; i < returns.Size(); i++)
 	{
 		ExpEmit reg(build, returns[i].first, returns[i].second);
 		build->Emit(OP_RESULT, 0, EncodeRegType(reg), reg.RegNum);
 		if (ReturnRegs) ReturnRegs->Push(reg);
-		else return reg;
+		else retreg = reg;
 	}
 	if (vm_jit)	// The JIT compiler needs this, but the VM interpreter does not.
 	{
@@ -1097,6 +1102,6 @@ ExpEmit FunctionCallEmitter::EmitCall(VMFunctionBuilder *build, TArray<ExpEmit> 
 			reg.Free(build);
 		}
 	}
-	return ExpEmit();
+	return retreg;
 }
 

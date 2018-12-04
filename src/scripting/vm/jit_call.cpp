@@ -76,7 +76,7 @@ void JitCompiler::EmitVMCall(asmjit::X86Gp vmfunc, VMFunction *target)
 
 	int numparams = StoreCallParams();
 	if (numparams != B)
-		I_FatalError("OP_CALL parameter count does not match the number of preceding OP_PARAM instructions");
+		I_Error("OP_CALL parameter count does not match the number of preceding OP_PARAM instructions");
 
 	if ((pc - 1)->op == OP_VTBL)
 		EmitVtbl(pc - 1);
@@ -199,7 +199,7 @@ int JitCompiler::StoreCallParams()
 			break;
 
 		default:
-			I_FatalError("Unknown REGT value passed to EmitPARAM\n");
+			I_Error("Unknown REGT value passed to EmitPARAM\n");
 			break;
 		}
 	}
@@ -224,7 +224,7 @@ void JitCompiler::LoadReturns(const VMOP *retval, int numret)
 	for (int i = 0; i < numret; ++i)
 	{
 		if (retval[i].op != OP_RESULT)
-			I_FatalError("Expected OP_RESULT to follow OP_CALL\n");
+			I_Error("Expected OP_RESULT to follow OP_CALL\n");
 
 		LoadCallResult(retval[i].b, retval[i].c, false);
 	}
@@ -264,7 +264,7 @@ void JitCompiler::LoadCallResult(int type, int regnum, bool addrof)
 		cc.mov(regA[regnum], asmjit::x86::ptr(vmframe, offsetA + regnum * sizeof(void*)));
 		break;
 	default:
-		I_FatalError("Unknown OP_RESULT/OP_PARAM type encountered in LoadCallResult\n");
+		I_Error("Unknown OP_RESULT/OP_PARAM type encountered in LoadCallResult\n");
 		break;
 	}
 }
@@ -277,7 +277,7 @@ void JitCompiler::FillReturns(const VMOP *retval, int numret)
 	{
 		if (retval[i].op != OP_RESULT)
 		{
-			I_FatalError("Expected OP_RESULT to follow OP_CALL\n");
+			I_Error("Expected OP_RESULT to follow OP_CALL\n");
 		}
 
 		int type = retval[i].b;
@@ -285,7 +285,7 @@ void JitCompiler::FillReturns(const VMOP *retval, int numret)
 
 		if (type & REGT_KONST)
 		{
-			I_FatalError("OP_RESULT with REGT_KONST is not allowed\n");
+			I_Error("OP_RESULT with REGT_KONST is not allowed\n");
 		}
 
 		auto regPtr = newTempIntPtr();
@@ -305,7 +305,7 @@ void JitCompiler::FillReturns(const VMOP *retval, int numret)
 			cc.lea(regPtr, x86::ptr(vmframe, offsetA + (int)(regnum * sizeof(void*))));
 			break;
 		default:
-			I_FatalError("Unknown OP_RESULT type encountered in FillReturns\n");
+			I_Error("Unknown OP_RESULT type encountered in FillReturns\n");
 			break;
 		}
 
@@ -320,7 +320,7 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 
 	if ((pc - 1)->op == OP_VTBL)
 	{
-		I_FatalError("Native direct member function calls not implemented\n");
+		I_Error("Native direct member function calls not implemented\n");
 	}
 
 	asmjit::CBNode *cursorBefore = cc.getCursor();
@@ -356,17 +356,22 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 			case REGT_INT | REGT_KONST:
 				call->setArg(slot, imm(konstd[bc]));
 				break;
+			case REGT_STRING | REGT_ADDROF:	// AddrOf string is essentially the same - a reference to the register, just not constant on the receiving side.
 			case REGT_STRING:
 				call->setArg(slot, regS[bc]);
 				break;
 			case REGT_STRING | REGT_KONST:
-				call->setArg(slot, imm_ptr(&konsts[bc]));
+				tmp = newTempIntPtr();
+				cc.mov(tmp, imm_ptr(&konsts[bc]));
+				call->setArg(slot, tmp);
 				break;
 			case REGT_POINTER:
 				call->setArg(slot, regA[bc]);
 				break;
 			case REGT_POINTER | REGT_KONST:
-				call->setArg(slot, asmjit::imm_ptr(konsta[bc].v));
+				tmp = newTempIntPtr();
+				cc.mov(tmp, imm_ptr(konsta[bc].v));
+				call->setArg(slot, tmp);
 				break;
 			case REGT_FLOAT:
 				call->setArg(slot, regF[bc]);
@@ -389,22 +394,21 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 				call->setArg(slot, tmp2);
 				break;
 
-			case REGT_STRING | REGT_ADDROF:
 			case REGT_INT | REGT_ADDROF:
 			case REGT_POINTER | REGT_ADDROF:
 			case REGT_FLOAT | REGT_ADDROF:
-				I_FatalError("REGT_ADDROF not implemented for native direct calls\n");
+				I_Error("REGT_ADDROF not implemented for native direct calls\n");
 				break;
 
 			default:
-				I_FatalError("Unknown REGT value passed to EmitPARAM\n");
+				I_Error("Unknown REGT value passed to EmitPARAM\n");
 				break;
 			}
 		}
 	}
 
 	if (numparams != B)
-		I_FatalError("OP_CALL parameter count does not match the number of preceding OP_PARAM instructions\n");
+		I_Error("OP_CALL parameter count does not match the number of preceding OP_PARAM instructions\n");
 
 	// Note: the usage of newResultXX is intentional. Asmjit has a register allocation bug
 	// if the return virtual register is already allocated in an argument slot.
@@ -437,33 +441,41 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 
 		if (type & REGT_KONST)
 		{
-			I_FatalError("OP_RESULT with REGT_KONST is not allowed\n");
+			I_Error("OP_RESULT with REGT_KONST is not allowed\n");
 		}
 
 		CheckVMFrame();
 
-		auto regPtr = newTempIntPtr();
-
-		switch (type & REGT_TYPE)
+		if ((type & REGT_TYPE) == REGT_STRING)
 		{
-		case REGT_INT:
-			cc.lea(regPtr, x86::ptr(vmframe, offsetD + (int)(regnum * sizeof(int32_t))));
-			break;
-		case REGT_FLOAT:
-			cc.lea(regPtr, x86::ptr(vmframe, offsetF + (int)(regnum * sizeof(double))));
-			break;
-		case REGT_STRING:
-			cc.lea(regPtr, x86::ptr(vmframe, offsetS + (int)(regnum * sizeof(FString))));
-			break;
-		case REGT_POINTER:
-			cc.lea(regPtr, x86::ptr(vmframe, offsetA + (int)(regnum * sizeof(void*))));
-			break;
-		default:
-			I_FatalError("Unknown OP_RESULT type encountered\n");
-			break;
+			// For strings we already have them on the stack and got named registers for them.
+			call->setArg(numparams + i - startret, regS[regnum]);
 		}
+		else
+		{
+			auto regPtr = newTempIntPtr();
 
-		cc.setArg(numparams + i - startret, regPtr);
+			switch (type & REGT_TYPE)
+			{
+			case REGT_INT:
+				cc.lea(regPtr, x86::ptr(vmframe, offsetD + (int)(regnum * sizeof(int32_t))));
+				break;
+			case REGT_FLOAT:
+				cc.lea(regPtr, x86::ptr(vmframe, offsetF + (int)(regnum * sizeof(double))));
+				break;
+			case REGT_STRING:
+				cc.lea(regPtr, x86::ptr(vmframe, offsetS + (int)(regnum * sizeof(FString))));
+				break;
+			case REGT_POINTER:
+				cc.lea(regPtr, x86::ptr(vmframe, offsetA + (int)(regnum * sizeof(void*))));
+				break;
+			default:
+				I_Error("Unknown OP_RESULT type encountered\n");
+				break;
+			}
+
+			call->setArg(numparams + i - startret, regPtr);
+		}
 	}
 
 	cc.setCursor(cursorAfter);
@@ -523,7 +535,7 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 			cc.mov(regA[regnum], asmjit::x86::ptr(vmframe, offsetA + regnum * sizeof(void*)));
 			break;
 		default:
-			I_FatalError("Unknown OP_RESULT type encountered\n");
+			I_Error("Unknown OP_RESULT type encountered\n");
 			break;
 		}
 	}
@@ -590,7 +602,7 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 				break;
 
 			default:
-				I_FatalError("Unknown REGT value passed to EmitPARAM\n");
+				I_Error("Unknown REGT value passed to EmitPARAM\n");
 				break;
 			}
 		}
@@ -607,7 +619,7 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 	{
 		if (retval[0].op != OP_RESULT)
 		{
-			I_FatalError("Expected OP_RESULT to follow OP_CALL\n");
+			I_Error("Expected OP_RESULT to follow OP_CALL\n");
 		}
 
 		int type = retval[0].b;
@@ -621,14 +633,11 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 			rettype = TypeIdOf<double>::kTypeId;
 			key += "rf";
 			break;
-		case REGT_STRING:
-			rettype = TypeIdOf<void*>::kTypeId;
-			key += "rs";
-			break;
 		case REGT_POINTER:
 			rettype = TypeIdOf<void*>::kTypeId;
 			key += "rv";
 			break;
+		case REGT_STRING:
 		default:
 			startret = 0;
 			break;
@@ -640,7 +649,7 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 	{
 		if (retval[i].op != OP_RESULT)
 		{
-			I_FatalError("Expected OP_RESULT to follow OP_CALL\n");
+			I_Error("Expected OP_RESULT to follow OP_CALL\n");
 		}
 
 		args.Push(TypeIdOf<void*>::kTypeId);

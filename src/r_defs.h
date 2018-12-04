@@ -622,18 +622,8 @@ public:
 	}
 
 	bool IsLinked(sector_t *other, bool ceiling) const;
-	double FindLowestFloorSurrounding(vertex_t **v) const;
-	double FindHighestFloorSurrounding(vertex_t **v) const;
-	double FindNextHighestFloor(vertex_t **v) const;
-	double FindNextLowestFloor(vertex_t **v) const;
-	double FindLowestCeilingSurrounding(vertex_t **v) const;			// jff 2/04/98
-	double FindHighestCeilingSurrounding(vertex_t **v) const;			// jff 2/04/98
-	double FindNextLowestCeiling(vertex_t **v) const;					// jff 2/04/98
-	double FindNextHighestCeiling(vertex_t **v) const;					// jff 2/04/98
-	int FindMinSurroundingLight (int max) const;
+
 	sector_t *NextSpecialSector (int type, sector_t *prev) const;		// [RH]
-	double FindLowestCeilingPoint(vertex_t **v) const;
-	double FindHighestFloorPoint(vertex_t **v) const;
 	void RemoveForceField();
 	int Index() const;
 
@@ -961,10 +951,6 @@ public:
 	void SetSpecial(const secspecial_t *spec);
 	bool PlaneMoving(int pos);
 
-	// Portal-aware height calculation
-	double HighestCeilingAt(const DVector2 &a, sector_t **resultsec = NULL);
-	double LowestFloorAt(const DVector2 &a, sector_t **resultsec = NULL);
-
 	inline double HighestCeilingAt(AActor *a, sector_t **resultsec = NULL);
 	inline double LowestFloorAt(AActor *a, sector_t **resultsec = NULL);
 
@@ -972,9 +958,6 @@ public:
 	{
 		return floorplane.Normal() == -ceilingplane.Normal() && floorplane.D == -ceilingplane.D;
 	}
-
-	double NextHighestCeilingAt(double x, double y, double bottomz, double topz, int flags = 0, sector_t **resultsec = NULL, F3DFloor **resultffloor = NULL);
-	double NextLowestFloorAt(double x, double y, double z, int flags = 0, double steph = 0, sector_t **resultsec = NULL, F3DFloor **resultffloor = NULL);
 
 	// Member variables
 	double		CenterFloor() const { return floorplane.ZatPoint(centerspot); }
@@ -1390,6 +1373,7 @@ struct line_t
 	inline bool isVisualPortal() const;
 	inline line_t *getPortalDestination() const;
 	inline int getPortalAlignment() const;
+	inline bool hitSkyWall(AActor* mo) const;
 
 	int Index() const;
 };
@@ -1605,11 +1589,25 @@ inline void FColormap::CopyFrom3DLight(lightlist_t *light)
 	}
 }
 
+double FindLowestFloorSurrounding(const sector_t *sec, vertex_t **v);
+double FindHighestFloorSurrounding(const sector_t *sec, vertex_t **v);
+double FindNextHighestFloor(const sector_t *sec, vertex_t **v);
+double FindNextLowestFloor(const sector_t *sec, vertex_t **v);
+double FindLowestCeilingSurrounding(const sector_t *sec, vertex_t **v);			// jff 2/04/98
+double FindHighestCeilingSurrounding(const sector_t *sec, vertex_t **v);			// jff 2/04/98
+double FindNextLowestCeiling(const sector_t *sec, vertex_t **v);					// jff 2/04/98
+double FindNextHighestCeiling(const sector_t *sec, vertex_t **v);					// jff 2/04/98
+int FindMinSurroundingLight (const sector_t *sec, int max);
+double FindHighestFloorPoint(const sector_t *sec, vertex_t **v);
 
 double FindShortestTextureAround(sector_t *sector);					// jff 2/04/98
 double FindShortestUpperAround(sector_t *sector);					// jff 2/04/98
 sector_t *FindModelFloorSector(sector_t *sec, double floordestheight);		// jff 2/04/98
 sector_t *FindModelCeilingSector(sector_t *sec, double floordestheight);		// jff 2/04/98
+double FindLowestCeilingPoint(const sector_t *sec, vertex_t **v);
+
+double NextHighestCeilingAt(sector_t *sec, double x, double y, double bottomz, double topz, int flags = 0, sector_t **resultsec = NULL, F3DFloor **resultffloor = NULL);
+double NextLowestFloorAt(sector_t *sec, double x, double y, double z, int flags = 0, double steph = 0, sector_t **resultsec = NULL, F3DFloor **resultffloor = NULL);
 
 // This setup is to allow the VM call directily into the implementation.
 // With a member function this may be subject to OS implementation details, e.g. on Windows 32 bit members use a different calling convention than regular functions.
@@ -1625,7 +1623,9 @@ void SetColor(sector_t *sector, int color, int desat);
 void SetFade(sector_t *sector, int color);
 int GetFloorLight(const sector_t *);
 int GetCeilingLight(const sector_t *);
-
+double GetFriction(const sector_t *self, int plane, double *movefac);
+double HighestCeilingAt(sector_t *sec, double x, double y, sector_t **resultsec = nullptr);
+double LowestFloorAt(sector_t *sec, double x, double y, sector_t **resultsec = nullptr);
 
 inline void sector_t::RemoveForceField() { return ::RemoveForceField(this); }
 inline bool sector_t::PlaneMoving(int pos) { return ::PlaneMoving(this, pos); }
@@ -1639,6 +1639,7 @@ inline void sector_t::SetColor(PalEntry pe, int desat) { ::SetColor(this, pe, de
 inline void sector_t::SetFade(PalEntry pe) { ::SetFade(this, pe); }
 inline int sector_t::GetFloorLight() const { return ::GetFloorLight(this); }
 inline int sector_t::GetCeilingLight() const { return ::GetCeilingLight(this); }
+inline double sector_t::GetFriction(int plane, double *movefac) const { return ::GetFriction(this, plane, movefac); }
 
 
 #endif

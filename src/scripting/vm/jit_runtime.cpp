@@ -64,7 +64,7 @@ static TArray<uint16_t> CreateUnwindInfoWindows(asmjit::CCFunc *func)
 	FuncFrameLayout layout;
 	Error error = layout.init(func->getDetail(), func->getFrameInfo());
 	if (error != kErrorOk)
-		I_FatalError("FuncFrameLayout.init failed");
+		I_Error("FuncFrameLayout.init failed");
 
 	// We need a dummy emitter for instruction size calculations
 	CodeHolder code;
@@ -275,7 +275,7 @@ void *AddJitFunction(asmjit::CodeHolder* code, asmjit::CCFunc *func)
 	BOOLEAN result = RtlAddFunctionTable(table, 1, (DWORD64)baseaddr);
 	JitFrames.Push((uint8_t*)table);
 	if (result == 0)
-		I_FatalError("RtlAddFunctionTable failed");
+		I_Error("RtlAddFunctionTable failed");
 #endif
 
 	return p;
@@ -287,40 +287,75 @@ extern "C"
 {
 	void __register_frame(const void*);
 	void __deregister_frame(const void*);
+
+#if 0 // Someone needs to implement this if GDB/LLDB should produce correct call stacks
+	
+	// GDB JIT interface (GG guys! Thank you SO MUCH for not hooking into the above functions. Really appreciate it!)
+	
+	// To register code with GDB, the JIT should follow this protocol:
+	//
+	// * Generate an object file in memory with symbols and other desired debug information.
+	//   The file must include the virtual addresses of the sections. 
+	// * Create a code entry for the file, which gives the start and size of the symbol file. 
+	// * Add it to the linked list in the JIT descriptor.
+	// * Point the relevant_entry field of the descriptor at the entry.
+	// * Set action_flag to JIT_REGISTER and call __jit_debug_register_code.
+	
+	// Pure beauty! Now a JIT also has to create a full ELF object file. And is it a MACH-O on macOS? You guys ROCK!
+
+	typedef enum
+	{
+	  JIT_NOACTION = 0,
+	  JIT_REGISTER_FN,
+	  JIT_UNREGISTER_FN
+	} jit_actions_t;
+
+	struct jit_code_entry
+	{
+	  struct jit_code_entry *next_entry;
+	  struct jit_code_entry *prev_entry;
+	  const char *symfile_addr;
+	  uint64_t symfile_size;
+	};
+
+	struct jit_descriptor
+	{
+	  uint32_t version;
+	  // This type should be jit_actions_t, but we use uint32_t to be explicit about the bitwidth.
+	  uint32_t action_flag;
+	  struct jit_code_entry *relevant_entry;
+	  struct jit_code_entry *first_entry;
+	};
+
+	// GDB puts a breakpoint in this function.
+	void __attribute__((noinline)) __jit_debug_register_code() { };
+
+	// Make sure to specify the version statically, because the debugger may check the version before we can set it.
+	struct jit_descriptor __jit_debug_descriptor = { 1, 0, 0, 0 };
+#endif
 }
 
 static void WriteLength(TArray<uint8_t> &stream, unsigned int pos, unsigned int v)
 {
-	stream[pos] = v >> 24;
-	stream[pos + 1] = (v >> 16) & 0xff;
-	stream[pos + 2] = (v >> 8) & 0xff;
-	stream[pos + 3] = v & 0xff;
+	*(uint32_t*)(&stream[pos]) = v;
 }
 
 static void WriteUInt64(TArray<uint8_t> &stream, uint64_t v)
 {
-	stream.Push(v >> 56);
-	stream.Push((v >> 48) & 0xff);
-	stream.Push((v >> 40) & 0xff);
-	stream.Push((v >> 32) & 0xff);
-	stream.Push((v >> 24) & 0xff);
-	stream.Push((v >> 16) & 0xff);
-	stream.Push((v >> 8) & 0xff);
-	stream.Push(v & 0xff);
+	for (int i = 0; i < 8; i++)
+		stream.Push((v >> (i * 8)) & 0xff);
 }
 
 static void WriteUInt32(TArray<uint8_t> &stream, uint32_t v)
 {
-	stream.Push(v >> 24);
-	stream.Push((v >> 16) & 0xff);
-	stream.Push((v >> 8) & 0xff);
-	stream.Push(v & 0xff);
+	for (int i = 0; i < 4; i++)
+		stream.Push((v >> (i * 8)) & 0xff);
 }
 
 static void WriteUInt16(TArray<uint8_t> &stream, uint16_t v)
 {
-	stream.Push((v >> 8) & 0xff);
-	stream.Push(v & 0xff);
+	for (int i = 0; i < 2; i++)
+		stream.Push((v >> (i * 8)) & 0xff);
 }
 
 static void WriteUInt8(TArray<uint8_t> &stream, uint8_t v)
@@ -330,97 +365,200 @@ static void WriteUInt8(TArray<uint8_t> &stream, uint8_t v)
 
 static void WriteULEB128(TArray<uint8_t> &stream, uint32_t v)
 {
+	while (true)
+	{
+		if (v < 128)
+		{
+			WriteUInt8(stream, v);
+			break;
+		}
+		else
+		{
+			WriteUInt8(stream, (v & 0x7f) | 0x80);
+			v >>= 7;
+		}
+	}
 }
 
 static void WriteSLEB128(TArray<uint8_t> &stream, int32_t v)
 {
+	if (v >= 0)
+	{
+		WriteULEB128(stream, v);
+	}
+	else
+	{
+		while (true)
+		{
+			if (v > -128)
+			{
+				WriteUInt8(stream, v & 0x7f);
+				break;
+			}
+			else
+			{
+				WriteUInt8(stream, v);
+				v >>= 7;
+			}
+		}
+	}
 }
 
-struct FrameDesc
+static void WritePadding(TArray<uint8_t> &stream)
 {
-	int minInstAlignment = 4;
-	int dataAlignmentFactor = -4;
-	uint8_t returnAddressReg = 0;
+	int padding = stream.Size() % 8;
+	if (padding != 0)
+	{
+		padding = 8 - padding;
+		for (int i = 0; i < padding; i++) WriteUInt8(stream, 0);
+	}
+}
 
-	uint32_t cieLocation = 0;
-	uint64_t functionStart = 0;
-	uint64_t functionSize = 0;
-};
-
-static void WriteCIE(TArray<uint8_t> &stream, const TArray<uint8_t> &cieInstructions, uint8_t returnAddressReg, int minInstAlignment, int dataAlignmentFactor)
+static void WriteCIE(TArray<uint8_t> &stream, const TArray<uint8_t> &cieInstructions, uint8_t returnAddressReg)
 {
 	unsigned int lengthPos = stream.Size();
 	WriteUInt32(stream, 0); // Length
-
 	WriteUInt32(stream, 0); // CIE ID
+	
 	WriteUInt8(stream, 1); // CIE Version
 	WriteUInt8(stream, 'z');
-	WriteUInt8(stream, 'R');
+	WriteUInt8(stream, 'R'); // fde encoding
 	WriteUInt8(stream, 0);
-	WriteULEB128(stream, minInstAlignment);
-	WriteSLEB128(stream, dataAlignmentFactor);
-	WriteUInt8(stream, returnAddressReg);
-	WriteULEB128(stream, 0);
+	WriteULEB128(stream, 1);
+	WriteSLEB128(stream, -1);
+	WriteULEB128(stream, returnAddressReg);
+
+	WriteULEB128(stream, 1); // LEB128 augmentation size
+	WriteUInt8(stream, 0); // DW_EH_PE_absptr (FDE uses absolute pointers)
 
 	for (unsigned int i = 0; i < cieInstructions.Size(); i++)
 		stream.Push(cieInstructions[i]);
 
-	// Padding and update length field
-	unsigned int length = stream.Size() - lengthPos;
-	int padding = stream.Size() % 4;
-	for (int i = 0; i <= padding; i++) WriteUInt8(stream, 0);
-	WriteLength(stream, lengthPos, length);
+	WritePadding(stream);
+	WriteLength(stream, lengthPos, stream.Size() - lengthPos - 4);
 }
 
 static void WriteFDE(TArray<uint8_t> &stream, const TArray<uint8_t> &fdeInstructions, uint32_t cieLocation, unsigned int &functionStart)
 {
-	uint32_t offsetToCIE = stream.Size() - cieLocation;
-
 	unsigned int lengthPos = stream.Size();
 	WriteUInt32(stream, 0); // Length
-
+	uint32_t offsetToCIE = stream.Size() - cieLocation;
 	WriteUInt32(stream, offsetToCIE);
+	
 	functionStart = stream.Size();
 	WriteUInt64(stream, 0); // func start
 	WriteUInt64(stream, 0); // func size
 
+	WriteULEB128(stream, 0); // LEB128 augmentation size
+
 	for (unsigned int i = 0; i < fdeInstructions.Size(); i++)
 		stream.Push(fdeInstructions[i]);
 
-	// Padding and update length field
-	unsigned int length = stream.Size() - lengthPos;
-	int padding = stream.Size() % 4;
-	for (int i = 0; i <= padding; i++) WriteUInt8(stream, 0);
-	WriteLength(stream, lengthPos, length);
+	WritePadding(stream);
+	WriteLength(stream, lengthPos, stream.Size() - lengthPos - 4);
+}
+
+static void WriteAdvanceLoc(TArray<uint8_t> &fdeInstructions, uint64_t offset, uint64_t &lastOffset)
+{
+	uint64_t delta = offset - lastOffset;
+	if (delta < (1 << 6))
+	{
+		WriteUInt8(fdeInstructions, (1 << 6) | delta); // DW_CFA_advance_loc
+	}
+	else if (delta < (1 << 8))
+	{
+		WriteUInt8(fdeInstructions, 2); // DW_CFA_advance_loc1
+		WriteUInt8(fdeInstructions, delta);
+	}
+	else if (delta < (1 << 16))
+	{
+		WriteUInt8(fdeInstructions, 3); // DW_CFA_advance_loc2
+		WriteUInt16(fdeInstructions, delta);
+	}
+	else
+	{
+		WriteUInt8(fdeInstructions, 4); // DW_CFA_advance_loc3
+		WriteUInt32(fdeInstructions, delta);
+	}
+	lastOffset = offset;
+}
+
+static void WriteDefineCFA(TArray<uint8_t> &cieInstructions, int dwarfRegId, int stackOffset)
+{
+	WriteUInt8(cieInstructions, 0x0c); // DW_CFA_def_cfa
+	WriteULEB128(cieInstructions, dwarfRegId);
+	WriteULEB128(cieInstructions, stackOffset);
+}
+
+static void WriteDefineStackOffset(TArray<uint8_t> &fdeInstructions, int stackOffset)
+{
+	WriteUInt8(fdeInstructions, 0x0e); // DW_CFA_def_cfa_offset
+	WriteULEB128(fdeInstructions, stackOffset);
+}
+
+static void WriteRegisterStackLocation(TArray<uint8_t> &instructions, int dwarfRegId, int stackLocation)
+{
+	WriteUInt8(instructions, (2 << 6) | dwarfRegId); // DW_CFA_offset
+	WriteULEB128(instructions, stackLocation);
 }
 
 static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &functionStart)
 {
 	using namespace asmjit;
 
+	// Build .eh_frame:
+	//
+	// The documentation for this can be found in the DWARF standard
+	// The x64 specific details are described in "System V Application Binary Interface AMD64 Architecture Processor Supplement"
+	//
+	// See appendix D.6 "Call Frame Information Example" in the DWARF 5 spec.
+	//
+	// The CFI_Parser<A>::decodeFDE parser on the other side..
+	// https://github.com/llvm-mirror/libunwind/blob/master/src/DwarfParser.hpp
+	
+	// Asmjit -> DWARF register id
+	int dwarfRegId[16];
+	dwarfRegId[X86Gp::kIdAx] = 0;
+	dwarfRegId[X86Gp::kIdDx] = 1;
+	dwarfRegId[X86Gp::kIdCx] = 2;
+	dwarfRegId[X86Gp::kIdBx] = 3;
+	dwarfRegId[X86Gp::kIdSi] = 4;
+	dwarfRegId[X86Gp::kIdDi] = 5;
+	dwarfRegId[X86Gp::kIdBp] = 6;
+	dwarfRegId[X86Gp::kIdSp] = 7;
+	dwarfRegId[X86Gp::kIdR8] = 8;
+	dwarfRegId[X86Gp::kIdR9] = 9;
+	dwarfRegId[X86Gp::kIdR10] = 10;
+	dwarfRegId[X86Gp::kIdR11] = 11;
+	dwarfRegId[X86Gp::kIdR12] = 12;
+	dwarfRegId[X86Gp::kIdR13] = 13;
+	dwarfRegId[X86Gp::kIdR14] = 14;
+	dwarfRegId[X86Gp::kIdR15] = 15;
+	int dwarfRegRAId = 16;
+	int dwarfRegXmmId = 17;
+	
+	TArray<uint8_t> cieInstructions;
+	TArray<uint8_t> fdeInstructions;
+
+	uint8_t returnAddressReg = dwarfRegRAId;
+	int stackOffset = 8; // Offset from RSP to the Canonical Frame Address (CFA) - stack position where the CALL return address is stored
+
+	WriteDefineCFA(cieInstructions, dwarfRegId[X86Gp::kIdSp], stackOffset);
+	WriteRegisterStackLocation(cieInstructions, returnAddressReg, stackOffset);
+	
 	FuncFrameLayout layout;
 	Error error = layout.init(func->getDetail(), func->getFrameInfo());
 	if (error != kErrorOk)
-		I_FatalError("FuncFrameLayout.init failed");
+		I_Error("FuncFrameLayout.init failed");
 
 	// We need a dummy emitter for instruction size calculations
 	CodeHolder code;
 	code.init(GetHostCodeInfo());
 	X86Assembler assembler(&code);
 	X86Emitter *emitter = assembler.asEmitter();
+	uint64_t lastOffset = 0;
 
-	// Build .eh_frame:
-
-	// To do: write CIE and FDE call frame instructions (see appendix D.6 "Call Frame Information Example" in the DWARF 5 spec)
-
-	TArray<uint8_t> cieInstructions;
-	TArray<uint8_t> fdeInstructions;
-
-	int minInstAlignment = 4; // To do: is this correct?
-	int dataAlignmentFactor = -4; // To do: is this correct?
-	uint8_t returnAddressReg = 0; // To do: get this from asmjit
-
-	// Note: this must match exactly what X86Internal::emitProlog does
+	// Note: the following code must match exactly what X86Internal::emitProlog does
 
 	X86Gp zsp = emitter->zsp();   // ESP|RSP register.
 	X86Gp zbp = emitter->zsp();   // EBP|RBP register.
@@ -436,9 +574,10 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 		gpSaved &= ~Utils::mask(X86Gp::kIdBp);
 		emitter->push(zbp);
 
-		// WriteXX(cieInstructions, UWOP_PUSH_NONVOL);
-		// WriteXX(cieInstructions, X86Gp::kIdBp);
-		// WriteXX(cieInstructions, (uint32_t)assembler.getOffset());
+		stackOffset += 8;
+		WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
+		WriteDefineStackOffset(fdeInstructions, stackOffset);
+		WriteRegisterStackLocation(fdeInstructions, dwarfRegId[X86Gp::kIdBp], stackOffset);
 
 		emitter->mov(zbp, zsp);
 	}
@@ -452,9 +591,10 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 			gpReg.setId(regId);
 			emitter->push(gpReg);
 
-			// WriteXX(cieInstructions, UWOP_PUSH_NONVOL);
-			// WriteXX(cieInstructions, regId);
-			// WriteXX(cieInstructions, (uint32_t)assembler.getOffset());
+			stackOffset += 8;
+			WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
+			WriteDefineStackOffset(fdeInstructions, stackOffset);
+			WriteRegisterStackLocation(fdeInstructions, dwarfRegId[regId], stackOffset);
 		}
 	}
 
@@ -480,10 +620,9 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 		// Emit: 'sub zsp, StackAdjustment'.
 		emitter->sub(zsp, layout.getStackAdjustment());
 
-		uint32_t stackadjust = layout.getStackAdjustment();
-		// WriteXX(cieInstructions, UWOP_ALLOC);
-		// WriteXX(cieInstructions, stackadjust);
-		// WriteXX(cieInstructions, (uint32_t)assembler.getOffset());
+		stackOffset += layout.getStackAdjustment();
+		WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
+		WriteDefineStackOffset(fdeInstructions, stackOffset);
 	}
 
 	if (layout.hasDynamicAlignment() && layout.hasDsaSlotUsed())
@@ -496,6 +635,7 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 	uint32_t xmmSaved = layout.getSavedRegs(X86Reg::kKindVec);
 	if (xmmSaved)
 	{
+		int vecOffset = layout.getVecStackOffset();
 		X86Mem vecBase = x86::ptr(zsp, layout.getVecStackOffset());
 		X86Reg vecReg = x86::xmm(0);
 		bool avx = layout.isAvxEnabled();
@@ -511,14 +651,14 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 			emitter->emit(vecInst, vecBase, vecReg);
 			vecBase.addOffsetLo32(static_cast<int32_t>(vecSize));
 
-			// WriteXX(cieInstructions, UWOP_SAVE_XMM128);
-			// WriteXX(cieInstructions, regId);
-			// WriteXX(cieInstructions, (uint32_t)assembler.getOffset());
+			WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
+			WriteRegisterStackLocation(fdeInstructions, dwarfRegXmmId + regId, stackOffset - vecOffset);
+			vecOffset += static_cast<int32_t>(vecSize);
 		}
 	}
 
 	TArray<uint8_t> stream;
-	WriteCIE(stream, cieInstructions, returnAddressReg, minInstAlignment, dataAlignmentFactor);
+	WriteCIE(stream, cieInstructions, returnAddressReg);
 	WriteFDE(stream, fdeInstructions, 0, functionStart);
 	WriteUInt32(stream, 0);
 	return stream;
@@ -533,7 +673,7 @@ void *AddJitFunction(asmjit::CodeHolder* code, asmjit::CCFunc *func)
 		return nullptr;
 
 	unsigned int fdeFunctionStart = 0;
-	TArray<uint8_t> unwindInfo;// = CreateUnwindInfoUnix(func, fdeFunctionStart);
+	TArray<uint8_t> unwindInfo = CreateUnwindInfoUnix(func, fdeFunctionStart);
 	size_t unwindInfoSize = unwindInfo.Size();
 
 	codeSize = (codeSize + 15) / 16 * 16;
@@ -571,11 +711,29 @@ void *AddJitFunction(asmjit::CodeHolder* code, asmjit::CCFunc *func)
 			if (length == 0)
 				break;
 
-			uint32_t offset = *((uint32_t *)(entry + 4));
-			if (offset != 0)
+			if (length == 0xffffffff)
 			{
-				__register_frame(entry);
-				JitFrames.Push(entry);
+				uint64_t length64 = *((uint64_t *)(entry + 4));
+				if (length64 == 0)
+					break;
+				
+				uint64_t offset = *((uint64_t *)(entry + 12));
+				if (offset != 0)
+				{
+					__register_frame(entry);
+					JitFrames.Push(entry);
+				}
+				entry += length64 + 12;
+			}
+			else
+			{
+				uint32_t offset = *((uint32_t *)(entry + 4));
+				if (offset != 0)
+				{
+					__register_frame(entry);
+					JitFrames.Push(entry);
+				}
+				entry += length + 4;
 			}
 		}
 #else
@@ -596,7 +754,7 @@ void JitRelease()
 	{
 		RtlDeleteFunctionTable((PRUNTIME_FUNCTION)p);
 	}
-#else !defined(WIN32)
+#elif !defined(WIN32)
 	for (auto p : JitFrames)
 	{
 		__deregister_frame(p);

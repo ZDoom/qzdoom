@@ -179,6 +179,11 @@ struct VMReturn
 		Location = loc;
 		RegType = REGT_FLOAT;
 	}
+	void Vec2At(DVector2 *loc)
+	{
+		Location = loc;
+		RegType = REGT_FLOAT | REGT_MULTIREG2;
+	}
 	void StringAt(FString *loc)
 	{
 		Location = loc;
@@ -192,6 +197,7 @@ struct VMReturn
 	VMReturn() { }
 	VMReturn(int *loc) { IntAt(loc); }
 	VMReturn(double *loc) { FloatAt(loc); }
+	VMReturn(DVector2 *loc) { Vec2At(loc); }
 	VMReturn(FString *loc) { StringAt(loc); }
 	VMReturn(void **loc) { PointerAt(loc); }
 };
@@ -505,7 +511,8 @@ bool AssertObject(void * ob);
 #define PARAM_COLOR_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_INT); PalEntry x; x.d = param[p].i;
 #define PARAM_FLOAT_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_FLOAT); double x = param[p].f;
 #define PARAM_ANGLE_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_FLOAT); DAngle x = param[p].f;
-#define PARAM_STRING_AT(p,x)		assert((p) < numparam); assert(reginfo[p] == REGT_STRING); FString x = param[p].s();
+#define PARAM_STRING_VAL_AT(p,x)	assert((p) < numparam); assert(reginfo[p] == REGT_STRING); FString x = param[p].s();
+#define PARAM_STRING_AT(p,x)		assert((p) < numparam); assert(reginfo[p] == REGT_STRING); const FString &x = param[p].s();
 #define PARAM_STATE_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_INT); FState *x = (FState *)StateLabels.GetState(param[p].i, self->GetClass());
 #define PARAM_STATE_ACTION_AT(p,x)	assert((p) < numparam); assert(reginfo[p] == REGT_INT); FState *x = (FState *)StateLabels.GetState(param[p].i, stateowner->GetClass());
 #define PARAM_POINTER_AT(p,x,type)	assert((p) < numparam); assert(reginfo[p] == REGT_POINTER); type *x = (type *)param[p].a;
@@ -530,6 +537,7 @@ bool AssertObject(void * ob);
 #define PARAM_FLOAT(x)				++paramnum; PARAM_FLOAT_AT(paramnum,x)
 #define PARAM_ANGLE(x)				++paramnum; PARAM_ANGLE_AT(paramnum,x)
 #define PARAM_STRING(x)				++paramnum; PARAM_STRING_AT(paramnum,x)
+#define PARAM_STRING_VAL(x)				++paramnum; PARAM_STRING_VAL_AT(paramnum,x)
 #define PARAM_STATE(x)				++paramnum; PARAM_STATE_AT(paramnum,x)
 #define PARAM_STATE_ACTION(x)		++paramnum; PARAM_STATE_ACTION_AT(paramnum,x)
 #define PARAM_POINTER(x,type)		++paramnum; PARAM_POINTER_AT(paramnum,x,type)
@@ -553,13 +561,54 @@ struct FieldDesc
 	int BitValue;
 };
 
+namespace
+{
+	// Traits for the types we are interested in
+	template<typename T> struct native_is_valid { static const bool value = false; };
+	template<typename T> struct native_is_valid<T*> { static const bool value = true; };
+	template<typename T> struct native_is_valid<T&> { static const bool value = true; };
+	template<> struct native_is_valid<void> { static const bool value = true; };
+	template<> struct native_is_valid<int> { static const bool value = true; };
+	template<> struct native_is_valid<unsigned int> { static const bool value = true; };
+	template<> struct native_is_valid<double> { static const bool value = true; };
+	template<> struct native_is_valid<bool> { static const bool value = true; };
+}
+
+// Compile time validation of direct native functions
+struct DirectNativeDesc
+{
+	DirectNativeDesc() = default;
+
+	#define TP(n) typename P##n
+	#define VP(n) ValidateType<P##n>()
+	template<typename Ret> DirectNativeDesc(Ret(*func)()) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); }
+	template<typename Ret, TP(1)> DirectNativeDesc(Ret(*func)(P1)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); }
+	template<typename Ret, TP(1), TP(2)> DirectNativeDesc(Ret(*func)(P1,P2)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); VP(2); }
+	template<typename Ret, TP(1), TP(2), TP(3)> DirectNativeDesc(Ret(*func)(P1,P2,P3)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); VP(2); VP(3); }
+	template<typename Ret, TP(1), TP(2), TP(3), TP(4)> DirectNativeDesc(Ret(*func)(P1, P2, P3, P4)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); VP(2); VP(3); VP(4); }
+	template<typename Ret, TP(1), TP(2), TP(3), TP(4), TP(5)> DirectNativeDesc(Ret(*func)(P1, P2, P3, P4, P5)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); VP(2); VP(3); VP(4); VP(5); }
+	template<typename Ret, TP(1), TP(2), TP(3), TP(4), TP(5), TP(6)> DirectNativeDesc(Ret(*func)(P1, P2, P3, P4, P5, P6)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); VP(2); VP(3); VP(4); VP(5); VP(6); }
+	template<typename Ret, TP(1), TP(2), TP(3), TP(4), TP(5), TP(6), TP(7)> DirectNativeDesc(Ret(*func)(P1, P2, P3, P4, P5, P6, P7)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); VP(2); VP(3); VP(4); VP(5); VP(6); VP(7); }
+	template<typename Ret, TP(1), TP(2), TP(3), TP(4), TP(5), TP(6), TP(7), TP(8)> DirectNativeDesc(Ret(*func)(P1, P2, P3, P4, P5, P6, P7, P8)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); VP(2); VP(3); VP(4); VP(5); VP(6); VP(7); VP(8); }
+	template<typename Ret, TP(1), TP(2), TP(3), TP(4), TP(5), TP(6), TP(7), TP(8), TP(9)> DirectNativeDesc(Ret(*func)(P1, P2, P3, P4, P5, P6, P7, P8, P9)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); VP(2); VP(3); VP(4); VP(5); VP(6); VP(7); VP(8); VP(9); }
+	template<typename Ret, TP(1), TP(2), TP(3), TP(4), TP(5), TP(6), TP(7), TP(8), TP(9), TP(10)> DirectNativeDesc(Ret(*func)(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10)) : Ptr(reinterpret_cast<void*>(func)) { ValidateType<Ret>(); VP(1); VP(2); VP(3); VP(4); VP(5); VP(6); VP(7); VP(8); VP(9); VP(10); }
+	#undef TP
+	#undef VP
+
+	template<typename T> void ValidateType() { static_assert(native_is_valid<T>::value, "Argument type is not valid as a direct native parameter or return type"); }
+
+	operator void *() const { return Ptr; }
+
+	void *Ptr = nullptr;
+};
+
 struct AFuncDesc
 {
 	const char *ClassName;
 	const char *FuncName;
 	actionf_p Function;
 	VMNativeFunction **VMPointer;
-	void *DirectNative;
+	DirectNativeDesc DirectNative;
 };
 
 #if defined(_MSC_VER)
@@ -583,16 +632,23 @@ struct AFuncDesc
 #define DEFINE_ACTION_FUNCTION_NATIVE(cls, name, native) \
 	static int AF_##cls##_##name(VM_ARGS); \
 	VMNativeFunction *cls##_##name##_VMPtr; \
-	static const AFuncDesc cls##_##name##_Hook = { #cls, #name, AF_##cls##_##name, &cls##_##name##_VMPtr, reinterpret_cast<void*>(native) }; \
+	static const AFuncDesc cls##_##name##_Hook = { #cls, #name, AF_##cls##_##name, &cls##_##name##_VMPtr, native }; \
 	extern AFuncDesc const *const cls##_##name##_HookPtr; \
 	MSVC_ASEG AFuncDesc const *const cls##_##name##_HookPtr GCC_ASEG = &cls##_##name##_Hook; \
 	static int AF_##cls##_##name(VM_ARGS)
 
-//#define DEFINE_ACTION_FUNCTION(cls, name) DEFINE_ACTION_FUNCTION_NATIVE(cls, name, nullptr)
+#define DEFINE_ACTION_FUNCTION_NATIVE0(cls, name, native) \
+	static int AF_##cls##_##name(VM_ARGS); \
+	VMNativeFunction *cls##_##name##_VMPtr; \
+	static const AFuncDesc cls##_##name##_Hook = { #cls, #name, AF_##cls##_##name, &cls##_##name##_VMPtr, {} }; \
+	extern AFuncDesc const *const cls##_##name##_HookPtr; \
+	MSVC_ASEG AFuncDesc const *const cls##_##name##_HookPtr GCC_ASEG = &cls##_##name##_Hook; \
+	static int AF_##cls##_##name(VM_ARGS)
+
 #define DEFINE_ACTION_FUNCTION(cls, name) \
 	static int AF_##cls##_##name(VM_ARGS); \
 	VMNativeFunction *cls##_##name##_VMPtr; \
-	static const AFuncDesc cls##_##name##_Hook = { #cls, #name, AF_##cls##_##name, &cls##_##name##_VMPtr, nullptr }; \
+	static const AFuncDesc cls##_##name##_Hook = { #cls, #name, AF_##cls##_##name, &cls##_##name##_VMPtr, {} }; \
 	extern AFuncDesc const *const cls##_##name##_HookPtr; \
 	MSVC_ASEG AFuncDesc const *const cls##_##name##_HookPtr GCC_ASEG = &cls##_##name##_Hook; \
 	static int AF_##cls##_##name(VM_ARGS)
@@ -690,6 +746,15 @@ VMFunction *FindVMFunction(PClass *cls, const char *name);
 #define DECLARE_VMFUNC(cls, name) static VMFunction *name; if (name == nullptr) name = FindVMFunction(RUNTIME_CLASS(cls), #name);
 
 FString FStringFormat(VM_ARGS, int offset = 0);
+
+#define IFVM(cls, funcname) \
+	static VMFunction * func = nullptr; \
+	if (func == nullptr) { \
+		PClass::FindFunction(&func, #cls, #funcname); \
+		assert(func); \
+	} \
+	if (func != nullptr)
+
 
 
 unsigned GetVirtualIndex(PClass *cls, const char *funcname);

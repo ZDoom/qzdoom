@@ -1282,7 +1282,7 @@ void G_StartTravel ()
 		if (playeringame[i])
 		{
 			AActor *pawn = players[i].mo;
-			AInventory *inv;
+			AActor *inv;
 			players[i].camera = NULL;
 
 			// Only living players travel. Dead ones get a new body on the new level.
@@ -1321,7 +1321,7 @@ int G_FinishTravel ()
 {
 	TThinkerIterator<APlayerPawn> it (STAT_TRAVELLING);
 	APlayerPawn *pawn, *pawndup, *oldpawn, *next;
-	AInventory *inv;
+	AActor *inv;
 	FPlayerStart *start;
 	int pnum;
 	int failnum = 0;
@@ -1409,7 +1409,7 @@ int G_FinishTravel ()
 			inv->ChangeStatNum (STAT_INVENTORY);
 			inv->LinkToWorld (nullptr);
 
-			IFVIRTUALPTR(inv, AInventory, Travelled)
+			IFVIRTUALPTRNAME(inv, NAME_Inventory, Travelled)
 			{
 				VMValue params[1] = { inv };
 				VMCall(func, params, 1, nullptr, 0);
@@ -1513,6 +1513,7 @@ void G_InitLevelLocals ()
 	level.fogdensity = info->fogdensity;
 	level.outsidefogdensity = info->outsidefogdensity;
 	level.skyfog = info->skyfog;
+	level.deathsequence = info->deathsequence;
 
 	level.pixelstretch = info->pixelstretch;
 
@@ -2238,6 +2239,7 @@ DEFINE_FIELD(FLevelLocals, fogdensity)
 DEFINE_FIELD(FLevelLocals, outsidefogdensity)
 DEFINE_FIELD(FLevelLocals, skyfog)
 DEFINE_FIELD(FLevelLocals, pixelstretch)
+DEFINE_FIELD(FLevelLocals, deathsequence)
 DEFINE_FIELD_BIT(FLevelLocals, flags, noinventorybar, LEVEL_NOINVENTORYBAR)
 DEFINE_FIELD_BIT(FLevelLocals, flags, monsterstelefrag, LEVEL_MONSTERSTELEFRAG)
 DEFINE_FIELD_BIT(FLevelLocals, flags, actownspecial, LEVEL_ACTOWNSPECIAL)
@@ -2252,6 +2254,8 @@ DEFINE_FIELD_BIT(FLevelLocals, flags2, nomonsters, LEVEL2_NOMONSTERS)
 DEFINE_FIELD_BIT(FLevelLocals, flags2, frozen, LEVEL2_FROZEN)
 DEFINE_FIELD_BIT(FLevelLocals, flags2, infinite_flight, LEVEL2_INFINITE_FLIGHT)
 DEFINE_FIELD_BIT(FLevelLocals, flags2, no_dlg_freeze, LEVEL2_CONV_SINGLE_UNFREEZE)
+DEFINE_FIELD_BIT(FLevelLocals, flags2, keepfullinventory, LEVEL2_KEEPFULLINVENTORY)
+DEFINE_FIELD_BIT(FLevelLocals, flags3, removeitems, LEVEL3_REMOVEITEMS)
 
 //==========================================================================
 //
@@ -2302,5 +2306,14 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, ChangeSky)
 	sky1texture = self->skytexture1 = FSetTextureID(sky1);
 	sky2texture = self->skytexture2 = FSetTextureID(sky2);
 	R_InitSkyMap();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(FLevelLocals, StartIntermission)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_NAME(seq);
+	PARAM_INT(state);
+	F_StartIntermission(seq, (uint8_t)state);
 	return 0;
 }

@@ -13,6 +13,7 @@
 #include "d_protocol.h"
 #include "r_defs.h"
 #include "a_pickups.h"
+#include "a_weapons.h"
 #include "stats.h"
 
 #define FORWARDWALK		0x1900
@@ -78,6 +79,34 @@ struct botinfo_t
 	int lastteam;
 };
 
+struct BotInfoData
+{
+	int MoveCombatDist = 0;
+	int flags = 0;
+	PClassActor *projectileType = nullptr;
+};
+
+
+enum
+{
+	BIF_BOT_REACTION_SKILL_THING = 1,
+	BIF_BOT_EXPLOSIVE = 2,
+	BIF_BOT_BFG = 4,
+};
+
+
+using BotInfoMap = TMap<FName, BotInfoData>;
+
+extern BotInfoMap BotInfo;
+
+inline BotInfoData GetBotInfo(AActor *weap)
+{
+	if (weap == nullptr) return BotInfoData();
+	auto k = BotInfo.CheckKey(weap->GetClass()->TypeName);
+	if (k) return *k;
+	return BotInfoData();
+}
+
 //Used to keep all the globally needed variables in nice order.
 class FCajunMaster
 {
@@ -116,7 +145,7 @@ public:
 	botinfo_t *botinfo;
 	int spawn_tries;
 	int wanted_botnum;
-	TObjPtr<AInventory*> firstthing;
+	TObjPtr<AActor*> firstthing;
 	TObjPtr<AActor*>	body1;
 	TObjPtr<AActor*> body2;
 
