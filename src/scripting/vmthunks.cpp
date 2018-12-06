@@ -42,10 +42,15 @@
 #include "a_pickups.h"
 #include "a_specialspot.h"
 #include "actorptrselect.h"
+#include "a_weapons.h"
+#include "d_player.h"
+#include "p_setup.h"
+#include "i_music.h"
 
 DVector2 AM_GetPosition();
 int Net_GetLatency(int *ld, int *ad);
 void PrintPickupMessage(bool localview, const FString &str);
+
 
 //=====================================================================================
 //
@@ -1808,73 +1813,60 @@ DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetCursor, GetCursor)
 
 //=====================================================================================
 //
-// AActor exports (this will be expanded)
+// WeaponSlots exports
 //
 //=====================================================================================
 
-DEFINE_ACTION_FUNCTION_NATIVE(AActor, GetPointer, COPY_AAPTR)
+static int LocateWeapon(FWeaponSlots *self, PClassActor *weap, int *pslot, int *pindex)
 {
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT(ptr);
-	ACTION_RETURN_OBJECT(COPY_AAPTR(self, ptr));
+	return self->LocateWeapon(weap, pslot, pindex);
 }
 
-
-DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_PlaySound, A_PlaySound)
+DEFINE_ACTION_FUNCTION_NATIVE(FWeaponSlots, LocateWeapon, LocateWeapon)
 {
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_SOUND(soundid);
-	PARAM_INT(channel);
-	PARAM_FLOAT(volume);
-	PARAM_BOOL(looping);
-	PARAM_FLOAT(attenuation);
-	PARAM_BOOL(local);
-	A_PlaySound(self, soundid, channel, volume, looping, attenuation, local);
+	PARAM_SELF_STRUCT_PROLOGUE(FWeaponSlots);
+	PARAM_CLASS(weap, AActor);
+	int slot = 0, index = 0;
+	bool retv = self->LocateWeapon(weap, &slot, &index);
+	if (numret >= 1) ret[0].SetInt(retv);
+	if (numret >= 2) ret[1].SetInt(slot);
+	if (numret >= 3) ret[2].SetInt(index);
+	return MIN(numret, 3);
+}
+
+static PClassActor *GetWeapon(FWeaponSlots *self, int slot, int index)
+{
+	return self->GetWeapon(slot, index);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FWeaponSlots, GetWeapon, GetWeapon)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FWeaponSlots);
+	PARAM_INT(slot);
+	PARAM_INT(index);
+	ACTION_RETURN_POINTER(self->GetWeapon(slot, index));
+	return 1;
+}
+
+static int SlotSize(FWeaponSlots *self, int slot)
+{
+	return self->SlotSize(slot);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FWeaponSlots, SlotSize, SlotSize)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FWeaponSlots);
+	PARAM_INT(slot);
+	ACTION_RETURN_INT(self->SlotSize(slot));
+	return 1;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FWeaponSlots, SetupWeaponSlots, FWeaponSlots::SetupWeaponSlots)
+{
+	PARAM_PROLOGUE;
+	PARAM_OBJECT(pawn, APlayerPawn);
+	FWeaponSlots::SetupWeaponSlots(pawn);
 	return 0;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(AActor, CheckKeys, P_CheckKeys)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT(locknum);
-	PARAM_BOOL(remote);
-	PARAM_BOOL(quiet);
-	ACTION_RETURN_BOOL(P_CheckKeys(self, locknum, remote, quiet));
-}
-
-
-//=====================================================================================
-//
-// Inventory exports
-//
-//=====================================================================================
-
-DEFINE_ACTION_FUNCTION_NATIVE(AInventory, PrintPickupMessage, PrintPickupMessage)
-{
-	PARAM_PROLOGUE;
-	PARAM_BOOL(localview);
-	PARAM_STRING(str);
-	PrintPickupMessage(localview, str);
-	return 0;
-}
-
-//=====================================================================================
-//
-// Key exports
-//
-//=====================================================================================
-
-DEFINE_ACTION_FUNCTION_NATIVE(AKey, GetKeyTypeCount, P_GetKeyTypeCount)
-{
-	PARAM_PROLOGUE;
-	ACTION_RETURN_INT(P_GetKeyTypeCount());
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(AKey, GetKeyType, P_GetKeyType)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(num);
-	ACTION_RETURN_POINTER(P_GetKeyType(num));
 }
 
 //=====================================================================================
@@ -2459,6 +2451,53 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetAutomapPosition, GetAutomapPositi
 	ACTION_RETURN_VEC2(AM_GetPosition());
 }
 
+static int ZGetUDMFInt(int type, int index, int key)
+{
+	return GetUDMFInt(type, index, ENamedName(key));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetUDMFInt, ZGetUDMFInt)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_INT(type);
+	PARAM_INT(index);
+	PARAM_NAME(key);
+	ACTION_RETURN_INT(GetUDMFInt(type, index, key));
+}
+
+static double ZGetUDMFFloat(int type, int index, int key)
+{
+	return GetUDMFFloat(type, index, ENamedName(key));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetUDMFFloat, ZGetUDMFFloat)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_INT(type);
+	PARAM_INT(index);
+	PARAM_NAME(key);
+	ACTION_RETURN_FLOAT(GetUDMFFloat(type, index, key));
+}
+
+static void ZGetUDMFString(int type, int index, int key, FString *result)
+{
+	*result = GetUDMFString(type, index, ENamedName(key));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetUDMFString, ZGetUDMFString)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_INT(type);
+	PARAM_INT(index);
+	PARAM_NAME(key);
+	ACTION_RETURN_STRING(GetUDMFString(type, index, key));
+}
+
+//=====================================================================================
+//
+//
+//
+//=====================================================================================
 
 static int GetRealTime()
 {
@@ -2484,8 +2523,6 @@ DEFINE_ACTION_FUNCTION_NATIVE(_AltHUD, GetLatency, Net_GetLatency)
 	if (numret > 2) ret[2].SetInt(ad);
 	return numret;
 }
-
-
 
 DEFINE_FIELD_X(Sector, sector_t, floorplane)
 DEFINE_FIELD_X(Sector, sector_t, ceilingplane)

@@ -54,13 +54,15 @@ static void SortVertices(const TriDrawTriangleArgs *args, ShadedTriVertex **sort
 
 void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadData *thread)
 {
+	using namespace TriScreenDrawerModes;
+
 	// Sort vertices by Y position
 	ShadedTriVertex *sortedVertices[3];
 	SortVertices(args, sortedVertices);
 
-	int clipright = args->clipright;
+	int clipright = thread->dest_width;
 	int cliptop = thread->numa_start_y;
-	int clipbottom = MIN(args->clipbottom, thread->numa_end_y);
+	int clipbottom = MIN(thread->dest_height, thread->numa_end_y);
 
 	int topY = (int)(sortedVertices[0]->y + 0.5f);
 	int midY = (int)(sortedVertices[1]->y + 0.5f);
@@ -75,8 +77,7 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 
 	// Find start/end X positions for each line covered by the triangle:
 
-	int leftEdge[MAXHEIGHT];
-	int rightEdge[MAXHEIGHT];
+	int16_t edges[MAXHEIGHT * 2];
 
 	float longDX = sortedVertices[2]->x - sortedVertices[0]->x;
 	float longDY = sortedVertices[2]->y - sortedVertices[0]->y;
@@ -98,8 +99,8 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 			x0 = clamp(x0, 0, clipright);
 			x1 = clamp(x1, 0, clipright);
 
-			leftEdge[y] = x0;
-			rightEdge[y] = x1;
+			edges[y << 1] = x0;
+			edges[(y << 1) + 1] = x1;
 
 			shortPos += shortStep;
 			longPos += longStep;
@@ -121,64 +122,108 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 			x0 = clamp(x0, 0, clipright);
 			x1 = clamp(x1, 0, clipright);
 
-			leftEdge[y] = x0;
-			rightEdge[y] = x1;
+			edges[y << 1] = x0;
+			edges[(y << 1) + 1] = x1;
 
 			shortPos += shortStep;
 			longPos += longStep;
 		}
 	}
 
-	// Draw the triangle:
+	int opt = 0;
+	if (args->uniforms->DepthTest()) opt |= SWTRI_DepthTest;
+	/*if (args->uniforms->StencilTest())*/ opt |= SWTRI_StencilTest;
+	if (args->uniforms->WriteColor()) opt |= SWTRI_WriteColor;
+	if (args->uniforms->WriteDepth()) opt |= SWTRI_WriteDepth;
+	if (args->uniforms->WriteStencil()) opt |= SWTRI_WriteStencil;
+	
+	TriangleDrawers[opt](args, thread, edges, topY, bottomY);
+}
 
-	int bmode = (int)args->uniforms->BlendMode();
-	auto drawfunc = args->destBgra ? ScreenTriangle::SpanDrawers32[bmode] : ScreenTriangle::SpanDrawers8[bmode];
+template<typename OptT>
+void DrawTriangle(const TriDrawTriangleArgs *args, PolyTriangleThreadData *thread, int16_t *edges, int topY, int bottomY)
+{
+	using namespace TriScreenDrawerModes;
 
-	float stepXW = args->gradientX.W;
-	float v1X = args->v1->x;
-	float v1Y = args->v1->y;
-	float v1W = args->v1->w;
+	void(*drawfunc)(int y, int x0, int x1, const TriDrawTriangleArgs *args, PolyTriangleThreadData *thread);
+	float stepXW, v1X, v1Y, v1W, posXW;
+	uint8_t stencilTestValue, stencilWriteValue;
+	float *zbuffer;
+	float *zbufferLine;
+	uint8_t *stencilbuffer;
+	uint8_t *stencilLine;
+	int pitch;
 
-	bool depthTest = args->uniforms->DepthTest();
-	bool stencilTest = true;
-	bool writeColor = args->uniforms->WriteColor();
-	bool writeStencil = args->uniforms->WriteStencil();
-	bool writeDepth = args->uniforms->WriteDepth();
-	uint8_t stencilTestValue = args->uniforms->StencilTestValue();
-	uint8_t stencilWriteValue = args->uniforms->StencilWriteValue();
+	if (OptT::Flags & SWTRI_WriteColor)
+	{
+		int bmode = (int)args->uniforms->BlendMode();
+		drawfunc = thread->dest_bgra ? ScreenTriangle::SpanDrawers32[bmode] : ScreenTriangle::SpanDrawers8[bmode];
+	}
+
+	if ((OptT::Flags & SWTRI_DepthTest) || (OptT::Flags & SWTRI_WriteDepth))
+	{
+		stepXW = args->gradientX.W;
+		v1X = args->v1->x;
+		v1Y = args->v1->y;
+		v1W = args->v1->w;
+		zbuffer = PolyZBuffer::Instance()->Values();
+	}
+
+	if ((OptT::Flags & SWTRI_StencilTest) || (OptT::Flags & SWTRI_WriteStencil))
+	{
+		stencilbuffer = PolyStencilBuffer::Instance()->Values();
+	}
+
+	if ((OptT::Flags & SWTRI_StencilTest) || (OptT::Flags & SWTRI_WriteStencil) || (OptT::Flags & SWTRI_DepthTest) || (OptT::Flags & SWTRI_WriteDepth))
+		pitch = PolyStencilBuffer::Instance()->Width();
+
+	if (OptT::Flags & SWTRI_StencilTest)
+		stencilTestValue = args->uniforms->StencilTestValue();
+
+	if (OptT::Flags & SWTRI_WriteStencil)
+		stencilWriteValue = args->uniforms->StencilWriteValue();
 
 	int num_cores = thread->num_cores;
 	for (int y = topY + thread->skipped_by_thread(topY); y < bottomY; y += num_cores)
 	{
-		int x = leftEdge[y];
-		int xend = rightEdge[y];
+		int x = edges[y << 1];
+		int xend = edges[(y << 1) + 1];
 
-		float *zbufferLine = args->zbuffer + args->stencilpitch * y;
-		uint8_t *stencilLine = args->stencilbuffer + args->stencilpitch * y;
+		if ((OptT::Flags & SWTRI_StencilTest) || (OptT::Flags & SWTRI_WriteStencil))
+			stencilLine = stencilbuffer + pitch * y;
 
-		float startX = x + (0.5f - v1X);
-		float startY = y + (0.5f - v1Y);
-		float posXW = v1W + stepXW * startX + args->gradientY.W * startY + args->depthOffset;
+		if ((OptT::Flags & SWTRI_DepthTest) || (OptT::Flags & SWTRI_WriteDepth))
+		{
+			zbufferLine = zbuffer + pitch * y;
+
+			float startX = x + (0.5f - v1X);
+			float startY = y + (0.5f - v1Y);
+			posXW = v1W + stepXW * startX + args->gradientY.W * startY + (thread->weaponScene ? 1.0f : 0.0f);
+		}
 
 #ifndef NO_SSE
-		__m128 mstepXW = _mm_set1_ps(stepXW * 4.0f);
-		__m128 mfirstStepXW = _mm_setr_ps(0.0f, stepXW, stepXW + stepXW, stepXW + stepXW + stepXW);
+		__m128 mstepXW, mfirstStepXW;
+		if ((OptT::Flags & SWTRI_DepthTest) || (OptT::Flags & SWTRI_WriteDepth))
+		{
+			mstepXW = _mm_set1_ps(stepXW * 4.0f);
+			mfirstStepXW = _mm_setr_ps(0.0f, stepXW, stepXW + stepXW, stepXW + stepXW + stepXW);
+		}
 		while (x < xend)
 		{
 			int xstart = x;
 
-			if (depthTest && stencilTest)
+			if ((OptT::Flags & SWTRI_DepthTest) && (OptT::Flags & SWTRI_StencilTest))
 			{
 				int xendsse = x + ((xend - x) / 4);
 				__m128 mposXW = _mm_add_ps(_mm_set1_ps(posXW), mfirstStepXW);
-				while (_mm_movemask_ps(_mm_cmple_ps(_mm_loadu_ps(zbufferLine + x), mposXW)) == 15 &&
+				while (x < xendsse &&
+					_mm_movemask_ps(_mm_cmple_ps(_mm_loadu_ps(zbufferLine + x), mposXW)) == 15 &&
 					stencilLine[x] == stencilTestValue &&
 					stencilLine[x + 1] == stencilTestValue &&
 					stencilLine[x + 2] == stencilTestValue &&
-					stencilLine[x + 3] == stencilTestValue &&
-					x < xendsse)
+					stencilLine[x + 3] == stencilTestValue)
 				{
-					if (writeDepth)
+					if (OptT::Flags & SWTRI_WriteDepth)
 						_mm_storeu_ps(zbufferLine + x, mposXW);
 					mposXW = _mm_add_ps(mposXW, mstepXW);
 					x += 4;
@@ -187,19 +232,19 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 
 				while (zbufferLine[x] <= posXW && stencilLine[x] == stencilTestValue && x < xend)
 				{
-					if (writeDepth)
+					if (OptT::Flags & SWTRI_WriteDepth)
 						zbufferLine[x] = posXW;
 					posXW += stepXW;
 					x++;
 				}
 			}
-			else if (depthTest)
+			else if (OptT::Flags & SWTRI_DepthTest)
 			{
 				int xendsse = x + ((xend - x) / 4);
 				__m128 mposXW = _mm_add_ps(_mm_set1_ps(posXW), mfirstStepXW);
-				while (_mm_movemask_ps(_mm_cmple_ps(_mm_loadu_ps(zbufferLine + x), mposXW)) == 15 && x < xendsse)
+				while (x < xendsse && _mm_movemask_ps(_mm_cmple_ps(_mm_loadu_ps(zbufferLine + x), mposXW)) == 15)
 				{
-					if (writeDepth)
+					if (OptT::Flags & SWTRI_WriteDepth)
 						_mm_storeu_ps(zbufferLine + x, mposXW);
 					mposXW = _mm_add_ps(mposXW, mstepXW);
 					x += 4;
@@ -208,14 +253,20 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 
 				while (zbufferLine[x] <= posXW && x < xend)
 				{
-					if (writeDepth)
+					if (OptT::Flags & SWTRI_WriteDepth)
 						zbufferLine[x] = posXW;
 					posXW += stepXW;
 					x++;
 				}
 			}
-			else if (stencilTest)
+			else if (OptT::Flags & SWTRI_StencilTest)
 			{
+				int xendsse = x + ((xend - x) / 16);
+				while (x < xendsse && _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i*)&stencilLine[x]), _mm_set1_epi8(stencilTestValue))) == 0xffff)
+				{
+					x += 16;
+				}
+
 				while (stencilLine[x] == stencilTestValue && x < xend)
 					x++;
 			}
@@ -226,16 +277,24 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 
 			if (x > xstart)
 			{
-				if (writeColor)
+				if (OptT::Flags & SWTRI_WriteColor)
 					drawfunc(y, xstart, x, args, thread);
 
-				if (writeStencil)
+				if (OptT::Flags & SWTRI_WriteStencil)
 				{
-					for (int i = xstart; i < x; i++)
-						stencilLine[i] = stencilWriteValue;
+					int i = xstart;
+					int xendsse = xstart + ((x - xstart) / 16);
+					while (i < xendsse)
+					{
+						_mm_storeu_si128((__m128i*)&stencilLine[i], _mm_set1_epi8(stencilWriteValue));
+						i += 16;
+					}
+
+					while (i < x)
+						stencilLine[i++] = stencilWriteValue;
 				}
 
-				if (!depthTest && writeDepth)
+				if (!(OptT::Flags & SWTRI_DepthTest) && (OptT::Flags & SWTRI_WriteDepth))
 				{
 					for (int i = xstart; i < x; i++)
 					{
@@ -245,16 +304,16 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 				}
 			}
 
-			if (depthTest && stencilTest)
+			if ((OptT::Flags & SWTRI_DepthTest) && (OptT::Flags & SWTRI_StencilTest))
 			{
 				int xendsse = x + ((xend - x) / 4);
 				__m128 mposXW = _mm_add_ps(_mm_set1_ps(posXW), mfirstStepXW);
-				while ((_mm_movemask_ps(_mm_cmple_ps(_mm_loadu_ps(zbufferLine + x), mposXW)) == 0 ||
+				while (x < xendsse &&
+					(_mm_movemask_ps(_mm_cmple_ps(_mm_loadu_ps(zbufferLine + x), mposXW)) == 0 ||
 					stencilLine[x] != stencilTestValue ||
 					stencilLine[x + 1] != stencilTestValue ||
 					stencilLine[x + 2] != stencilTestValue ||
-					stencilLine[x + 3] != stencilTestValue) &&
-					x < xendsse)
+					stencilLine[x + 3] != stencilTestValue))
 				{
 					mposXW = _mm_add_ps(mposXW, mstepXW);
 					x += 4;
@@ -267,11 +326,11 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 					x++;
 				}
 			}
-			else if (depthTest)
+			else if (OptT::Flags & SWTRI_DepthTest)
 			{
 				int xendsse = x + ((xend - x) / 4);
 				__m128 mposXW = _mm_add_ps(_mm_set1_ps(posXW), mfirstStepXW);
-				while (_mm_movemask_ps(_mm_cmple_ps(_mm_loadu_ps(zbufferLine + x), mposXW)) == 0 && x < xendsse)
+				while (x < xendsse && _mm_movemask_ps(_mm_cmple_ps(_mm_loadu_ps(zbufferLine + x), mposXW)) == 0)
 				{
 					mposXW = _mm_add_ps(mposXW, mstepXW);
 					x += 4;
@@ -284,11 +343,16 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 					x++;
 				}
 			}
-			else if (stencilTest)
+			else if (OptT::Flags & SWTRI_StencilTest)
 			{
+				int xendsse = x + ((xend - x) / 16);
+				while (x < xendsse && _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i*)&stencilLine[x]), _mm_set1_epi8(stencilTestValue))) == 0)
+				{
+					x += 16;
+				}
+
 				while (stencilLine[x] != stencilTestValue && x < xend)
 				{
-					posXW += stepXW;
 					x++;
 				}
 			}
@@ -298,27 +362,27 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 		{
 			int xstart = x;
 
-			if (depthTest && stencilTest)
+			if ((OptT::Flags & SWTRI_DepthTest) && (OptT::Flags & SWTRI_StencilTest))
 			{
 				while (zbufferLine[x] <= posXW && stencilLine[x] == stencilTestValue && x < xend)
 				{
-					if (writeDepth)
+					if (OptT::Flags & SWTRI_WriteDepth)
 						zbufferLine[x] = posXW;
 					posXW += stepXW;
 					x++;
 				}
 			}
-			else if (depthTest)
+			else if (OptT::Flags & SWTRI_DepthTest)
 			{
 				while (zbufferLine[x] <= posXW && x < xend)
 				{
-					if (writeDepth)
+					if (OptT::Flags & SWTRI_WriteDepth)
 						zbufferLine[x] = posXW;
 					posXW += stepXW;
 					x++;
 				}
 			}
-			else if (stencilTest)
+			else if (OptT::Flags & SWTRI_StencilTest)
 			{
 				while (stencilLine[x] == stencilTestValue && x < xend)
 					x++;
@@ -330,16 +394,16 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 
 			if (x > xstart)
 			{
-				if (writeColor)
+				if (OptT::Flags & SWTRI_WriteColor)
 					drawfunc(y, xstart, x, args, thread);
 
-				if (writeStencil)
+				if (OptT::Flags & SWTRI_WriteStencil)
 				{
 					for (int i = xstart; i < x; i++)
 						stencilLine[i] = stencilWriteValue;
 				}
 
-				if (!depthTest && writeDepth)
+				if (!(OptT::Flags & SWTRI_DepthTest) && (OptT::Flags & SWTRI_WriteDepth))
 				{
 					for (int i = xstart; i < x; i++)
 					{
@@ -349,7 +413,7 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 				}
 			}
 
-			if (depthTest && stencilTest)
+			if ((OptT::Flags & SWTRI_DepthTest) && (OptT::Flags & SWTRI_StencilTest))
 			{
 				while ((zbufferLine[x] > posXW || stencilLine[x] != stencilTestValue) && x < xend)
 				{
@@ -357,7 +421,7 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 					x++;
 				}
 			}
-			else if (depthTest)
+			else if (OptT::Flags & SWTRI_DepthTest)
 			{
 				while (zbufferLine[x] > posXW && x < xend)
 				{
@@ -365,11 +429,10 @@ void ScreenTriangle::Draw(const TriDrawTriangleArgs *args, PolyTriangleThreadDat
 					x++;
 				}
 			}
-			else if (stencilTest)
+			else if (OptT::Flags & SWTRI_StencilTest)
 			{
 				while (stencilLine[x] != stencilTestValue && x < xend)
 				{
-					posXW += stepXW;
 					x++;
 				}
 			}
@@ -808,8 +871,8 @@ void DrawSpanOpt32(int y, int x0, int x1, const TriDrawTriangleArgs *args, PolyT
 		_fuzzpos = swrenderer::fuzzpos;
 	}
 
-	uint32_t *dest = (uint32_t*)args->dest;
-	uint32_t *destLine = dest + args->pitch * y;
+	uint32_t *dest = (uint32_t*)thread->dest;
+	uint32_t *destLine = dest + thread->dest_pitch * y;
 
 	int sseend = x0;
 #ifndef NO_SSE
@@ -1235,8 +1298,8 @@ void DrawSpanOpt8(int y, int x0, int x1, const TriDrawTriangleArgs *args, PolyTr
 		_fuzzpos = swrenderer::fuzzpos;
 	}
 
-	uint8_t *dest = (uint8_t*)args->dest;
-	uint8_t *destLine = dest + args->pitch * y;
+	uint8_t *dest = (uint8_t*)thread->dest;
+	uint8_t *destLine = dest + thread->dest_pitch * y;
 
 	for (int x = x0; x < x1; x++)
 	{
@@ -2162,6 +2225,42 @@ void(*ScreenTriangle::RectDrawers32[])(const void *, int, int, int, const RectDr
 	&DrawRect32<TriScreenDrawerModes::StyleSubtractTranslated>,
 	&DrawRect32<TriScreenDrawerModes::StyleAddStencilTranslated>,
 	&DrawRect32<TriScreenDrawerModes::StyleAddShadedTranslated>
+};
+
+void(*ScreenTriangle::TriangleDrawers[])(const TriDrawTriangleArgs *args, PolyTriangleThreadData *thread, int16_t *edges, int topY, int bottomY) =
+{
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt4>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt5>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt6>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt7>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt8>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt9>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt10>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt11>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt12>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt13>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt14>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt15>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt16>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt17>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt18>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt19>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt20>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt21>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt22>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt23>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt24>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt25>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt26>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt27>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt28>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt29>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt30>,
+	&DrawTriangle<TriScreenDrawerModes::TriangleOpt31>
 };
 
 int ScreenTriangle::FuzzStart = 0;

@@ -1150,7 +1150,9 @@ set (PCH_SOURCES
 	r_data/models/models_ue1.cpp
 	r_data/models/models_obj.cpp
 	scripting/symbols.cpp
+	scripting/vmiterators.cpp
 	scripting/vmthunks.cpp
+	scripting/vmthunks_actors.cpp
 	scripting/types.cpp
 	scripting/thingdef.cpp
 	scripting/thingdef_data.cpp

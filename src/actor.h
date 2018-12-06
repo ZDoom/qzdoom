@@ -969,11 +969,6 @@ public:
 		}
 	}
 
-	double AccuracyFactor()
-	{
-		return 1. / (1 << (accuracy * 5 / 100));
-	}
-
 	void ClearInterpolation();
 
 	void Move(const DVector3 &vel)
@@ -1009,11 +1004,6 @@ public:
 
 	void AttachLight(unsigned int count, const FLightDefaults *lightdef);
 	void SetDynamicLights();
-
-	// When was this actor spawned? (relative to the current level)
-	int GetLevelSpawnTime() const;
-	// How many ticks passed since this actor was spawned?
-	int GetAge() const;
 
 // info for drawing
 // NOTE: The first member variable *must* be snext.
@@ -1291,12 +1281,6 @@ public:
 	bool IsZeroDamage() const
 	{
 		return DamageVal == 0 && DamageFunc == nullptr;
-	}
-
-	void RestoreDamage()
-	{
-		DamageVal = GetDefault()->DamageVal;
-		DamageFunc = GetDefault()->DamageFunc;
 	}
 
 	FState *FindState (FName label) const

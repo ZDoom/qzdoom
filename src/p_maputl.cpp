@@ -345,15 +345,6 @@ void AActor::UnlinkFromWorld (FLinkContext *ctx)
 	ClearRenderLineList();
 }
 
-DEFINE_ACTION_FUNCTION(AActor, UnlinkFromWorld)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_POINTER(ctx, FLinkContext);
-	self->UnlinkFromWorld(ctx); // fixme
-	return 0;
-}
-
-
 //==========================================================================
 //
 // If the thing is exactly on a line, move it into the sector
@@ -564,14 +555,6 @@ void AActor::LinkToWorld(FLinkContext *ctx, bool spawningmapthing, sector_t *sec
 	if (!spawningmapthing) UpdateRenderSectorList();
 }
 
-DEFINE_ACTION_FUNCTION(AActor, LinkToWorld)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_POINTER(ctx, FLinkContext);
-	self->LinkToWorld(ctx);
-	return 0;
-}
-
 void AActor::SetOrigin(double x, double y, double z, bool moving)
 {
 	FLinkContext ctx;
@@ -580,17 +563,6 @@ void AActor::SetOrigin(double x, double y, double z, bool moving)
 	LinkToWorld (&ctx);
 	P_FindFloorCeiling(this, FFCF_ONLYSPAWNPOS);
 	if (!moving) ClearInterpolation();
-}
-
-DEFINE_ACTION_FUNCTION(AActor, SetOrigin)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_FLOAT(z);
-	PARAM_BOOL(moving);
-	self->SetOrigin(x, y, z, moving);
-	return 0;
 }
 
 //===========================================================================
@@ -940,74 +912,6 @@ void FMultiBlockLinesIterator::Reset()
 
 //===========================================================================
 //
-// and the scriptable version
-//
-//===========================================================================
-
-class DBlockLinesIterator : public DObject, public FMultiBlockLinesIterator
-{
-	DECLARE_ABSTRACT_CLASS(DBlockLinesIterator, DObject);
-	FPortalGroupArray check;
-
-public:
-	FMultiBlockLinesIterator::CheckResult cres;
-
-	bool Next()
-	{
-		return FMultiBlockLinesIterator::Next(&cres);
-	}
-
-	DBlockLinesIterator(AActor *actor, double checkradius)
-		: FMultiBlockLinesIterator(check, actor, checkradius)
-	{
-		cres.line = nullptr;
-		cres.Position.Zero();
-		cres.portalflags = 0;
-	}
-
-	DBlockLinesIterator(double x, double y, double z, double height, double radius, sector_t *sec)
-		:FMultiBlockLinesIterator(check, x, y, z, height, radius, sec)
-	{
-		cres.line = nullptr;
-		cres.Position.Zero();
-		cres.portalflags = 0;
-	}
-};
-
-IMPLEMENT_CLASS(DBlockLinesIterator, true, false);
-
-DEFINE_ACTION_FUNCTION(DBlockLinesIterator, Create)
-{
-	PARAM_PROLOGUE;
-	PARAM_OBJECT_NOT_NULL(origin, AActor);
-	PARAM_FLOAT(radius);
-	ACTION_RETURN_OBJECT(Create<DBlockLinesIterator>(origin, radius));
-}
-
-DEFINE_ACTION_FUNCTION(DBlockLinesIterator, CreateFromPos)
-{
-	PARAM_PROLOGUE;
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_FLOAT(z);
-	PARAM_FLOAT(h);
-	PARAM_FLOAT(radius);
-	PARAM_POINTER(sec, sector_t);
-	ACTION_RETURN_OBJECT(Create<DBlockLinesIterator>(x, y, z, h, radius, sec));
-}
-
-DEFINE_ACTION_FUNCTION(DBlockLinesIterator, Next)
-{
-	PARAM_SELF_PROLOGUE(DBlockLinesIterator);
-	ACTION_RETURN_BOOL(self->Next());
-}
-
-DEFINE_FIELD_NAMED(DBlockLinesIterator, cres.line, curline);
-DEFINE_FIELD_NAMED(DBlockLinesIterator, cres.Position, position);
-DEFINE_FIELD_NAMED(DBlockLinesIterator, cres.portalflags, portalflags);
-
-//===========================================================================
-//
 // FBlockThingsIterator :: FBlockThingsIterator
 //
 //===========================================================================
@@ -1276,75 +1180,6 @@ void FMultiBlockThingsIterator::Reset()
 	portalflags = 0;
 	startIteratorForGroup(basegroup);
 }
-
-//===========================================================================
-//
-// and the scriptable version
-//
-//===========================================================================
-
-class DBlockThingsIterator : public DObject
-{
-	DECLARE_ABSTRACT_CLASS(DBlockThingsIterator, DObject);
-	FPortalGroupArray check;
-	FMultiBlockThingsIterator iterator;
-public:
-	FMultiBlockThingsIterator::CheckResult cres;
-
-	bool Next()
-	{
-		return iterator.Next(&cres);
-	}
-
-	DBlockThingsIterator(AActor *origin, double checkradius = -1, bool ignorerestricted = false)
-		: iterator(check, origin, checkradius, ignorerestricted)
-	{
-		cres.thing = nullptr;
-		cres.Position.Zero();
-		cres.portalflags = 0;
-	}
-
-	DBlockThingsIterator(double checkx, double checky, double checkz, double checkh, double checkradius, bool ignorerestricted, sector_t *newsec)
-		: iterator(check, checkx, checky, checkz, checkh, checkradius, ignorerestricted, newsec)
-	{
-		cres.thing = nullptr;
-		cres.Position.Zero();
-		cres.portalflags = 0;
-	}
-};
-
-IMPLEMENT_CLASS(DBlockThingsIterator, true, false);
-
-DEFINE_ACTION_FUNCTION(DBlockThingsIterator, Create)
-{
-	PARAM_PROLOGUE;
-	PARAM_OBJECT_NOT_NULL(origin, AActor);
-	PARAM_FLOAT(radius);
-	PARAM_BOOL(ignore);
-	ACTION_RETURN_OBJECT(Create<DBlockThingsIterator>(origin, radius, ignore));
-}
-
-DEFINE_ACTION_FUNCTION(DBlockThingsIterator, CreateFromPos)
-{
-	PARAM_PROLOGUE;
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_FLOAT(z);
-	PARAM_FLOAT(h);
-	PARAM_FLOAT(radius);
-	PARAM_BOOL(ignore);
-	ACTION_RETURN_OBJECT(Create<DBlockThingsIterator>(x, y, z, h, radius, ignore, nullptr));
-}
-
-DEFINE_ACTION_FUNCTION(DBlockThingsIterator, Next)
-{
-	PARAM_SELF_PROLOGUE(DBlockThingsIterator);
-	ACTION_RETURN_BOOL(self->Next());
-}
-
-DEFINE_FIELD_NAMED(DBlockThingsIterator, cres.thing, thing);
-DEFINE_FIELD_NAMED(DBlockThingsIterator, cres.Position, position);
-DEFINE_FIELD_NAMED(DBlockThingsIterator, cres.portalflags, portalflags);
 
 //===========================================================================
 //
@@ -2022,15 +1857,6 @@ AActor *P_RoughMonsterSearch(AActor *mo, int distance, bool onlyseekable, bool f
 	}
 
 	return P_BlockmapSearch(mo, distance, RoughBlockCheck, (void *)&info);
-}
-
-DEFINE_ACTION_FUNCTION(AActor, RoughMonsterSearch)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT(distance);
-	PARAM_BOOL(onlyseekable);
-	PARAM_BOOL(frontonly);
-	ACTION_RETURN_OBJECT(P_RoughMonsterSearch(self, distance, onlyseekable, frontonly));
 }
 
 //==========================================================================

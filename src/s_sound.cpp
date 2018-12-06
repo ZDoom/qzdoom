@@ -1813,8 +1813,9 @@ void S_RelinkSound (AActor *from, AActor *to)
 //
 //==========================================================================
 
-bool S_ChangeSoundVolume(AActor *actor, int channel, float volume)
+void S_ChangeSoundVolume(AActor *actor, int channel, double dvolume)
 {
+	float volume = float(dvolume);
 	// don't let volume get out of bounds
 	if (volume < 0.0)
 		volume = 0.0;
@@ -1829,10 +1830,10 @@ bool S_ChangeSoundVolume(AActor *actor, int channel, float volume)
 		{
 			GSnd->ChannelVolume(chan, volume);
 			chan->Volume = volume;
-			return true;
+			return;
 		}
 	}
-	return false;
+	return;
 }
 
 //==========================================================================
