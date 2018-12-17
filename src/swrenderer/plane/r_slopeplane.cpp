@@ -64,7 +64,7 @@ namespace swrenderer
 		Thread = thread;
 	}
 
-	void RenderSlopePlane::Render(VisiblePlane *pl, double _xscale, double _yscale, fixed_t alpha, bool additive, bool masked, FDynamicColormap *colormap, FTexture *texture)
+	void RenderSlopePlane::Render(VisiblePlane *pl, double _xscale, double _yscale, fixed_t alpha, bool additive, bool masked, FDynamicColormap *colormap, FSoftwareTexture *texture)
 	{
 		static const float ifloatpow2[16] =
 		{
@@ -97,6 +97,9 @@ namespace swrenderer
 
 		drawerargs.SetSolidColor(3);
 		drawerargs.SetTexture(Thread, texture);
+
+		_xscale /= texture->GetPhysicalScale();
+		_yscale /= texture->GetPhysicalScale();
 
 		lxscale = _xscale * ifloatpow2[drawerargs.TextureWidthBits()];
 		lyscale = _yscale * ifloatpow2[drawerargs.TextureHeightBits()];
@@ -171,7 +174,7 @@ namespace swrenderer
 
 		// [RH] set foggy flag
 		basecolormap = colormap;
-		bool foggy = level.fadeto || basecolormap->Fade || (level.flags & LEVEL_HASFADETABLE);;
+		foggy = level.fadeto || basecolormap->Fade || (level.flags & LEVEL_HASFADETABLE);;
 
 		planelightfloat = (Thread->Light->SlopePlaneGlobVis(foggy) * lxscale * lyscale) / (fabs(pl->height.ZatPoint(Thread->Viewport->viewpoint.Pos) - Thread->Viewport->viewpoint.Pos.Z)) / 65536.f;
 
@@ -194,7 +197,7 @@ namespace swrenderer
 		{
 			drawerargs.SetLight(basecolormap, 0, 0);
 			plane_shade = true;
-			planeshade = LightVisibility::LightLevelToShade(pl->lightlevel, foggy);
+			lightlevel = pl->lightlevel;
 		}
 
 		// Hack in support for 1 x Z and Z x 1 texture sizes
@@ -212,7 +215,7 @@ namespace swrenderer
 
 	void RenderSlopePlane::RenderLine(int y, int x1, int x2)
 	{
-		drawerargs.DrawTiltedSpan(Thread, y, x1, x2, plane_sz, plane_su, plane_sv, plane_shade, planeshade, planelightfloat, pviewx, pviewy, basecolormap);
+		drawerargs.DrawTiltedSpan(Thread, y, x1, x2, plane_sz, plane_su, plane_sv, plane_shade, lightlevel, foggy, planelightfloat, pviewx, pviewy, basecolormap);
 
 		if (r_modelscene)
 		{

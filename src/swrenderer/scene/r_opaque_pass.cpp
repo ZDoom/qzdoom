@@ -548,7 +548,7 @@ namespace swrenderer
 			ceilingplane = Thread->PlaneList->FindPlane(
 				frontsector->ceilingplane,
 				frontsector->GetTexture(sector_t::ceiling),
-				adjusted_ceilinglightlevel + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get()),
+				adjusted_ceilinglightlevel, foggy,
 				frontsector->GetAlpha(sector_t::ceiling),
 				!!(frontsector->GetFlags(sector_t::ceiling) & PLANEF_ADDITIVE),
 				frontsector->planes[sector_t::ceiling].xform,
@@ -588,7 +588,7 @@ namespace swrenderer
 		{
 			floorplane = Thread->PlaneList->FindPlane(frontsector->floorplane,
 				frontsector->GetTexture(sector_t::floor),
-				adjusted_floorlightlevel + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get()),
+				adjusted_floorlightlevel, foggy,
 				frontsector->GetAlpha(sector_t::floor),
 				!!(frontsector->GetFlags(sector_t::floor) & PLANEF_ADDITIVE),
 				frontsector->planes[sector_t::floor].xform,
@@ -613,10 +613,10 @@ namespace swrenderer
 		// [RH] Add particles
 		if ((unsigned int)(sub->Index()) < level.subsectors.Size())
 		{ // Only do it for the main BSP.
-			int shade = LightVisibility::LightLevelToShade((floorlightlevel + ceilinglightlevel) / 2 + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get()), foggy);
+			int lightlevel = (floorlightlevel + ceilinglightlevel) / 2;
 			for (int i = ParticlesInSubsec[sub->Index()]; i != NO_PARTICLE; i = Particles[i].snext)
 			{
-				RenderParticle::Project(Thread, Particles + i, sub->sector, shade, FakeSide, foggy);
+				RenderParticle::Project(Thread, &Particles[i], sub->sector, lightlevel, FakeSide, foggy);
 			}
 		}
 
@@ -732,7 +732,7 @@ namespace swrenderer
 					VisiblePlane *floorplane3d = Thread->PlaneList->FindPlane(
 						tempsec.floorplane,
 						tempsec.GetTexture(sector_t::floor),
-						floorlightlevel + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get()),
+						floorlightlevel, foggy,
 						tempsec.GetAlpha(sector_t::floor),
 						!!(clip3d->fakeFloor->fakeFloor->flags & FF_ADDITIVETRANS),
 						tempsec.planes[position].xform,
@@ -800,7 +800,7 @@ namespace swrenderer
 					VisiblePlane *ceilingplane3d = Thread->PlaneList->FindPlane(
 						tempsec.ceilingplane,
 						tempsec.GetTexture(sector_t::ceiling),
-						ceilinglightlevel + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get()),
+						ceilinglightlevel, foggy,
 						tempsec.GetAlpha(sector_t::ceiling),
 						!!(clip3d->fakeFloor->fakeFloor->flags & FF_ADDITIVETRANS),
 						tempsec.planes[position].xform,
@@ -891,8 +891,6 @@ namespace swrenderer
 		//sec->validcount = validcount;
 		SeenSpriteSectors.insert(sec);
 
-		int spriteshade = LightVisibility::LightLevelToShade(lightlevel + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get()), foggy);
-
 		// Handle all things in sector.
 		for (auto p = sec->touching_renderthings; p != nullptr; p = p->m_snext)
 		{
@@ -947,25 +945,24 @@ namespace swrenderer
 				else if (GetThingSprite(thing, sprite))
 				{
 					FDynamicColormap *thingColormap = basecolormap;
-					int thingShade = spriteshade;
+					int thinglightlevel = lightlevel;
 					if (sec->sectornum != thing->Sector->sectornum)	// compare sectornums to account for R_FakeFlat copies.
 					{
-						int lightlevel = thing->Sector->GetTexture(sector_t::ceiling) == skyflatnum ? thing->Sector->GetCeilingLight() : thing->Sector->GetFloorLight();
-						thingShade = LightVisibility::LightLevelToShade(lightlevel + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get()), foggy);
+						thinglightlevel = thing->Sector->GetTexture(sector_t::ceiling) == skyflatnum ? thing->Sector->GetCeilingLight() : thing->Sector->GetFloorLight();
 						thingColormap = GetColorTable(thing->Sector->Colormap, thing->Sector->SpecialColors[sector_t::sprites], true);
 					}
 
 					if ((sprite.renderflags & RF_SPRITETYPEMASK) == RF_WALLSPRITE)
 					{
-						RenderWallSprite::Project(Thread, thing, sprite.pos, sprite.tex, sprite.spriteScale, sprite.renderflags, thingShade, foggy, thingColormap);
+						RenderWallSprite::Project(Thread, thing, sprite.pos, sprite.tex, sprite.spriteScale, sprite.renderflags, thinglightlevel, foggy, thingColormap);
 					}
 					else if (sprite.voxel)
 					{
-						RenderVoxel::Project(Thread, thing, sprite.pos, sprite.voxel, sprite.spriteScale, sprite.renderflags, fakeside, fakefloor, fakeceiling, sec, thingShade, foggy, thingColormap);
+						RenderVoxel::Project(Thread, thing, sprite.pos, sprite.voxel, sprite.spriteScale, sprite.renderflags, fakeside, fakefloor, fakeceiling, sec, thinglightlevel, foggy, thingColormap);
 					}
 					else
 					{
-						RenderSprite::Project(Thread, thing, sprite.pos, sprite.tex, sprite.spriteScale, sprite.renderflags, fakeside, fakefloor, fakeceiling, sec, thingShade, foggy, thingColormap);
+						RenderSprite::Project(Thread, thing, sprite.pos, sprite.tex, sprite.spriteScale, sprite.renderflags, fakeside, fakefloor, fakeceiling, sec, thinglightlevel, foggy, thingColormap);
 					}
 				}
 			}
@@ -1023,16 +1020,16 @@ namespace swrenderer
 		{
 			sprite.picnum = thing->picnum;
 
-			sprite.tex = TexMan(sprite.picnum);
-			if (sprite.tex->UseType == ETextureType::Null)
+			sprite.tex = TexMan.GetPalettedTexture(sprite.picnum, true);
+			if (!sprite.tex->isValid())
 			{
 				return false;
 			}
 
-			if (sprite.tex->Rotations != 0xFFFF)
+			if (sprite.tex->GetRotations() != 0xFFFF)
 			{
 				// choose a different rotation based on player view
-				spriteframe_t *sprframe = &SpriteFrames[sprite.tex->Rotations];
+				spriteframe_t *sprframe = &SpriteFrames[sprite.tex->GetRotations()];
 				DAngle ang = (sprite.pos - Thread->Viewport->viewpoint.Pos).Angle();
 				angle_t rot;
 				if (sprframe->Texture[0] == sprframe->Texture[1])
@@ -1054,7 +1051,7 @@ namespace swrenderer
 				{
 					sprite.renderflags ^= RF_XFLIP;
 				}
-				sprite.tex = TexMan[sprite.picnum];	// Do not animate the rotation
+				sprite.tex = TexMan.GetPalettedTexture(sprite.picnum, false);	// Do not animate the rotation
 			}
 		}
 		else
@@ -1084,7 +1081,7 @@ namespace swrenderer
 					{
 						sprite.renderflags ^= RF_XFLIP;
 					}
-					sprite.tex = TexMan[tex];	// Do not animate the rotation
+					sprite.tex = TexMan.GetPalettedTexture(tex, false);	// Do not animate the rotation
 				}
 
 				if (r_drawvoxels)
@@ -1096,7 +1093,7 @@ namespace swrenderer
 					return false;
 			}
 
-			if (sprite.voxel == nullptr && (sprite.tex == nullptr || sprite.tex->UseType == ETextureType::Null))
+			if (sprite.voxel == nullptr && (sprite.tex == nullptr || !sprite.tex->isValid()))
 			{
 				return false;
 			}

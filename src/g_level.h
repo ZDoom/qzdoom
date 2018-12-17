@@ -247,6 +247,7 @@ enum ELevelFlags : unsigned int
 	LEVEL3_NOCOLOREDSPRITELIGHTING = 0x00000010,	// draw sprites only with color-less light
 	LEVEL3_EXITNORMALUSED		= 0x00000020,
 	LEVEL3_EXITSECRETUSED		= 0x00000040,
+	LEVEL3_FORCEWORLDPANNING	= 0x00000080,	// Forces the world panning flag for all textures, even those without it explicitly set.
 };
 
 
@@ -313,6 +314,19 @@ struct FExitText
 	{
 	}
 };
+
+enum class ELightMode : int8_t
+{
+	NotSet = -1,
+	LinearStandard = 0,
+	DoomBright = 1,
+	Doom = 2,
+	DoomDark = 3,
+	DoomLegacy = 4,
+	ZDoomSoftware = 8,
+	DoomSoftware = 16
+};
+
 
 struct level_info_t
 {
@@ -395,7 +409,7 @@ struct level_info_t
 	
 	TArray<FString> EventHandlers;
 
-	int8_t		lightmode;
+	ELightMode	lightmode;
 	int8_t		brightfog;
 	int8_t		lightadditivesurfaces;
 	int8_t		notexturefill;

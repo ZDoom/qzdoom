@@ -60,12 +60,14 @@ namespace swrenderer
 		Thread = thread;
 	}
 
-	void RenderFlatPlane::Render(VisiblePlane *pl, double _xscale, double _yscale, fixed_t alpha, bool additive, bool masked, FDynamicColormap *colormap, FTexture *texture)
+	void RenderFlatPlane::Render(VisiblePlane *pl, double _xscale, double _yscale, fixed_t alpha, bool additive, bool masked, FDynamicColormap *colormap, FSoftwareTexture *texture)
 	{
 		if (alpha <= 0)
 		{
 			return;
 		}
+
+		tex = texture;
 
 		drawerargs.SetSolidColor(3);
 		drawerargs.SetTexture(Thread, texture);
@@ -135,9 +137,7 @@ namespace swrenderer
 		basecolormap = colormap;
 
 		// [RH] set foggy flag
-		bool foggy = (level.fadeto || basecolormap->Fade || (level.flags & LEVEL_HASFADETABLE));
-
-		GlobVis = Thread->Light->FlatPlaneGlobVis(foggy) / planeheight;
+		foggy = (level.fadeto || basecolormap->Fade || (level.flags & LEVEL_HASFADETABLE));
 
 		CameraLight *cameraLight = CameraLight::Instance();
 		if (cameraLight->FixedLightLevel() >= 0)
@@ -153,7 +153,7 @@ namespace swrenderer
 		else
 		{
 			plane_shade = true;
-			planeshade = LightVisibility::LightLevelToShade(pl->lightlevel, foggy);
+			lightlevel = pl->lightlevel;
 		}
 
 		drawerargs.SetStyle(masked, additive, alpha);
@@ -181,11 +181,11 @@ namespace swrenderer
 
 		float zbufferdepth = (float)(1.0 / fabs(planeheight / Thread->Viewport->ScreenToViewY(y, 1.0)));
 
-		drawerargs.SetTextureUStep(distance * xstepscale / drawerargs.TextureWidth());
-		drawerargs.SetTextureUPos((distance * curxfrac + pviewx) / drawerargs.TextureWidth());
+		drawerargs.SetTextureUStep(distance * xstepscale / tex->GetWidth());
+		drawerargs.SetTextureUPos((distance * curxfrac + pviewx) / tex->GetWidth());
 
-		drawerargs.SetTextureVStep(distance * ystepscale / drawerargs.TextureHeight());
-		drawerargs.SetTextureVPos((distance * curyfrac + pviewy) / drawerargs.TextureHeight());
+		drawerargs.SetTextureVStep(distance * ystepscale / tex->GetHeight());
+		drawerargs.SetTextureVPos((distance * curyfrac + pviewy) / tex->GetHeight());
 		
 		if (viewport->RenderTarget->IsBgra())
 		{
@@ -200,7 +200,7 @@ namespace swrenderer
 		if (plane_shade)
 		{
 			// Determine lighting based on the span's distance from the viewer.
-			drawerargs.SetLight(basecolormap, (float)(GlobVis * fabs(viewport->CenterY - y)), planeshade);
+			drawerargs.SetLight(basecolormap, (float)Thread->Light->FlatPlaneVis(y, planeheight, foggy, viewport), lightlevel, foggy, viewport);
 		}
 
 		if (r_dynlights)

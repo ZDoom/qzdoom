@@ -425,7 +425,7 @@ namespace swrenderer
 			if (!onlyUpdatePlaneClip)
 				// allocate space for masked texture tables, if needed
 				// [RH] Don't just allocate the space; fill it in too.
-				if ((TexMan(sidedef->GetTexture(side_t::mid), true)->UseType != ETextureType::Null || draw_segment->Has3DFloorWalls() || IsFogBoundary(mFrontSector, mBackSector)) &&
+				if ((sidedef->GetTexture(side_t::mid).isValid() || draw_segment->Has3DFloorWalls() || IsFogBoundary(mFrontSector, mBackSector)) &&
 					(mCeilingClipped != ProjectedWallCull::OutsideBelow || !sidedef->GetTexture(side_t::top).isValid()) &&
 					(mFloorClipped != ProjectedWallCull::OutsideAbove || !sidedef->GetTexture(side_t::bottom).isValid()) &&
 					(WallC.sz1 >= TOO_CLOSE_Z && WallC.sz2 >= TOO_CLOSE_Z))
@@ -451,11 +451,12 @@ namespace swrenderer
 
 						lwal = draw_segment->maskedtexturecol;
 						swal = draw_segment->swall;
-						FTexture *pic = TexMan(sidedef->GetTexture(side_t::mid), true);
-						double yscale = pic->Scale.Y * sidedef->GetTextureYScale(side_t::mid);
+						FTexture *tex = TexMan.GetPalettedTexture(sidedef->GetTexture(side_t::mid), true);
+						FSoftwareTexture *pic = tex && tex->isValid()? tex->GetSoftwareTexture() : nullptr;
+						double yscale = (pic? pic->GetScale().Y : 1.0) * sidedef->GetTextureYScale(side_t::mid);
 						fixed_t xoffset = FLOAT2FIXED(sidedef->GetTextureXOffset(side_t::mid));
 
-						if (pic->bWorldPanning)
+						if (pic && pic->useWorldPanning())
 						{
 							xoffset = xs_RoundToInt(xoffset * lwallscale);
 						}
@@ -493,16 +494,16 @@ namespace swrenderer
 					draw_segment->lightstep = rw_lightstep;
 
 					// Masked mMiddlePart.Textures should get the light level from the sector they reference,
-					// not from the current subsector, which is what the current wallshade value
+					// not from the current subsector, which is what the current lightlevel value
 					// comes from. We make an exeption for polyobjects, however, since their "home"
 					// sector should be whichever one they move into.
 					if (mLineSegment->sidedef->Flags & WALLF_POLYOBJ)
 					{
-						draw_segment->shade = wallshade;
+						draw_segment->lightlevel = lightlevel;
 					}
 					else
 					{
-						draw_segment->shade = LightVisibility::LightLevelToShade(mLineSegment->sidedef->GetLightLevel(foggy, mLineSegment->frontsector->lightlevel) + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get()), foggy);
+						draw_segment->lightlevel = mLineSegment->sidedef->GetLightLevel(foggy, mLineSegment->frontsector->lightlevel);
 					}
 
 					if (draw_segment->bFogBoundary || draw_segment->maskedtexturecol != nullptr)
@@ -551,7 +552,7 @@ namespace swrenderer
 		// [ZZ] Only if not an active mirror
 		if (!markportal)
 		{
-			RenderDecal::RenderDecals(Thread, mLineSegment->sidedef, draw_segment, wallshade, rw_lightleft, rw_lightstep, mLineSegment, WallC, foggy, basecolormap, walltop.ScreenY, wallbottom.ScreenY, false);
+			RenderDecal::RenderDecals(Thread, mLineSegment->sidedef, draw_segment, lightlevel, rw_lightleft, rw_lightstep, mLineSegment, WallC, foggy, basecolormap, walltop.ScreenY, wallbottom.ScreenY, false);
 		}
 
 		if (markportal)
@@ -769,17 +770,18 @@ namespace swrenderer
 			}
 		}
 
-		FTexture *midtex = TexMan(sidedef->GetTexture(side_t::mid), true);
+		FTexture *ftex = TexMan.GetPalettedTexture(sidedef->GetTexture(side_t::mid), true);
+		FSoftwareTexture *midtex = ftex && ftex->isValid() ? ftex->GetSoftwareTexture() : nullptr;
 
-		bool segtextured = midtex != NULL || mTopPart.Texture != NULL || mBottomPart.Texture != NULL;
+		bool segtextured = ftex != NULL || mTopPart.Texture != NULL || mBottomPart.Texture != NULL;
 
 		// calculate light table
 		if (needlights && (segtextured || (mBackSector && IsFogBoundary(mFrontSector, mBackSector))))
 		{
 			lwallscale =
-				midtex ? (midtex->Scale.X * sidedef->GetTextureXScale(side_t::mid)) :
-				mTopPart.Texture ? (mTopPart.Texture->Scale.X * sidedef->GetTextureXScale(side_t::top)) :
-				mBottomPart.Texture ? (mBottomPart.Texture->Scale.X * sidedef->GetTextureXScale(side_t::bottom)) :
+				ftex ? ((midtex? midtex->GetScale().X : 1.0) * sidedef->GetTextureXScale(side_t::mid)) :
+				mTopPart.Texture ? (mTopPart.Texture->GetScale().X * sidedef->GetTextureXScale(side_t::top)) :
+				mBottomPart.Texture ? (mBottomPart.Texture->GetScale().X * sidedef->GetTextureXScale(side_t::bottom)) :
 				1.;
 
 			walltexcoords.Project(Thread->Viewport.get(), sidedef->TexelLength * lwallscale, WallC.sx1, WallC.sx2, WallT);
@@ -787,10 +789,9 @@ namespace swrenderer
 			CameraLight *cameraLight = CameraLight::Instance();
 			if (cameraLight->FixedColormap() == nullptr && cameraLight->FixedLightLevel() < 0)
 			{
-				wallshade = LightVisibility::LightLevelToShade(mLineSegment->sidedef->GetLightLevel(foggy, mFrontSector->lightlevel) + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get()), foggy);
-				double GlobVis = Thread->Light->WallGlobVis(foggy);
-				rw_lightleft = float(GlobVis / WallC.sz1);
-				rw_lightstep = float((GlobVis / WallC.sz2 - rw_lightleft) / (WallC.sx2 - WallC.sx1));
+				lightlevel = mLineSegment->sidedef->GetLightLevel(foggy, mFrontSector->lightlevel);
+				rw_lightleft = float(Thread->Light->WallVis(WallC.sz1, foggy));
+				rw_lightstep = float((Thread->Light->WallVis(WallC.sz2, foggy) - rw_lightleft) / (WallC.sx2 - WallC.sx1));
 			}
 			else
 			{
@@ -814,13 +815,15 @@ namespace swrenderer
 		// No top texture for skyhack lines
 		if (mFrontSector->GetTexture(sector_t::ceiling) == skyflatnum && mBackSector->GetTexture(sector_t::ceiling) == skyflatnum) return;
 		
-		mTopPart.Texture = TexMan(sidedef->GetTexture(side_t::top), true);
+		FTexture *tex = TexMan.GetPalettedTexture(sidedef->GetTexture(side_t::top), true);
+		mTopPart.Texture = tex && tex->isValid() ? tex->GetSoftwareTexture() : nullptr;
+		if (mTopPart.Texture == nullptr) return;
 
 		mTopPart.TextureOffsetU = FLOAT2FIXED(sidedef->GetTextureXOffset(side_t::top));
 		double rowoffset = sidedef->GetTextureYOffset(side_t::top);
 		mTopPart.TextureScaleU = sidedef->GetTextureXScale(side_t::top);
 		mTopPart.TextureScaleV = sidedef->GetTextureYScale(side_t::top);
-		double yrepeat = mTopPart.Texture->Scale.Y * mTopPart.TextureScaleV;
+		double yrepeat = mTopPart.Texture->GetScale().Y * mTopPart.TextureScaleV;
 		if (yrepeat >= 0)
 		{ // normal orientation
 			if (linedef->flags & ML_DONTPEGTOP)
@@ -848,7 +851,7 @@ namespace swrenderer
 				mTopPart.TextureMid = (mBackSector->GetPlaneTexZ(sector_t::ceiling) - Thread->Viewport->viewpoint.Pos.Z) * yrepeat;
 			}
 		}
-		if (mTopPart.Texture->bWorldPanning)
+		if (mTopPart.Texture->useWorldPanning())
 		{
 			mTopPart.TextureMid += rowoffset * yrepeat;
 		}
@@ -871,12 +874,14 @@ namespace swrenderer
 		if (linedef->isVisualPortal()) return;
 		if (linedef->special == Line_Horizon) return;
 			
-		mMiddlePart.Texture = TexMan(sidedef->GetTexture(side_t::mid), true);
+		auto tex = TexMan.GetPalettedTexture(sidedef->GetTexture(side_t::mid), true);
+		mMiddlePart.Texture = tex && tex->isValid() ? tex->GetSoftwareTexture() : nullptr;
+		if (mMiddlePart.Texture == nullptr) return;
 		mMiddlePart.TextureOffsetU = FLOAT2FIXED(sidedef->GetTextureXOffset(side_t::mid));
 		double rowoffset = sidedef->GetTextureYOffset(side_t::mid);
 		mMiddlePart.TextureScaleU = sidedef->GetTextureXScale(side_t::mid);
 		mMiddlePart.TextureScaleV = sidedef->GetTextureYScale(side_t::mid);
-		double yrepeat = mMiddlePart.Texture->Scale.Y * mMiddlePart.TextureScaleV;
+		double yrepeat = mMiddlePart.Texture->GetScale().Y * mMiddlePart.TextureScaleV;
 		if (yrepeat >= 0)
 		{ // normal orientation
 			if (linedef->flags & ML_DONTPEGBOTTOM)
@@ -904,7 +909,7 @@ namespace swrenderer
 				mMiddlePart.TextureMid = (mFrontSector->GetPlaneTexZ(sector_t::ceiling) - Thread->Viewport->viewpoint.Pos.Z) * yrepeat + mMiddlePart.Texture->GetHeight();
 			}
 		}
-		if (mMiddlePart.Texture->bWorldPanning)
+		if (mMiddlePart.Texture->useWorldPanning())
 		{
 			mMiddlePart.TextureMid += rowoffset * yrepeat;
 		}
@@ -935,13 +940,15 @@ namespace swrenderer
 			frontlowertop = mBackSector->GetPlaneTexZ(sector_t::ceiling);
 		}
 		
-		mBottomPart.Texture = TexMan(sidedef->GetTexture(side_t::bottom), true);
+		FTexture *tex = TexMan.GetPalettedTexture(sidedef->GetTexture(side_t::bottom), true);
+		mBottomPart.Texture = tex && tex->isValid() ? tex->GetSoftwareTexture() : nullptr;
+		if (!mBottomPart.Texture) return;
 
 		mBottomPart.TextureOffsetU = FLOAT2FIXED(sidedef->GetTextureXOffset(side_t::bottom));
 		double rowoffset = sidedef->GetTextureYOffset(side_t::bottom);
 		mBottomPart.TextureScaleU = sidedef->GetTextureXScale(side_t::bottom);
 		mBottomPart.TextureScaleV = sidedef->GetTextureYScale(side_t::bottom);
-		double yrepeat = mBottomPart.Texture->Scale.Y * mBottomPart.TextureScaleV;
+		double yrepeat = mBottomPart.Texture->GetScale().Y * mBottomPart.TextureScaleV;
 		if (yrepeat >= 0)
 		{ // normal orientation
 			if (linedef->flags & ML_DONTPEGBOTTOM)
@@ -969,7 +976,7 @@ namespace swrenderer
 				mBottomPart.TextureMid = (mBackSector->GetPlaneTexZ(sector_t::floor) - Thread->Viewport->viewpoint.Pos.Z) * yrepeat + mBottomPart.Texture->GetHeight();
 			}
 		}
-		if (mBottomPart.Texture->bWorldPanning)
+		if (mBottomPart.Texture->useWorldPanning())
 		{
 			mBottomPart.TextureMid += rowoffset * yrepeat;
 		}
@@ -1101,7 +1108,7 @@ namespace swrenderer
 		}
 		else
 		{ // two sided line
-			if (mTopPart.Texture != NULL && mTopPart.Texture->UseType != ETextureType::Null)
+			if (mTopPart.Texture != nullptr)
 			{ // top wall
 				for (int x = x1; x < x2; ++x)
 				{
@@ -1114,7 +1121,7 @@ namespace swrenderer
 				memcpy(ceilingclip + x1, walltop.ScreenY + x1, (x2 - x1) * sizeof(short));
 			}
 
-			if (mBottomPart.Texture != NULL && mBottomPart.Texture->UseType != ETextureType::Null)
+			if (mBottomPart.Texture != nullptr)
 			{ // bottom wall
 				for (int x = x1; x < x2; ++x)
 				{
@@ -1132,19 +1139,19 @@ namespace swrenderer
 	void SWRenderLine::RenderTopTexture(int x1, int x2)
 	{
 		if (mMiddlePart.Texture) return;
-		if (!mTopPart.Texture || mTopPart.Texture->UseType == ETextureType::Null) return;
+		if (!mTopPart.Texture) return;
 		if (!viewactive) return;
 
-		FTexture *rw_pic = mTopPart.Texture;
-		double xscale = rw_pic->Scale.X * mTopPart.TextureScaleU;
-		double yscale = rw_pic->Scale.Y * mTopPart.TextureScaleV;
+		auto rw_pic = mTopPart.Texture;
+		double xscale = rw_pic->GetScale().X * mTopPart.TextureScaleU;
+		double yscale = rw_pic->GetScale().Y * mTopPart.TextureScaleV;
 		if (xscale != lwallscale)
 		{
 			walltexcoords.ProjectPos(Thread->Viewport.get(), mLineSegment->sidedef->TexelLength*xscale, WallC.sx1, WallC.sx2, WallT);
 			lwallscale = xscale;
 		}
 		fixed_t offset;
-		if (mTopPart.Texture->bWorldPanning)
+		if (mTopPart.Texture->useWorldPanning())
 		{
 			offset = xs_RoundToInt(mTopPart.TextureOffsetU * xscale);
 		}
@@ -1174,24 +1181,24 @@ namespace swrenderer
 			light_list = nullptr; // [SP] Don't draw dynlights if invul/lightamp active
 
 		RenderWallPart renderWallpart(Thread);
-		renderWallpart.Render(drawerargs, mFrontSector, mLineSegment, WallC, rw_pic, x1, x2, walltop.ScreenY, wallupper.ScreenY, mTopPart.TextureMid, walltexcoords.VStep, walltexcoords.UPos, yscale, MAX(mFrontCeilingZ1, mFrontCeilingZ2), MIN(mBackCeilingZ1, mBackCeilingZ2), false, wallshade, offset, rw_light, rw_lightstep, light_list, foggy, basecolormap);
+		renderWallpart.Render(drawerargs, mFrontSector, mLineSegment, WallC, rw_pic, x1, x2, walltop.ScreenY, wallupper.ScreenY, mTopPart.TextureMid, walltexcoords.VStep, walltexcoords.UPos, yscale, MAX(mFrontCeilingZ1, mFrontCeilingZ2), MIN(mBackCeilingZ1, mBackCeilingZ2), false, lightlevel, offset, rw_light, rw_lightstep, light_list, foggy, basecolormap);
 	}
 
 	void SWRenderLine::RenderMiddleTexture(int x1, int x2)
 	{
-		if (!mMiddlePart.Texture || mMiddlePart.Texture->UseType == ETextureType::Null) return;
+		if (!mMiddlePart.Texture) return;
 		if (!viewactive) return;
 
-		FTexture *rw_pic = mMiddlePart.Texture;
-		double xscale = rw_pic->Scale.X * mMiddlePart.TextureScaleU;
-		double yscale = rw_pic->Scale.Y * mMiddlePart.TextureScaleV;
+		auto rw_pic = mMiddlePart.Texture;
+		double xscale = rw_pic->GetScale().X * mMiddlePart.TextureScaleU;
+		double yscale = rw_pic->GetScale().Y * mMiddlePart.TextureScaleV;
 		if (xscale != lwallscale)
 		{
 			walltexcoords.ProjectPos(Thread->Viewport.get(), mLineSegment->sidedef->TexelLength*xscale, WallC.sx1, WallC.sx2, WallT);
 			lwallscale = xscale;
 		}
 		fixed_t offset;
-		if (mMiddlePart.Texture->bWorldPanning)
+		if (mMiddlePart.Texture->useWorldPanning())
 		{
 			offset = xs_RoundToInt(mMiddlePart.TextureOffsetU * xscale);
 		}
@@ -1221,25 +1228,25 @@ namespace swrenderer
 			light_list = nullptr; // [SP] Don't draw dynlights if invul/lightamp active
 
 		RenderWallPart renderWallpart(Thread);
-		renderWallpart.Render(drawerargs, mFrontSector, mLineSegment, WallC, rw_pic, x1, x2, walltop.ScreenY, wallbottom.ScreenY, mMiddlePart.TextureMid, walltexcoords.VStep, walltexcoords.UPos, yscale, MAX(mFrontCeilingZ1, mFrontCeilingZ2), MIN(mFrontFloorZ1, mFrontFloorZ2), false, wallshade, offset, rw_light, rw_lightstep, light_list, foggy, basecolormap);
+		renderWallpart.Render(drawerargs, mFrontSector, mLineSegment, WallC, rw_pic, x1, x2, walltop.ScreenY, wallbottom.ScreenY, mMiddlePart.TextureMid, walltexcoords.VStep, walltexcoords.UPos, yscale, MAX(mFrontCeilingZ1, mFrontCeilingZ2), MIN(mFrontFloorZ1, mFrontFloorZ2), false, lightlevel, offset, rw_light, rw_lightstep, light_list, foggy, basecolormap);
 	}
 
 	void SWRenderLine::RenderBottomTexture(int x1, int x2)
 	{
 		if (mMiddlePart.Texture) return;
-		if (!mBottomPart.Texture || mBottomPart.Texture->UseType == ETextureType::Null) return;
+		if (!mBottomPart.Texture) return;
 		if (!viewactive) return;
 
-		FTexture *rw_pic = mBottomPart.Texture;
-		double xscale = rw_pic->Scale.X * mBottomPart.TextureScaleU;
-		double yscale = rw_pic->Scale.Y * mBottomPart.TextureScaleV;
+		auto rw_pic = mBottomPart.Texture;
+		double xscale = rw_pic->GetScale().X * mBottomPart.TextureScaleU;
+		double yscale = rw_pic->GetScale().Y * mBottomPart.TextureScaleV;
 		if (xscale != lwallscale)
 		{
 			walltexcoords.ProjectPos(Thread->Viewport.get(), mLineSegment->sidedef->TexelLength*xscale, WallC.sx1, WallC.sx2, WallT);
 			lwallscale = xscale;
 		}
 		fixed_t offset;
-		if (mBottomPart.Texture->bWorldPanning)
+		if (mBottomPart.Texture->useWorldPanning())
 		{
 			offset = xs_RoundToInt(mBottomPart.TextureOffsetU * xscale);
 		}
@@ -1269,7 +1276,7 @@ namespace swrenderer
 			light_list = nullptr; // [SP] Don't draw dynlights if invul/lightamp active
 
 		RenderWallPart renderWallpart(Thread);
-		renderWallpart.Render(drawerargs, mFrontSector, mLineSegment, WallC, rw_pic, x1, x2, walllower.ScreenY, wallbottom.ScreenY, mBottomPart.TextureMid, walltexcoords.VStep, walltexcoords.UPos, yscale, MAX(mBackFloorZ1, mBackFloorZ2), MIN(mFrontFloorZ1, mFrontFloorZ2), false, wallshade, offset, rw_light, rw_lightstep, light_list, foggy, basecolormap);
+		renderWallpart.Render(drawerargs, mFrontSector, mLineSegment, WallC, rw_pic, x1, x2, walllower.ScreenY, wallbottom.ScreenY, mBottomPart.TextureMid, walltexcoords.VStep, walltexcoords.UPos, yscale, MAX(mBackFloorZ1, mBackFloorZ2), MIN(mFrontFloorZ1, mFrontFloorZ2), false, lightlevel, offset, rw_light, rw_lightstep, light_list, foggy, basecolormap);
 	}
 
 	////////////////////////////////////////////////////////////////////////////

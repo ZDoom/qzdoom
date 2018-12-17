@@ -123,10 +123,11 @@ CUSTOM_CVAR(Bool, gl_notexturefill, false, CVAR_NOINITCALL)
 CUSTOM_CVAR(Int, gl_lightmode, 3, CVAR_ARCHIVE | CVAR_NOINITCALL)
 {
 	int newself = self;
-	if (newself > 4) newself = 8;	// use 8 for software lighting to avoid conflicts with the bit mask
-	if (newself < 0) newself = 0;
+	if (newself > 8) newself = 16;	// use 8 and 16 for software lighting to avoid conflicts with the bit mask
+	else if (newself > 4) newself = 8;
+	else if (newself < 0) newself = 0;
 	if (self != newself) self = newself;
-	else if ((level.info == nullptr || level.info->lightmode == -1)) level.lightmode = self;
+	else if ((level.info == nullptr || level.info->lightmode == ELightMode::NotSet)) level.lightmode = (ELightMode)*self;
 }
 
 
@@ -968,7 +969,7 @@ void G_DoLoadLevel (int position, bool autosave, bool newGame)
 	//	a flat. The data is in the WAD only because
 	//	we look for an actual index, instead of simply
 	//	setting one.
-	skyflatnum = TexMan.GetTexture (gameinfo.SkyFlatName, ETextureType::Flat, FTextureManager::TEXMAN_Overridable);
+	skyflatnum = TexMan.GetTextureID (gameinfo.SkyFlatName, ETextureType::Flat, FTextureManager::TEXMAN_Overridable);
 
 	// DOOM determines the sky texture to be used
 	// depending on the current episode and the game version.
@@ -1455,8 +1456,8 @@ void G_InitLevelLocals ()
 	level.info = info;
 	level.skyspeed1 = info->skyspeed1;
 	level.skyspeed2 = info->skyspeed2;
-	level.skytexture1 = TexMan.GetTexture(info->SkyPic1, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
-	level.skytexture2 = TexMan.GetTexture(info->SkyPic2, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
+	level.skytexture1 = TexMan.GetTextureID(info->SkyPic1, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
+	level.skytexture2 = TexMan.GetTextureID(info->SkyPic2, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
 	level.fadeto = info->fadeto;
 	level.cdtrack = info->cdtrack;
 	level.cdid = info->cdid;
@@ -1522,7 +1523,7 @@ void G_InitLevelLocals ()
 
 	level.DefaultEnvironment = info->DefaultEnvironment;
 
-	level.lightmode = info->lightmode < 0? gl_lightmode : info->lightmode;
+	level.lightmode = info->lightmode == ELightMode::NotSet? (ELightMode)*gl_lightmode : info->lightmode;
 	level.brightfog = info->brightfog < 0? gl_brightfog : !!info->brightfog;
 	level.lightadditivesurfaces = info->lightadditivesurfaces < 0 ? gl_lightadditivesurfaces : !!info->lightadditivesurfaces;
 	level.notexturefill = info->notexturefill < 0 ? gl_notexturefill : !!info->notexturefill;
@@ -1959,6 +1960,7 @@ void FLevelLocals::Tick ()
 
 void FLevelLocals::Mark()
 {
+	canvasTextureInfo.Mark();
 	for (auto &s : sectorPortals)
 	{
 		GC::Mark(s.mSkybox);
