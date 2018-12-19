@@ -298,7 +298,8 @@ class FTexture
 	friend class FMultiPatchTexture;
 	friend class FSkyBox;
 	friend class FBrightmapTexture;
-	friend class FFontChar1;
+	friend class FFont;
+	friend class FSpecialFont;
 	friend void RecordTextureColors (FTexture *pic, uint8_t *usedcolors);
 
 
@@ -431,14 +432,11 @@ protected:
 	float shaderspeed = 1.f;
 	int shaderindex = 0;
 
-	// This is only legal for the null texture!
+	// This is only used for the null texture and for Heretic's skies.
 	void SetSize(int w, int h)
 	{
-		if (UseType == ETextureType::Null)
-		{
-			Width = w;
-			Height = h;
-		}
+		Width = w;
+		Height = h;
 	}
 
 	void SetSpeed(float fac) { shaderspeed = fac; }
@@ -491,15 +489,6 @@ protected:
 	int16_t _LeftOffset[2], _TopOffset[2];
 
 	FTexture (const char *name = NULL, int lumpnum = -1);
-
-	void CopyInfo(FTexture *other)
-	{
-		CopySize(other);
-		bNoDecals = other->bNoDecals;
-		Rotations = other->Rotations;
-	}
-
-
 
 public:
 	FTextureBuffer CreateTexBuffer(int translation, int flags = 0);
