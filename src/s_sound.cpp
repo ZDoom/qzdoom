@@ -405,50 +405,46 @@ void S_Start ()
 		if (level.info)
 		{
 			LocalSndInfo = level.info->SoundInfo;
+			LocalSndSeq = level.info->SndSeq;
 		}
 
-		if (level.info)
-		{
-			LocalSndSeq  = level.info->SndSeq;
-		}
+			bool parse_ss = false;
 
-		bool parse_ss = false;
-
-		// This level uses a different local SNDINFO
+			// This level uses a different local SNDINFO
 		if (LastLocalSndInfo.CompareNoCase(LocalSndInfo) != 0 || !level.info)
-		{
-			// First delete the old sound list
-			for(unsigned i = 1; i < S_sfx.Size(); i++) 
 			{
-				S_UnloadSound(&S_sfx[i]);
+				// First delete the old sound list
+			for(unsigned i = 1; i < S_sfx.Size(); i++) 
+				{
+					S_UnloadSound(&S_sfx[i]);
+				}
+				
+				// Parse the global SNDINFO
+				S_ParseSndInfo(true);
+				
+				if (LocalSndInfo.IsNotEmpty())
+				{
+					// Now parse the local SNDINFO
+					int j = Wads.CheckNumForFullName(LocalSndInfo, true);
+					if (j>=0) S_AddLocalSndInfo(j);
+				}
+
+				// Also reload the SNDSEQ if the SNDINFO was replaced!
+				parse_ss = true;
+			}
+			else if (LastLocalSndSeq.CompareNoCase(LocalSndSeq) != 0)
+			{
+				parse_ss = true;
+			}
+
+			if (parse_ss)
+			{
+				S_ParseSndSeq(LocalSndSeq.IsNotEmpty()? Wads.CheckNumForFullName(LocalSndSeq, true) : -1);
 			}
 			
-			// Parse the global SNDINFO
-			S_ParseSndInfo(true);
-		
-			if (LocalSndInfo.IsNotEmpty())
-			{
-				// Now parse the local SNDINFO
-				int j = Wads.CheckNumForFullName(LocalSndInfo, true);
-				if (j>=0) S_AddLocalSndInfo(j);
-			}
-
-			// Also reload the SNDSEQ if the SNDINFO was replaced!
-			parse_ss = true;
+			LastLocalSndInfo = LocalSndInfo;
+			LastLocalSndSeq = LocalSndSeq;
 		}
-		else if (LastLocalSndSeq.CompareNoCase(LocalSndSeq) != 0)
-		{
-			parse_ss = true;
-		}
-
-		if (parse_ss)
-		{
-			S_ParseSndSeq(LocalSndSeq.IsNotEmpty()? Wads.CheckNumForFullName(LocalSndSeq, true) : -1);
-		}
-		
-		LastLocalSndInfo = LocalSndInfo;
-		LastLocalSndSeq = LocalSndSeq;
-	}
 
 	// stop the old music if it has been paused.
 	// This ensures that the new music is started from the beginning
@@ -828,7 +824,7 @@ static bool Validate(const FVector3 &value, const float limit, const char *const
 static bool ValidatePosVel(const AActor *actor, const FVector3 &pos, const FVector3 &vel)
 {
 	// The actual limit for map coordinates
-	static const float POSITION_LIMIT = 32768.f;
+	static const float POSITION_LIMIT = 1024.f * 1024.f;
 	const bool valid = Validate(pos, POSITION_LIMIT, "position", actor);
 
 	// The maximum velocity is enough to travel through entire map in one tic
@@ -976,19 +972,19 @@ static FSoundChan *S_StartSound(AActor *actor, const sector_t *sec, const FPolyO
 	{
 		return nullptr;
 	}
-
-	if (i_compatflags & COMPATF_MAGICSILENCE)
+	
+	if (compatflags & COMPATF_MAGICSILENCE)
 	{ // For people who just can't play without a silent BFG.
 		channel = CHAN_WEAPON;
 	}
-	else if ((chanflags & CHAN_MAYBE_LOCAL) && (i_compatflags & COMPATF_SILENTPICKUP))
+	else if ((chanflags & CHAN_MAYBE_LOCAL) && (compatflags & COMPATF_SILENTPICKUP))
 	{
-		if (actor != NULL && actor != players[consoleplayer].camera)
+		if (actor != nullptr && actor != players[consoleplayer].camera)
 		{
-			return NULL;
+			return nullptr;
 		}
 	}
-
+	
 	sfx = &S_sfx[sound_id];
 
 	// Scale volume according to SNDINFO data.
@@ -2938,7 +2934,7 @@ CCMD (changemus)
 				delete PlayList;
 				PlayList = NULL;
 			}
-		S_ChangeMusic (argv[1], argv.argc() > 2 ? atoi (argv[2]) : 0);
+			S_ChangeMusic (argv[1], argv.argc() > 2 ? atoi (argv[2]) : 0);
 		}
 		else
 		{

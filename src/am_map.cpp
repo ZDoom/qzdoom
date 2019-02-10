@@ -83,6 +83,7 @@ CVAR (Bool,  am_customcolors,		true,		CVAR_ARCHIVE);
 CVAR (Int,   am_map_secrets,		1,			CVAR_ARCHIVE);
 CVAR (Int,	 am_drawmapback,		1,			CVAR_ARCHIVE);
 CVAR (Bool,  am_showkeys,			true,		CVAR_ARCHIVE);
+CVAR (Bool,  am_showkeys_always,			false,		CVAR_ARCHIVE);
 CVAR (Int,   am_showtriggerlines,	0,			CVAR_ARCHIVE);
 CVAR (Int,   am_showthingsprites,		0,		CVAR_ARCHIVE);
 
@@ -2333,10 +2334,9 @@ void AM_showSS()
 			AM_drawSeg(sub->firstline + i, yellow);
 		}
 
-		for (int i = 0; i <po_NumPolyobjs; i++)
+		for (auto &poly : level.Polyobjects)
 		{
-			FPolyObj *po = &polyobjs[i];
-			FPolyNode *pnode = po->subsectorlinks;
+			FPolyNode *pnode = poly.subsectorlinks;
 
 			while (pnode != NULL)
 			{
@@ -3057,7 +3057,7 @@ void AM_drawThings ()
 						// That is the case for all default keys, however.
 						if (t->IsKindOf(NAME_Key))
 						{
-							if (G_SkillProperty(SKILLP_EasyKey))
+							if (G_SkillProperty(SKILLP_EasyKey) || am_showkeys_always)
 							{
 								// Already drawn by AM_drawKeys(), so don't draw again
 								color.Index = -1;
@@ -3284,7 +3284,7 @@ void AM_Drawer (int bottom)
 
 	AM_drawWalls(allmap);
 	AM_drawPlayers();
-	if (G_SkillProperty(SKILLP_EasyKey))
+	if (G_SkillProperty(SKILLP_EasyKey) || am_showkeys_always)
 		AM_drawKeys();
 	if ((am_cheat >= 2 && am_cheat != 4) || allthings)
 		AM_drawThings();

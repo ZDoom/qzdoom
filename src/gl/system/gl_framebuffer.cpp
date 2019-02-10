@@ -58,12 +58,7 @@ void gl_LoadExtensions();
 void gl_PrintStartupLog();
 void Draw2D(F2DDrawer *drawer, FRenderState &state);
 
-
-CUSTOM_CVAR(Int, vid_hwgamma, 2, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
-{
-	if (self < 0 || self > 2) self = 2;
-	if (screen != nullptr) screen->SetGamma();
-}
+extern bool vid_hdr_active;
 
 namespace OpenGLRenderer
 {
@@ -283,35 +278,6 @@ void OpenGLFrameBuffer::SetVSync(bool vsync)
 
 //===========================================================================
 //
-// DoSetGamma
-//
-// (Unfortunately Windows has some safety precautions that block gamma ramps
-//  that are considered too extreme. As a result this doesn't work flawlessly)
-//
-//===========================================================================
-
-void OpenGLFrameBuffer::SetGamma()
-{
-	bool useHWGamma = m_supportsGamma && ((vid_hwgamma == 0) || (vid_hwgamma == 2 && IsFullscreen()));
-	if (useHWGamma)
-	{
-		uint16_t gammaTable[768];
-
-		// This formula is taken from Doomsday
-		BuildGammaTable(gammaTable);
-		SetGammaTable(gammaTable);
-
-		HWGammaActive = true;
-	}
-	else if (HWGammaActive)
-	{
-		ResetGammaTable();
-		HWGammaActive = false;
-	}
-}
-
-//===========================================================================
-//
 //
 //===========================================================================
 
@@ -465,7 +431,9 @@ TArray<uint8_t> OpenGLFrameBuffer::GetScreenshotBuffer(int &pitch, ESSType &colo
 	color_type = SS_RGB;
 
 	// Screenshot should not use gamma correction if it was already applied to rendered image
-	gamma = 1 == vid_hwgamma || (2 == vid_hwgamma && !fullscreen) ? 1.0f : Gamma;
+	gamma = 1;
+	if (vid_hdr_active && fullscreen)
+		gamma *= 2.2f;
 	return ScreenshotBuffer;
 }
 

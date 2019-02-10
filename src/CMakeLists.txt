@@ -13,7 +13,6 @@ include( CheckIncludeFile )
 include( CheckIncludeFiles )
 include( CheckLibraryExists )
 include( FindPkgConfig )
-include( TargetArch )
 
 if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	option( NO_STRIP "Do not strip Release or MinSizeRel builds" )
@@ -33,12 +32,13 @@ if( APPLE )
     option( OSX_COCOA_BACKEND "Use native Cocoa backend instead of SDL" ON )
 endif()
 
-target_architecture(ZDOOM_TARGET_ARCH)
-
 if( ${ZDOOM_TARGET_ARCH} MATCHES "x86_64" )
 	set( X64 64 )
 endif()
 
+if( X64 OR ${ZDOOM_TARGET_ARCH} MATCHES "i386" )
+	add_definitions( -DARCH_IA32 )
+endif()
 
 if( NOT ZDOOM_LIBS )
 	set( ZDOOM_LIBS "" )
@@ -460,8 +460,14 @@ add_custom_target( revision_check ALL
 # Libraries ZDoom needs
 
 message( STATUS "Fluid synth libs: ${FLUIDSYNTH_LIBRARIES}" )
-set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ZLIB_LIBRARIES}" "${JPEG_LIBRARIES}" "${BZIP2_LIBRARIES}" "${GME_LIBRARIES}" "${ASMJIT_LIBRARIES}" "${CMAKE_DL_LIBS}" )
-include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${GME_INCLUDE_DIR}" "${ASMJIT_INCLUDE_DIR}" )
+set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ZLIB_LIBRARIES}" "${JPEG_LIBRARIES}" "${BZIP2_LIBRARIES}" "${GME_LIBRARIES}" "${CMAKE_DL_LIBS}" )
+include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${GME_INCLUDE_DIR}" )
+
+if( ${HAVE_VM_JIT} )
+	add_definitions( -DHAVE_VM_JIT )
+	include_directories( "${ASMJIT_INCLUDE_DIR}" )
+	set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ASMJIT_LIBRARIES}")
+endif()
 
 if( SNDFILE_FOUND )
     set( ZDOOM_LIBS ${ZDOOM_LIBS} "${SNDFILE_LIBRARIES}" )
@@ -649,6 +655,7 @@ file( GLOB HEADER_FILES
 	g_statusbar/*.h
 	g_inventory/*.h
 	intermission/*.h
+	maploader/*.h
 	menu/*.h
 	sound/adlmidi/*.h*
 	sound/opnmidi/*.h*
@@ -799,6 +806,17 @@ set( NOT_COMPILED_SOURCE_FILES
 	zcc-parse.h
 )
 
+set( VM_JIT_SOURCES
+	scripting/vm/jit.cpp
+	scripting/vm/jit_runtime.cpp
+	scripting/vm/jit_call.cpp
+	scripting/vm/jit_flow.cpp
+	scripting/vm/jit_load.cpp
+	scripting/vm/jit_math.cpp
+	scripting/vm/jit_move.cpp
+	scripting/vm/jit_store.cpp
+)
+
 # This is disabled for now because I cannot find a way to give the .pch file a different name.
 # Visual C++ 2015 seems hell-bent on only allowing one .pch file with the same name as the executable.
 #enable_precompiled_headers( g_pch2.h FASTMATH_PCH_SOURCES )
@@ -890,7 +908,6 @@ set (PCH_SOURCES
 	c_functions.cpp
 	cmdlib.cpp
 	colormatcher.cpp
-	compatibility.cpp
 	configfile.cpp
 	ct_chat.cpp
 	cycler.cpp
@@ -908,7 +925,6 @@ set (PCH_SOURCES
 	doomstat.cpp
 	dsectoreffect.cpp
 	dthinker.cpp
-	edata.cpp
 	f_wipe.cpp
 	files.cpp
 	files_decompress.cpp
@@ -955,7 +971,6 @@ set (PCH_SOURCES
 	p_effect.cpp
 	p_enemy.cpp
 	p_floor.cpp
-	p_glnodes.cpp
 	p_interaction.cpp
 	p_lights.cpp
 	p_linkedsectors.cpp
@@ -974,7 +989,6 @@ set (PCH_SOURCES
 	p_sectors.cpp
 	p_setup.cpp
 	p_sight.cpp
-	p_slopes.cpp
 	p_spec.cpp
 	p_states.cpp
 	p_switch.cpp
@@ -984,7 +998,6 @@ set (PCH_SOURCES
 	p_things.cpp
 	p_tick.cpp
 	p_trace.cpp
-	p_udmf.cpp
 	p_usdf.cpp
 	p_user.cpp
 	p_xlat.cpp
@@ -1077,7 +1090,14 @@ set (PCH_SOURCES
 	hwrenderer/utility/hw_lighting.cpp
 	hwrenderer/utility/hw_shaderpatcher.cpp
 	hwrenderer/utility/hw_vrmodes.cpp
-
+	maploader/edata.cpp
+	maploader/maploader.cpp
+	maploader/slopes.cpp
+	maploader/glnodes.cpp
+	maploader/udmf.cpp
+	maploader/polyobjects.cpp
+	maploader/renderinfo.cpp
+	maploader/compatibility.cpp
 	menu/joystickmenu.cpp
 	menu/loadsavemenu.cpp
 	menu/menu.cpp
@@ -1144,7 +1164,6 @@ set (PCH_SOURCES
 	r_data/sprites.cpp
 	r_data/portalgroups.cpp
 	r_data/voxels.cpp
-	r_data/renderinfo.cpp
 	r_data/renderstyle.cpp
 	r_data/r_canvastexture.cpp
 	r_data/r_interpolate.cpp
@@ -1174,14 +1193,6 @@ set (PCH_SOURCES
 	scripting/decorate/thingdef_states.cpp
 	scripting/vm/vmexec.cpp
 	scripting/vm/vmframe.cpp
-	scripting/vm/jit.cpp
-	scripting/vm/jit_runtime.cpp
-	scripting/vm/jit_call.cpp
-	scripting/vm/jit_flow.cpp
-	scripting/vm/jit_load.cpp
-	scripting/vm/jit_math.cpp
-	scripting/vm/jit_move.cpp
-	scripting/vm/jit_store.cpp
 	scripting/zscript/ast.cpp
 	scripting/zscript/zcc_compile.cpp
 	scripting/zscript/zcc_parser.cpp
@@ -1256,6 +1267,12 @@ set (PCH_SOURCES
 	events.cpp
 )
 
+if( ${HAVE_VM_JIT} )
+	set( PCH_SOURCES ${PCH_SOURCES} ${VM_JIT_SOURCES} )
+else()
+	set( NOT_COMPILED_SOURCE_FILES ${NOT_COMPILED_SOURCE_FILES} ${VM_JIT_SOURCES} )
+endif()
+
 enable_precompiled_headers( g_pch.h PCH_SOURCES )
 
 add_executable( zdoom WIN32 MACOSX_BUNDLE
@@ -1263,7 +1280,6 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	${NOT_COMPILED_SOURCE_FILES}
 	__autostart.cpp
 	${SYSTEM_SOURCES}
-	${X86_SOURCES}
 	${FASTMATH_SOURCES}
 	${PCH_SOURCES}
 	x86.cpp
@@ -1299,6 +1315,13 @@ set_source_files_properties( ${NOT_COMPILED_SOURCE_FILES} PROPERTIES HEADER_FILE
 if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
 	# [BL] Solaris requires these to be explicitly linked.
 	set( ZDOOM_LIBS ${ZDOOM_LIBS} nsl socket)
+endif()
+
+if( UNIX )
+	find_package( Backtrace )
+	if(Backtrace_FOUND)
+		set( ZDOOM_LIBS ${ZDOOM_LIBS} ${Backtrace_LIBRARIES} )
+	endif()
 endif()
 
 target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma )
@@ -1422,7 +1445,7 @@ source_group("External\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_D
 source_group("External\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sfmt/.+")
 source_group("FraggleScript" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/fragglescript/.+")
 source_group("Intermission" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/intermission/.+")
-source_group("Inventory" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/g_inventory/.+")
+source_group("Map Loader" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/maploader/.+")
 source_group("Menu" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/menu/.+")
 source_group("Hardware Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/.+")
 source_group("Hardware Renderer\\Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/hwrenderer/data/.+")

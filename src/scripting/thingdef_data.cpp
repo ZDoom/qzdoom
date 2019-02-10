@@ -110,8 +110,8 @@ static FFlagDef InternalActorFlagDefs[]=
 
 static FFlagDef ActorFlagDefs[]=
 {
-	DEFINE_FLAG(MF, PICKUP, APlayerPawn, flags),
-	DEFINE_FLAG(MF, SPECIAL, APlayerPawn, flags),
+	DEFINE_FLAG(MF, PICKUP, AActor, flags),
+	DEFINE_FLAG(MF, SPECIAL, AActor, flags),
 	DEFINE_FLAG(MF, SOLID, AActor, flags),
 	DEFINE_FLAG(MF, SHOOTABLE, AActor, flags),
 	DEFINE_PROTECTED_FLAG(MF, NOSECTOR, AActor, flags),
@@ -411,33 +411,11 @@ static FFlagDef MoreFlagDefs[] =
 	DEFINE_DUMMY_FLAG(SERVERSIDEONLY, false),
 };
 
-static FFlagDef PlayerPawnFlagDefs[] =
-{
-	// PlayerPawn flags
-	DEFINE_FLAG(PPF, NOTHRUSTWHENINVUL, APlayerPawn, PlayerFlags),
-	DEFINE_FLAG(PPF, CANSUPERMORPH, APlayerPawn, PlayerFlags),
-	DEFINE_FLAG(PPF, CROUCHABLEMORPH, APlayerPawn, PlayerFlags),
-};
-
-static FFlagDef DynLightFlagDefs[] =
-{
-	// PlayerPawn flags
-	DEFINE_FLAG(LF, SUBTRACTIVE, ADynamicLight, lightflags),
-	DEFINE_FLAG(LF, ADDITIVE, ADynamicLight, lightflags),
-	DEFINE_FLAG(LF, DONTLIGHTSELF, ADynamicLight, lightflags),
-	DEFINE_FLAG(LF, ATTENUATE, ADynamicLight, lightflags),
-	DEFINE_FLAG(LF, NOSHADOWMAP, ADynamicLight, lightflags),
-	DEFINE_FLAG(LF, DONTLIGHTACTORS, ADynamicLight, lightflags),
-	DEFINE_FLAG(LF, SPOT, ADynamicLight, lightflags),
-};
-
 static const struct FFlagList { const PClass * const *Type; FFlagDef *Defs; int NumDefs; int Use; } FlagLists[] =
 {
 	{ &RUNTIME_CLASS_CASTLESS(AActor), 		ActorFlagDefs,		countof(ActorFlagDefs), 3 },	// -1 to account for the terminator
 	{ &RUNTIME_CLASS_CASTLESS(AActor), 		MoreFlagDefs,		countof(MoreFlagDefs), 1 },
 	{ &RUNTIME_CLASS_CASTLESS(AActor), 	InternalActorFlagDefs,	countof(InternalActorFlagDefs), 2 },
-	{ &RUNTIME_CLASS_CASTLESS(APlayerPawn),	PlayerPawnFlagDefs,	countof(PlayerPawnFlagDefs), 3 },
-	{ &RUNTIME_CLASS_CASTLESS(ADynamicLight),DynLightFlagDefs,	countof(DynLightFlagDefs), 3 },
 };
 #define NUM_FLAG_LISTS (countof(FlagLists))
 

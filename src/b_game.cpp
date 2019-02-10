@@ -92,6 +92,7 @@ Everything that is changed is marked (maybe commented) with "Added by MC"
 #include "d_player.h"
 #include "events.h"
 #include "vm.h"
+#include "g_levellocals.h"
 
 static FRandom pr_botspawn ("BotSpawn");
 
@@ -173,12 +174,12 @@ void FCajunMaster::Main ()
 void FCajunMaster::Init ()
 {
 	botnum = 0;
-	firstthing = NULL;
+	firstthing = nullptr;
 	spawn_tries = 0;
 	freeze = false;
 	observer = false;
-	body1 = NULL;
-	body2 = NULL;
+	body1 = nullptr;
+	body2 = nullptr;
 
 	if (ctf && teamplay == false)
 		teamplay = true; //Need teamplay for ctf. (which is not done yet)
@@ -447,7 +448,7 @@ void FCajunMaster::RemoveAllBots (bool fromlist)
 			// [ZZ] run event hook
 			E_PlayerDisconnected(i);
 			//
-			FBehavior::StaticStartTypedScripts (SCRIPT_Disconnect, players[i].mo, true, i, true);
+			level.Behaviors.StartTypedScripts (SCRIPT_Disconnect, players[i].mo, true, i, true);
 			ClearPlayer (i, !fromlist);
 		}
 	}

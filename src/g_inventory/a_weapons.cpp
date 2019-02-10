@@ -53,12 +53,12 @@
 //
 //===========================================================================
 
-FString WeaponSection;
+static FString WeaponSection;
 TArray<FString> KeyConfWeapons;
-FWeaponSlots *PlayingKeyConf;
+static FWeaponSlots *PlayingKeyConf;
 
-TArray<PClassActor *> Weapons_ntoh;
-TMap<PClassActor *, int> Weapons_hton;
+static TArray<PClassActor *> Weapons_ntoh;
+static TMap<PClassActor *, int> Weapons_hton;
 
 static int ntoh_cmp(const void *a, const void *b);
 
@@ -491,7 +491,7 @@ void FWeaponSlots::SendDifferences(int playernum, const FWeaponSlots &other)
 void FWeaponSlots::SetFromPlayer(PClassActor *type)
 {
 	Clear();
-	auto Slot = ((APlayerPawn*)GetDefaultByType(type))->Slot;
+	auto Slot = &GetDefaultByType(type)->NameVar(NAME_Slot);
 	for (int i = 0; i < NUM_WEAPON_SLOTS; ++i)
 	{
 		if (Slot[i] != NAME_None)
@@ -748,15 +748,14 @@ void P_PlaybackKeyConfWeapons(FWeaponSlots *slots)
 	PlayingKeyConf = slots;
 	for (unsigned int i = 0; i < KeyConfWeapons.Size(); ++i)
 	{
-		FString cmd(KeyConfWeapons[i]);
-		AddCommandString(cmd.LockBuffer());
+		AddCommandString(KeyConfWeapons[i]);
 	}
 	PlayingKeyConf = nullptr;
 }
 
 //===========================================================================
 //
-// APlayerPawn :: SetupWeaponSlots
+// SetupWeaponSlots
 //
 // Sets up the default weapon slots for this player. If this is also the
 // local player, determines local modifications and sends those across the
@@ -764,7 +763,7 @@ void P_PlaybackKeyConfWeapons(FWeaponSlots *slots)
 //
 //===========================================================================
 
-void FWeaponSlots::SetupWeaponSlots(APlayerPawn *pp)
+void FWeaponSlots::SetupWeaponSlots(AActor *pp)
 {
 	auto player = pp->player;
 	if (player != nullptr && player->mo == pp)

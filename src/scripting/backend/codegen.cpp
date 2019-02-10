@@ -1881,6 +1881,12 @@ FxExpression *FxMinusSign::Resolve(FCompileContext& ctx)
 			delete this;
 			return e;
 		}
+		else if (Operand->ValueType == TypeBool)
+		{
+			Operand = new FxIntCast(Operand, true);
+			Operand = Operand->Resolve(ctx);
+			assert(Operand != nullptr);
+		}
 		ValueType = Operand->ValueType;
 		return this;
 	}
@@ -5138,28 +5144,85 @@ FxExpression *FxNew::Resolve(FCompileContext &ctx)
 
 //==========================================================================
 //
-//
+// The CVAR is for finding places where thinkers are created.
+// Those will require code changes in ZScript 4.0.
 //
 //==========================================================================
+CVAR(Bool, vm_warnthinkercreation, false, 0)
+
+static DObject *BuiltinNew(PClass *cls, int outerside, int backwardscompatible)
+{
+	if (cls == nullptr)
+	{
+		ThrowAbortException(X_OTHER, "New without a class");
+		return nullptr;
+	}
+	if (cls->ConstructNative == nullptr)
+	{
+		ThrowAbortException(X_OTHER, "Class %s requires native construction", cls->TypeName.GetChars());
+		return nullptr;
+	}
+	if (cls->bAbstract)
+	{
+		ThrowAbortException(X_OTHER, "Cannot instantiate abstract class %s", cls->TypeName.GetChars());
+		return nullptr;
+	}
+	// Creating actors here must be outright prohibited,
+	if (cls->IsDescendantOf(NAME_Actor))
+	{
+		ThrowAbortException(X_OTHER, "Cannot create actors with 'new'");
+		return nullptr;
+	}
+	if (vm_warnthinkercreation && cls->IsDescendantOf(NAME_Thinker))
+	{
+		// This must output a diagnostic warning
+		//ThrowAbortException(X_OTHER, "Cannot create actors with 'new'");
+		//return nullptr;
+	}
+	// [ZZ] validate readonly and between scope construction
+	if (outerside) FScopeBarrier::ValidateNew(cls, outerside - 1);
+	auto object = cls->CreateNew();
+	if (backwardscompatible && object->IsKindOf(NAME_Thinker))
+	{
+		// Todo: Link thinker to current primary level.
+	}
+	return object;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DObject, BuiltinNew, BuiltinNew)
+{
+	PARAM_PROLOGUE;
+	PARAM_CLASS(cls, DObject);
+	PARAM_INT(outerside);
+	PARAM_INT(compatible);
+	ACTION_RETURN_OBJECT(BuiltinNew(cls, outerside, compatible));
+}
 
 ExpEmit FxNew::Emit(VMFunctionBuilder *build)
 {
-	ExpEmit from = val->Emit(build);
-	from.Free(build);
 	ExpEmit to(build, REGT_POINTER);
 
-	if (!from.Konst)
+	// Call DecoRandom to generate a random number.
+	VMFunction *callfunc;
+	auto sym = FindBuiltinFunction(NAME_BuiltinNew);
+	
+	assert(sym);
+	callfunc = sym->Variants[0].Implementation;
+	
+	FunctionCallEmitter emitters(callfunc);
+
+	int outerside = -1;
+	if (!val->isConstant())
 	{
 		int outerside = FScopeBarrier::SideFromFlags(CallingFunction->Variants[0].Flags);
 		if (outerside == FScopeBarrier::Side_Virtual)
 			outerside = FScopeBarrier::SideFromObjectFlags(CallingFunction->OwningClass->ScopeFlags);
-		build->Emit(OP_NEW, to.RegNum, from.RegNum, outerside+1);	// +1 to ensure it's not 0
 	}
-	else
-	{
-		build->Emit(OP_NEW_K, to.RegNum, from.RegNum);
-	}
-	return to;
+	emitters.AddParameter(build, val);
+	emitters.AddParameterIntConst(outerside + 1);
+	emitters.AddParameterIntConst(1);	// Todo: 1 only if version < 4.0.0
+	emitters.AddReturn(REGT_POINTER);
+	return emitters.EmitCall(build);
 }
 
 //==========================================================================
@@ -5971,11 +6034,10 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 		{
 			if (ctx.Function == nullptr)
 			{
-				ScriptPosition.Message(MSG_ERROR, "Unable to access class member %s from constant declaration", sym->SymbolName.GetChars());
+				ScriptPosition.Message(MSG_ERROR, "Unable to access class member %s from constant declaration", Identifier.GetChars());
 				delete this;
 				return nullptr;
 			}
-
 			FxExpression *self = new FxSelf(ScriptPosition);
 			self = self->Resolve(ctx);
 			newex = ResolveMember(ctx, ctx.Function->Variants[0].SelfClass, self, ctx.Function->Variants[0].SelfClass);
@@ -5999,29 +6061,36 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			delete this;
 			return nullptr;
 		}
-		// Do this check for ZScript as well, so that a clearer error message can be printed. MSG_OPTERROR will default to MSG_ERROR there.
-		else if (ctx.Function->Variants[0].SelfClass != ctx.Class && sym->IsKindOf(RUNTIME_CLASS(PField)))
+		// The following only applies to non-static content.
+		// Static functions have no access to non-static parts of a class and should be able to see global identifiers of the same name.
+		else if (ctx.Function->Variants[0].SelfClass != nullptr)
 		{
-			FxExpression *self = new FxSelf(ScriptPosition, true);
-			self = self->Resolve(ctx);
-			newex = ResolveMember(ctx, ctx.Class, self, ctx.Class);
-			ABORT(newex);
-			ScriptPosition.Message(MSG_OPTERROR, "Self pointer used in ambiguous context; VM execution may abort!");
-			ctx.Unsafe = true;
-			goto foundit;
-		}
-		else
-		{
-			if (sym->IsKindOf(RUNTIME_CLASS(PFunction)))
+			// Do this check for ZScript as well, so that a clearer error message can be printed. MSG_OPTERROR will default to MSG_ERROR there.
+			if (ctx.Function->Variants[0].SelfClass != ctx.Class && sym->IsKindOf(RUNTIME_CLASS(PField)))
 			{
-				ScriptPosition.Message(MSG_ERROR, "Function '%s' used without ().\n", Identifier.GetChars());
+				FxExpression *self = new FxSelf(ScriptPosition, true);
+				self = self->Resolve(ctx);
+				newex = ResolveMember(ctx, ctx.Class, self, ctx.Class);
+				ABORT(newex);
+				ScriptPosition.Message(MSG_OPTERROR, "Self pointer used in ambiguous context; VM execution may abort!");
+				ctx.Unsafe = true;
+				goto foundit;
 			}
 			else
 			{
-				ScriptPosition.Message(MSG_ERROR, "Invalid member identifier '%s'.\n", Identifier.GetChars());
+				if (sym->IsKindOf(RUNTIME_CLASS(PFunction)))
+				{
+					ScriptPosition.Message(MSG_ERROR, "Function '%s' used without ().\n", Identifier.GetChars());
+					delete this;
+					return nullptr;
+				}
+				else
+				{
+					ScriptPosition.Message(MSG_ERROR, "Invalid member identifier '%s'.\n", Identifier.GetChars());
+					delete this;
+					return nullptr;
+				}
 			}
-			delete this;
-			return nullptr;
 		}
 	}
 
@@ -6054,6 +6123,15 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 
 			// internally defined global variable
 			ScriptPosition.Message(MSG_DEBUGLOG, "Resolving name '%s' as global variable\n", Identifier.GetChars());
+
+			if ((vsym->Flags & VARF_Deprecated))
+			{
+				if (sym->mVersion <= ctx.Version)
+				{
+					ScriptPosition.Message(MSG_WARNING, "Accessing deprecated global variable %s - deprecated since %d.%d.%d", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision);
+				}
+			}
+
 			newex = new FxGlobalVariable(static_cast<PField *>(sym), ScriptPosition);
 			goto foundit;
 		}
@@ -6141,9 +6219,12 @@ FxExpression *FxIdentifier::ResolveMember(FCompileContext &ctx, PContainerType *
 				object = nullptr;
 				return nullptr;
 			}
-			if ((vsym->Flags & VARF_Deprecated) && sym->mVersion <= ctx.Version)
+			if ((vsym->Flags & VARF_Deprecated))
 			{
-				ScriptPosition.Message(MSG_WARNING, "Accessing deprecated member variable %s - deprecated since %d.%d.%d", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision);
+				if (sym->mVersion <= ctx.Version)
+				{
+					ScriptPosition.Message(MSG_WARNING, "Accessing deprecated member variable %s - deprecated since %d.%d.%d", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision);
+				}
 			}
 
 			// We have 4 cases to consider here:
@@ -8530,9 +8611,9 @@ FxExpression *FxActionSpecialCall::Resolve(FCompileContext& ctx)
 //
 //==========================================================================
 
-void BuiltinCallLineSpecial(int special, AActor *activator, int arg1, int arg2, int arg3, int arg4, int arg5)
+int BuiltinCallLineSpecial(int special, AActor *activator, int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-	P_ExecuteSpecial(special, nullptr, activator, 0, arg1, arg2, arg3, arg4, arg5);
+	return P_ExecuteSpecial(special, nullptr, activator, 0, arg1, arg2, arg3, arg4, arg5);
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DObject, BuiltinCallLineSpecial, BuiltinCallLineSpecial)
@@ -8564,6 +8645,7 @@ ExpEmit FxActionSpecialCall::Emit(VMFunctionBuilder *build)
 
 	emitters.AddParameterIntConst(abs(Special));			// pass special number
 	emitters.AddParameter(build, Self);
+
 
 	for (; i < ArgList.Size(); ++i)
 	{
@@ -8651,9 +8733,12 @@ bool FxVMFunctionCall::CheckAccessibility(const VersionInfo &ver)
 		ScriptPosition.Message(MSG_ERROR, "%s not accessible to %s", Function->SymbolName.GetChars(), VersionString.GetChars());
 		return false;
 	}
-	if ((Function->Variants[0].Flags & VARF_Deprecated) && Function->mVersion <= ver)
+	if ((Function->Variants[0].Flags & VARF_Deprecated))
 	{
-		ScriptPosition.Message(MSG_WARNING, "Accessing deprecated function %s - deprecated since %d.%d.%d", Function->SymbolName.GetChars(), Function->mVersion.major, Function->mVersion.minor, Function->mVersion.revision);
+		if (Function->mVersion <= ver)
+		{
+			ScriptPosition.Message(MSG_WARNING, "Accessing deprecated function %s - deprecated since %d.%d.%d", Function->SymbolName.GetChars(), Function->mVersion.major, Function->mVersion.minor, Function->mVersion.revision);
+		}
 	}
 	return true;
 }
@@ -11158,7 +11243,7 @@ FxExpression *FxLocalVariableDeclaration::Resolve(FCompileContext &ctx)
 	{
 		auto sfunc = static_cast<VMScriptFunction *>(ctx.Function->Variants[0].Implementation);
 		StackOffset = sfunc->AllocExtraStack(ValueType);
-		// Todo: Process the compound initializer once implemented.
+		
 		if (Init != nullptr)
 		{
 			ScriptPosition.Message(MSG_ERROR, "Cannot initialize non-scalar variable %s here", Name.GetChars());
@@ -11398,5 +11483,178 @@ ExpEmit FxStaticArray::Emit(VMFunctionBuilder *build)
 		break;
 	}
 	}
+	return ExpEmit();
+}
+
+FxLocalArrayDeclaration::FxLocalArrayDeclaration(PType *type, FName name, FArgumentList &args, int varflags, const FScriptPosition &pos)
+	: FxLocalVariableDeclaration(type, name, nullptr, varflags, pos)
+{
+	ExprType = EFX_LocalArrayDeclaration;
+	values = std::move(args);
+	clearExpr = nullptr;
+}
+
+FxExpression *FxLocalArrayDeclaration::Resolve(FCompileContext &ctx)
+{
+	if (isresolved)
+	{
+		return this;
+	}
+
+	FxLocalVariableDeclaration::Resolve(ctx);
+
+	auto stackVar = new FxStackVariable(ValueType, StackOffset, ScriptPosition);
+	auto elementType = (static_cast<PArray *> (ValueType))->ElementType;
+	auto elementCount = (static_cast<PArray *> (ValueType))->ElementCount;
+
+	// We HAVE to clear dynamic arrays before initializing them
+	if (IsDynamicArray())
+	{
+		FArgumentList argsList;
+		argsList.Clear();
+
+		clearExpr = new FxMemberFunctionCall(stackVar, "Clear", argsList, (const FScriptPosition) ScriptPosition);
+		SAFE_RESOLVE(clearExpr, ctx);
+	}
+
+	if (values.Size() > elementCount)
+	{
+		ScriptPosition.Message(MSG_ERROR, "Initializer contains more elements than the array can contain");
+		delete this;
+		return nullptr;
+	}
+
+	for (unsigned int i = 0; i < values.Size(); i++)
+	{
+		if (values[i] == nullptr)
+		{
+			delete this;
+			return nullptr;
+		}
+
+		FxExpression *v = new FxTypeCast(values[i], elementType, false);
+		SAFE_RESOLVE(v, ctx);
+		if (v == nullptr)
+		{
+			delete this;
+			return nullptr;
+		}
+
+		if (!IsDynamicArray())
+		{
+			if (v->IsNativeStruct() && elementType->isRealPointer() && elementType->toPointer()->PointedType == v->ValueType)
+			{
+				// Allow conversion of native structs to pointers of the same type.
+				// For all other types this is not needed. Structs are not assignable and classes can only exist as references.
+				bool writable;
+				v->RequestAddress(ctx, &writable);
+				v->ValueType = elementType;
+			}
+		}
+		else
+		{
+			FArgumentList argsList;
+			argsList.Clear();
+			argsList.Push(v);
+
+			FxExpression *funcCall = new FxMemberFunctionCall(stackVar, NAME_Push, argsList, (const FScriptPosition) v->ScriptPosition);
+			SAFE_RESOLVE(funcCall, ctx);
+
+			v = funcCall;
+		}
+
+		values[i] = v;
+	}
+
+	return this;
+}
+
+ExpEmit FxLocalArrayDeclaration::Emit(VMFunctionBuilder *build)
+{
+	assert(!(VarFlags & VARF_Out));	// 'out' variables should never be initialized, they can only exist as function parameters.
+
+	if (IsDynamicArray() && clearExpr != nullptr)
+	{
+		clearExpr->Emit(build);
+	}
+
+	auto elementSizeConst = build->GetConstantInt(static_cast<PArray *>(ValueType)->ElementSize);
+	auto arrOffsetReg = build->Registers[REGT_INT].Get(1);
+	build->Emit(OP_LK, arrOffsetReg, build->GetConstantInt(StackOffset));
+
+	for (auto v : values)
+	{
+		ExpEmit emitval = v->Emit(build);
+
+		if (IsDynamicArray())
+		{
+			continue;
+		}
+
+		int regtype = emitval.RegType;
+		if (regtype < REGT_INT || regtype > REGT_TYPE)
+		{
+			ScriptPosition.Message(MSG_ERROR, "Attempted to assign a non-value");
+			return ExpEmit();
+		}
+		if (emitval.Konst)
+		{
+			auto constval = static_cast<FxConstant *>(v);
+			int regNum = build->Registers[regtype].Get(1);
+			switch (regtype)
+			{
+			default:
+			case REGT_INT:
+				build->Emit(OP_LK, regNum, build->GetConstantInt(constval->GetValue().GetInt()));
+				build->Emit(OP_SW_R, build->FramePointer.RegNum, regNum, arrOffsetReg);
+				break;
+
+			case REGT_FLOAT:
+				build->Emit(OP_LKF, regNum, build->GetConstantFloat(constval->GetValue().GetFloat()));
+				build->Emit(OP_SDP_R, build->FramePointer.RegNum, regNum, arrOffsetReg);
+				break;
+
+			case REGT_POINTER:
+				build->Emit(OP_LKP, regNum, build->GetConstantAddress(constval->GetValue().GetPointer()));
+				build->Emit(OP_SP_R, build->FramePointer.RegNum, regNum, arrOffsetReg);
+				break;
+
+			case REGT_STRING:
+				build->Emit(OP_LKS, regNum, build->GetConstantString(constval->GetValue().GetString()));
+				build->Emit(OP_SS_R, build->FramePointer.RegNum, regNum, arrOffsetReg);
+				break;
+			}
+			build->Registers[regtype].Return(regNum, 1);
+			
+			emitval.Free(build);
+		}
+		else
+		{
+			switch (regtype)
+			{
+			default:
+			case REGT_INT:
+				build->Emit(OP_SW_R, build->FramePointer.RegNum, emitval.RegNum, arrOffsetReg);
+				break;
+
+			case REGT_FLOAT:
+				build->Emit(OP_SDP_R, build->FramePointer.RegNum, emitval.RegNum, arrOffsetReg);
+				break;
+
+			case REGT_POINTER:
+				build->Emit(OP_SP_R, build->FramePointer.RegNum, emitval.RegNum, arrOffsetReg);
+				break;
+
+			case REGT_STRING:
+				build->Emit(OP_SS_R, build->FramePointer.RegNum, emitval.RegNum, arrOffsetReg);
+				break;
+			}
+			emitval.Free(build);
+		}
+
+		build->Emit(OP_ADD_RK, arrOffsetReg, arrOffsetReg, elementSizeConst);
+	}
+	build->Registers[REGT_INT].Return(arrOffsetReg, 1);
+
 	return ExpEmit();
 }

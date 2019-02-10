@@ -42,14 +42,13 @@ thread_local FDynLightData lightdata;
 CVAR (Bool, gl_light_sprites, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 CVAR (Bool, gl_light_particles, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 
-CVAR(Int, gl_attenuate, -1, 0);	// This is mainly a debug option.
 
 //==========================================================================
 //
 // Sets up the parameters to render one dynamic light onto one plane
 //
 //==========================================================================
-bool FDynLightData::GetLight(int group, Plane & p, ADynamicLight * light, bool checkside)
+bool FDynLightData::GetLight(int group, Plane & p, FDynamicLight * light, bool checkside)
 {
 	DVector3 pos = light->PosRelative(group);
 	float radius = (light->GetRadius());
@@ -72,7 +71,7 @@ bool FDynLightData::GetLight(int group, Plane & p, ADynamicLight * light, bool c
 // Add one dynamic light to the light data list
 //
 //==========================================================================
-void FDynLightData::AddLightToList(int group, ADynamicLight * light, bool forceAttenuate)
+void FDynLightData::AddLightToList(int group, FDynamicLight * light, bool forceAttenuate)
 {
 	int i = 0;
 
@@ -106,13 +105,9 @@ void FDynLightData::AddLightToList(int group, ADynamicLight * light, bool forceA
 	}
 
 	float shadowIndex = light->mShadowmapIndex + 1.0f;
-	bool attenuate;
 
     // Store attenuate flag in the sign bit of the float.
-	if (gl_attenuate == -1) attenuate = !!(light->lightflags & LF_ATTENUATE) || forceAttenuate;
-	else attenuate = !!gl_attenuate;
-
-	if (attenuate) shadowIndex = -shadowIndex;
+	if (light->IsAttenuated() || forceAttenuate) shadowIndex = -shadowIndex;
 
 	float lightType = 0.0f;
 	float spotInnerAngle = 0.0f;
@@ -123,14 +118,15 @@ void FDynLightData::AddLightToList(int group, ADynamicLight * light, bool forceA
 	if (light->IsSpot())
 	{
 		lightType = 1.0f;
-		spotInnerAngle = (float)light->SpotInnerAngle.Cos();
-		spotOuterAngle = (float)light->SpotOuterAngle.Cos();
+		spotInnerAngle = (float)light->pSpotInnerAngle->Cos();
+		spotOuterAngle = (float)light->pSpotOuterAngle->Cos();
 
-		DAngle negPitch = -light->Angles.Pitch;
+		DAngle negPitch = -*light->pPitch;
+		DAngle Angle = light->target->Angles.Yaw;
 		double xzLen = negPitch.Cos();
-		spotDirX = float(-light->Angles.Yaw.Cos() * xzLen);
+		spotDirX = float(-Angle.Cos() * xzLen);
 		spotDirY = float(-negPitch.Sin());
-		spotDirZ = float(-light->Angles.Yaw.Sin() * xzLen);
+		spotDirZ = float(-Angle.Sin() * xzLen);
 	}
 
 	float *data = &arrays[i][arrays[i].Reserve(16)];

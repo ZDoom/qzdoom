@@ -148,9 +148,9 @@ void GLFlat::SetupLights(HWDrawInfo *di, FLightNode * node, FDynLightData &light
 	}
 	while (node)
 	{
-		ADynamicLight * light = node->lightsource;
+		FDynamicLight * light = node->lightsource;
 
-		if (light->flags2&MF2_DORMANT)
+		if (!light->IsActive())
 		{
 			node = node->nextLight;
 			continue;
@@ -159,7 +159,7 @@ void GLFlat::SetupLights(HWDrawInfo *di, FLightNode * node, FDynLightData &light
 
 		// we must do the side check here because gl_GetLight needs the correct plane orientation
 		// which we don't have for Legacy-style 3D-floors
-		double planeh = plane.plane.ZatPoint(light);
+		double planeh = plane.plane.ZatPoint(light->Pos);
 		if ((planeh<light->Z() && ceiling) || (planeh>light->Z() && !ceiling))
 		{
 			node = node->nextLight;
@@ -304,8 +304,8 @@ void GLFlat::DrawFlat(HWDrawInfo *di, FRenderState &state, bool translucent)
 
 	state.SetNormal(plane.plane.Normal().X, plane.plane.Normal().Z, plane.plane.Normal().Y);
 
-	state.SetColor(lightlevel, rel, di->isFullbrightScene(), Colormap, alpha);
-	state.SetFog(lightlevel, rel, di->isFullbrightScene(), &Colormap, false);
+	di->SetColor(state, lightlevel, rel, di->isFullbrightScene(), Colormap, alpha);
+	di->SetFog(state, lightlevel, rel, di->isFullbrightScene(), &Colormap, false);
 	state.SetObjectColor(FlatColor | 0xff000000);
 	state.SetAddColor(AddColor | 0xff000000);
 
@@ -500,7 +500,7 @@ void GLFlat::ProcessSector(HWDrawInfo *di, sector_t * frontsector, int which)
 	//
 	//
 	//
-	if ((which & SSRF_RENDERFLOOR) && frontsector->floorplane.ZatPoint(vp.Pos) <= vp.Pos.Z)
+	if ((which & SSRF_RENDERFLOOR) && frontsector->floorplane.ZatPoint(vp.Pos) <= vp.Pos.Z && (!section || !(section->flags & FSection::DONTRENDERFLOOR)))
 	{
 		// process the original floor first.
 
@@ -554,9 +554,9 @@ void GLFlat::ProcessSector(HWDrawInfo *di, sector_t * frontsector, int which)
 	//
 	// do ceilings
 	//
+	// 
 	//
-	//
-	if ((which & SSRF_RENDERCEILING) && frontsector->ceilingplane.ZatPoint(vp.Pos) >= vp.Pos.Z)
+	if ((which & SSRF_RENDERCEILING) && frontsector->ceilingplane.ZatPoint(vp.Pos) >= vp.Pos.Z && (!section || !(section->flags & FSection::DONTRENDERCEILING)))
 	{
 		// process the original ceiling first.
 

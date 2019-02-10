@@ -1,6 +1,8 @@
 #ifndef __SC_MAN_H__
 #define __SC_MAN_H__
 
+#include "doomtype.h"
+
 class FScanner
 {
 public:
@@ -162,7 +164,7 @@ struct FScriptPosition
 	static int ErrorCounter;
 	static bool StrictErrors;
 	static bool errorout;
-	FString FileName;
+	FName FileName;
 	int ScriptLine;
 
 	FScriptPosition()

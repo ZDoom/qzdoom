@@ -27,42 +27,49 @@
 namespace hwrenderer
 {
 
-LevelAABBTree::LevelAABBTree()
+LevelAABBTree::LevelAABBTree(FLevelLocals *lev)
 {
+	Level = lev;
 	// Calculate the center of all lines
 	TArray<FVector2> centroids;
-	for (unsigned int i = 0; i < level.lines.Size(); i++)
+	for (unsigned int i = 0; i < Level->lines.Size(); i++)
 	{
-		FVector2 v1 = { (float)level.lines[i].v1->fX(), (float)level.lines[i].v1->fY() };
-		FVector2 v2 = { (float)level.lines[i].v2->fX(), (float)level.lines[i].v2->fY() };
+		FVector2 v1 = { (float)Level->lines[i].v1->fX(), (float)Level->lines[i].v1->fY() };
+		FVector2 v2 = { (float)Level->lines[i].v2->fX(), (float)Level->lines[i].v2->fY() };
 		centroids.Push((v1 + v2) * 0.5f);
 	}
 
-	// Create a list of level lines we want to add:
-	TArray<int> line_elements;
-	for (unsigned int i = 0; i < level.lines.Size(); i++)
+	// Create the static subtree
+	if (!GenerateTree(&centroids[0], false))
+		return;
+
+	int staticroot = nodes.Size() - 1;
+
+	dynamicStartNode = nodes.Size();
+	dynamicStartLine = treelines.Size();
+
+	// Create the dynamic subtree
+	if (GenerateTree(&centroids[0], true))
 	{
-		if (!level.lines[i].backsector)
-		{
-			if (level.lines[i].sidedef[0] && (level.lines[i].sidedef[0]->Flags & WALLF_POLYOBJ))
-				polylines.Push(i);
-			line_elements.Push(i);
-		}
+		int dynamicroot = nodes.Size() - 1;
+
+		// Create a shared root node
+		FVector2 aabb_min, aabb_max;
+		const auto &left = nodes[staticroot];
+		const auto &right = nodes[dynamicroot];
+		aabb_min.X = MIN(left.aabb_left, right.aabb_left);
+		aabb_min.Y = MIN(left.aabb_top, right.aabb_top);
+		aabb_max.X = MAX(left.aabb_right, right.aabb_right);
+		aabb_max.Y = MAX(left.aabb_bottom, right.aabb_bottom);
+		nodes.Push({ aabb_min, aabb_max, staticroot, dynamicroot });
 	}
 
-	// GenerateTreeNode needs a buffer where it can store line indices temporarily when sorting lines into the left and right child AABB buckets
-	TArray<int> work_buffer;
-	work_buffer.Resize(line_elements.Size() * 2);
-
-	// Generate the AABB tree
-	GenerateTreeNode(&line_elements[0], (int)line_elements.Size(), &centroids[0], &work_buffer[0]);
-
 	// Add the lines referenced by the leaf nodes
-	lines.Resize(level.lines.Size());
-	for (unsigned int i = 0; i < level.lines.Size(); i++)
+	treelines.Resize(mapLines.Size());
+	for (unsigned int i = 0; i < mapLines.Size(); i++)
 	{
-		const auto &line = level.lines[i];
-		auto &treeline = lines[i];
+		const auto &line = Level->lines[mapLines[i]];
+		auto &treeline = treelines[i];
 
 		treeline.x = (float)line.v1->fX();
 		treeline.y = (float)line.v1->fY();
@@ -71,13 +78,47 @@ LevelAABBTree::LevelAABBTree()
 	}
 }
 
+bool LevelAABBTree::GenerateTree(const FVector2 *centroids, bool dynamicsubtree)
+{
+	// Create a list of level lines we want to add:
+	TArray<int> line_elements;
+	auto &maplines = Level->lines;
+	for (unsigned int i = 0; i < maplines.Size(); i++)
+	{
+		if (!maplines[i].backsector)
+		{
+			bool isPolyLine = maplines[i].sidedef[0] && (maplines[i].sidedef[0]->Flags & WALLF_POLYOBJ);
+			if (isPolyLine && dynamicsubtree)
+			{
+				line_elements.Push(mapLines.Size());
+				mapLines.Push(i);
+			}
+			else if (!isPolyLine && !dynamicsubtree)
+			{
+				line_elements.Push(mapLines.Size());
+				mapLines.Push(i);
+			}
+		}
+	}
+
+	if (line_elements.Size() == 0)
+		return false;
+
+	// GenerateTreeNode needs a buffer where it can store line indices temporarily when sorting lines into the left and right child AABB buckets
+	TArray<int> work_buffer;
+	work_buffer.Resize(line_elements.Size() * 2);
+
+	// Generate the AABB tree
+	GenerateTreeNode(&line_elements[0], (int)line_elements.Size(), centroids, &work_buffer[0]);
+	return true;
+}
+
 bool LevelAABBTree::Update()
 {
 	bool modified = false;
-	for (unsigned int ii = 0; ii < polylines.Size(); ii++)
+	for (unsigned int i = dynamicStartLine; i < mapLines.Size(); i++)
 	{
-		int i = polylines[ii];
-		const auto &line = level.lines[i];
+		const auto &line = Level->lines[mapLines[i]];
 
 		AABBTreeLine treeline;
 		treeline.x = (float)line.v1->fX();
@@ -85,15 +126,15 @@ bool LevelAABBTree::Update()
 		treeline.dx = (float)line.v2->fX() - treeline.x;
 		treeline.dy = (float)line.v2->fY() - treeline.y;
 
-		if (memcmp(&lines[i], &treeline, sizeof(AABBTreeLine)))
+		if (memcmp(&treelines[i], &treeline, sizeof(AABBTreeLine)))
 		{
 			TArray<int> path = FindNodePath(i, nodes.Size() - 1);
 			if (path.Size())
 			{
-				float x1 = (float)level.lines[i].v1->fX();
-				float y1 = (float)level.lines[i].v1->fY();
-				float x2 = (float)level.lines[i].v2->fX();
-				float y2 = (float)level.lines[i].v2->fY();
+				float x1 = (float)line.v1->fX();
+				float y1 = (float)line.v1->fY();
+				float x2 = (float)line.v2->fX();
+				float y2 = (float)line.v2->fY();
 
 				int nodeIndex = path[0];
 				nodes[nodeIndex].aabb_left = MIN(x1, x2);
@@ -112,7 +153,7 @@ bool LevelAABBTree::Update()
 					cur.aabb_bottom = MAX(left.aabb_bottom, right.aabb_bottom);
 				}
 
-				lines[i] = treeline;
+				treelines[i] = treeline;
 				modified = true;
 			}
 		}
@@ -124,8 +165,8 @@ TArray<int> LevelAABBTree::FindNodePath(unsigned int line, unsigned int node)
 {
 	const AABBTreeNode &n = nodes[node];
 
-	if (n.aabb_left > lines[line].x || n.aabb_right < lines[line].x ||
-		n.aabb_top > lines[line].y || n.aabb_bottom < lines[line].y)
+	if (n.aabb_left > treelines[line].x || n.aabb_right < treelines[line].x ||
+		n.aabb_top > treelines[line].y || n.aabb_bottom < treelines[line].y)
 	{
 		return {};
 	}
@@ -140,7 +181,7 @@ TArray<int> LevelAABBTree::FindNodePath(unsigned int line, unsigned int node)
 		if (path.Size())
 			path.Push(node);
 	}
-	else if (n.line_index == line)
+	else if (n.line_index == (int)line)
 	{
 		path.Push(node);
 	}
@@ -160,7 +201,7 @@ double LevelAABBTree::RayTest(const DVector3 &ray_start, const DVector3 &ray_end
 	double hit_fraction = 1.0;
 
 	// Walk the tree nodes
-	int stack[16];
+	int stack[32];
 	int stack_pos = 1;
 	stack[0] = nodes.Size() - 1; // root node is the last node in the list
 	while (stack_pos > 0)
@@ -178,7 +219,7 @@ double LevelAABBTree::RayTest(const DVector3 &ray_start, const DVector3 &ray_end
 			hit_fraction = MIN(IntersectRayLine(ray_start, ray_end, nodes[node_index].line_index, raydelta, rayd, raydist2), hit_fraction);
 			stack_pos--;
 		}
-		else if (stack_pos == 16)
+		else if (stack_pos == 32)
 		{
 			stack_pos--; // stack overflow - tree is too deep!
 		}
@@ -234,7 +275,7 @@ double LevelAABBTree::IntersectRayLine(const DVector2 &ray_start, const DVector2
 	// This algorithm is homemade - I would not be surprised if there's a much faster method out there.
 
 	const double epsilon = 0.0000001;
-	const AABBTreeLine &line = lines[line_index];
+	const AABBTreeLine &line = treelines[line_index];
 
 	DVector2 raynormal = DVector2(raydelta.Y, -raydelta.X);
 
@@ -264,15 +305,16 @@ int LevelAABBTree::GenerateTreeNode(int *lines, int num_lines, const FVector2 *c
 	// Find bounding box and median of the lines
 	FVector2 median = FVector2(0.0f, 0.0f);
 	FVector2 aabb_min, aabb_max;
-	aabb_min.X = (float)level.lines[lines[0]].v1->fX();
-	aabb_min.Y = (float)level.lines[lines[0]].v1->fY();
+	auto &maplines = Level->lines;
+	aabb_min.X = (float)maplines[mapLines[lines[0]]].v1->fX();
+	aabb_min.Y = (float)maplines[mapLines[lines[0]]].v1->fY();
 	aabb_max = aabb_min;
 	for (int i = 0; i < num_lines; i++)
 	{
-		float x1 = (float)level.lines[lines[i]].v1->fX();
-		float y1 = (float)level.lines[lines[i]].v1->fY();
-		float x2 = (float)level.lines[lines[i]].v2->fX();
-		float y2 = (float)level.lines[lines[i]].v2->fY();
+		float x1 = (float)maplines[mapLines[lines[i]]].v1->fX();
+		float y1 = (float)maplines[mapLines[lines[i]]].v1->fY();
+		float x2 = (float)maplines[mapLines[lines[i]]].v2->fX();
+		float y2 = (float)maplines[mapLines[lines[i]]].v2->fY();
 
 		aabb_min.X = MIN(aabb_min.X, x1);
 		aabb_min.X = MIN(aabb_min.X, x2);
@@ -283,7 +325,7 @@ int LevelAABBTree::GenerateTreeNode(int *lines, int num_lines, const FVector2 *c
 		aabb_max.Y = MAX(aabb_max.Y, y1);
 		aabb_max.Y = MAX(aabb_max.Y, y2);
 
-		median += centroids[lines[i]];
+		median += centroids[mapLines[lines[i]]];
 	}
 	median /= (float)num_lines;
 
@@ -319,7 +361,7 @@ int LevelAABBTree::GenerateTreeNode(int *lines, int num_lines, const FVector2 *c
 		{
 			int line_index = lines[i];
 
-			float side = FVector3(centroids[lines[i]], 1.0f) | plane;
+			float side = FVector3(centroids[mapLines[lines[i]]], 1.0f) | plane;
 			if (side >= 0.0f)
 			{
 				work_buffer[left_count] = line_index;

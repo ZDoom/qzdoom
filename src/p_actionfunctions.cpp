@@ -570,7 +570,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RearrangePointers)
 		if (!(PTROP_UNSAFETARGET & flags)) VerifyTargetChain(self);
 		break;
 	case AAPTR_NULL:
-		self->target = NULL;
+		self->target = nullptr;
 		// THIS IS NOT "A_ClearTarget", so no other targeting info is removed
 		break;
 	}
@@ -587,7 +587,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RearrangePointers)
 		if (!(PTROP_UNSAFEMASTER & flags)) VerifyMasterChain(self);
 		break;
 	case AAPTR_NULL:
-		self->master = NULL;
+		self->master = nullptr;
 		break;
 	}
 
@@ -600,7 +600,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RearrangePointers)
 		self->tracer = getmaster;
 		break; // no verification deemed necessary; the engine never follows a tracer chain(?)
 	case AAPTR_NULL:
-		self->tracer = NULL;
+		self->tracer = nullptr;
 		break;
 	}
 	return 0;
@@ -771,7 +771,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SeekerMissile)
 	{
 		if (flags & SMF_LOOK)
 		{ // This monster is no longer seekable, so let us look for another one next time.
-			self->tracer = NULL;
+			self->tracer = nullptr;
 		}
 	}
 	return 0;
@@ -972,13 +972,26 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnProjectile)
 
 				if ( (CMF_ABSOLUTEPITCH|CMF_OFFSETPITCH) & flags)
 				{
-					if (CMF_OFFSETPITCH & flags)
+					if (!(flags & CMF_BADPITCH))
 					{
-						Pitch += missile->Vel.Pitch();
+						if (CMF_OFFSETPITCH & flags)
+						{
+							Pitch += missile->Vel.Pitch();
+						}
+						missilespeed = fabs(Pitch.Cos() * missile->Speed);
+						missile->Vel.Z = -Pitch.Sin() * missile->Speed;
 					}
-					missilespeed = fabs(Pitch.Cos() * missile->Speed);
-					missile->Vel.Z = Pitch.Sin() * missile->Speed;
-					if (!(flags & CMF_BADPITCH)) missile->Vel.Z *= -1;
+					else
+					{
+						// Replicate the bogus calculation from A_CustomMissile in its entirety.
+						// This tried to do the right thing but in the process effectively inverted the base pitch.
+						if (CMF_OFFSETPITCH & flags)
+						{
+							Pitch -= missile->Vel.Pitch();
+						}
+						missilespeed = fabs(Pitch.Cos() * missile->Speed);
+						missile->Vel.Z = Pitch.Sin() * missile->Speed;
+					}
 				}
 				else
 				{
@@ -1935,34 +1948,6 @@ DEFINE_ACTION_FUNCTION(AActor, A_Burst)
 	return 0;
 }
 
-//===========================================================================
-//
-// A_Stop
-// resets all velocity of the actor to 0
-//
-//===========================================================================
-DEFINE_ACTION_FUNCTION(AActor, A_Stop)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	self->Vel.Zero();
-	if (self->player && self->player->mo == self && !(self->player->cheats & CF_PREDICTING))
-	{
-		self->player->mo->PlayIdle();
-		self->player->Vel.Zero();
-	}
-	return 0;
-}
-
-static void CheckStopped(AActor *self)
-{
-	if (self->player != NULL &&
-		self->player->mo == self &&
-		!(self->player->cheats & CF_PREDICTING) && !self->Vel.isZero())
-	{
-		self->player->mo->PlayIdle();
-		self->player->Vel.Zero();
-	}
-}
 
 //===========================================================================
 //
@@ -2009,17 +1994,17 @@ DEFINE_ACTION_FUNCTION(AActor, A_Respawn)
 		//      ...Actually it's better off an option, so you have better control over monster behavior.
 		if (!(flags & RSF_KEEPTARGET))
 		{
-			self->target = NULL;
-			self->LastHeard = NULL;
-			self->lastenemy = NULL;
+			self->target = nullptr;
+			self->LastHeard = nullptr;
+			self->lastenemy = nullptr;
 		}
 		else
 		{
 			// Don't attack yourself (Re: "Marine targets itself after suicide")
 			if (self->target == self)
-				self->target = NULL;
+				self->target = nullptr;
 			if (self->lastenemy == self)
-				self->lastenemy = NULL;
+				self->lastenemy = nullptr;
 		}
 
 		self->flags  = (defs->flags & ~MF_FRIENDLY) | (self->flags & MF_FRIENDLY);
@@ -2246,15 +2231,7 @@ DEFINE_ACTION_FUNCTION(AActor, CheckLOF)
 		{ // default to hitscan origin
 
 			// Synced with hitscan: self->Height is strangely NON-conscientious about getting the right actor for player
-			pos.Z += self->Height *0.5;
-			if (self->player != NULL)
-			{
-				pos.Z += self->player->mo->AttackZOffset * self->player->crouchfactor;
-			}
-			else
-			{
-				pos.Z += 8;
-			}
+			pos.Z += self->Height *0.5 + self->AttackOffset();
 		}
 
 		if (target)
@@ -2883,89 +2860,6 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetRoll)
 
 //===========================================================================
 //
-// A_ScaleVelocity
-//
-// Scale actor's velocity.
-//
-//===========================================================================
-
-DEFINE_ACTION_FUNCTION(AActor, A_ScaleVelocity)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_FLOAT(scale);
-	PARAM_INT(ptr);
-
-	AActor *ref = COPY_AAPTR(self, ptr);
-
-	if (ref == NULL)
-	{
-		return 0;
-	}
-
-	bool was_moving = !ref->Vel.isZero();
-
-	ref->Vel *= scale;
-
-	// If the actor was previously moving but now is not, and is a player,
-	// update its player variables. (See A_Stop.)
-	if (was_moving)
-	{
-		CheckStopped(ref);
-	}
-	return 0;
-}
-
-//===========================================================================
-//
-// A_ChangeVelocity
-//
-//===========================================================================
-
-DEFINE_ACTION_FUNCTION(AActor, A_ChangeVelocity)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_FLOAT	(x)		
-	PARAM_FLOAT	(y)		
-	PARAM_FLOAT	(z)		
-	PARAM_INT	(flags)	
-	PARAM_INT	(ptr)	
-
-	AActor *ref = COPY_AAPTR(self, ptr);
-
-	if (ref == NULL)
-	{
-		return 0;
-	}
-
-	INTBOOL was_moving = !ref->Vel.isZero();
-
-	DVector3 vel(x, y, z);
-	double sina = ref->Angles.Yaw.Sin();
-	double cosa = ref->Angles.Yaw.Cos();
-
-	if (flags & 1)	// relative axes - make x, y relative to actor's current angle
-	{
-		vel.X = x*cosa - y*sina;
-		vel.Y = x*sina + y*cosa;
-	}
-	if (flags & 2)	// discard old velocity - replace old velocity with new velocity
-	{
-		ref->Vel = vel;
-	}
-	else	// add new velocity to old velocity
-	{
-		ref->Vel += vel;
-	}
-
-	if (was_moving)
-	{
-		CheckStopped(ref);
-	}
-	return 0;
-}
-
-//===========================================================================
-//
 // A_SetUserVar
 //
 //===========================================================================
@@ -3100,6 +2994,8 @@ enum T_Flags
 	TF_SENSITIVEZ =		0x00000800, // Fail if the actor wouldn't fit in the position (for Z).
 };
 
+DSpotState *GetSpotState(FLevelLocals *self, int create);
+
 DEFINE_ACTION_FUNCTION(AActor, A_Teleport)
 {
 	PARAM_ACTION_PROLOGUE(AActor);
@@ -3156,7 +3052,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Teleport)
 		}
 	}
 
-	DSpotState *state = DSpotState::GetSpotState();
+	DSpotState *state = GetSpotState(&level, false);
 	if (state == NULL)
 	{
 		return numret;
@@ -4983,7 +4879,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetSize)
 	}
 	if (self->player && self->player->mo == self)
 	{
-		self->player->mo->FullHeight = newheight;
+		self->player->mo->FloatVar(NAME_FullHeight) = newheight;
 	}
 
 	ACTION_RETURN_BOOL(true);

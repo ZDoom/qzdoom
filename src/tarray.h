@@ -586,8 +586,7 @@ public:
 };
 
 // This is only used for exposing the sector's Lines array to ZScript.
-// This also must be trivial so that sector_t remains trivial.
-// For other uses TArrayView should be preferred.
+// Unlike TArrayView, its members are public as needed by the map loader.
 
 template <class T>
 class TStaticPointedArray
@@ -940,6 +939,36 @@ public:
 			n = NewKey(key);
 			::new(&n->Pair.Value) VT(value);
 		}
+		return n->Pair.Value;
+	}
+
+	VT &Insert(const KT key, VT &&value)
+	{
+		Node *n = FindKey(key);
+		if (n != NULL)
+		{
+			n->Pair.Value = value;
+		}
+		else
+		{
+			n = NewKey(key);
+			::new(&n->Pair.Value) VT(value);
+		}
+		return n->Pair.Value;
+	}
+
+	VT &InsertNew(const KT key)
+	{
+		Node *n = FindKey(key);
+		if (n != NULL)
+		{
+			n->Pair.Value.~VT();
+		}
+		else
+		{
+			n = NewKey(key);
+		}
+		::new(&n->Pair.Value) VT;
 		return n->Pair.Value;
 	}
 
@@ -1460,17 +1489,9 @@ public:
 		Count = count;
 		Array = data;
 	}
-	TArrayView(const TArrayView<T> &other)
-	{
-		Count = other.Count;
-		Array = other.Array;
-	}
-	TArrayView<T> &operator= (const TArrayView<T> &other)
-	{
-		Count = other.Count;
-		Array = other.Array;
-		return *this;
-	}
+	TArrayView(const TArrayView<T> &other) = default;
+	TArrayView<T> &operator= (const TArrayView<T> &other) = default;
+
 	// Check equality of two arrays
 	bool operator==(const TArrayView<T> &other) const
 	{

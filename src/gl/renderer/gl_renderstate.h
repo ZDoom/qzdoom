@@ -39,7 +39,6 @@ namespace OpenGLRenderer
 
 class FShader;
 struct GLSectorPlane;
-extern TArray<VSMatrix> gl_MatrixStack;
 
 enum EPassType
 {
@@ -51,6 +50,8 @@ enum EPassType
 
 class FGLRenderState : public FRenderState
 {
+	uint64_t firstFrame = 0;
+
 	uint8_t mLastDepthClamp : 1;
 
 	float mGlossiness, mSpecularLevel;
@@ -103,6 +104,7 @@ public:
 	void Apply();
 	void ApplyBuffers();
 	void ApplyBlendMode();
+	void CheckTimer(uint64_t ShaderStartTime);
 
 	void ResetVertexBuffer()
 	{

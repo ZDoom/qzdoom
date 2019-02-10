@@ -374,6 +374,8 @@ struct GameInfoStruct native
 	native int defaultdropstyle;
 	native TextureID healthpic;
 	native TextureID berserkpic;
+	native double normforwardmove[2];
+	native double normsidemove[2];
 }
 
 class Object native
@@ -381,6 +383,7 @@ class Object native
 	native bool bDestroyed;
 
 	// These must be defined in some class, so that the compiler can find them. Object is just fine, as long as they are private to external code.
+	private native static Object BuiltinNew(Class<Object> cls, int outerclass, int compatibility);
 	private native static int BuiltinRandom(voidptr rng, int min, int max);
 	private native static double BuiltinFRandom(voidptr rng, double min, double max);
 	private native static int BuiltinRandom2(voidptr rng, int mask);
@@ -675,7 +678,7 @@ struct LevelLocals native
 	native String GetUDMFString(int type, int index, Name key);
 	native int GetUDMFInt(int type, int index, Name key);
 	native double GetUDMFFloat(int type, int index, Name key);
-	native bool ExecuteSpecial(int special, Actor activator, line linedef, bool lineside, int arg1 = 0, int arg2 = 0, int arg3 = 0, int arg4 = 0, int arg5 = 0);
+	native int ExecuteSpecial(int special, Actor activator, line linedef, bool lineside, int arg1 = 0, int arg2 = 0, int arg3 = 0, int arg4 = 0, int arg5 = 0);
 	native static void GiveSecret(Actor activator, bool printmsg = true, bool playsound = true);
 	native static void StartSlideshow(Name whichone = 'none');
 	native static void WorldDone();
@@ -687,6 +690,7 @@ struct LevelLocals native
 	native bool IsCrouchingAllowed() const;
 	native bool IsFreelookAllowed() const;
 	native void StartIntermission(Name type, int state) const;
+	native SpotState GetSpotState(bool create = true);
 
 	native static clearscope bool IsPointInMap(vector3 p);
 
@@ -724,6 +728,7 @@ struct DehInfo native
 	native readonly int NoAutofreeze;
 	native readonly int BFGCells;
 	native readonly int BlueAC;
+	native readonly int MaxHealth;
 }
 
 struct State native

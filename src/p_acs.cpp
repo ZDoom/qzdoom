@@ -677,6 +677,8 @@ public:
 
 	void Serialize(FSerializer &arc);
 	int RunScript();
+	PClass *GetClassForIndex(int index) const;
+
 
 	inline void SetState(EScriptState newstate) { state = newstate; }
 	inline EScriptState GetState() { return state; }
@@ -687,13 +689,9 @@ public:
 	{
 		GlobalACSStrings.MarkStringArray(&Localvars[0], Localvars.Size());
 	}
-	void LockLocalVarStrings() const
+	void LockLocalVarStrings(int levelnum) const
 	{
-		GlobalACSStrings.LockStringArray(&Localvars[0], Localvars.Size());
-	}
-	void UnlockLocalVarStrings() const
-	{
-		GlobalACSStrings.UnlockStringArray(&Localvars[0], Localvars.Size());
+		GlobalACSStrings.LockStringArray(levelnum, &Localvars[0], Localvars.Size());
 	}
 
 protected:
@@ -713,6 +711,25 @@ protected:
 	bool			HandleAspect;
 	FBehavior	    *activeBehavior;
 	int				InModuleScriptNumber;
+
+	TArray<FString> ACS_StringBuilderStack;
+
+	inline void STRINGBUILDER_START(FString &Builder)
+	{
+		if (Builder.IsNotEmpty() || ACS_StringBuilderStack.Size())
+		{
+			ACS_StringBuilderStack.Push(Builder);
+			Builder = "";
+		}
+	}
+
+	inline void STRINGBUILDER_FINISH(FString &Builder)
+	{
+		if (!ACS_StringBuilderStack.Pop(Builder))
+		{
+			Builder = "";
+		}
+	}
 
 	void Link();
 	void Unlink();
@@ -750,33 +767,6 @@ private:
 	friend class DACSThinker;
 };
 
-class DACSThinker : public DThinker
-{
-	DECLARE_CLASS(DACSThinker, DThinker)
-	HAS_OBJECT_POINTERS
-public:
-	DACSThinker();
-	~DACSThinker();
-
-	void Serialize(FSerializer &arc);
-	void Tick();
-
-	typedef TMap<int, DLevelScript *> ScriptMap;
-	ScriptMap RunningScripts;	// Array of all synchronous scripts
-	static TObjPtr<DACSThinker*> ActiveThinker;
-
-	void DumpScriptStatus();
-	void StopScriptsFor(AActor *actor);
-
-private:
-	DLevelScript *LastScript;
-	DLevelScript *Scripts;				// List of all running scripts
-
-	friend class DLevelScript;
-	friend class FBehavior;
-};
-
-
 static DLevelScript *P_GetScriptGoing (AActor *who, line_t *where, int num, const ScriptPtr *code, FBehavior *module,
 	const int *args, int argcount, int flags);
 
@@ -786,12 +776,6 @@ struct FBehavior::ArrayInfo
 	uint32_t ArraySize;
 	int32_t *Elements;
 };
-
-TArray<FBehavior *> FBehavior::StaticModules;
-TArray<FString> ACS_StringBuilderStack;
-
-#define STRINGBUILDER_START(Builder) if (Builder.IsNotEmpty() || ACS_StringBuilderStack.Size()) { ACS_StringBuilderStack.Push(Builder); Builder = ""; }
-#define STRINGBUILDER_FINISH(Builder) if (!ACS_StringBuilderStack.Pop(Builder)) { Builder = ""; }
 
 //============================================================================
 //
@@ -916,17 +900,17 @@ FACSStack::~FACSStack()
 
 ACSStringPool GlobalACSStrings;
 
-void ACSStringPool::PoolEntry::Lock()
+void ACSStringPool::PoolEntry::Lock(int levelnum)
 {
-	if (Locks.Find(level.levelnum) == Locks.Size())
+	if (Locks.Find(levelnum) == Locks.Size())
 	{
-		Locks.Push(level.levelnum);
+		Locks.Push(levelnum);
 	}
 }
 
-void ACSStringPool::PoolEntry::Unlock()
+void ACSStringPool::PoolEntry::Unlock(int levelnum)
 {
-	auto ndx = Locks.Find(level.levelnum);
+	auto ndx = Locks.Find(levelnum);
 	if (ndx < Locks.Size())
 	{
 		Locks.Delete(ndx);
@@ -1015,28 +999,12 @@ const char *ACSStringPool::GetString(int strnum)
 //
 //============================================================================
 
-void ACSStringPool::LockString(int strnum)
+void ACSStringPool::LockString(int levelnum, int strnum)
 {
 	assert((strnum & LIBRARYID_MASK) == STRPOOL_LIBRARYID_OR);
 	strnum &= ~LIBRARYID_MASK;
 	assert((unsigned)strnum < Pool.Size());
-	Pool[strnum].Lock();
-}
-
-//============================================================================
-//
-// ACSStringPool :: UnlockString
-//
-// When equally mated with LockString, allows this string to be purged.
-//
-//============================================================================
-
-void ACSStringPool::UnlockString(int strnum)
-{
-	assert((strnum & LIBRARYID_MASK) == STRPOOL_LIBRARYID_OR);
-	strnum &= ~LIBRARYID_MASK;
-	assert((unsigned)strnum < Pool.Size());
-	Pool[strnum].Unlock();
+	Pool[strnum].Lock(levelnum);
 }
 
 //============================================================================
@@ -1068,7 +1036,7 @@ void ACSStringPool::MarkString(int strnum)
 //
 //============================================================================
 
-void ACSStringPool::LockStringArray(const int *strnum, unsigned int count)
+void ACSStringPool::LockStringArray(int levelnum, const int *strnum, unsigned int count)
 {
 	for (unsigned int i = 0; i < count; ++i)
 	{
@@ -1078,31 +1046,7 @@ void ACSStringPool::LockStringArray(const int *strnum, unsigned int count)
 			num &= ~LIBRARYID_MASK;
 			if ((unsigned)num < Pool.Size())
 			{
-				Pool[num].Lock();
-			}
-		}
-	}
-}
-
-//============================================================================
-//
-// ACSStringPool :: UnlockStringArray
-//
-// Reverse of LockStringArray.
-//
-//============================================================================
-
-void ACSStringPool::UnlockStringArray(const int *strnum, unsigned int count)
-{
-	for (unsigned int i = 0; i < count; ++i)
-	{
-		int num = strnum[i];
-		if ((num & LIBRARYID_MASK) == STRPOOL_LIBRARYID_OR)
-		{
-			num &= ~LIBRARYID_MASK;
-			if ((unsigned)num < Pool.Size())
-			{
-				Pool[num].Unlock();
+				Pool[num].Lock(levelnum);
 			}
 		}
 	}
@@ -1491,7 +1435,7 @@ void P_CollectACSGlobalStrings()
 			GlobalACSStrings.MarkStringArray(&stack->buffer[0], sp);
 		}
 	}
-	FBehavior::StaticMarkLevelVarStrings();
+	level.Behaviors.MarkLevelVarStrings();
 	P_MarkWorldVarStrings();
 	P_MarkGlobalVarStrings();
 	GlobalACSStrings.PurgeStrings();
@@ -1816,10 +1760,7 @@ int CheckInventory (AActor *activator, const char *type, bool max)
 	{
 		if (max)
 		{
-			if (activator->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
-				return static_cast<APlayerPawn *>(activator)->GetMaxHealth();
-			else
-				return activator->SpawnHealth();
+			return activator->GetMaxHealth();
 		}
 		return activator->health;
 	}
@@ -1969,7 +1910,7 @@ void DPlaneWatcher::Tick ()
 
 // Load user-specified default modules. This must be called after the level's
 // own behavior is loaded (if it has one).
-void FBehavior::StaticLoadDefaultModules ()
+void FBehaviorContainer::LoadDefaultModules ()
 {
 	// Scan each LOADACS lump and load the specified modules in order
 	int lump, lastlump = 0;
@@ -1982,7 +1923,7 @@ void FBehavior::StaticLoadDefaultModules ()
 			int acslump = Wads.CheckNumForName (sc.String, ns_acslibrary);
 			if (acslump >= 0)
 			{
-				StaticLoadModule (acslump);
+				LoadModule (acslump);
 			}
 			else
 			{
@@ -1992,7 +1933,7 @@ void FBehavior::StaticLoadDefaultModules ()
 	}
 }
 
-FBehavior *FBehavior::StaticLoadModule (int lumpnum, FileReader *fr, int len)
+FBehavior *FBehaviorContainer::LoadModule (int lumpnum, FileReader *fr, int len)
 {
 	if (lumpnum == -1 && fr == NULL) return NULL;
 
@@ -2017,7 +1958,7 @@ FBehavior *FBehavior::StaticLoadModule (int lumpnum, FileReader *fr, int len)
 	}
 }
 
-bool FBehavior::StaticCheckAllGood ()
+bool FBehaviorContainer::CheckAllGood ()
 {
 	for (unsigned int i = 0; i < StaticModules.Size(); ++i)
 	{
@@ -2029,7 +1970,7 @@ bool FBehavior::StaticCheckAllGood ()
 	return true;
 }
 
-void FBehavior::StaticUnloadModules ()
+void FBehaviorContainer::UnloadModules ()
 {
 	for (unsigned int i = StaticModules.Size(); i-- > 0; )
 	{
@@ -2038,7 +1979,7 @@ void FBehavior::StaticUnloadModules ()
 	StaticModules.Clear ();
 }
 
-FBehavior *FBehavior::StaticGetModule (int lib)
+FBehavior *FBehaviorContainer::GetModule (int lib)
 {
 	if ((size_t)lib >= StaticModules.Size())
 	{
@@ -2047,7 +1988,7 @@ FBehavior *FBehavior::StaticGetModule (int lib)
 	return StaticModules[lib];
 }
 
-void FBehavior::StaticMarkLevelVarStrings()
+void FBehaviorContainer::MarkLevelVarStrings()
 {
 	// Mark map variables.
 	for (uint32_t modnum = 0; modnum < StaticModules.Size(); ++modnum)
@@ -2055,35 +1996,35 @@ void FBehavior::StaticMarkLevelVarStrings()
 		StaticModules[modnum]->MarkMapVarStrings();
 	}
 	// Mark running scripts' local variables.
-	if (DACSThinker::ActiveThinker != NULL)
+	if (level.ACSThinker != nullptr)
 	{
-		for (DLevelScript *script = DACSThinker::ActiveThinker->Scripts; script != NULL; script = script->GetNext())
+		for (DLevelScript *script = level.ACSThinker->Scripts; script != NULL; script = script->GetNext())
 		{
 			script->MarkLocalVarStrings();
 		}
 	}
 }
 
-void FBehavior::StaticLockLevelVarStrings()
+void FBehaviorContainer::LockLevelVarStrings(int levelnum)
 {
 	// Lock map variables.
 	for (uint32_t modnum = 0; modnum < StaticModules.Size(); ++modnum)
 	{
-		StaticModules[modnum]->LockMapVarStrings();
+		StaticModules[modnum]->LockMapVarStrings(levelnum);
 	}
 	// Lock running scripts' local variables.
-	if (DACSThinker::ActiveThinker != NULL)
+	if (level.ACSThinker != nullptr)
 	{
-		for (DLevelScript *script = DACSThinker::ActiveThinker->Scripts; script != NULL; script = script->GetNext())
+		for (DLevelScript *script = level.ACSThinker->Scripts; script != NULL; script = script->GetNext())
 		{
-			script->LockLocalVarStrings();
+			script->LockLocalVarStrings(levelnum);
 		}
 	}
 }
 
-void FBehavior::StaticUnlockLevelVarStrings()
+void FBehaviorContainer::UnlockLevelVarStrings(int levelnum)
 {
-	GlobalACSStrings.UnlockForLevel(level.levelnum);
+	GlobalACSStrings.UnlockForLevel(levelnum);
 }
 
 void FBehavior::MarkMapVarStrings() const
@@ -2095,25 +2036,16 @@ void FBehavior::MarkMapVarStrings() const
 	}
 }
 
-void FBehavior::LockMapVarStrings() const
+void FBehavior::LockMapVarStrings(int levelnum) const
 {
-	GlobalACSStrings.LockStringArray(MapVarStore, NUM_MAPVARS);
+	GlobalACSStrings.LockStringArray(levelnum, MapVarStore, NUM_MAPVARS);
 	for (int i = 0; i < NumArrays; ++i)
 	{
-		GlobalACSStrings.LockStringArray(ArrayStore[i].Elements, ArrayStore[i].ArraySize);
+		GlobalACSStrings.LockStringArray(levelnum, ArrayStore[i].Elements, ArrayStore[i].ArraySize);
 	}
 }
 
-void FBehavior::UnlockMapVarStrings() const
-{
-	GlobalACSStrings.UnlockStringArray(MapVarStore, NUM_MAPVARS);
-	for (int i = 0; i < NumArrays; ++i)
-	{
-		GlobalACSStrings.UnlockStringArray(ArrayStore[i].Elements, ArrayStore[i].ArraySize);
-	}
-}
-
-void FBehavior::StaticSerializeModuleStates (FSerializer &arc)
+void FBehaviorContainer::SerializeModuleStates (FSerializer &arc)
 {
 	auto modnum = StaticModules.Size();
 
@@ -2330,7 +2262,7 @@ bool FBehavior::Init(int lumpnum, FileReader * fr, int len)
 		delete[] object;
 		return false;
 	}
-    LibraryID = StaticModules.Push (this) << LIBRARYID_SHIFT;
+    LibraryID = level.Behaviors.StaticModules.Push (this) << LIBRARYID_SHIFT;
 
 	if (fr == NULL)
 	{
@@ -2619,7 +2551,7 @@ bool FBehavior::Init(int lumpnum, FileReader * fr, int len)
 					}
 					else
 					{
-						module = StaticLoadModule (lump);
+						module = level.Behaviors.LoadModule (lump);
 					}
 					if (module != NULL) Imports.Push (module);
 					do {;} while (parse[++i]);
@@ -3115,7 +3047,7 @@ const ScriptPtr *FBehavior::FindScript (int script) const
 	return ptr;
 }
 
-const ScriptPtr *FBehavior::StaticFindScript (int script, FBehavior *&module)
+const ScriptPtr *FBehaviorContainer::FindScript (int script, FBehavior *&module)
 {
 	for (uint32_t i = 0; i < StaticModules.Size(); ++i)
 	{
@@ -3251,7 +3183,7 @@ uint8_t *FBehavior::NextChunk (uint8_t *chunk) const
 	return NULL;
 }
 
-const char *FBehavior::StaticLookupString (uint32_t index)
+const char *FBehaviorContainer::LookupString (uint32_t index)
 {
 	uint32_t lib = index >> LIBRARYID_SHIFT;
 
@@ -3290,7 +3222,7 @@ const char *FBehavior::LookupString (uint32_t index) const
 	}
 }
 
-void FBehavior::StaticStartTypedScripts (uint16_t type, AActor *activator, bool always, int arg1, bool runNow)
+void FBehaviorContainer::StartTypedScripts (uint16_t type, AActor *activator, bool always, int arg1, bool runNow)
 {
 	static const char *const TypeNames[] =
 	{
@@ -3346,9 +3278,9 @@ void FBehavior::StartTypedScripts (uint16_t type, AActor *activator, bool always
 // when a player disconnects. Should this be used in general whenever an
 // actor is destroyed?
 
-void FBehavior::StaticStopMyScripts (AActor *actor)
+void FBehaviorContainer::StopMyScripts (AActor *actor)
 {
-	DACSThinker *controller = DACSThinker::ActiveThinker;
+	DACSThinker *controller = level.ACSThinker;
 
 	if (controller != NULL)
 	{
@@ -3366,28 +3298,17 @@ IMPLEMENT_POINTERS_START(DACSThinker)
 	IMPLEMENT_POINTER(Scripts)
 IMPLEMENT_POINTERS_END
 
-TObjPtr<DACSThinker*> DACSThinker::ActiveThinker;
-
 DACSThinker::DACSThinker ()
 : DThinker(STAT_SCRIPTS)
 {
-	if (ActiveThinker)
-	{
-		I_Error ("Only one ACSThinker is allowed to exist at a time.\nCheck your code.");
-	}
-	else
-	{
-		ActiveThinker = this;
-		Scripts = NULL;
-		LastScript = NULL;
-		RunningScripts.Clear();
-	}
+	Scripts = nullptr;
+	LastScript = nullptr;
+	RunningScripts.Clear();
 }
 
 DACSThinker::~DACSThinker ()
 {
-	Scripts = NULL;
-	ActiveThinker = NULL;
+	Scripts = nullptr;
 }
 
 //==========================================================================
@@ -3471,12 +3392,6 @@ void DACSThinker::Tick ()
 
 //	GlobalACSStrings.Clear();
 
-	if (ACS_StringBuilderStack.Size())
-	{
-		int size = ACS_StringBuilderStack.Size();
-		ACS_StringBuilderStack.Clear();
-		I_Error("Error: %d garbage entries on ACS string builder stack.", size);
-	}
 	ACSTime.Unclock();
 }
 
@@ -3545,7 +3460,7 @@ void DLevelScript::Serialize(FSerializer &arc)
 
 	if (arc.isReading())
 	{
-		activeBehavior = FBehavior::StaticGetModule(lib);
+		activeBehavior = level.Behaviors.GetModule(lib);
 
 		if (nullptr == activeBehavior)
 		{
@@ -3558,9 +3473,9 @@ void DLevelScript::Serialize(FSerializer &arc)
 
 DLevelScript::DLevelScript ()
 {
-	next = prev = NULL;
-	if (DACSThinker::ActiveThinker == NULL)
-		Create<DACSThinker>();
+	next = prev = nullptr;
+	if (level.ACSThinker == nullptr)
+		level.ACSThinker =  Create<DACSThinker>();
 	activefont = SmallFont;
 }
 
@@ -3570,7 +3485,7 @@ DLevelScript::~DLevelScript ()
 
 void DLevelScript::Unlink ()
 {
-	DACSThinker *controller = DACSThinker::ActiveThinker;
+	DACSThinker *controller = level.ACSThinker;
 
 	if (controller->LastScript == this)
 	{
@@ -3596,7 +3511,7 @@ void DLevelScript::Unlink ()
 
 void DLevelScript::Link ()
 {
-	DACSThinker *controller = DACSThinker::ActiveThinker;
+	DACSThinker *controller = level.ACSThinker;
 
 	next = controller->Scripts;
 	GC::WriteBarrier(this, next);
@@ -3616,7 +3531,7 @@ void DLevelScript::Link ()
 
 void DLevelScript::PutLast ()
 {
-	DACSThinker *controller = DACSThinker::ActiveThinker;
+	DACSThinker *controller = level.ACSThinker;
 
 	if (controller->LastScript == this)
 		return;
@@ -3638,7 +3553,7 @@ void DLevelScript::PutLast ()
 
 void DLevelScript::PutFirst ()
 {
-	DACSThinker *controller = DACSThinker::ActiveThinker;
+	DACSThinker *controller = level.ACSThinker;
 
 	if (controller->Scripts == this)
 		return;
@@ -3672,7 +3587,7 @@ int DLevelScript::ThingCount (int type, int stringid, int tid, int tag)
 	}
 	else if (stringid >= 0)
 	{
-		const char *type_name = FBehavior::StaticLookupString (stringid);
+		const char *type_name = level.Behaviors.LookupString (stringid);
 		if (type_name == NULL)
 			return 0;
 
@@ -3742,7 +3657,7 @@ void DLevelScript::ChangeFlat (int tag, int name, bool floorOrCeiling)
 {
 	FTextureID flat;
 	int secnum = -1;
-	const char *flatname = FBehavior::StaticLookupString (name);
+	const char *flatname = level.Behaviors.LookupString (name);
 
 	if (flatname == NULL)
 		return;
@@ -3772,7 +3687,7 @@ void DLevelScript::SetLineTexture (int lineid, int side, int position, int name)
 {
 	FTextureID texture;
 	int linenum = -1;
-	const char *texname = FBehavior::StaticLookupString (name);
+	const char *texname = level.Behaviors.LookupString (name);
 
 	if (texname == nullptr)
 		return;
@@ -3810,7 +3725,7 @@ void DLevelScript::SetLineTexture (int lineid, int side, int position, int name)
 
 int DLevelScript::DoSpawn (int type, const DVector3 &pos, int tid, DAngle angle, bool force)
 {
-	PClassActor *info = PClass::FindActor(FBehavior::StaticLookupString (type));
+	PClassActor *info = PClass::FindActor(level.Behaviors.LookupString (type));
 	AActor *actor = NULL;
 	int spawncount = 0;
 
@@ -3979,7 +3894,7 @@ showme:
 
 void DLevelScript::DoSetFont (int fontnum)
 {
-	const char *fontname = FBehavior::StaticLookupString (fontnum);
+	const char *fontname = level.Behaviors.LookupString (fontnum);
 	activefont = V_GetFont (fontname);
 	if (activefont == NULL)
 	{
@@ -4002,15 +3917,15 @@ int DoSetMaster (AActor *self, AActor *master)
                 self->flags = (self->flags & ~MF_FRIENDLY) | (master->flags & MF_FRIENDLY);
                 level.total_monsters += self->CountsAsKill();
                 // Don't attack your new master
-                if (self->target == self->master) self->target = NULL;
-                if (self->lastenemy == self->master) self->lastenemy = NULL;
-                if (self->LastHeard == self->master) self->LastHeard = NULL;
+                if (self->target == self->master) self->target = nullptr;
+                if (self->lastenemy == self->master) self->lastenemy = nullptr;
+                if (self->LastHeard == self->master) self->LastHeard = nullptr;
                 return 1;
             }
             else if (master->player)
             {
                 // [KS] Be friendly to this player
-                self->master = NULL;
+                self->master = nullptr;
                 level.total_monsters -= self->CountsAsKill();
                 self->flags|=MF_FRIENDLY;
                 self->SetFriendPlayer(master->player);
@@ -4025,15 +3940,15 @@ int DoSetMaster (AActor *self, AActor *master)
                     }
                 }
                 // And stop attacking him if necessary.
-                if (self->target == master) self->target = NULL;
-                if (self->lastenemy == master) self->lastenemy = NULL;
-                if (self->LastHeard == master) self->LastHeard = NULL;
+                if (self->target == master) self->target = nullptr;
+                if (self->lastenemy == master) self->lastenemy = nullptr;
+                if (self->LastHeard == master) self->LastHeard = nullptr;
                 return 1;
             }
         }
         else
         {
-            self->master = NULL;
+            self->master = nullptr;
             self->FriendPlayer = 0;
             // Go back to whatever friendliness we usually have...
             defs = self->GetDefault();
@@ -4041,9 +3956,9 @@ int DoSetMaster (AActor *self, AActor *master)
             self->flags = (self->flags & ~MF_FRIENDLY) | (defs->flags & MF_FRIENDLY);
             level.total_monsters += self->CountsAsKill();
             // ...And re-side with our friends.
-            if (self->target && !self->IsHostile (self->target)) self->target = NULL;
-            if (self->lastenemy && !self->IsHostile (self->lastenemy)) self->lastenemy = NULL;
-            if (self->LastHeard && !self->IsHostile (self->LastHeard)) self->LastHeard = NULL;
+            if (self->target && !self->IsHostile (self->target)) self->target = nullptr;
+            if (self->lastenemy && !self->IsHostile (self->lastenemy)) self->lastenemy = nullptr;
+            if (self->LastHeard && !self->IsHostile (self->LastHeard)) self->LastHeard = nullptr;
             return 1;
         }
     }
@@ -4233,8 +4148,8 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 		break;
 
 	case APROP_JumpZ:
-		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
-			static_cast<APlayerPawn *>(actor)->JumpZ = ACSToDouble(value);
+		if (actor->IsKindOf(NAME_PlayerPawn))
+			actor->FloatVar(NAME_JumpZ) = ACSToDouble(value);
 		break; 	// [GRB]
 
 	case APROP_ChaseGoal:
@@ -4266,9 +4181,9 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 
 
 	case APROP_SpawnHealth:
-		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+		if (actor->IsKindOf(NAME_PlayerPawn))
 		{
-			static_cast<APlayerPawn *>(actor)->MaxHealth = value;
+			actor->IntVar(NAME_MaxHealth) = value;
 		}
 		break;
 
@@ -4277,27 +4192,27 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 		break;
 
 	case APROP_SeeSound:
-		actor->SeeSound = FBehavior::StaticLookupString(value);
+		actor->SeeSound = level.Behaviors.LookupString(value);
 		break;
 
 	case APROP_AttackSound:
-		actor->AttackSound = FBehavior::StaticLookupString(value);
+		actor->AttackSound = level.Behaviors.LookupString(value);
 		break;
 
 	case APROP_PainSound:
-		actor->PainSound = FBehavior::StaticLookupString(value);
+		actor->PainSound = level.Behaviors.LookupString(value);
 		break;
 
 	case APROP_DeathSound:
-		actor->DeathSound = FBehavior::StaticLookupString(value);
+		actor->DeathSound = level.Behaviors.LookupString(value);
 		break;
 
 	case APROP_ActiveSound:
-		actor->ActiveSound = FBehavior::StaticLookupString(value);
+		actor->ActiveSound = level.Behaviors.LookupString(value);
 		break;
 
 	case APROP_Species:
-		actor->Species = FBehavior::StaticLookupString(value);
+		actor->Species = level.Behaviors.LookupString(value);
 		break;
 
 	case APROP_Score:
@@ -4305,7 +4220,7 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 		break;
 
 	case APROP_NameTag:
-		actor->SetTag(FBehavior::StaticLookupString(value));
+		actor->SetTag(level.Behaviors.LookupString(value));
 		break;
 
 	case APROP_DamageFactor:
@@ -4351,9 +4266,9 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 		break;
 
 	case APROP_ViewHeight:
-		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+		if (actor->IsKindOf(NAME_PlayerPawn))
 		{
-			static_cast<APlayerPawn *>(actor)->ViewHeight = ACSToDouble(value);
+			actor->FloatVar(NAME_ViewHeight) = ACSToDouble(value);
 			if (actor->player != NULL)
 			{
 				actor->player->viewheight = ACSToDouble(value);
@@ -4362,8 +4277,8 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 		break;
 
 	case APROP_AttackZOffset:
-		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
-			static_cast<APlayerPawn *>(actor)->AttackZOffset = ACSToDouble(value);
+		if (actor->IsKindOf(NAME_PlayerPawn))
+			actor->FloatVar(NAME_AttackZOffset) = ACSToDouble(value);
 		break;
 
 	case APROP_StencilColor:
@@ -4383,7 +4298,7 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 		break;
 
 	case APROP_DamageType:
-		actor->DamageType = FBehavior::StaticLookupString(value);
+		actor->DamageType = level.Behaviors.LookupString(value);
 		break;
 
 	default:
@@ -4428,18 +4343,11 @@ int DLevelScript::GetActorProperty (int tid, int property)
 	case APROP_Notarget:	return !!(actor->flags3 & MF3_NOTARGET);
 	case APROP_Notrigger:	return !!(actor->flags6 & MF6_NOTRIGGER);
 	case APROP_Dormant:		return !!(actor->flags2 & MF2_DORMANT);
-	case APROP_SpawnHealth: if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
-							{
-								return static_cast<APlayerPawn *>(actor)->GetMaxHealth();
-							}
-							else
-							{
-								return actor->SpawnHealth();
-							}
+	case APROP_SpawnHealth: return actor->GetMaxHealth();
 
-	case APROP_JumpZ:		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+	case APROP_JumpZ:		if (actor->IsKindOf(NAME_PlayerPawn))
 							{
-								return DoubleToACS(static_cast<APlayerPawn *>(actor)->JumpZ);	// [GRB]
+								return DoubleToACS(actor->FloatVar(NAME_JumpZ));
 							}
 							else
 							{
@@ -4459,18 +4367,19 @@ int DLevelScript::GetActorProperty (int tid, int property)
 	case APROP_Radius:		return DoubleToACS(actor->radius);
 	case APROP_ReactionTime:return actor->reactiontime;
 	case APROP_MeleeRange:	return DoubleToACS(actor->meleerange);
-	case APROP_ViewHeight:	if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+	case APROP_ViewHeight:	if (actor->IsKindOf(NAME_PlayerPawn))
 							{
-								return DoubleToACS(static_cast<APlayerPawn *>(actor)->ViewHeight);
+								return DoubleToACS(actor->player->DefaultViewHeight());
 							}
 							else
 							{
 								return 0;
 							}
 	case APROP_AttackZOffset:
-							if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+							// Note that this is inconsistent with every other place, where the return for monsters is 8, not 0!
+							if (actor->IsKindOf(NAME_PlayerPawn))
 							{
-								return DoubleToACS(static_cast<APlayerPawn *>(actor)->AttackZOffset);
+								return DoubleToACS(actor->FloatVar(NAME_AttackZOffset));
 							}
 							else
 							{
@@ -4564,7 +4473,7 @@ int DLevelScript::CheckActorProperty (int tid, int property, int value)
 		case APROP_DamageType:	string = actor->DamageType; break;
 	}
 	if (string == NULL) string = "";
-	return (!stricmp(string, FBehavior::StaticLookupString(value)));
+	return (!stricmp(string, level.Behaviors.LookupString(value)));
 }
 
 bool DLevelScript::DoCheckActorTexture(int tid, AActor *activator, int string, bool floor)
@@ -4574,7 +4483,7 @@ bool DLevelScript::DoCheckActorTexture(int tid, AActor *activator, int string, b
 	{
 		return 0;
 	}
-	FTextureID tex = TexMan.CheckForTexture(FBehavior::StaticLookupString(string), ETextureType::Flat,
+	FTextureID tex = TexMan.CheckForTexture(level.Behaviors.LookupString(string), ETextureType::Flat,
 			FTextureManager::TEXMAN_Overridable|FTextureManager::TEXMAN_TryAny|FTextureManager::TEXMAN_DontCreate);
 
 	if (!tex.Exists())
@@ -4962,7 +4871,7 @@ static void SetUserVariable(AActor *self, FName varname, int index, int value)
 	{
 		if (type == TypeString)
 		{
-			FString str = FBehavior::StaticLookupString(value);
+			FString str = level.Behaviors.LookupString(value);
 			type->InitializeValue(addr, &str);
 		}
 		else if (type->isFloat())
@@ -5018,7 +4927,7 @@ static void DoSetCVar(FBaseCVar *cvar, int value, bool is_string, bool force=fal
 	}
 	if (is_string)
 	{
-		val.String = FBehavior::StaticLookupString(value);
+		val.String = level.Behaviors.LookupString(value);
 		type = CVAR_String;
 	}
 	else if (cvar->GetRealType() == CVAR_Float)
@@ -5153,7 +5062,7 @@ static void SetActorAngle(AActor *activator, int tid, int angle, bool interpolat
 
 static void SetActorPitch(AActor *activator, int tid, int angle, bool interpolate)
 {
-	DAngle an = ACSToAngle(angle);
+	DAngle an = ACSToAngle(angle).Normalized180();
 	if (tid == 0)
 	{
 		if (activator != NULL)
@@ -5260,8 +5169,8 @@ static int ScriptCall(AActor *activator, unsigned argc, int32_t *args)
 	int retval = 0;
 	if (argc >= 2)
 	{
-		auto clsname = FBehavior::StaticLookupString(args[0]);
-		auto funcname = FBehavior::StaticLookupString(args[1]);
+		auto clsname = level.Behaviors.LookupString(args[0]);
+		auto funcname = level.Behaviors.LookupString(args[1]);
 
 		auto cls = PClass::FindClass(clsname);
 		if (!cls)
@@ -5310,16 +5219,16 @@ static int ScriptCall(AActor *activator, unsigned argc, int32_t *args)
 			}
 			else if (argtype == TypeName)
 			{
-				params.Push(FName(FBehavior::StaticLookupString(args[i])).GetIndex());
+				params.Push(FName(level.Behaviors.LookupString(args[i])).GetIndex());
 			}
 			else if (argtype == TypeString)
 			{
-				strings.Push(FBehavior::StaticLookupString(args[i]));
+				strings.Push(level.Behaviors.LookupString(args[i]));
 				params.Push(&strings.Last());
 			}
 			else if (argtype == TypeSound)
 			{
-				params.Push(int(FSoundID(FBehavior::StaticLookupString(args[i]))));
+				params.Push(int(FSoundID(level.Behaviors.LookupString(args[i]))));
 			}
 			else
 			{
@@ -5385,26 +5294,26 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 	switch(funcIndex)
 	{
 		case ACSF_GetLineUDMFInt:
-			return GetUDMFInt(UDMF_Line, LineFromID(args[0]), FBehavior::StaticLookupString(args[1]));
+			return GetUDMFInt(UDMF_Line, LineFromID(args[0]), level.Behaviors.LookupString(args[1]));
 
 		case ACSF_GetLineUDMFFixed:
-			return DoubleToACS(GetUDMFFloat(UDMF_Line, LineFromID(args[0]), FBehavior::StaticLookupString(args[1])));
+			return DoubleToACS(GetUDMFFloat(UDMF_Line, LineFromID(args[0]), level.Behaviors.LookupString(args[1])));
 
 		case ACSF_GetThingUDMFInt:
 		case ACSF_GetThingUDMFFixed:
 			return 0;	// Not implemented yet
 
 		case ACSF_GetSectorUDMFInt:
-			return GetUDMFInt(UDMF_Sector, P_FindFirstSectorFromTag(args[0]), FBehavior::StaticLookupString(args[1]));
+			return GetUDMFInt(UDMF_Sector, P_FindFirstSectorFromTag(args[0]), level.Behaviors.LookupString(args[1]));
 
 		case ACSF_GetSectorUDMFFixed:
-			return DoubleToACS(GetUDMFFloat(UDMF_Sector, P_FindFirstSectorFromTag(args[0]), FBehavior::StaticLookupString(args[1])));
+			return DoubleToACS(GetUDMFFloat(UDMF_Sector, P_FindFirstSectorFromTag(args[0]), level.Behaviors.LookupString(args[1])));
 
 		case ACSF_GetSideUDMFInt:
-			return GetUDMFInt(UDMF_Side, SideFromID(args[0], args[1]), FBehavior::StaticLookupString(args[2]));
+			return GetUDMFInt(UDMF_Side, SideFromID(args[0], args[1]), level.Behaviors.LookupString(args[2]));
 
 		case ACSF_GetSideUDMFFixed:
-			return DoubleToACS(GetUDMFFloat(UDMF_Side, SideFromID(args[0], args[1]), FBehavior::StaticLookupString(args[2])));
+			return DoubleToACS(GetUDMFFloat(UDMF_Side, SideFromID(args[0], args[1]), level.Behaviors.LookupString(args[2])));
 
 		case ACSF_GetActorVelX:
 			actor = SingleActorFromTID(args[0], activator);
@@ -5472,7 +5381,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 			{
 				if (actor->player != NULL)
 				{
-					return DoubleToACS(actor->player->mo->ViewHeight + actor->player->crouchviewdelta);
+					return DoubleToACS(actor->player->DefaultViewHeight() + actor->player->crouchviewdelta);
 				}
 				else
 				{
@@ -5483,7 +5392,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 
 		case ACSF_GetChar:
 		{
-			const char *p = FBehavior::StaticLookupString(args[0]);
+			const char *p = level.Behaviors.LookupString(args[0]);
 			if (p != NULL && args[1] >= 0 && args[1] < int(strlen(p)))
 			{
 				return p[args[1]];
@@ -5534,7 +5443,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 			}
 			else
 			{
-				FName p(FBehavior::StaticLookupString(args[0]));
+				FName p(level.Behaviors.LookupString(args[0]));
 				auto armor = players[args[1]].mo->FindInventory(NAME_BasicArmor);
 				if (armor && armor->NameVar(NAME_ArmorType) == p) return armor->IntVar(NAME_Amount);
 			}
@@ -5607,7 +5516,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		case ACSF_SetUserVariable:
 		{
 			int cnt = 0;
-			FName varname(FBehavior::StaticLookupString(args[1]), true);
+			FName varname(level.Behaviors.LookupString(args[1]), true);
 			if (varname != NAME_None)
 			{
 				if (args[0] == 0)
@@ -5634,7 +5543,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		
 		case ACSF_GetUserVariable:
 		{
-			FName varname(FBehavior::StaticLookupString(args[1]), true);
+			FName varname(level.Behaviors.LookupString(args[1]), true);
 			if (varname != NAME_None)
 			{
 				AActor *a = SingleActorFromTID(args[0], activator); 
@@ -5646,7 +5555,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		case ACSF_SetUserArray:
 		{
 			int cnt = 0;
-			FName varname(FBehavior::StaticLookupString(args[1]), true);
+			FName varname(level.Behaviors.LookupString(args[1]), true);
 			if (varname != NAME_None)
 			{
 				if (args[0] == 0)
@@ -5673,7 +5582,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		
 		case ACSF_GetUserArray:
 		{
-			FName varname(FBehavior::StaticLookupString(args[1]), true);
+			FName varname(level.Behaviors.LookupString(args[1]), true);
 			if (varname != NAME_None)
 			{
 				AActor *a = SingleActorFromTID(args[0], activator); 
@@ -5683,13 +5592,13 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		}
 
 		case ACSF_Radius_Quake2:
-			P_StartQuake(activator, args[0], args[1], args[2], args[3], args[4], FBehavior::StaticLookupString(args[5]));
+			P_StartQuake(activator, args[0], args[1], args[2], args[3], args[4], level.Behaviors.LookupString(args[5]));
 			break;
 
 		case ACSF_CheckActorClass:
 		{
 			AActor *a = SingleActorFromTID(args[0], activator);
-			return a == NULL ? false : a->GetClass()->TypeName == FName(FBehavior::StaticLookupString(args[1]));
+			return a == NULL ? false : a->GetClass()->TypeName == FName(level.Behaviors.LookupString(args[1]));
 		}
 
 		case ACSF_GetActorClass:
@@ -5700,7 +5609,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 
 		case ACSF_SoundSequenceOnActor:
 			{
-				const char *seqname = FBehavior::StaticLookupString(args[1]);
+				const char *seqname = level.Behaviors.LookupString(args[1]);
 				if (seqname != NULL)
 				{
 					if (args[0] == 0)
@@ -5726,7 +5635,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 
 		case ACSF_SoundSequenceOnSector:
 			{
-				const char *seqname = FBehavior::StaticLookupString(args[1]);
+				const char *seqname = level.Behaviors.LookupString(args[1]);
 				int space = args[2] < CHAN_FLOOR || args[2] > CHAN_INTERIOR ? CHAN_FULLHEIGHT : args[2];
 				if (seqname != NULL)
 				{
@@ -5742,7 +5651,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 
 		case ACSF_SoundSequenceOnPolyobj:
 			{
-				const char *seqname = FBehavior::StaticLookupString(args[1]);
+				const char *seqname = level.Behaviors.LookupString(args[1]);
 				if (seqname != NULL)
 				{
 					FPolyObj *poly = PO_GetPolyobj(args[0]);
@@ -5831,7 +5740,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		case ACSF_ACS_NamedExecuteWithResult:
 		case ACSF_ACS_NamedExecuteAlways:
 			{
-				int scriptnum = -FName(FBehavior::StaticLookupString(args[0]));
+				int scriptnum = -FName(level.Behaviors.LookupString(args[0]));
 				int arg1 = argCount > 1 ? args[1] : 0;
 				int arg2 = argCount > 2 ? args[2] : 0;
 				int arg3 = argCount > 3 ? args[3] : 0;
@@ -5873,49 +5782,49 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		case ACSF_GetCVarString:
 			if (argCount == 1)
 			{
-				return DoGetCVar(GetCVar(activator, FBehavior::StaticLookupString(args[0])), true);
+				return DoGetCVar(GetCVar(activator, level.Behaviors.LookupString(args[0])), true);
 			}
 			break;
 
 		case ACSF_SetCVar:
 			if (argCount == 2)
 			{
-				return SetCVar(activator, FBehavior::StaticLookupString(args[0]), args[1], false);
+				return SetCVar(activator, level.Behaviors.LookupString(args[0]), args[1], false);
 			}
 			break;
 
 		case ACSF_SetCVarString:
 			if (argCount == 2)
 			{
-				return SetCVar(activator, FBehavior::StaticLookupString(args[0]), args[1], true);
+				return SetCVar(activator, level.Behaviors.LookupString(args[0]), args[1], true);
 			}
 			break;
 
 		case ACSF_GetUserCVar:
 			if (argCount == 2)
 			{
-				return DoGetCVar(GetUserCVar(args[0], FBehavior::StaticLookupString(args[1])), false);
+				return DoGetCVar(GetUserCVar(args[0], level.Behaviors.LookupString(args[1])), false);
 			}
 			break;
 
 		case ACSF_GetUserCVarString:
 			if (argCount == 2)
 			{
-				return DoGetCVar(GetUserCVar(args[0], FBehavior::StaticLookupString(args[1])), true);
+				return DoGetCVar(GetUserCVar(args[0], level.Behaviors.LookupString(args[1])), true);
 			}
 			break;
 
 		case ACSF_SetUserCVar:
 			if (argCount == 3)
 			{
-				return SetUserCVar(args[0], FBehavior::StaticLookupString(args[1]), args[2], false);
+				return SetUserCVar(args[0], level.Behaviors.LookupString(args[1]), args[2], false);
 			}
 			break;
 
 		case ACSF_SetUserCVarString:
 			if (argCount == 3)
 			{
-				return SetUserCVar(args[0], FBehavior::StaticLookupString(args[1]), args[2], true);
+				return SetUserCVar(args[0], level.Behaviors.LookupString(args[1]), args[2], true);
 			}
 			break;
 
@@ -5925,8 +5834,8 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 				DAngle angle		= ACSToAngle(args[1]);
 				DAngle pitch		= ACSToAngle(args[2]);
 				int	damage			= args[3];
-				FName pufftype		= argCount > 4 && args[4]? FName(FBehavior::StaticLookupString(args[4])) : NAME_BulletPuff;
-				FName damagetype	= argCount > 5 && args[5]? FName(FBehavior::StaticLookupString(args[5])) : NAME_None;
+				FName pufftype		= argCount > 4 && args[4]? FName(level.Behaviors.LookupString(args[4])) : NAME_BulletPuff;
+				FName damagetype	= argCount > 5 && args[5]? FName(level.Behaviors.LookupString(args[5])) : NAME_None;
 				double range		= argCount > 6 && args[6]? ACSToDouble(args[6]) : MISSILERANGE;
 				int flags			= argCount > 7 && args[7]? args[7] : 0;
 				int pufftid			= argCount > 8 && args[8]? args[8] : 0;
@@ -5970,7 +5879,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 
 				if (funcIndex == ACSF_PlaySound)
 				{
-					const char *lookup = FBehavior::StaticLookupString(args[1]);
+					const char *lookup = level.Behaviors.LookupString(args[1]);
 					if (lookup != NULL)
 					{
 						sid = lookup;
@@ -6068,8 +5977,8 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 				{
 					return 0;
 				}
-				a = FBehavior::StaticLookupString(args[0]);
-				b = FBehavior::StaticLookupString(args[1]);
+				a = level.Behaviors.LookupString(args[0]);
+				b = level.Behaviors.LookupString(args[1]);
 
 				// Don't crash on invalid strings.
 				if (a == NULL) a = "";
@@ -6091,7 +6000,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 		case ACSF_StrRight:
 			if (argCount >= 2)
 			{
-				const char *oldstr = FBehavior::StaticLookupString(args[0]);
+				const char *oldstr = level.Behaviors.LookupString(args[0]);
 				if (oldstr == NULL || *oldstr == '\0')
 				{
 					return GlobalACSStrings.AddString("");
@@ -6111,7 +6020,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 		case ACSF_StrMid:
 			if (argCount >= 3)
 			{
-				const char *oldstr = FBehavior::StaticLookupString(args[0]);
+				const char *oldstr = level.Behaviors.LookupString(args[0]);
 				if (oldstr == NULL || *oldstr == '\0')
 				{
 					return GlobalACSStrings.AddString("");
@@ -6148,7 +6057,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			// Returns number of decals spawned (not including spreading)
 			{
 				int count = 0;
-				const FDecalTemplate *tpl = DecalLibrary.GetDecalByName(FBehavior::StaticLookupString(args[1]));
+				const FDecalTemplate *tpl = DecalLibrary.GetDecalByName(level.Behaviors.LookupString(args[1]));
 				if (tpl != NULL)
 				{
 					int flags = (argCount > 2) ? args[2] : 0;
@@ -6180,11 +6089,11 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 
 		case ACSF_CheckFont:
 			// bool CheckFont(str fontname)
-			return V_GetFont(FBehavior::StaticLookupString(args[0])) != NULL;
+			return V_GetFont(level.Behaviors.LookupString(args[0])) != NULL;
 
 		case ACSF_DropItem:
 		{
-			const char *type = FBehavior::StaticLookupString(args[1]);
+			const char *type = level.Behaviors.LookupString(args[1]);
 			int amount = argCount >= 3? args[2] : -1;
 			int chance = argCount >= 4? args[3] : 256;
 			PClassActor *cls = PClass::FindActor(type);
@@ -6217,7 +6126,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 
 		case ACSF_DropInventory:
 		{
-			const char *type = FBehavior::StaticLookupString(args[1]);
+			const char *type = level.Behaviors.LookupString(args[1]);
 			AActor *inv;
 			
 			if (type != NULL)
@@ -6256,14 +6165,14 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			AActor *actor = SingleActorFromTID(args[0], activator);
 			if (actor != NULL)
 			{
-				return !!CheckActorFlag(actor, FBehavior::StaticLookupString(args[1]));
+				return !!CheckActorFlag(actor, level.Behaviors.LookupString(args[1]));
 			}
 			break;
 		}
 
 		case ACSF_QuakeEx:
 		{
-			return P_StartQuakeXYZ(activator, args[0], args[1], args[2], args[3], args[4], args[5], args[6], FBehavior::StaticLookupString(args[7]), 
+			return P_StartQuakeXYZ(activator, args[0], args[1], args[2], args[3], args[4], args[5], args[6], level.Behaviors.LookupString(args[7]), 
 				argCount > 8 ? args[8] : 0,
 				argCount > 9 ? ACSToDouble(args[9]) : 1.0,
 				argCount > 10 ? ACSToDouble(args[10]) : 1.0,
@@ -6297,10 +6206,10 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 		case ACSF_GetActorPowerupTics:
 			if (argCount >= 2)
 			{
-				PClassActor *powerupclass = PClass::FindActor(FBehavior::StaticLookupString(args[1]));
+				PClassActor *powerupclass = PClass::FindActor(level.Behaviors.LookupString(args[1]));
 				if (powerupclass == NULL || !powerupclass->IsDescendantOf(NAME_Powerup))
 				{
-					Printf("'%s' is not a type of Powerup.\n", FBehavior::StaticLookupString(args[1]));
+					Printf("'%s' is not a type of Powerup.\n", level.Behaviors.LookupString(args[1]));
 					return 0;
 				}
 
@@ -6331,7 +6240,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 		case ACSF_SetActorTeleFog:
 			if (argCount >= 3)
 			{
-				SetActorTeleFog(activator, args[0], FBehavior::StaticLookupString(args[1]), FBehavior::StaticLookupString(args[2]));
+				SetActorTeleFog(activator, args[0], level.Behaviors.LookupString(args[1]), level.Behaviors.LookupString(args[2]));
 			}
 			break;
 		case ACSF_SwapActorTeleFog:
@@ -6475,7 +6384,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			
 			if (argCount > 6)
 			{
-				const char* const statename = FBehavior::StaticLookupString(args[6]);
+				const char* const statename = level.Behaviors.LookupString(args[6]);
 				
 				if (nullptr != statename)
 				{
@@ -6495,7 +6404,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			actor = SingleActorFromTID(args[0], activator);
 			if (actor != NULL)
 			{
-				return CheckInventory(actor, FBehavior::StaticLookupString(args[1]), true);
+				return CheckInventory(actor, level.Behaviors.LookupString(args[1]), true);
 			}
 			break;
 
@@ -6509,7 +6418,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 					sector_t *sec = &level.sectors[s];
 
 					sec->damageamount = args[1];
-					sec->damagetype = argCount >= 3 ? FName(FBehavior::StaticLookupString(args[2])) : FName(NAME_None);
+					sec->damagetype = argCount >= 3 ? FName(level.Behaviors.LookupString(args[2])) : FName(NAME_None);
 					sec->damageinterval = argCount >= 4 ? clamp(args[3], 1, INT_MAX) : 32;
 					sec->leakydamage = argCount >= 5 ? args[4] : 0;
 				}
@@ -6521,7 +6430,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			{
 				if (args[1] == sector_t::floor || args[1] == sector_t::ceiling)
 				{
-					int terrain = P_FindTerrain(FBehavior::StaticLookupString(args[2]));
+					int terrain = P_FindTerrain(level.Behaviors.LookupString(args[2]));
 					FSectorTagIterator it(args[0]);
 					int s;
 					while ((s = it.Next()) >= 0)
@@ -6572,7 +6481,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 		{
 			// [zombie] ACS version of A_CheckProximity
 			actor = SingleActorFromTID(args[0], activator);
-			PClass *classname = PClass::FindClass(FBehavior::StaticLookupString(args[1]));
+			PClass *classname = PClass::FindClass(level.Behaviors.LookupString(args[1]));
 			double distance = ACSToDouble(args[2]);
 			int count = argCount >= 4 ? args[3] : 1;
 			int flags = argCount >= 5 ? args[4] : 0;
@@ -6583,7 +6492,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 		case ACSF_CheckActorState:
 		{
 			actor = SingleActorFromTID(args[0], activator);
-			const char *statename = FBehavior::StaticLookupString(args[1]);
+			const char *statename = level.Behaviors.LookupString(args[1]);
 			bool exact = (argCount > 2) ? !!args[2] : false;
 			if (actor && statename)
 			{
@@ -6594,7 +6503,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 
 		case ACSF_CheckClass:
 		{
-			const char *clsname = FBehavior::StaticLookupString(args[0]);
+			const char *clsname = level.Behaviors.LookupString(args[0]);
 			return !!PClass::FindActor(clsname);
 		}
 		
@@ -6603,14 +6512,14 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			// (target, ptr_select1, inflictor, ptr_select2, amount, damagetype)
 			AActor* target = COPY_AAPTR(SingleActorFromTID(args[0], activator), args[1]);
 			AActor* inflictor = COPY_AAPTR(SingleActorFromTID(args[2], activator), args[3]);
-			FName damagetype(FBehavior::StaticLookupString(args[5]));
+			FName damagetype(level.Behaviors.LookupString(args[5]));
 			return P_DamageMobj(target, inflictor, inflictor, args[4], damagetype);
 		}
 
 		case ACSF_SetActorFlag:
 		{
 			int tid = args[0];
-			FString flagname = FBehavior::StaticLookupString(args[1]);
+			FString flagname = level.Behaviors.LookupString(args[1]);
 			bool flagvalue = !!args[2];
 			int count = 0; // Return value; number of actors affected
 			if (tid == 0)
@@ -6638,7 +6547,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 		case ACSF_SetTranslation:
 		{
 			int tid = args[0];
-			const char *trname = FBehavior::StaticLookupString(args[1]);
+			const char *trname = level.Behaviors.LookupString(args[1]);
 			if (tid == 0)
 			{
 				if (activator != nullptr)
@@ -6714,7 +6623,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 		}
 
 		case ACSF_StrArg:
-			return -FName(FBehavior::StaticLookupString(args[0]));
+			return -FName(level.Behaviors.LookupString(args[0]));
 
 		case ACSF_Floor:
 			return args[0] & ~0xffff;
@@ -6729,7 +6638,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			return ScriptCall(activator, argCount, args);
 
 		case ACSF_StartSlideshow:
-			G_StartSlideshow(FName(FBehavior::StaticLookupString(args[0])));
+			G_StartSlideshow(FName(level.Behaviors.LookupString(args[0])));
 			break;
 
 		case ACSF_GetSectorHealth:
@@ -6852,9 +6761,14 @@ static bool CharArrayParms(int &capacity, int &offset, int &a, FACSStackMemory& 
 	return true;
 }
 
+PClass *DLevelScript::GetClassForIndex(int index) const
+{
+	return PClass::FindActor(level.Behaviors.LookupString(index));
+}
+
 int DLevelScript::RunScript ()
 {
-	DACSThinker *controller = DACSThinker::ActiveThinker;
+	DACSThinker *controller = level.ACSThinker;
 	ACSLocalVariables locals(Localvars);
 	ACSLocalArrays noarrays;
 	ACSLocalArrays *localarrays = &noarrays;
@@ -7227,7 +7141,7 @@ int DLevelScript::RunScript ()
 				if(pcd == PCD_CALLSTACK)
 				{
 					funcnum = STACK(1);
-					module = FBehavior::StaticGetModule(funcnum>>LIBRARYID_SHIFT);
+					module = level.Behaviors.GetModule(funcnum>>LIBRARYID_SHIFT);
 					--sp;
 
 					funcnum &= 0xFFFF; // Clear out tag
@@ -8399,7 +8313,7 @@ scriptwait:
 			goto scriptwait;
 
 		case PCD_SCRIPTWAITNAMED:
-			statedata = -FName(FBehavior::StaticLookupString(STACK(1)));
+			statedata = -FName(level.Behaviors.LookupString(STACK(1)));
 			sp--;
 			goto scriptwait;
 
@@ -8462,7 +8376,7 @@ scriptwait:
 
 		case PCD_PRINTSTRING:
 		case PCD_PRINTLOCALIZED:
-			lookup = FBehavior::StaticLookupString (STACK(1));
+			lookup = level.Behaviors.LookupString (STACK(1));
 			if (pcd == PCD_PRINTLOCALIZED)
 			{
 				lookup = GStrings(lookup);
@@ -8650,7 +8564,7 @@ scriptwait:
 
 		// [GRB] Print key name(s) for a command
 		case PCD_PRINTBIND:
-			lookup = FBehavior::StaticLookupString (STACK(1));
+			lookup = level.Behaviors.LookupString (STACK(1));
 			if (lookup != NULL)
 			{
 				int key1 = 0, key2 = 0;
@@ -8737,7 +8651,7 @@ scriptwait:
 
 					if (type & HUDMSG_COLORSTRING)
 					{
-						color = V_FindFontColor(FBehavior::StaticLookupString(Stack[optstart-4]));
+						color = V_FindFontColor(level.Behaviors.LookupString(Stack[optstart-4]));
 					}
 					else
 					{
@@ -8882,7 +8796,7 @@ scriptwait:
 			break;
 
 		case PCD_MUSICCHANGE:
-			lookup = FBehavior::StaticLookupString (STACK(2));
+			lookup = level.Behaviors.LookupString (STACK(2));
 			if (lookup != NULL)
 			{
 				S_ChangeMusic (lookup, STACK(1));
@@ -8900,7 +8814,7 @@ scriptwait:
 			break;
 
 		case PCD_SECTORSOUND:
-			lookup = FBehavior::StaticLookupString (STACK(2));
+			lookup = level.Behaviors.LookupString (STACK(2));
 			if (lookup != NULL)
 			{
 				if (activationline)
@@ -8925,7 +8839,7 @@ scriptwait:
 			break;
 
 		case PCD_AMBIENTSOUND:
-			lookup = FBehavior::StaticLookupString (STACK(2));
+			lookup = level.Behaviors.LookupString (STACK(2));
 			if (lookup != NULL)
 			{
 				S_Sound (CHAN_AUTO,
@@ -8936,7 +8850,7 @@ scriptwait:
 			break;
 
 		case PCD_LOCALAMBIENTSOUND:
-			lookup = FBehavior::StaticLookupString (STACK(2));
+			lookup = level.Behaviors.LookupString (STACK(2));
 			if (lookup != NULL && activator->CheckLocalView (consoleplayer))
 			{
 				S_Sound (CHAN_AUTO,
@@ -8947,7 +8861,7 @@ scriptwait:
 			break;
 
 		case PCD_ACTIVATORSOUND:
-			lookup = FBehavior::StaticLookupString (STACK(2));
+			lookup = level.Behaviors.LookupString (STACK(2));
 			if (lookup != NULL)
 			{
 				if (activator != NULL)
@@ -8967,7 +8881,7 @@ scriptwait:
 			break;
 
 		case PCD_SOUNDSEQUENCE:
-			lookup = FBehavior::StaticLookupString (STACK(1));
+			lookup = level.Behaviors.LookupString (STACK(1));
 			if (lookup != NULL)
 			{
 				if (activationline != NULL)
@@ -8985,8 +8899,8 @@ scriptwait:
 
 		case PCD_REPLACETEXTURES:
 		{
-			const char *fromname = FBehavior::StaticLookupString(STACK(3));
-			const char *toname = FBehavior::StaticLookupString(STACK(2));
+			const char *fromname = level.Behaviors.LookupString(STACK(3));
+			const char *toname = level.Behaviors.LookupString(STACK(2));
 
 			P_ReplaceTextures(fromname, toname, STACK(1));
 			sp -= 3;
@@ -9057,7 +8971,7 @@ scriptwait:
 				if (specnum >= -ACSF_ACS_NamedExecuteAlways && specnum <= -ACSF_ACS_NamedExecute)
 				{
 					specnum = NamedACSToNormalACS[-specnum - ACSF_ACS_NamedExecute];
-					arg0 = -FName(FBehavior::StaticLookupString(arg0));
+					arg0 = -FName(level.Behaviors.LookupString(arg0));
 				}
 
 				FLineIdIterator itr(STACK(7));
@@ -9086,7 +9000,7 @@ scriptwait:
 				if (specnum >= -ACSF_ACS_NamedExecuteAlways && specnum <= -ACSF_ACS_NamedExecute)
 				{
 					specnum = NamedACSToNormalACS[-specnum - ACSF_ACS_NamedExecute];
-					arg0 = -FName(FBehavior::StaticLookupString(arg0));
+					arg0 = -FName(level.Behaviors.LookupString(arg0));
 				}
 
 				if (STACK(7) != 0)
@@ -9118,7 +9032,7 @@ scriptwait:
 			break;
 
 		case PCD_THINGSOUND:
-			lookup = FBehavior::StaticLookupString (STACK(2));
+			lookup = level.Behaviors.LookupString (STACK(2));
 			if (lookup != NULL)
 			{
 				FActorIterator iterator (STACK(3));
@@ -9214,7 +9128,7 @@ scriptwait:
 
 		case PCD_GIVEINVENTORY:
 		{
-			int typeindex = FName(FBehavior::StaticLookupString(STACK(2))).GetIndex();
+			int typeindex = FName(level.Behaviors.LookupString(STACK(2))).GetIndex();
 			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
 			sp -= 2;
 			break;
@@ -9222,8 +9136,8 @@ scriptwait:
 
 		case PCD_GIVEACTORINVENTORY:
 		{
-			int typeindex = FName(FBehavior::StaticLookupString(STACK(2))).GetIndex();
-			FName type = FName(FBehavior::StaticLookupString(STACK(2)));
+			int typeindex = FName(level.Behaviors.LookupString(STACK(2))).GetIndex();
+			FName type = FName(level.Behaviors.LookupString(STACK(2)));
 			if (STACK(3) == 0)
 			{
 				ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, nullptr, ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
@@ -9243,7 +9157,7 @@ scriptwait:
 
 		case PCD_GIVEINVENTORYDIRECT:
 		{
-			int typeindex = FName(FBehavior::StaticLookupString(TAGSTR(uallong(pc[0])))).GetIndex();
+			int typeindex = FName(level.Behaviors.LookupString(TAGSTR(uallong(pc[0])))).GetIndex();
 			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
 			pc += 2;
 			break;
@@ -9251,7 +9165,7 @@ scriptwait:
 
 		case PCD_TAKEINVENTORY:
 		{
-			int typeindex = FName(FBehavior::StaticLookupString(STACK(2))).GetIndex();
+			int typeindex = FName(level.Behaviors.LookupString(STACK(2))).GetIndex();
 			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
 			sp -= 2;
 			break;
@@ -9259,8 +9173,8 @@ scriptwait:
 
 		case PCD_TAKEACTORINVENTORY:
 		{
-			int typeindex = FName(FBehavior::StaticLookupString(STACK(2))).GetIndex();
-			FName type = FName(FBehavior::StaticLookupString(STACK(2)));
+			int typeindex = FName(level.Behaviors.LookupString(STACK(2))).GetIndex();
+			FName type = FName(level.Behaviors.LookupString(STACK(2)));
 			if (STACK(3) == 0)
 			{
 				ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, nullptr, ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
@@ -9280,35 +9194,35 @@ scriptwait:
 
 		case PCD_TAKEINVENTORYDIRECT:
 		{
-			int typeindex = FName(FBehavior::StaticLookupString(TAGSTR(uallong(pc[0])))).GetIndex();
+			int typeindex = FName(level.Behaviors.LookupString(TAGSTR(uallong(pc[0])))).GetIndex();
 			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
 			pc += 2;
 			break;
 		}
 
 		case PCD_CHECKINVENTORY:
-			STACK(1) = CheckInventory (activator, FBehavior::StaticLookupString (STACK(1)), false);
+			STACK(1) = CheckInventory (activator, level.Behaviors.LookupString (STACK(1)), false);
 			break;
 
 		case PCD_CHECKACTORINVENTORY:
 			STACK(2) = CheckInventory (SingleActorFromTID(STACK(2), NULL),
-										FBehavior::StaticLookupString (STACK(1)), false);
+										level.Behaviors.LookupString (STACK(1)), false);
 			sp--;
 			break;
 
 		case PCD_CHECKINVENTORYDIRECT:
-			PushToStack (CheckInventory (activator, FBehavior::StaticLookupString (TAGSTR(uallong(pc[0]))), false));
+			PushToStack (CheckInventory (activator, level.Behaviors.LookupString (TAGSTR(uallong(pc[0]))), false));
 			pc += 1;
 			break;
 
 		case PCD_USEINVENTORY:
-			STACK(1) = UseInventory (activator, FBehavior::StaticLookupString (STACK(1)));
+			STACK(1) = UseInventory (activator, level.Behaviors.LookupString (STACK(1)));
 			break;
 
 		case PCD_USEACTORINVENTORY:
 			{
 				int ret = 0;
-				const char *type = FBehavior::StaticLookupString(STACK(1));
+				const char *type = level.Behaviors.LookupString(STACK(1));
 				if (STACK(2) == 0)
 				{
 					ret = UseInventory(NULL, type);
@@ -9345,7 +9259,7 @@ scriptwait:
 		case PCD_GETAMMOCAPACITY:
 			if (activator != NULL)
 			{
-				PClass *type = PClass::FindClass (FBehavior::StaticLookupString (STACK(1)));
+				PClass *type = PClass::FindClass (level.Behaviors.LookupString (STACK(1)));
 
 				if (type != NULL && type->ParentClass == PClass::FindActor(NAME_Ammo))
 				{
@@ -9373,7 +9287,7 @@ scriptwait:
 		case PCD_SETAMMOCAPACITY:
 			if (activator != NULL)
 			{
-				PClassActor *type = PClass::FindActor (FBehavior::StaticLookupString (STACK(2)));
+				PClassActor *type = PClass::FindActor (level.Behaviors.LookupString (STACK(2)));
 
 				if (type != NULL && type->ParentClass == PClass::FindActor(NAME_Ammo))
 				{
@@ -9397,19 +9311,19 @@ scriptwait:
 			break;
 
 		case PCD_SETMUSIC:
-			S_ChangeMusic (FBehavior::StaticLookupString (STACK(3)), STACK(2));
+			S_ChangeMusic (level.Behaviors.LookupString (STACK(3)), STACK(2));
 			sp -= 3;
 			break;
 
 		case PCD_SETMUSICDIRECT:
-			S_ChangeMusic (FBehavior::StaticLookupString (TAGSTR(uallong(pc[0]))), uallong(pc[1]));
+			S_ChangeMusic (level.Behaviors.LookupString (TAGSTR(uallong(pc[0]))), uallong(pc[1]));
 			pc += 3;
 			break;
 
 		case PCD_LOCALSETMUSIC:
 			if (activator == players[consoleplayer].mo)
 			{
-				S_ChangeMusic (FBehavior::StaticLookupString (STACK(3)), STACK(2));
+				S_ChangeMusic (level.Behaviors.LookupString (STACK(3)), STACK(2));
 			}
 			sp -= 3;
 			break;
@@ -9417,7 +9331,7 @@ scriptwait:
 		case PCD_LOCALSETMUSICDIRECT:
 			if (activator == players[consoleplayer].mo)
 			{
-				S_ChangeMusic (FBehavior::StaticLookupString (TAGSTR(uallong(pc[0]))), uallong(pc[1]));
+				S_ChangeMusic (level.Behaviors.LookupString (TAGSTR(uallong(pc[0]))), uallong(pc[1]));
 			}
 			pc += 3;
 			break;
@@ -9706,12 +9620,12 @@ scriptwait:
             }
             else
             {
-				STACK(1) = activator->player->ReadyWeapon->GetClass()->TypeName == FName(FBehavior::StaticLookupString (STACK(1)), true);
+				STACK(1) = activator->player->ReadyWeapon->GetClass()->TypeName == FName(level.Behaviors.LookupString (STACK(1)), true);
             }
             break;
 
 		case PCD_SETWEAPON:
-			STACK(1) = ScriptUtil::Exec(NAME_SetWeapon, ScriptUtil::Pointer, activator, ScriptUtil::ACSClass, STACK(1), ScriptUtil::End);
+			STACK(1) = ScriptUtil::Exec(NAME_SetWeapon, ScriptUtil::Pointer, activator, ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
 			break;
 
 		case PCD_SETMARINEWEAPON:
@@ -9720,7 +9634,7 @@ scriptwait:
 			break;
 
 		case PCD_SETMARINESPRITE:
-			ScriptUtil::Exec(NAME_SetMarineSprite, ScriptUtil::Pointer, activator, ScriptUtil::Int, STACK(2), ScriptUtil::ACSClass, STACK(1), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_SetMarineSprite, ScriptUtil::Pointer, activator, ScriptUtil::Int, STACK(2), ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
 			sp -= 2;
 			break;
 
@@ -9802,14 +9716,14 @@ scriptwait:
 
 		case PCD_SPAWNPROJECTILE:
 			// Same, but takes an actor name instead of a spawn ID.
-			P_Thing_Projectile(STACK(7), activator, 0, FBehavior::StaticLookupString(STACK(6)), STACK(5) * (360. / 256.),
+			P_Thing_Projectile(STACK(7), activator, 0, level.Behaviors.LookupString(STACK(6)), STACK(5) * (360. / 256.),
 				STACK(4) / 8., STACK(3) / 8., 0, NULL, STACK(2), STACK(1), false);
 			sp -= 7;
 			break;
 
 		case PCD_STRLEN:
 			{
-				const char *str = FBehavior::StaticLookupString(STACK(1));
+				const char *str = level.Behaviors.LookupString(STACK(1));
 				if (str != NULL)
 				{
 					STACK(1) = int32_t(strlen(str));
@@ -9827,7 +9741,7 @@ scriptwait:
 			break;
 
 		case PCD_GETCVAR:
-			STACK(1) = DoGetCVar(GetCVar(activator, FBehavior::StaticLookupString(STACK(1))), false);
+			STACK(1) = DoGetCVar(GetCVar(activator, level.Behaviors.LookupString(STACK(1))), false);
 			break;
 
 		case PCD_SETHUDSIZE:
@@ -9861,8 +9775,8 @@ scriptwait:
 			{
 				const char *sky1name, *sky2name;
 
-				sky1name = FBehavior::StaticLookupString (STACK(2));
-				sky2name = FBehavior::StaticLookupString (STACK(1));
+				sky1name = level.Behaviors.LookupString (STACK(2));
+				sky2name = level.Behaviors.LookupString (STACK(1));
 				if (sky1name[0] != 0)
 				{
 					sky1texture = level.skytexture1 = TexMan.GetTextureID(sky1name, ETextureType::Wall, FTextureManager::TEXMAN_Overridable|FTextureManager::TEXMAN_ReturnFirst);
@@ -9878,7 +9792,7 @@ scriptwait:
 
 		case PCD_SETCAMERATOTEXTURE:
 			{
-				const char *picname = FBehavior::StaticLookupString (STACK(2));
+				const char *picname = level.Behaviors.LookupString (STACK(2));
 				AActor *camera;
 
 				if (STACK(3) == 0)
@@ -9919,7 +9833,7 @@ scriptwait:
 
 		case PCD_SETACTORSTATE:
 			{
-				const char *statename = FBehavior::StaticLookupString (STACK(2));
+				const char *statename = level.Behaviors.LookupString (STACK(2));
 				FState *state;
 
 				if (STACK(3) == 0)
@@ -9999,7 +9913,7 @@ scriptwait:
 
 		case PCD_CHANGELEVEL:
 			{
-				G_ChangeLevel(FBehavior::StaticLookupString(STACK(4)), STACK(3), STACK(2), STACK(1));
+				G_ChangeLevel(level.Behaviors.LookupString(STACK(4)), STACK(3), STACK(2), STACK(1));
 				sp -= 4;
 			}
 			break;
@@ -10008,8 +9922,8 @@ scriptwait:
 			{
 				int tag = STACK(5);
 				int amount = STACK(4);
-				FName type = FBehavior::StaticLookupString(STACK(3));
-				FName protection = FName (FBehavior::StaticLookupString(STACK(2)), true);
+				FName type = level.Behaviors.LookupString(STACK(3));
+				FName protection = FName (level.Behaviors.LookupString(STACK(2)), true);
 				PClassActor *protectClass = PClass::FindActor (protection);
 				int flags = STACK(1);
 				sp -= 5;
@@ -10019,7 +9933,7 @@ scriptwait:
 			break;
 
 		case PCD_THINGDAMAGE2:
-			STACK(3) = P_Thing_Damage (STACK(3), activator, STACK(2), FName(FBehavior::StaticLookupString(STACK(1))));
+			STACK(3) = P_Thing_Damage (STACK(3), activator, STACK(2), FName(level.Behaviors.LookupString(STACK(1))));
 			sp -= 2;
 			break;
 
@@ -10066,7 +9980,7 @@ scriptwait:
 		case PCD_SETMUGSHOTSTATE:
 			if (!multiplayer || (activator != nullptr && activator->CheckLocalView(consoleplayer)))
 			{
-				StatusBar->SetMugShotState(FBehavior::StaticLookupString(STACK(1)));
+				StatusBar->SetMugShotState(level.Behaviors.LookupString(STACK(1)));
 			}
 			sp--;
 			break;
@@ -10093,15 +10007,15 @@ scriptwait:
 		case PCD_MORPHACTOR:
 			{
 				int tag = STACK(7);
-				FName playerclass_name = FBehavior::StaticLookupString(STACK(6));
+				FName playerclass_name = level.Behaviors.LookupString(STACK(6));
 				auto playerclass = PClass::FindActor (playerclass_name);
-				FName monsterclass_name = FBehavior::StaticLookupString(STACK(5));
+				FName monsterclass_name = level.Behaviors.LookupString(STACK(5));
 				PClassActor *monsterclass = PClass::FindActor(monsterclass_name);
 				int duration = STACK(4);
 				int style = STACK(3);
-				FName morphflash_name = FBehavior::StaticLookupString(STACK(2));
+				FName morphflash_name = level.Behaviors.LookupString(STACK(2));
 				PClassActor *morphflash = PClass::FindActor(morphflash_name);
-				FName unmorphflash_name = FBehavior::StaticLookupString(STACK(1));
+				FName unmorphflash_name = level.Behaviors.LookupString(STACK(1));
 				PClassActor *unmorphflash = PClass::FindActor(unmorphflash_name);
 				int changes = 0;
 
@@ -10181,7 +10095,7 @@ scriptwait:
 
 				index += STACK(6);
 				
-				lookup = FBehavior::StaticLookupString (STACK(2));
+				lookup = level.Behaviors.LookupString (STACK(2));
 				
 				if (!lookup) {
 					// no data, operation complete
@@ -10314,7 +10228,7 @@ scriptwait:
 static DLevelScript *P_GetScriptGoing (AActor *who, line_t *where, int num, const ScriptPtr *code, FBehavior *module,
 	const int *args, int argcount, int flags)
 {
-	DACSThinker *controller = DACSThinker::ActiveThinker;
+	DACSThinker *controller = level.ACSThinker;
 	DLevelScript **running;
 
 	if (controller && !(flags & ACS_ALWAYS) && (running = controller->RunningScripts.CheckKey(num)) != NULL)
@@ -10334,8 +10248,8 @@ DLevelScript::DLevelScript (AActor *who, line_t *where, int num, const ScriptPtr
 	const int *args, int argcount, int flags)
 	: activeBehavior (module)
 {
-	if (DACSThinker::ActiveThinker == NULL)
-		Create<DACSThinker>();
+	if (level.ACSThinker == nullptr)
+		level.ACSThinker = Create<DACSThinker>();
 
 	script = num;
 	assert(code->VarCount >= code->ArgCount);
@@ -10363,7 +10277,7 @@ DLevelScript::DLevelScript (AActor *who, line_t *where, int num, const ScriptPtr
 	// goes by while they're in their default state.
 
 	if (!(flags & ACS_ALWAYS))
-		DACSThinker::ActiveThinker->RunningScripts[num] = this;
+		level.ACSThinker->RunningScripts[num] = this;
 
 	Link();
 
@@ -10377,7 +10291,7 @@ DLevelScript::DLevelScript (AActor *who, line_t *where, int num, const ScriptPtr
 
 static void SetScriptState (int script, DLevelScript::EScriptState state)
 {
-	DACSThinker *controller = DACSThinker::ActiveThinker;
+	DACSThinker *controller = level.ACSThinker;
 	DLevelScript **running;
 
 	if (controller != NULL && (running = controller->RunningScripts.CheckKey(script)) != NULL)
@@ -10399,7 +10313,7 @@ void P_DoDeferedScripts ()
 		{
 		case acsdefered_t::defexecute:
 		case acsdefered_t::defexealways:
-			scriptdata = FBehavior::StaticFindScript (def->script, module);
+			scriptdata = level.Behaviors.FindScript (def->script, module);
 			if (scriptdata)
 			{
 				P_GetScriptGoing ((unsigned)def->playernum < MAXPLAYERS &&
@@ -10467,7 +10381,7 @@ int P_StartScript (AActor *who, line_t *where, int script, const char *map, cons
 		FBehavior *module = NULL;
 		const ScriptPtr *scriptdata;
 
-		if ((scriptdata = FBehavior::StaticFindScript (script, module)) != NULL)
+		if ((scriptdata = level.Behaviors.FindScript (script, module)) != NULL)
 		{
 			if ((flags & ACS_NET) && netgame && !sv_cheats)
 			{
@@ -10546,13 +10460,13 @@ FSerializer &Serialize(FSerializer &arc, const char *key, acsdefered_t &defer, a
 
 CCMD (scriptstat)
 {
-	if (DACSThinker::ActiveThinker == NULL)
+	if (level.ACSThinker == NULL)
 	{
 		Printf ("No scripts are running.\n");
 	}
 	else
 	{
-		DACSThinker::ActiveThinker->DumpScriptStatus ();
+		level.ACSThinker->DumpScriptStatus ();
 	}
 }
 
@@ -10609,9 +10523,9 @@ void ACSProfileInfo::AddRun(unsigned int num_instr)
 
 void ArrangeScriptProfiles(TArray<ProfileCollector> &profiles)
 {
-	for (unsigned int mod_num = 0; mod_num < FBehavior::StaticModules.Size(); ++mod_num)
+	for (unsigned int mod_num = 0; mod_num < level.Behaviors.StaticModules.Size(); ++mod_num)
 	{
-		FBehavior *module = FBehavior::StaticModules[mod_num];
+		FBehavior *module = level.Behaviors.StaticModules[mod_num];
 		ProfileCollector prof;
 		prof.Module = module;
 		for (int i = 0; i < module->NumScripts; ++i)
@@ -10625,9 +10539,9 @@ void ArrangeScriptProfiles(TArray<ProfileCollector> &profiles)
 
 void ArrangeFunctionProfiles(TArray<ProfileCollector> &profiles)
 {
-	for (unsigned int mod_num = 0; mod_num < FBehavior::StaticModules.Size(); ++mod_num)
+	for (unsigned int mod_num = 0; mod_num < level.Behaviors.StaticModules.Size(); ++mod_num)
 	{
-		FBehavior *module = FBehavior::StaticModules[mod_num];
+		FBehavior *module = level.Behaviors.StaticModules[mod_num];
 		ProfileCollector prof;
 		prof.Module = module;
 		for (int i = 0; i < module->NumFunctions; ++i)

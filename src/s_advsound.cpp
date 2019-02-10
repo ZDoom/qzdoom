@@ -45,6 +45,7 @@
 #include "serializer.h"
 #include "v_text.h"
 #include "g_levellocals.h"
+#include "r_data/sprites.h"
 #include "vm.h"
 
 // MACROS ------------------------------------------------------------------
@@ -1756,9 +1757,10 @@ static int S_LookupPlayerSound (int classidx, int gender, FSoundID refid)
 	{
 		int g;
 
-		for (g = 0; g < GENDER_MAX && listidx == 0xffff; ++g)
+		for (g = 0; g < GENDER_MAX; ++g)
 		{
 			listidx = PlayerClassLookups[classidx].ListIndex[g];
+			if (listidx != 0xffff) break;
 		}
 		if (g == GENDER_MAX)
 		{ // No sounds defined at all for this class (can this happen?)
@@ -1888,6 +1890,27 @@ bool S_AreSoundsEquivalent (AActor *actor, int id1, int id2)
 	return id1 == id2;
 }
 
+//===========================================================================
+//
+//PlayerPawn :: GetSoundClass
+//
+//===========================================================================
+
+static const char *GetSoundClass(AActor *pp)
+{
+	auto player = pp->player;
+	if (player != nullptr &&
+		(player->mo == nullptr || !(player->mo->flags4 &MF4_NOSKIN)) &&
+		(unsigned int)player->userinfo.GetSkin() >= PlayerClasses.Size() &&
+		(unsigned)player->userinfo.GetSkin() < Skins.Size())
+	{
+		return Skins[player->userinfo.GetSkin()].Name.GetChars();
+	}
+	auto sclass = player? pp->NameVar(NAME_SoundClass) : NAME_None;
+
+	return sclass != NAME_None ? sclass.GetChars() : "player";
+}
+
 //==========================================================================
 //
 // S_FindSkinnedSound
@@ -1900,10 +1923,10 @@ int S_FindSkinnedSound (AActor *actor, FSoundID refid)
 	const char *pclass;
 	int gender = 0;
 
-	if (actor != NULL && actor->IsKindOf(RUNTIME_CLASS(APlayerPawn)))
+	if (actor != nullptr)
 	{
-		pclass = static_cast<APlayerPawn*>(actor)->GetSoundClass ();
-		if (actor->player != NULL) gender = actor->player->userinfo.GetGender();
+		pclass = GetSoundClass (actor);
+		if (actor->player != nullptr) gender = actor->player->userinfo.GetGender();
 	}
 	else
 	{
@@ -2053,8 +2076,9 @@ void sfxinfo_t::MarkUsed()
 //
 //==========================================================================
 
-void S_MarkPlayerSounds (const char *playerclass)
+void S_MarkPlayerSounds (AActor *player)
 {
+	const char *playerclass = GetSoundClass(player);
 	int classidx = S_FindPlayerClass(playerclass);
 	if (classidx < 0)
 	{
@@ -2178,43 +2202,6 @@ CCMD (playersounds)
 	}
 }
 
-// AAmbientSound implementation ---------------------------------------------
-
-class AAmbientSound : public AActor
-{
-	DECLARE_CLASS (AAmbientSound, AActor)
-public:
-	
-	void Serialize(FSerializer &arc);
-
-	void MarkPrecacheSounds () const;
-	void BeginPlay ();
-	void Tick ();
-	void Activate (AActor *activator);
-	void Deactivate (AActor *activator);
-
-protected:
-	bool bActive;
-private:
-	void SetTicker (struct FAmbientSound *ambient);
-	int NextCheck;
-};
-
-IMPLEMENT_CLASS(AAmbientSound, false, false)
-
-//==========================================================================
-//
-// AmbientSound :: Serialize
-//
-//==========================================================================
-
-void AAmbientSound::Serialize(FSerializer &arc)
-{
-	Super::Serialize (arc);
-	arc("active", bActive)
-		("nextcheck", NextCheck);
-}
-
 //==========================================================================
 //
 // AmbientSound :: MarkAmbientSounds
@@ -2223,7 +2210,7 @@ void AAmbientSound::Serialize(FSerializer &arc)
 
 DEFINE_ACTION_FUNCTION(AAmbientSound, MarkAmbientSounds)
 {
-	PARAM_SELF_PROLOGUE(AAmbientSound);
+	PARAM_SELF_PROLOGUE(AActor);
 
 	FAmbientSound *ambient = Ambients.CheckKey(self->args[0]);
 	if (ambient != NULL)
@@ -2235,24 +2222,55 @@ DEFINE_ACTION_FUNCTION(AAmbientSound, MarkAmbientSounds)
 
 //==========================================================================
 //
+//
+//
+//==========================================================================
+
+int GetTicker(struct FAmbientSound *ambient)
+{
+	if ((ambient->type & CONTINUOUS) == CONTINUOUS)
+	{
+		return 1;
+	}
+	else if (ambient->type & RANDOM)
+	{
+		return (int)(((float)rand() / (float)RAND_MAX) *
+			(float)(ambient->periodmax - ambient->periodmin)) +
+			ambient->periodmin;
+	}
+	else
+	{
+		return ambient->periodmin;
+	}
+}
+
+//==========================================================================
+//
 // AmbientSound :: Tick
 //
 //==========================================================================
 
-void AAmbientSound::Tick ()
+DEFINE_ACTION_FUNCTION(AAmbientSound, Tick)
 {
-	Super::Tick ();
+	PARAM_SELF_PROLOGUE(AActor);
 
-	if (!bActive || level.maptime < NextCheck)
-		return;
+	self->Tick();
+	
+	if (self->special1 > 0)
+	{
+		if (--self->special1 > 0) return 0;
+	}
+
+	if (!self->special2)
+		return 0;
 
 	FAmbientSound *ambient;
 	int loop = 0;
 
-	ambient = Ambients.CheckKey(args[0]);
+	ambient = Ambients.CheckKey(self->args[0]);
 	if (ambient == NULL)
 	{
-		return;
+		return 0;
 	}
 
 	if ((ambient->type & CONTINUOUS) == CONTINUOUS)
@@ -2265,77 +2283,42 @@ void AAmbientSound::Tick ()
 		// The second argument scales the ambient sound's volume.
 		// 0 and 100 are normal volume. The maximum volume level
 		// possible is always 1.
-		float volscale = args[1] == 0 ? 1 : args[1] / 100.f;
+		float volscale = self->args[1] == 0 ? 1 : self->args[1] / 100.f;
 		float usevol = clamp(ambient->volume * volscale, 0.f, 1.f);
 
 		// The third argument is the minimum distance for audible fading, and
 		// the fourth argument is the maximum distance for audibility. Setting
 		// either of these to 0 or setting  min distance > max distance will
 		// use the standard rolloff.
-		if ((args[2] | args[3]) == 0 || args[2] > args[3])
+		if ((self->args[2] | self->args[3]) == 0 || self->args[2] > self->args[3])
 		{
-			S_Sound(this, CHAN_BODY | loop, ambient->sound, usevol, ambient->attenuation);
+			S_Sound(self, CHAN_BODY | loop, ambient->sound, usevol, ambient->attenuation);
 		}
 		else
 		{
-			float min = float(args[2]), max = float(args[3]);
+			float min = float(self->args[2]), max = float(self->args[3]);
 			// The fifth argument acts as a scalar for the preceding two, if it's non-zero.
-			if (args[4] > 0)
+			if (self->args[4] > 0)
 			{
-				min *= args[4];
-				max *= args[4];
+				min *= self->args[4];
+				max *= self->args[4];
 			}
-			S_SoundMinMaxDist(this, CHAN_BODY | loop, ambient->sound, usevol, min, max);
+			S_SoundMinMaxDist(self, CHAN_BODY | loop, ambient->sound, usevol, min, max);
 		}
 		if (!loop)
 		{
-			SetTicker (ambient);
+			self->special1 += GetTicker (ambient);
 		}
 		else
 		{
-			NextCheck = INT_MAX;
+			self->special1 = INT_MAX;
 		}
 	}
 	else
 	{
-		Destroy ();
+		self->Destroy ();
 	}
-}
-
-//==========================================================================
-//
-// AmbientSound :: SetTicker
-//
-//==========================================================================
-
-void AAmbientSound::SetTicker (struct FAmbientSound *ambient)
-{
-	if ((ambient->type & CONTINUOUS) == CONTINUOUS)
-	{
-		NextCheck += 1;
-	}
-	else if (ambient->type & RANDOM)
-	{
-		NextCheck += (int)(((float)rand() / (float)RAND_MAX) *
-				(float)(ambient->periodmax - ambient->periodmin)) +
-				ambient->periodmin;
-	}
-	else
-	{
-		NextCheck += ambient->periodmin;
-	}
-}
-
-//==========================================================================
-//
-// AmbientSound :: BeginPlay
-//
-//==========================================================================
-
-void AAmbientSound::BeginPlay ()
-{
-	Super::BeginPlay ();
-	CallActivate (NULL);
+	return 0;
 }
 
 //==========================================================================
@@ -2346,37 +2329,40 @@ void AAmbientSound::BeginPlay ()
 //
 //==========================================================================
 
-void AAmbientSound::Activate (AActor *activator)
+DEFINE_ACTION_FUNCTION(AAmbientSound, Activate)
 {
-	Super::Activate (activator);
-
-	FAmbientSound *amb = Ambients.CheckKey(args[0]);
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(activator, AActor);
+		
+	self->Activate(activator);
+	FAmbientSound *amb = Ambients.CheckKey(self->args[0]);
 
 	if (amb == NULL)
 	{
-		Destroy ();
-		return;
+		self->Destroy ();
+		return 0;
 	}
 
-	if (!bActive)
+	if (!self->special2)
 	{
 		if ((amb->type & 3) == 0 && amb->periodmin == 0)
 		{
 			int sndnum = S_FindSound(amb->sound);
 			if (sndnum == 0)
 			{
-				Destroy ();
-				return;
+				self->Destroy ();
+				return 0;
 			}
 			amb->periodmin = ::Scale(S_GetMSLength(sndnum), TICRATE, 1000);
 		}
 
-		NextCheck = level.maptime;
+		self->special1 = 0;
 		if (amb->type & (RANDOM|PERIODIC))
-			SetTicker (amb);
+			self->special1 += GetTicker (amb);
 
-		bActive = true;
+		self->special2 = true;
 	}
+	return 0;
 }
 
 //==========================================================================
@@ -2388,18 +2374,22 @@ void AAmbientSound::Activate (AActor *activator)
 //
 //==========================================================================
 
-void AAmbientSound::Deactivate (AActor *activator)
+DEFINE_ACTION_FUNCTION(AAmbientSound, Deactivate)
 {
-	Super::Deactivate (activator);
-	if (bActive)
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(activator, AActor);
+
+	self->Deactivate(activator);
+	if (self->special2)
 	{
-		bActive = false;
-		FAmbientSound *ambient = Ambients.CheckKey(args[0]);
+		self->special2 = false;
+		FAmbientSound *ambient = Ambients.CheckKey(self->args[0]);
 		if (ambient != NULL && (ambient->type & CONTINUOUS) == CONTINUOUS)
 		{
-			S_StopSound (this, CHAN_BODY);
+			S_StopSound (self, CHAN_BODY);
 		}
 	}
+	return 0;
 }
 
 

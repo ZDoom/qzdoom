@@ -57,6 +57,7 @@
 #include "g_levellocals.h"
 #include "events.h"
 #include "p_destructible.h"
+#include "fragglescript/t_script.h"
 
 //==========================================================================
 //
@@ -935,7 +936,7 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 		if (arc.GetSize("linedefs") != level.lines.Size() ||
 			arc.GetSize("sidedefs") != level.sides.Size() ||
 			arc.GetSize("sectors") != level.sectors.Size() ||
-			arc.GetSize("polyobjs") != (unsigned)po_NumPolyobjs ||
+			arc.GetSize("polyobjs") != level.Polyobjects.Size() ||
 			memcmp(chk, level.md5, 16))
 		{
 			I_Error("Savegame is from a different level");
@@ -974,7 +975,12 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 		("level.deathsequence", level.deathsequence)
 		("level.bodyqueslot", level.bodyqueslot)
 		("level.spawnindex", level.spawnindex)
-		.Array("level.bodyque", level.bodyque, level.BODYQUESIZE);
+		.Array("level.bodyque", level.bodyque, level.BODYQUESIZE)
+		("level.corpsequeue", level.CorpseQueue)
+		("level.spotstate", level.SpotState)
+		("level.fragglethinker", level.FraggleScriptThinker)
+		("level.acsthinker", level.ACSThinker);
+		("level.impactdecalcount", level.ImpactDecalCount);
 
 	// Hub transitions must keep the current total time
 	if (!hubload)
@@ -988,11 +994,7 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 		G_AirControlChanged();
 	}
 
-
-
-	// fixme: This needs to ensure it reads from the correct place. Should be one once there's enough of this code converted to JSON
-
-	FBehavior::StaticSerializeModuleStates(arc);
+	level.Behaviors.SerializeModuleStates(arc);
 	// The order here is important: First world state, then portal state, then thinkers, and last polyobjects.
 	arc("linedefs", level.lines, level.loadlines);
 	arc("sidedefs", level.sides, level.loadsides);
@@ -1007,7 +1009,7 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 	// [ZZ] serialize events
 	E_SerializeEvents(arc);
 	DThinker::SerializeThinkers(arc, hubload);
-	arc.Array("polyobjs", polyobjs, po_NumPolyobjs);
+	arc("polyobjs", level.Polyobjects);
 	SerializeSubsectors(arc, "subsectors");
 	StatusBar->SerializeMessages(arc);
 	AM_SerializeMarkers(arc);
@@ -1031,5 +1033,5 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 		}
 	}
 	AActor::RecreateAllAttachedLights();
-	InitPortalGroups();
+	InitPortalGroups(&level);
 }

@@ -127,7 +127,7 @@ void G_BuildTiccmd (ticcmd_t *cmd);
 void D_DoAdvanceDemo (void);
 
 static void SendSetup (uint32_t playersdetected[MAXNETNODES], uint8_t gotsetup[MAXNETNODES], int len);
-static void RunScript(uint8_t **stream, APlayerPawn *pawn, int snum, int argn, int always);
+static void RunScript(uint8_t **stream, AActor *pawn, int snum, int argn, int always);
 
 int		reboundpacket;
 uint8_t	reboundstore[MAX_MSGLEN];
@@ -2487,10 +2487,10 @@ void Net_DoCommand (int type, uint8_t **stream, int player)
 
 	case DEM_RUNNAMEDSCRIPT:
 		{
-			char *sname = ReadString(stream);
+			s = ReadString(stream);
 			int argn = ReadByte(stream);
 
-			RunScript(stream, players[player].mo, -FName(sname), argn & 127, (argn & 128) ? ACS_ALWAYS : 0);
+			RunScript(stream, players[player].mo, -FName(s), argn & 127, (argn & 128) ? ACS_ALWAYS : 0);
 		}
 		break;
 
@@ -2557,9 +2557,9 @@ void Net_DoCommand (int type, uint8_t **stream, int player)
 
 	case DEM_KILLCLASSCHEAT:
 		{
-			char *classname = ReadString (stream);
+			s = ReadString (stream);
 			int killcount = 0;
-			PClassActor *cls = PClass::FindActor(classname);
+			PClassActor *cls = PClass::FindActor(s);
 
 			if (cls != NULL)
 			{
@@ -2569,20 +2569,20 @@ void Net_DoCommand (int type, uint8_t **stream, int player)
 				{
 					killcount += KillAll(cls_rep);
 				}
-				Printf ("Killed %d monsters of type %s.\n",killcount, classname);
+				Printf ("Killed %d monsters of type %s.\n",killcount, s);
 			}
 			else
 			{
-				Printf ("%s is not an actor class.\n", classname);
+				Printf ("%s is not an actor class.\n", s);
 			}
 
 		}
 		break;
 	case DEM_REMOVE:
 	{
-		char *classname = ReadString(stream);
+		s = ReadString(stream);
 		int removecount = 0;
-		PClassActor *cls = PClass::FindActor(classname);
+		PClassActor *cls = PClass::FindActor(s);
 		if (cls != NULL && cls->IsDescendantOf(RUNTIME_CLASS(AActor)))
 		{
 			removecount = RemoveClass(cls);
@@ -2591,11 +2591,11 @@ void Net_DoCommand (int type, uint8_t **stream, int player)
 			{
 				removecount += RemoveClass(cls_rep);
 			}
-			Printf("Removed %d actors of type %s.\n", removecount, classname);
+			Printf("Removed %d actors of type %s.\n", removecount, s);
 		}
 		else
 		{
-			Printf("%s is not an actor class.\n", classname);
+			Printf("%s is not an actor class.\n", s);
 		}
 	}
 		break;
@@ -2688,7 +2688,7 @@ void Net_DoCommand (int type, uint8_t **stream, int player)
 }
 
 // Used by DEM_RUNSCRIPT, DEM_RUNSCRIPT2, and DEM_RUNNAMEDSCRIPT
-static void RunScript(uint8_t **stream, APlayerPawn *pawn, int snum, int argn, int always)
+static void RunScript(uint8_t **stream, AActor *pawn, int snum, int argn, int always)
 {
 	int arg[4] = { 0, 0, 0, 0 };
 	int i;

@@ -289,7 +289,7 @@ void RenderPolyPlane::SetDynLights(PolyRenderThread *thread, PolyDrawArgs &args,
 	FLightNode *cur_node = light_list;
 	while (cur_node)
 	{
-		if (!(cur_node->lightsource->flags2&MF2_DORMANT))
+		if (cur_node->lightsource->IsActive())
 			max_lights++;
 		cur_node = cur_node->nextLight;
 	}
@@ -307,9 +307,9 @@ void RenderPolyPlane::SetDynLights(PolyRenderThread *thread, PolyDrawArgs &args,
 	cur_node = light_list;
 	while (cur_node)
 	{
-		if (!(cur_node->lightsource->flags2&MF2_DORMANT))
+		if (cur_node->lightsource->IsActive())
 		{
-			bool is_point_light = (cur_node->lightsource->lightflags & LF_ATTENUATE) != 0;
+			bool is_point_light = cur_node->lightsource->IsAttenuated();
 
 			// To do: cull lights not touching subsector
 

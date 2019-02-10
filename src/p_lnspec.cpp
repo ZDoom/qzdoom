@@ -1620,7 +1620,7 @@ FUNC(LS_Thing_Hate)
 			if (arg2 != 0)
 			{
 				hater->TIDtoHate = arg1;
-				hater->LastLookActor = NULL;
+				hater->LastLookActor = nullptr;
 
 				// If the TID to hate is 0, then don't forget the target and
 				// lastenemy fields.
@@ -1628,11 +1628,11 @@ FUNC(LS_Thing_Hate)
 				{
 					if (hater->target != NULL && hater->target->tid != arg1)
 					{
-						hater->target = NULL;
+						hater->target = nullptr;
 					}
 					if (hater->lastenemy != NULL && hater->lastenemy->tid != arg1)
 					{
-						hater->lastenemy = NULL;
+						hater->lastenemy = nullptr;
 					}
 				}
 			}
@@ -1826,7 +1826,7 @@ FUNC(LS_Thing_SetGoal)
 			{ // Targeting a goal already? -> don't target it anymore.
 			  // A_Look will set it to the goal, presuming no real targets
 			  // come into view by then.
-				self->target = NULL;
+				self->target = nullptr;
 			}
 			self->goal = goal;
 			if (arg3 == 0)
@@ -2016,7 +2016,7 @@ FUNC(LS_FS_Execute)
 {
 	if (arg1 && ln && backSide) return false;
 	if (arg2!=0 && !P_CheckKeys(it, arg2, !!arg3)) return false;
-	return T_RunScript(arg0,it);
+	return T_RunScript(&level, arg0, it);
 }
 
 
@@ -2287,8 +2287,8 @@ FUNC(LS_Sector_SetLink)
 	return false;
 }
 
-void SetWallScroller(int id, int sidechoice, double dx, double dy, EScrollPos Where);
-void SetScroller(int tag, EScroll type, double dx, double dy);
+void SetWallScroller(FLevelLocals *Level, int id, int sidechoice, double dx, double dy, EScrollPos Where);
+void SetScroller(FLevelLocals *Level, int tag, EScroll type, double dx, double dy);
 
 
 FUNC(LS_Scroll_Texture_Both)
@@ -2311,7 +2311,7 @@ FUNC(LS_Scroll_Texture_Both)
 		sidechoice = 0;
 	}
 
-	SetWallScroller (arg0, sidechoice, dx, dy, scw_all);
+	SetWallScroller (&level, arg0, sidechoice, dx, dy, scw_all);
 
 	return true;
 }
@@ -2322,7 +2322,7 @@ FUNC(LS_Scroll_Wall)
 	if (arg0 == 0)
 		return false;
 
-	SetWallScroller (arg0, !!arg3, arg1 / 65536., arg2 / 65536., EScrollPos(arg4));
+	SetWallScroller (&level, arg0, !!arg3, arg1 / 65536., arg2 / 65536., EScrollPos(arg4));
 	return true;
 }
 
@@ -2338,19 +2338,19 @@ FUNC(LS_Scroll_Floor)
 
 	if (arg3 == 0 || arg3 == 2)
 	{
-		SetScroller (arg0, EScroll::sc_floor, -dx, dy);
+		SetScroller (&level, arg0, EScroll::sc_floor, -dx, dy);
 	}
 	else
 	{
-		SetScroller (arg0, EScroll::sc_floor, 0, 0);
+		SetScroller (&level, arg0, EScroll::sc_floor, 0, 0);
 	}
 	if (arg3 > 0)
 	{
-		SetScroller (arg0, EScroll::sc_carry, dx, dy);
+		SetScroller (&level, arg0, EScroll::sc_carry, dx, dy);
 	}
 	else
 	{
-		SetScroller (arg0, EScroll::sc_carry, 0, 0);
+		SetScroller (&level, arg0, EScroll::sc_carry, 0, 0);
 	}
 	return true;
 }
@@ -2361,7 +2361,7 @@ FUNC(LS_Scroll_Ceiling)
 	double dx = arg1 / 32.;
 	double dy = arg2 / 32.;
 
-	SetScroller (arg0, EScroll::sc_ceiling, -dx, dy);
+	SetScroller (&level, arg0, EScroll::sc_ceiling, -dx, dy);
 	return true;
 }
 
@@ -2433,7 +2433,7 @@ FUNC(LS_Sector_SetColor)
 	int secnum;
 	while ((secnum = itr.Next()) >= 0)
 	{
-		level.sectors[secnum].SetColor(PalEntry(255, arg1, arg2, arg3), arg4);
+		level.sectors[secnum].SetColor(PalEntry(arg1, arg2, arg3), arg4);
 	}
 
 	return true;
@@ -2446,7 +2446,7 @@ FUNC(LS_Sector_SetFade)
 	int secnum;
 	while ((secnum = itr.Next()) >= 0)
 	{
-		level.sectors[secnum].SetFade(PalEntry(255, arg1, arg2, arg3));
+		level.sectors[secnum].SetFade(PalEntry(arg1, arg2, arg3));
 	}
 	return true;
 }
@@ -3960,8 +3960,6 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, ExecuteSpecial)
 	PARAM_INT(arg4);
 	PARAM_INT(arg5);
 
-	bool res = !!P_ExecuteSpecial(special, linedef, activator, lineside, arg1, arg2, arg3, arg4, arg5);
-
-	ACTION_RETURN_BOOL(res);
+	ACTION_RETURN_INT(P_ExecuteSpecial(special, linedef, activator, lineside, arg1, arg2, arg3, arg4, arg5));
 }
 

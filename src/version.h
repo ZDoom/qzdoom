@@ -57,7 +57,7 @@ const char *GetVersionString();
 #define RC_PRODUCTVERSION2 VERSIONSTR
 // These are for content versioning.
 #define VER_MAJOR 3
-#define VER_MINOR 7
+#define VER_MINOR 8
 #define VER_REVISION 0
 
 // Version identifier for network games.
@@ -87,11 +87,11 @@ const char *GetVersionString();
 #define SAVEGAME_EXT "zds"
 
 // MINSAVEVER is the minimum level snapshot version that can be loaded.
-#define MINSAVEVER	4554
+#define MINSAVEVER	4555
 
 // Use 4500 as the base git save version, since it's higher than the
 // SVN revision ever got.
-#define SAVEVER 4554
+#define SAVEVER 4555
 
 // This is so that derivates can use the same savegame versions without worrying about engine compatibility
 #define GAMESIG "QZDOOM"

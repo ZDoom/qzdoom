@@ -34,6 +34,8 @@
 #include "r_sky.h"
 #include "p_setup.h"
 #include "g_levellocals.h"
+#include "maploader.h"
+#include "r_utility.h"
 
 //==========================================================================
 //
@@ -54,9 +56,15 @@ struct MapSectionGenerator
 		bool operator!= (const cvertex_t &other) const { return fabs(X - other.X) >= EQUAL_EPSILON || fabs(Y - other.Y) >= EQUAL_EPSILON; }
 		cvertex_t& operator =(const vertex_t *v) { X = v->fX(); Y = v->fY(); return *this; }
 	};
+	
+	MapSectionGenerator(FLevelLocals *l)
+	{
+		Level = l;
+	}
 
 	typedef TMap<cvertex_t, int> FSectionVertexMap;
 	TArray<subsector_t *> MapSectionCollector;
+	FLevelLocals *Level;
 
 	//==========================================================================
 	//
@@ -121,7 +129,7 @@ struct MapSectionGenerator
 		cvertex_t vt;
 
 		// first step: Set mapsection for all vertex positions.
-		for (auto &seg : level.segs)
+		for (auto &seg : Level->segs)
 		{
 			int section = seg.Subsector->mapsection;
 			for (int j = 0; j < 2; j++)
@@ -132,7 +140,7 @@ struct MapSectionGenerator
 		}
 
 		// second step: Check if any seg references more than one mapsection, either by subsector or by vertex
-		for (auto &seg : level.segs)
+		for (auto &seg : Level->segs)
 		{
 			int section = seg.Subsector->mapsection;
 			for (int j = 0; j < 2; j++)
@@ -143,7 +151,7 @@ struct MapSectionGenerator
 				if (vsection != section)
 				{
 					// These 2 sections should be merged
-					for (auto &sub : level.subsectors)
+					for (auto &sub : Level->subsectors)
 					{
 						if (sub.mapsection == vsection) sub.mapsection = section;
 					}
@@ -160,7 +168,7 @@ struct MapSectionGenerator
 		{
 			if (sectvalid[i]) sectmap[i] = mergecount++;
 		}
-		for (auto &sub : level.subsectors)
+		for (auto &sub : Level->subsectors)
 		{
 			sub.mapsection = sectmap[sub.mapsection - 1];
 			assert(sub.mapsection != -1);
@@ -181,7 +189,7 @@ struct MapSectionGenerator
 		do
 		{
 			set = false;
-			for (auto &sub : level.subsectors)
+			for (auto &sub : Level->subsectors)
 			{
 				if (sub.mapsection == 0)
 				{
@@ -194,7 +202,7 @@ struct MapSectionGenerator
 		}
 		while (set);
 		num = MergeMapSections(num);
-		level.NumMapSections = num;
+		Level->NumMapSections = num;
 	#ifdef DEBUG
 		Printf("%d map sections found\n", num);
 	#endif
@@ -238,32 +246,33 @@ static void SpreadHackedFlag(subsector_t * sub)
 //
 //==========================================================================
 
-static void PrepareSectorData()
+void MapLoader::PrepareSectorData()
 {
 	TArray<subsector_t *> undetermined;
 
 	// now group the subsectors by sector
-	subsector_t ** subsectorbuffer = new subsector_t * [level.subsectors.Size()];
+	Level->subsectorbuffer.Resize(Level->subsectors.Size());
 
-	for (auto &sub : level.subsectors)
+	for (auto &sub : Level->subsectors)
 	{
 		sub.render_sector->subsectorcount++;
 	}
 
-	for (auto &sec : level.sectors) 
+	auto subsectorbuffer = Level->subsectorbuffer.Data();
+	for (auto &sec : Level->sectors) 
 	{
 		sec.subsectors = subsectorbuffer;
 		subsectorbuffer += sec.subsectorcount;
 		sec.subsectorcount = 0;
 	}
 	
-	for (auto &sub : level.subsectors)
+	for (auto &sub : Level->subsectors)
 	{
 		sub.render_sector->subsectors[sub.render_sector->subsectorcount++] = &sub;
 	}
 
 	// marks all malformed subsectors so rendering tricks using them can be handled more easily
-	for (auto &sub : level.subsectors)
+	for (auto &sub : Level->subsectors)
 	{
 		if (sub.sector == sub.render_sector)
 		{
@@ -282,7 +291,7 @@ static void PrepareSectorData()
 			}
 		}
 	}
-	MapSectionGenerator msg;
+	MapSectionGenerator msg(Level);
 	msg.SetMapSections();
 }
 
@@ -293,7 +302,7 @@ static void PrepareSectorData()
 //
 //==========================================================================
 
-static void PrepareTransparentDoors(sector_t * sector)
+void MapLoader::PrepareTransparentDoors(sector_t * sector)
 {
 	bool solidwall=false;
 	unsigned int notextures=0;
@@ -301,7 +310,6 @@ static void PrepareTransparentDoors(sector_t * sector)
 	unsigned int selfref=0;
 	sector_t * nextsec=NULL;
 
-	P_Recalculate3DFloors(sector);
 	if (sector->subsectorcount==0) return;
 
 	sector->transdoorheight=sector->GetPlaneTexZ(sector_t::floor);
@@ -373,10 +381,8 @@ static void PrepareTransparentDoors(sector_t * sector)
 //
 //==========================================================================
 
-static void AddToVertex(const sector_t * sec, TArray<int> & list)
+static void AddToVertex(int secno, TArray<int> & list)
 {
-	int secno = sec->Index();
-
 	for(unsigned i=0;i<list.Size();i++)
 	{
 		if (list[i]==secno) return;
@@ -390,11 +396,11 @@ static void AddToVertex(const sector_t * sec, TArray<int> & list)
 //
 //==========================================================================
 
-static void InitVertexData()
+void MapLoader::InitVertexData()
 {
-	TArray<TArray<int>> vt_sectorlists(level.vertexes.Size(), true);
+	TArray<TArray<int>> vt_sectorlists(Level->vertexes.Size(), true);
 
-	for(auto &line : level.lines)
+	for(auto &line : Level->lines)
 	{
 		for(int j = 0; j < 2; ++j)
 		{
@@ -408,16 +414,16 @@ static void InitVertexData()
 				{
 					extsector_t::xfloor &x = sec->e->XFloor;
 
-					AddToVertex(sec, vt_sectorlists[v->Index()]);
-					if (sec->heightsec) AddToVertex(sec->heightsec, vt_sectorlists[v->Index()]);
+					AddToVertex(Index(sec), vt_sectorlists[Index(v)]);
+					if (sec->heightsec) AddToVertex(Index(sec->heightsec), vt_sectorlists[Index(v)]);
 				}
 			}
 		}
 	}
 
-	for(unsigned i = 0; i < level.vertexes.Size(); ++i)
+	for(unsigned i = 0; i < Level->vertexes.Size(); ++i)
 	{
-		auto &vert = level.vertexes[i];
+		auto &vert = Level->vertexes[i];
 		int cnt = vt_sectorlists[i].Size();
 
 		vert.dirty = true;
@@ -429,7 +435,7 @@ static void InitVertexData()
 			vert.heightlist = new float[cnt*2];
 			for(int j=0;j<cnt;j++)
 			{
-				vert.sectors[j] = &level.sectors[vt_sectorlists[i][j]];
+				vert.sectors[j] = &Level->sectors[vt_sectorlists[i][j]];
 			}
 		}
 		else
@@ -445,10 +451,10 @@ static void InitVertexData()
 //
 //==========================================================================
 
-static void GetSideVertices(int sdnum, DVector2 *v1, DVector2 *v2)
+void MapLoader::GetSideVertices(int sdnum, DVector2 *v1, DVector2 *v2)
 {
-	line_t *ln = level.sides[sdnum].linedef;
-	if (ln->sidedef[0] == &level.sides[sdnum])
+	line_t *ln = Level->sides[sdnum].linedef;
+	if (ln->sidedef[0] == &Level->sides[sdnum])
 	{
 		*v1 = ln->v1->fPos();
 		*v2 = ln->v2->fPos();
@@ -473,19 +479,19 @@ static int segcmp(const void *a, const void *b)
 //
 //==========================================================================
 
-static void PrepareSegs()
+void MapLoader::PrepareSegs()
 {
-	auto numsides = level.sides.Size();
+	auto numsides = Level->sides.Size();
 	TArray<int> segcount(numsides, true);
 	int realsegs = 0;
 
 	// count the segs
 	memset(segcount.Data(), 0, numsides * sizeof(int));
 
-	for(auto &seg : level.segs)
+	for(auto &seg : Level->segs)
 	{
 		if (seg.sidedef == nullptr) continue;	// miniseg
-		int sidenum = seg.sidedef->Index();
+		int sidenum = Index(seg.sidedef);
 
 		realsegs++;
 		segcount[sidenum]++;
@@ -499,17 +505,18 @@ static void PrepareSegs()
 	}
 
 	// allocate memory
-	level.sides[0].segs = new seg_t*[realsegs];
-	level.sides[0].numsegs = 0;
+	Level->segbuffer.Resize(realsegs);
+	Level->sides[0].segs = Level->segbuffer.Data();
+	Level->sides[0].numsegs = 0;
 
 	for(unsigned i = 1; i < numsides; i++)
 	{
-		level.sides[i].segs = level.sides[i-1].segs + segcount[i-1];
-		level.sides[i].numsegs = 0;
+		Level->sides[i].segs = Level->sides[i-1].segs + segcount[i-1];
+		Level->sides[i].numsegs = 0;
 	}
 
 	// assign the segs
-	for (auto &seg : level.segs)
+	for (auto &seg : Level->segs)
 	{
 		if (seg.sidedef != NULL) seg.sidedef->segs[seg.sidedef->numsegs++] = &seg;
 	}
@@ -517,9 +524,178 @@ static void PrepareSegs()
 	// sort the segs
 	for(unsigned i = 0; i < numsides; i++)
 	{
-		if (level.sides[i].numsegs > 1) qsort(level.sides[i].segs, level.sides[i].numsegs, sizeof(seg_t*), segcmp);
+		if (Level->sides[i].numsegs > 1) qsort(Level->sides[i].segs, Level->sides[i].numsegs, sizeof(seg_t*), segcmp);
 	}
 }
+
+
+//==========================================================================
+//
+// account for a bug in the original software renderer
+// which did not properly check visplanes for sectors inside a portal sector
+//
+//==========================================================================
+
+bool CollectSectorStacksCeiling(FSection * section, sector_t * anchor, TArray<FSection *> &HandledSections)
+{
+	// mark it checked
+	section->validcount = validcount;
+
+	auto me = section->sector;	// this is always the render sector.
+
+	if (me != anchor)
+	{
+		// If the plane doesn't match, this one isn't a candidate.
+		if (me->GetHeightSec() ||
+			(me->GetTexture(sector_t::ceiling) != anchor->GetTexture(sector_t::ceiling)) ||
+			me->ceilingplane != anchor->ceilingplane ||
+			me->GetCeilingLight() != anchor->GetCeilingLight() ||
+			me->Colormap != anchor->Colormap ||
+			(me->planes[sector_t::ceiling].alpha != 1. && me->planes[sector_t::ceiling].alpha != 0.) ||
+			me->SpecialColors[sector_t::ceiling] != anchor->SpecialColors[sector_t::ceiling] ||
+			me->planes[sector_t::ceiling].xform != anchor->planes[sector_t::ceiling].xform)
+		{
+			// different visplane so it can't belong to this stack
+			return false;
+		}
+
+		// Any non-stacked-sector portal will be rejected, any stacked sector portal will skip processing this subsector.
+		auto po = me->GetPortal(sector_t::ceiling);
+		if (po->mType != PORTS_SKYVIEWPOINT)	// sky is the default for all sectors
+		{
+			return po->mType == PORTS_STACKEDSECTORTHING;
+		}
+	}
+
+	for (auto &segment : section->segments)
+	{
+		if (segment.partner == nullptr) return false;
+
+		auto partner = segment.partner->section;
+		if (partner->validcount != validcount)
+		{
+			// Abort if we found something that doesn't match
+			if (!CollectSectorStacksCeiling(partner, anchor, HandledSections))
+			{
+				if (section->sector != anchor)
+					return false;
+			}
+		}
+	}
+	HandledSections.Push(section);
+	return true;
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+bool CollectSectorStacksFloor(FSection * section, sector_t * anchor, TArray<FSection *> &HandledSections)
+{
+	// mark it checked
+	section->validcount = validcount;
+
+	auto me = section->sector;	// this is always the render sector.
+
+	if (me != anchor)
+	{
+		// If the plane doesn't match, this one isn't a candidate.
+		if (me->GetHeightSec() ||
+			me->GetTexture(sector_t::floor) != anchor->GetTexture(sector_t::floor) ||
+			me->floorplane != anchor->floorplane ||
+			me->GetFloorLight() != anchor->GetFloorLight() ||
+			me->Colormap != anchor->Colormap ||
+			(me->planes[sector_t::floor].alpha != 1. && me->planes[sector_t::floor].alpha != 0.) ||
+			me->SpecialColors[sector_t::floor] != anchor->SpecialColors[sector_t::floor] ||
+			me->planes[sector_t::floor].xform != anchor->planes[sector_t::floor].xform)
+		{
+			// different visplane so it can't belong to this stack
+			return false;
+		}
+
+		// Any non-stacked-sector portal will be rejected, any stacked sector portal will skip processing this subsector.
+		auto po = me->GetPortal(sector_t::floor);
+		if (po->mType != PORTS_SKYVIEWPOINT)	// sky is the default for all sectors
+		{
+			return po->mType == PORTS_STACKEDSECTORTHING;
+		}
+	}
+
+	for (auto &segment : section->segments)
+	{
+		if (segment.partner == nullptr) return false;
+
+		auto partner = segment.partner->section;
+		if (partner->validcount != validcount)
+		{
+			// Abort if we found something that doesn't match
+			if (!CollectSectorStacksFloor(partner, anchor, HandledSections))
+			{
+				if (section->sector != anchor)
+					return false;
+			}
+		}
+	}
+	HandledSections.Push(section);
+	return true;
+}
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+void MapLoader::FloodSectorStacks()
+{
+	for (auto &sector : Level->sectors)
+	{
+		auto po = sector.GetPortal(sector_t::ceiling);
+		if (po->mType == PORTS_STACKEDSECTORTHING && sector.planes[sector_t::ceiling].alpha == 0.)
+		{
+			TArray<FSection *> HandledSections;
+			for (auto &section : Level->sections.SectionsForSector(&sector))
+			{
+				auto size = HandledSections.Size();
+				if (!CollectSectorStacksCeiling(&section, &sector, HandledSections))
+				{
+					// Delete everything that got already collected in this iteration.
+					HandledSections.Resize(size);
+				}
+			}
+			for (auto section : HandledSections)
+			{
+				if (section->sector != &sector)
+					Printf("Marked section of sector %d for ceiling portal\n", section->sector->Index());
+				section->flags |= FSection::DONTRENDERCEILING;
+			}
+		}
+
+		po = sector.GetPortal(sector_t::floor);
+		if (po->mType == PORTS_STACKEDSECTORTHING && sector.planes[sector_t::floor].alpha == 0.)
+		{
+			TArray<FSection *> HandledSections;
+			for (auto &section : Level->sections.SectionsForSector(&sector))
+			{
+				auto size = HandledSections.Size();
+				if (!CollectSectorStacksFloor(&section, &sector, HandledSections))
+				{
+					// Delete everything that got already collected in this iteration.
+					HandledSections.Resize(size);
+				}
+			}
+			for (auto section : HandledSections)
+			{
+				if (section->sector != &sector)
+					Printf("Marked section of sector %d for floor portal\n", section->sector->Index());
+				section->flags |= FSection::DONTRENDERFLOOR;
+			}
+		}
+
+	}
+}
+
 
 //==========================================================================
 //
@@ -527,16 +703,17 @@ static void PrepareSegs()
 //
 //==========================================================================
 
-void InitRenderInfo()
+void MapLoader::InitRenderInfo()
 {
 	PrepareSegs();
 	PrepareSectorData();
 	InitVertexData();
-	TArray<int> checkmap(level.vertexes.Size());
-	memset(checkmap.Data(), -1, sizeof(int)*level.vertexes.Size());
-	for(auto &sec : level.sectors) 
+	FloodSectorStacks();
+	TArray<int> checkmap(Level->vertexes.Size());
+	memset(checkmap.Data(), -1, sizeof(int)*Level->vertexes.Size());
+	for(auto &sec : Level->sectors) 
 	{
-		int i = sec.sectornum;
+		int i = Index(&sec);
 		PrepareTransparentDoors(&sec);
 
 		// This ignores vertices only used for seg splitting because those aren't needed here
@@ -544,21 +721,21 @@ void InitRenderInfo()
 		{
 			if (l->sidedef[0]->Flags & WALLF_POLYOBJ) continue;	// don't bother with polyobjects
 
-			int vtnum1 = l->v1->Index();
-			int vtnum2 = l->v2->Index();
+			int vtnum1 = Index(l->v1);
+			int vtnum2 = Index(l->v2);
 
 			if (checkmap[vtnum1] < i)
 			{
 				checkmap[vtnum1] = i;
-				sec.e->vertices.Push(&level.vertexes[vtnum1]);
-				level.vertexes[vtnum1].dirty = true;
+				sec.e->vertices.Push(&Level->vertexes[vtnum1]);
+				Level->vertexes[vtnum1].dirty = true;
 			}
 
 			if (checkmap[vtnum2] < i)
 			{
 				checkmap[vtnum2] = i;
-				sec.e->vertices.Push(&level.vertexes[vtnum2]);
-				level.vertexes[vtnum2].dirty = true;
+				sec.e->vertices.Push(&Level->vertexes[vtnum2]);
+				Level->vertexes[vtnum2].dirty = true;
 			}
 		}
 	}
@@ -574,15 +751,15 @@ void InitRenderInfo()
 //
 //==========================================================================
 
-void FixMinisegReferences()
+void MapLoader::FixMinisegReferences()
 {
 	TArray<seg_t *> bogussegs;
 
-	for (unsigned i = 0; i < level.segs.Size(); i++)
+	for (unsigned i = 0; i < Level->segs.Size(); i++)
 	{
-		if (level.segs[i].sidedef == nullptr && level.segs[i].PartnerSeg == nullptr)
+		if (Level->segs[i].sidedef == nullptr && Level->segs[i].PartnerSeg == nullptr)
 		{
-			bogussegs.Push(&level.segs[i]);
+			bogussegs.Push(&Level->segs[i]);
 		}
 	}
 
@@ -605,7 +782,7 @@ void FixMinisegReferences()
 		}
 		if (pick)
 		{
-			DPrintf(DMSG_NOTIFY, "Linking miniseg pair from (%2.3f, %2.3f) -> (%2.3f, %2.3f) in sector %d\n", pick->v2->fX(), pick->v2->fY(), pick->v1->fX(), pick->v1->fY(), pick->frontsector->Index());
+			DPrintf(DMSG_NOTIFY, "Linking miniseg pair from (%2.3f, %2.3f) -> (%2.3f, %2.3f) in sector %d\n", pick->v2->fX(), pick->v2->fY(), pick->v1->fX(), pick->v1->fY(), Index(pick->frontsector));
 			pick->PartnerSeg = seg1;
 			seg1->PartnerSeg = pick;
 			assert(seg1->v1 == pick->v2 && pick->v1 == seg1->v2);
@@ -626,16 +803,16 @@ void FixMinisegReferences()
 //
 //==========================================================================
 
-void FixHoles()
+void MapLoader::FixHoles()
 {
 	TArray<seg_t *> bogussegs;
 	TArray<TArray<seg_t *>> segloops;
 
-	for (unsigned i = 0; i < level.segs.Size(); i++)
+	for (unsigned i = 0; i < Level->segs.Size(); i++)
 	{
-		if (level.segs[i].sidedef == nullptr && level.segs[i].PartnerSeg == nullptr)
+		if (Level->segs[i].sidedef == nullptr && Level->segs[i].PartnerSeg == nullptr)
 		{
-			bogussegs.Push(&level.segs[i]);
+			bogussegs.Push(&Level->segs[i]);
 		}
 	}
 
@@ -702,27 +879,27 @@ void FixHoles()
 			for (auto &segloop : segloops)
 				segcount += segloop.Size();
 
-			seg_t *oldsegstartptr = &level.segs[0];
-			subsector_t *oldssstartptr = &level.subsectors[0];
+			seg_t *oldsegstartptr = &Level->segs[0];
+			subsector_t *oldssstartptr = &Level->subsectors[0];
 
-			unsigned newsegstart = level.segs.Reserve(segcount);
-			unsigned newssstart = level.subsectors.Reserve(segloops.Size());
+			unsigned newsegstart = Level->segs.Reserve(segcount);
+			unsigned newssstart = Level->subsectors.Reserve(segloops.Size());
 
-			seg_t *newsegstartptr = &level.segs[0];
-			subsector_t *newssstartptr = &level.subsectors[0];
+			seg_t *newsegstartptr = &Level->segs[0];
+			subsector_t *newssstartptr = &Level->subsectors[0];
 
 			// Now fix all references to these in the level data.
-			// Note that the Index() method does not work here due to the reallocation.
-			for (auto &seg : level.segs)
+			// Note that the Index method does not work here due to the reallocation.
+			for (auto &seg : Level->segs)
 			{
 				if (seg.PartnerSeg) seg.PartnerSeg = newsegstartptr + (seg.PartnerSeg - oldsegstartptr);
 				seg.Subsector = newssstartptr + (seg.Subsector - oldssstartptr);
 			}
-			for (auto &sub : level.subsectors)
+			for (auto &sub : Level->subsectors)
 			{
 				sub.firstline = newsegstartptr + (sub.firstline - oldsegstartptr);
 			}
-			for (auto &node : level.nodes)
+			for (auto &node : Level->nodes)
 			{
 				// How hideous... :(
 				for (auto & p : node.children)
@@ -750,20 +927,20 @@ void FixHoles()
 			// Add the new data. This doesn't care about convexity. It is never directly used to generate a primitive.
 			for (auto &segloop : segloops)
 			{
-				DPrintf(DMSG_NOTIFY, "Adding dummy subsector for sector %d\n", segloop[0]->Subsector->render_sector->Index());
+				DPrintf(DMSG_NOTIFY, "Adding dummy subsector for sector %d\n", Index(segloop[0]->Subsector->render_sector));
 
-				subsector_t &sub = level.subsectors[newssstart++];
+				subsector_t &sub = Level->subsectors[newssstart++];
 				memset(&sub, 0, sizeof(sub));
 				sub.sector = segloop[0]->frontsector;
 				sub.render_sector = segloop[0]->Subsector->render_sector;
 				sub.numlines = segloop.Size();
-				sub.firstline = &level.segs[newsegstart];
+				sub.firstline = &Level->segs[newsegstart];
 				sub.flags = SSECF_HOLE;
 
 				for (auto otherseg : segloop)
 				{
 					DPrintf(DMSG_NOTIFY, "   Adding seg from (%2.3f, %2.3f) -> (%2.3f, %2.3f)\n", otherseg->v2->fX(), otherseg->v2->fY(), otherseg->v1->fX(), otherseg->v1->fY());
-					seg_t &seg = level.segs[newsegstart++];
+					seg_t &seg = Level->segs[newsegstart++];
 					memset(&seg, 0, sizeof(seg));
 					seg.v1 = otherseg->v2;
 					seg.v2 = otherseg->v1;
@@ -775,56 +952,4 @@ void FixHoles()
 			}
 		}
 	}
-}
-
-//==========================================================================
-//
-// ReportUnpairedMinisegs
-//
-// Debug routine
-// reports all unpaired minisegs that couldn't be fixed by either 
-// explicitly pairing them or combining them to a dummy subsector
-//
-//==========================================================================
-
-void ReportUnpairedMinisegs()
-{
-	int bogus = 0;
-	for (unsigned i = 0; i < level.segs.Size(); i++)
-	{
-		if (level.segs[i].sidedef == nullptr && level.segs[i].PartnerSeg == nullptr)
-		{
-			Printf("Unpaired miniseg %d, sector %d, (%d: %2.6f, %2.6f) -> (%d: %2.6f, %2.6f)\n",
-				i, level.segs[i].Subsector->render_sector->Index(),
-				level.segs[i].v1->Index(), level.segs[i].v1->fX(), level.segs[i].v1->fY(),
-				level.segs[i].v2->Index(), level.segs[i].v2->fX(), level.segs[i].v2->fY());
-			bogus++;
-		}
-	}
-	if (bogus > 0) Printf("%d unpaired minisegs found\n", bogus);
-}
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-CCMD(listmapsections)
-{
-	for (int i = 0; i < 100; i++)
-	{
-		for (auto &sub : level.subsectors)
-		{
-			if (sub.mapsection == i)
-			{
-				Printf("Mapsection %d, sector %d, line %d\n", i, sub.render_sector->Index(), sub.firstline->linedef->Index());
-				break;
-			}
-		}
-	}
-}
-
-CCMD(listbadminisegs)
-{
-	ReportUnpairedMinisegs();
 }

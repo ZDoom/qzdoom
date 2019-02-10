@@ -42,18 +42,25 @@
 #include "portal.h"
 #include "p_blockmap.h"
 #include "p_local.h"
+#include "po_man.h"
+#include "p_acs.h"
 #include "p_destructible.h"
 #include "r_data/r_sections.h"
 #include "r_data/r_canvastexture.h"
 
+class DACSThinker;
+class DFraggleThinker;
+class DSpotState;
 
 struct FLevelData
 {
 	TArray<vertex_t> vertexes;
 	TArray<sector_t> sectors;
 	TArray<line_t*> linebuffer;	// contains the line lists for the sectors.
+	TArray<subsector_t*> subsectorbuffer;	// contains the subsector lists for the sectors.
 	TArray<line_t> lines;
 	TArray<side_t> sides;
+	TArray<seg_t *> segbuffer;	// contains the seg links for the sidedefs.
 	TArray<seg_t> segs;
 	TArray<subsector_t> subsectors;
 	TArray<node_t> nodes;
@@ -62,6 +69,7 @@ struct FLevelData
 	node_t *headgamenode;
 	TArray<uint8_t> rejectmatrix;
 	TArray<zone_t>	Zones;
+	TArray<FPolyObj> Polyobjects;
 
 	TArray<FSectorPortal> sectorPortals;
 	TArray<FLinePortal> linePortals;
@@ -79,6 +87,7 @@ struct FLevelData
 	TMap<int, FHealthGroup> healthGroups;
 
 	FBlockmap blockmap;
+	TArray<polyblock_t *> PolyBlockMap;
 
 	// These are copies of the loaded map data that get used by the savegame code to skip unaltered fields
 	// Without such a mechanism the savegame format would become too slow and large because more than 80-90% are normally still unaltered.
@@ -91,6 +100,7 @@ struct FLevelData
 	FPlayerStart		playerstarts[MAXPLAYERS];
 	TArray<FPlayerStart> AllPlayerStarts;
 
+	FBehaviorContainer Behaviors;
 };
 
 struct FLevelLocals : public FLevelData
@@ -100,6 +110,8 @@ struct FLevelLocals : public FLevelData
 	void AddScroller(int secnum);
 	void SetInterMusic(const char *nextmap);
 	void SetMusicVolume(float v);
+	void ClearLevelData();
+	void ClearPortals();
 
 	uint8_t		md5[16];			// for savegame validation. If the MD5 does not match the savegame won't be loaded.
 	int			time;			// time in the hub
@@ -186,10 +198,20 @@ struct FLevelLocals : public FLevelData
 	float		MusicVolume;
 
 	// Hardware render stuff that can either be set via CVAR or MAPINFO
-	ELightMode	lightmode;
+	ELightMode	lightMode;
 	bool		brightfog;
 	bool		lightadditivesurfaces;
 	bool		notexturefill;
+	int			ImpactDecalCount;
+
+	FDynamicLight *lights;
+
+	// links to global game objects
+	TArray<TObjPtr<AActor *>> CorpseQueue;
+	TObjPtr<DFraggleThinker *> FraggleScriptThinker = nullptr;
+	TObjPtr<DACSThinker*> ACSThinker = nullptr;
+
+	TObjPtr<DSpotState *> SpotState = nullptr;
 
 	bool		IsJumpingAllowed() const;
 	bool		IsCrouchingAllowed() const;
@@ -210,65 +232,15 @@ struct FLevelLocals : public FLevelData
 		return savegamerestore
 			|| (info != nullptr && info->Snapshot.mBuffer != nullptr && info->isValid());
 	}
-
-	bool isSoftwareLighting() const
-	{
-		return lightmode >= ELightMode::ZDoomSoftware;
-	}
-
-	bool isDarkLightMode() const
-	{
-		return !!((int)lightmode & (int)ELightMode::Doom);
-	}
-
-	void SetFallbackLightMode()
-	{
-		lightmode = ELightMode::Doom;
-	}
 };
 
 #ifndef NO_DEFINE_LEVEL
 
 extern FLevelLocals level;
 
-inline int vertex_t::Index() const
-{
-	return int(this - &level.vertexes[0]);
-}
-
-inline int side_t::Index() const
-{
-	return int(this - &level.sides[0]);
-}
-
-inline int line_t::Index() const
-{
-	return int(this - &level.lines[0]);
-}
-
-inline int seg_t::Index() const
-{
-	return int(this - &level.segs[0]);
-}
-
-inline int subsector_t::Index() const
-{
-	return int(this - &level.subsectors[0]);
-}
-
-inline int node_t::Index() const
-{
-	return int(this - &level.nodes[0]);
-}
-
 inline FSectorPortal *line_t::GetTransferredPortal()
 {
 	return portaltransferred >= level.sectorPortals.Size() ? (FSectorPortal*)nullptr : &level.sectorPortals[portaltransferred];
-}
-
-inline int sector_t::Index() const 
-{ 
-	return int(this - &level.sectors[0]); 
 }
 
 inline FSectorPortal *sector_t::GetPortal(int plane)

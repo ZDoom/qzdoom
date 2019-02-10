@@ -65,9 +65,8 @@ void GLBuffer::Bind()
 }
 
 
-void GLBuffer::SetData(size_t size, void *data, bool staticdata)
+void GLBuffer::SetData(size_t size, const void *data, bool staticdata)
 {
-	assert(nomap);	// once it's mappable, it cannot be recreated anymore.
 	Bind();
 	if (data != nullptr)
 	{
@@ -90,6 +89,12 @@ void GLBuffer::SetData(size_t size, void *data, bool staticdata)
 	}
 	buffersize = size;
 	InvalidateBufferState();
+}
+
+void GLBuffer::SetSubData(size_t offset, size_t size, const void *data)
+{
+	Bind();
+	glBufferSubData(mUseType, offset, size, data);
 }
 
 void GLBuffer::Map()
