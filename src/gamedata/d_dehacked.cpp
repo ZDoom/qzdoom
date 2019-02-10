@@ -285,7 +285,7 @@ static bool  including, includenotext;
 
 static const char *unknown_str = "Unknown key %s encountered in %s %d.\n";
 
-static FStringTable *EnglishStrings;
+static StringMap EnglishStrings, DehStrings;
 
 // This is an offset to be used for computing the text stuff.
 // Straight from the DeHackEd source which was
@@ -2166,7 +2166,7 @@ static int PatchMusic (int dummy)
 		
 		keystring << "MUSIC_" << Line1;
 
-		GStrings.SetString (keystring, newname);
+		DehStrings.Insert(keystring, newname);
 		DPrintf (DMSG_SPAMMY, "Music %s set to:\n%s\n", keystring.GetChars(), newname);
 	}
 
@@ -2277,11 +2277,11 @@ static int PatchText (int oldSize)
 	const char *str;
 	do
 	{
-		str = EnglishStrings->MatchString(oldStr);
+		str = EnglishStrings.MatchString(oldStr);
 		if (str != NULL)
 		{
-			GStrings.SetString(str, newStr);
-			EnglishStrings->SetString(str, "~~");	// set to something invalid so that it won't get found again by the next iteration or  by another replacement later
+			DehStrings.Insert(str, newStr);
+			EnglishStrings.Remove(str);	// remove entry so that it won't get found again by the next iteration or  by another replacement later
 			good = true;
 		}
 	} 
@@ -2334,7 +2334,7 @@ static int PatchStrings (int dummy)
 		// Account for a discrepancy between Boom's and ZDoom's name for the red skull key pickup message
 		const char *ll = Line1;
 		if (!stricmp(ll, "GOTREDSKULL")) ll = "GOTREDSKUL";
-		GStrings.SetString (ll, holdstring);
+		DehStrings.Insert(ll, holdstring);
 		DPrintf (DMSG_SPAMMY, "%s set to:\n%s\n", Line1, holdstring.GetChars());
 	}
 
@@ -2667,11 +2667,6 @@ static void UnloadDehSupp ()
 		StyleNames.Reset();
 		AmmoNames.Reset();
 		UnchangedSpriteNames.Reset();
-		if (EnglishStrings != NULL)
-		{
-			delete EnglishStrings;
-			EnglishStrings = NULL;
-		}
 	}
 }
 
@@ -2701,12 +2696,8 @@ static bool LoadDehSupp ()
 			return true;
 		}
 
-		if (EnglishStrings == NULL)
-		{
-			EnglishStrings = new FStringTable;
-			EnglishStrings->LoadStrings (true);
-		}
-
+		if (EnglishStrings.CountUsed() == 0)
+			EnglishStrings = GStrings.GetDefaultStrings();
 
 		UnchangedSpriteNames.Resize(sprites.Size());
 		for (unsigned i = 0; i < UnchangedSpriteNames.Size(); ++i)
@@ -3076,6 +3067,8 @@ void FinishDehPatch ()
 	StateMap.ShrinkToFit();
 	TouchedActors.Clear();
 	TouchedActors.ShrinkToFit();
+	EnglishStrings.Clear();
+	GStrings.SetDehackedStrings(std::move(DehStrings));
 
 	// Now it gets nasty: We have to fiddle around with the weapons' ammo use info to make Doom's original
 	// ammo consumption work as intended.
