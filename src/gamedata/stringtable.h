@@ -47,37 +47,68 @@
 #include "doomdef.h"
 #include "doomtype.h"
 
+struct TableElement
+{
+	FString strings[4];
+};
+
 // This public interface is for Dehacked
-class StringMap : public TMap<FName, FString>
+class StringMap : public TMap<FName, TableElement>
 {
 public:
 	const char *MatchString(const char *string) const;
 };
 
 
+struct StringMacro
+{
+	FString Replacements[4];
+};
+
+
 class FStringTable
 {
 public:
+	enum : uint32_t
+	{
+		default_table = MAKE_ID('*', '*', 0, 0),
+		global_table = MAKE_ID('*', 0, 0, 0),
+		dehacked_table = MAKE_ID('*', '*', '*', 0)
+	};
+
 	using LangMap = TMap<uint32_t, StringMap>;
+	using StringMacroMap = TMap<FName, StringMacro>;
 
 	void LoadStrings ();
 	void UpdateLanguage();
-	StringMap GetDefaultStrings() { return allStrings[MAKE_ID('*', '*', 0, 0)]; }	// Dehacked needs these for comparison
+	StringMap GetDefaultStrings() { return allStrings[default_table]; }	// Dehacked needs these for comparison
 	void SetDehackedStrings(StringMap && map)
 	{
-		allStrings.Insert(MAKE_ID('*', '*', '*', 0), map);
+		allStrings.Insert(dehacked_table, map);
 		UpdateLanguage();
 	}
-
+	
+	const char *GetLanguageString(const char *name, uint32_t langtable, int gender = -1) const;
+	const char *GetString(const char *name, uint32_t *langtable, int gender = -1) const;
 	const char *operator() (const char *name) const;	// Never returns NULL
-	const char *operator[] (const char *name) const;	// Can return NULL
+	const char *operator[] (const char *name) const
+	{
+		return GetString(name, nullptr);
+	}
+	bool exists(const char *name);
 
 private:
 
+	StringMacroMap allMacros;
 	LangMap allStrings;
-	TArray<StringMap*> currentLanguageSet;
+	TArray<std::pair<uint32_t, StringMap*>> currentLanguageSet;
 
 	void LoadLanguage (int lumpnum);
+	bool LoadLanguageFromSpreadsheet(int lumpnum);
+	bool readMacros(struct xlsxio_read_struct *reader, const char *sheet);
+	bool readSheetIntoTable(struct xlsxio_read_struct *reader, const char *sheet);
+	void InsertString(int langid, FName label, const FString &string);
+
 	static size_t ProcessEscapes (char *str);
 };
 

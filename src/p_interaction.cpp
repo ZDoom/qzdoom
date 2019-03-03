@@ -261,12 +261,12 @@ void ClientObituary (AActor *self, AActor *inflictor, AActor *attacker, int dmgf
 
 	if (message != NULL && message[0] == '$') 
 	{
-		message = GStrings[message+1];
+		message = GStrings.GetString(message+1, nullptr, self->player->userinfo.GetGender());
 	}
 
 	if (message == NULL)
 	{
-		message = GStrings("OB_DEFAULT");
+		message = GStrings.GetString("OB_DEFAULT", nullptr, self->player->userinfo.GetGender());
 	}
 
 	// [CK] Don't display empty strings
@@ -810,6 +810,7 @@ static void ReactToDamage(AActor *target, AActor *inflictor, AActor *source, int
 	bool fakedPain = false;
 	bool forcedPain = false;
 	bool noPain = false;
+	bool wakeup = false;
 
 	// Dead or non-existent entity, do not react. Especially if the damage is cancelled.
 	if (target == nullptr || target->health < 1 || damage < 0)
@@ -822,23 +823,9 @@ static void ReactToDamage(AActor *target, AActor *inflictor, AActor *source, int
 			((player->cheats & CF_GODMODE) && damage < TELEFRAG_DAMAGE))
 			return;
 	}
-
-	noPain = (flags & DMG_NO_PAIN) || (target->flags5 & MF5_NOPAIN) || (inflictor && (inflictor->flags5 & MF5_PAINLESS));
-
-	// Are we attempting to cause pain?
-	if (!noPain)
-	{
-		fakedPain = (isFakePain(target, inflictor, originaldamage));
-		forcedPain = (MustForcePain(target, inflictor));
-	}
-
-	// [MC] No forced or faked pain so skip it.
-	// However the rest of the function must carry on.
-	if (!noPain && damage < 1 && !fakedPain && !forcedPain)
-		noPain = true;
-
+	
 	woundstate = target->FindState(NAME_Wound, mod);
-	if (woundstate != NULL)
+	if (woundstate != nullptr)
 	{
 		int woundhealth = target->WoundHealth;
 
@@ -848,10 +835,16 @@ static void ReactToDamage(AActor *target, AActor *inflictor, AActor *source, int
 			return;
 		}
 	}
+	// [MC] NOPAIN will not stop the actor from waking up if damaged. 
+	// ALLOW/CAUSEPAIN will enable infighting, even if painless.
+	noPain = (flags & DMG_NO_PAIN) || (target->flags5 & MF5_NOPAIN) || (inflictor && (inflictor->flags5 & MF5_PAINLESS));
+	fakedPain = (isFakePain(target, inflictor, originaldamage));
+	forcedPain = (MustForcePain(target, inflictor));
+	wakeup = (damage > 0 || fakedPain || forcedPain);
 
-	if (!noPain &&
+	if (!noPain && wakeup &&
 		((target->player != nullptr || !G_SkillProperty(SKILLP_NoPain)) && !(target->flags & MF_SKULLFLY))
-		&& damage >= target->PainThreshold)
+		&& (forcedPain || damage >= target->PainThreshold))
 	{
 		if (inflictor && inflictor->PainType != NAME_None)
 			mod = inflictor->PainType;
@@ -860,13 +853,13 @@ static void ReactToDamage(AActor *target, AActor *inflictor, AActor *source, int
 		justhit = TriggerPainChance(target, mod, forcedPain, false);
 	}
 
-	if (target->player == nullptr) target->reactiontime = 0;			// we're awake now...	
-	if (source)
+	if (wakeup && target->player == nullptr) target->reactiontime = 0;			// we're awake now...	
+	if (wakeup && source)
 	{
 		if (source == target->target)
 		{
 			target->threshold = target->DefThreshold;
-			if (target->state == target->SpawnState && target->SeeState != NULL)
+			if (target->state == target->SpawnState && target->SeeState != nullptr)
 			{
 				target->SetState(target->SeeState);
 			}
@@ -879,15 +872,15 @@ static void ReactToDamage(AActor *target, AActor *inflictor, AActor *source, int
 			// killough 2/15/98: remember last enemy, to prevent
 			// sleeping early; 2/21/98: Place priority on players
 
-			if (target->lastenemy == NULL ||
-				(target->lastenemy->player == NULL && target->TIDtoHate == 0) ||
+			if (target->lastenemy == nullptr ||
+				(target->lastenemy->player == nullptr && target->TIDtoHate == 0) ||
 				target->lastenemy->health <= 0)
 			{
 				target->lastenemy = target->target; // remember last enemy - killough
 			}
 			target->target = source;
 			target->threshold = target->DefThreshold;
-			if (target->state == target->SpawnState && target->SeeState != NULL)
+			if (target->state == target->SpawnState && target->SeeState != nullptr)
 			{
 				target->SetState(target->SeeState);
 			}
@@ -1150,7 +1143,7 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 				// Handle active damage modifiers (e.g. PowerDamage)
 				if (damage > 0 && !(flags & DMG_NO_ENHANCE))
 				{
-					damage = source->GetModifiedDamage(mod, damage, false, inflictor, source, flags);
+					damage = source->GetModifiedDamage(mod, damage, false, inflictor, target, flags);
 				}
 			}
 			// Handle passive damage modifiers (e.g. PowerProtection), provided they are not afflicted with protection penetrating powers.
