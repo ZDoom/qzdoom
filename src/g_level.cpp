@@ -1062,12 +1062,8 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 	if (isPrimaryLevel())
 	{
 		FString mapname = nextmapname;
-	mapname.ToLower();
-		Printf(
-			"\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36"
-			"\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n"
-			TEXTCOLOR_BOLD "%s - %s\n\n",
-			mapname.GetChars(), LevelName.GetChars());
+		mapname.ToUpper();
+		Printf("\n%s\n\n" TEXTCOLOR_BOLD "%s - %s\n\n", console_bar, mapname.GetChars(), LevelName.GetChars());
 	}
 
 	// Set the sky map.
@@ -2142,9 +2138,9 @@ int IsPointInMap(FLevelLocals *Level, double x, double y, double z)
 
 	for (uint32_t i = 0; i < subsector->numlines; i++)
 	{
-		// Skip single sided lines.
+		// Skip double sided lines.
 		seg_t *seg = subsector->firstline + i;
-		if (seg->backsector != nullptr)	continue;
+		if (seg->backsector != nullptr || seg->linedef == nullptr) continue;
 
 		divline_t dline;
 		P_MakeDivline(seg->linedef, &dline);

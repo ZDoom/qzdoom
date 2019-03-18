@@ -250,7 +250,8 @@ struct userinfo_t : TMap<FName,FBaseCVar *>
 	}
 	int GetGender() const
 	{
-		return *static_cast<FIntCVar *>(*CheckKey(NAME_Gender));
+		auto cvar = CheckKey(NAME_Gender);
+		return cvar ? *static_cast<FIntCVar *>(*cvar) : 0;
 	}
 	bool GetNoAutostartMap() const
 	{
@@ -280,7 +281,8 @@ class player_t
 public:
 	player_t() = default;
 	~player_t();
-	player_t &operator= (const player_t &p);
+	player_t &operator= (const player_t &p) = delete;
+	void CopyFrom(player_t &src, bool copyPSP);
 
 	void Serialize(FSerializer &arc);
 	size_t PropagateMark();

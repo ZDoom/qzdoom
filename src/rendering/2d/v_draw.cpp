@@ -87,6 +87,28 @@ int GetUIScale(int altval)
 	return MAX(1,MIN(scaleval, max));
 }
 
+// The new console font is twice as high, so the scaling calculation must factor that in.
+int GetConScale(int altval)
+{
+	int scaleval;
+	if (altval > 0) scaleval = altval;
+	else if (uiscale == 0)
+	{
+		// Default should try to scale to 640x400
+		int vscale = screen->GetHeight() / 800;
+		int hscale = screen->GetWidth() / 1280;
+		scaleval = clamp(vscale, 1, hscale);
+	}
+	else scaleval = uiscale / 2;
+
+	// block scales that result in something larger than the current screen.
+	int vmax = screen->GetHeight() / 400;
+	int hmax = screen->GetWidth() / 640;
+	int max = MAX(vmax, hmax);
+	return MAX(1, MIN(scaleval, max));
+}
+
+
 // [RH] Stretch values to make a 320x200 image best fit the screen
 // without using fractional steppings
 int CleanXfac, CleanYfac;
@@ -1351,12 +1373,13 @@ void DFrameBuffer::DrawBorder (FTextureID picnum, int x1, int y1, int x2, int y2
 	}
 }
 
-///==========================================================================
+//==========================================================================
 //
 // Draws a blend over the entire view
 //
 //==========================================================================
-void DFrameBuffer::DrawBlend(sector_t * viewsector)
+
+FVector4 DFrameBuffer::CalcBlend(sector_t * viewsector, PalEntry *modulateColor)
 {
 	float blend[4] = { 0,0,0,0 };
 	PalEntry blendv = 0;
@@ -1365,6 +1388,8 @@ void DFrameBuffer::DrawBlend(sector_t * viewsector)
 	float extra_blue;
 	player_t *player = nullptr;
 	bool fullbright = false;
+
+	if (modulateColor) *modulateColor = 0xffffffff;
 
 	if (players[consoleplayer].camera != nullptr)
 	{
@@ -1376,7 +1401,7 @@ void DFrameBuffer::DrawBlend(sector_t * viewsector)
 	// don't draw sector based blends when any fullbright screen effect is active.
 	if (!fullbright)
 	{
-        const auto &vpp = r_viewpoint.Pos;
+		const auto &vpp = r_viewpoint.Pos;
 		if (!viewsector->e->XFloor.ffloors.Size())
 		{
 			if (viewsector->GetHeightSec())
@@ -1427,7 +1452,7 @@ void DFrameBuffer::DrawBlend(sector_t * viewsector)
 			// black multiplicative blends are ignored
 			if (extra_red || extra_green || extra_blue)
 			{
-				screen->Dim(blendv, 1, 0, 0, screen->GetWidth(), screen->GetHeight(), &LegacyRenderStyles[STYLE_Multiply]);
+				if (modulateColor) *modulateColor = blendv;
 			}
 			blendv = 0;
 		}
@@ -1452,7 +1477,7 @@ void DFrameBuffer::DrawBlend(sector_t * viewsector)
 			if (in->IsKindOf(torchtype))
 			{
 				// The software renderer already bakes the torch flickering into its output, so this must be omitted here.
-				float r = vid_rendermode < 4? 1.f : (0.8f + (7 - player->fixedlightlevel) / 70.0f);
+				float r = vid_rendermode < 4 ? 1.f : (0.8f + (7 - player->fixedlightlevel) / 70.0f);
 				if (r > 1.0f) r = 1.0f;
 				int rr = (int)(r * 255);
 				int b = rr;
@@ -1467,9 +1492,9 @@ void DFrameBuffer::DrawBlend(sector_t * viewsector)
 				}
 			}
 		}
-		if (color != 0xffffffff)
-		{
-			screen->Dim(color, 1, 0, 0, screen->GetWidth(), screen->GetHeight(), &LegacyRenderStyles[STYLE_Multiply]);
+		if (modulateColor)
+		{ 
+			*modulateColor = color;
 		}
 	}
 
@@ -1488,8 +1513,26 @@ void DFrameBuffer::DrawBlend(sector_t * viewsector)
 	const float br = clamp(blend[0] * 255.f, 0.f, 255.f);
 	const float bg = clamp(blend[1] * 255.f, 0.f, 255.f);
 	const float bb = clamp(blend[2] * 255.f, 0.f, 255.f);
-	const PalEntry bcolor(255, uint8_t(br), uint8_t(bg), uint8_t(bb));
-	screen->Dim(bcolor, blend[3], 0, 0, screen->GetWidth(), screen->GetHeight());
+	return { br, bg, bb, blend[3] };
+}
+
+//==========================================================================
+//
+// Draws a blend over the entire view
+//
+//==========================================================================
+
+void DFrameBuffer::DrawBlend(sector_t * viewsector)
+{
+	PalEntry modulateColor;
+	auto blend = CalcBlend(viewsector, &modulateColor);
+	if (modulateColor != 0xffffffff)
+	{
+		Dim(modulateColor, 1, 0, 0, GetWidth(), GetHeight(), &LegacyRenderStyles[STYLE_Multiply]);
+	}
+
+	const PalEntry bcolor(255, uint8_t(blend.X), uint8_t(blend.Y), uint8_t(blend.Z));
+	Dim(bcolor, blend.W, 0, 0, GetWidth(), GetHeight());
 }
 
 

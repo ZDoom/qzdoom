@@ -122,6 +122,7 @@ static const uint16_t loweruppercase[] = {
 0x0078,0x0058,
 0x0079,0x0059,
 0x007A,0x005A,
+0x00DF,0x1E9E,
 0x00E0,0x00C0,
 0x00E1,0x00C1,
 0x00E2,0x00C2,
@@ -838,14 +839,28 @@ int stripaccent(int code)
 	}
 	else if (code >= 0x100 && code < 0x180)
 	{
-		static const char accentless[] = "AaAaAaCcCcCcCcDdDdEeEeEeEeEeGgGgGgGgHhHhIiIiIiIiIiIiJjKkkLlLlLlLlLlNnNnNnnNnOoOoOoOoRrRrRrSsSsSsSsTtTtTtUuUuUuUuUuUuWwYyYZzZzZz ";
-		return accentless[code -0x100];
+		// For the double-accented Hungarian letters it makes more sense to first map them to the very similar looking Umlauts.
+		// (And screw the crappy specs here that do not allow UTF-8 multibyte characters here.)
+		if (code == 0x150) code = 0xd6;
+		else if (code == 0x151) code = 0xf6;
+		else if (code == 0x170) code = 0xdc;
+		else if (code == 0x171) code = 0xfc;
+		else
+		{
+			static const char accentless[] = "AaAaAaCcCcCcCcDdDdEeEeEeEeEeGgGgGgGgHhHhIiIiIiIiIiIiJjKkkLlLlLlLlLlNnNnNnnNnOoOoOoOoRrRrRrSsSsSsSsTtTtTtUuUuUuUuUuUuWwYyYZzZzZz ";
+			return accentless[code - 0x100];
+		}
 	}
 	else if (code >= 0x200 && code < 0x21c)
 	{
 		// 0x200-0x217 are probably irrelevant but easy to map to other characters more likely to exist. 0x218-0x21b are relevant for Romanian but also have a fallback within ranges that are more likely to be supported.
 		static const uint16_t u200map[] = {0xc4, 0xe4, 0xc2, 0xe2, 0xcb, 0xeb, 0xca, 0xea, 0xcf, 0xef, 0xce, 0xee, 0xd6, 0xf6, 0xd4, 0xe4, 'R', 'r', 'R', 'r', 0xdc, 0xfc, 0xdb, 0xfb, 0x15e, 0x15f, 0x162, 0x163};
 		return u200map[code - 0x200];
+	}
+	else if (code == 0x201d)
+	{
+		// Map the typographic upper quotation mark to the generic form
+		code = '"';
 	}
 	
 	// skip the rest of Latin characters because none of them are relevant for modern languages.
@@ -855,7 +870,8 @@ int stripaccent(int code)
 
 FFont *V_GetFont(const char *name, const char *fontlumpname)
 {
-	if (!stricmp(name, "CONFONT")) name = "ConsoleFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
+	if (!stricmp(name, "DBIGFONT")) name = "BigFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
+	else if (!stricmp(name, "CONFONT")) name = "ConsoleFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
 	FFont *font = FFont::FindFont (name);
 	if (font == nullptr)
 	{
@@ -1432,6 +1448,15 @@ void V_InitFonts()
 	InitLowerUpper();
 	V_InitCustomFonts();
 
+	FFont *CreateHexLumpFont(const char *fontname, int lump);
+	FFont *CreateHexLumpFont2(const char *fontname, int lump);
+
+	auto lump = Wads.CheckNumForFullName("newconsolefont.hex", 0);	// This is always loaded from gzdoom.pk3 to prevent overriding it with incomplete replacements.
+	if (lump == -1) I_FatalError("newconsolefont.hex not found");	// This font is needed - do not start up without it.
+	NewConsoleFont = CreateHexLumpFont("NewConsoleFont", lump);
+	NewSmallFont = CreateHexLumpFont2("NewSmallFont", lump);
+	CurrentConsoleFont = NewConsoleFont;
+
 	// load the heads-up font
 	if (!(SmallFont = V_GetFont("SmallFont", "SMALLFNT")))
 	{
@@ -1517,6 +1542,6 @@ void V_ClearFonts()
 		delete FFont::FirstFont;
 	}
 	FFont::FirstFont = nullptr;
-	SmallFont = SmallFont2 = BigFont = ConFont = IntermissionFont = nullptr;
+	CurrentConsoleFont = NewSmallFont = NewConsoleFont = SmallFont = SmallFont2 = BigFont = ConFont = IntermissionFont = nullptr;
 }
 
