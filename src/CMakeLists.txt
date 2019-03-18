@@ -460,7 +460,7 @@ add_custom_target( revision_check ALL
 # Libraries ZDoom needs
 
 message( STATUS "Fluid synth libs: ${FLUIDSYNTH_LIBRARIES}" )
-set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ZLIB_LIBRARIES}" "${JPEG_LIBRARIES}" "${BZIP2_LIBRARIES}" "${GME_LIBRARIES}" "${CMAKE_DL_LIBS}" )
+set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ZLIB_LIBRARIES}" "${JPEG_LIBRARIES}" "${BZIP2_LIBRARIES}" "${GME_LIBRARIES}" "${CMAKE_DL_LIBS}" "glslang" "SPIRV" "OGLCompiler" )
 include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${GME_INCLUDE_DIR}" )
 
 if( ${HAVE_VM_JIT} )
@@ -504,7 +504,8 @@ set( PLAT_WIN32_SOURCES
 	win32/gl_sysfb.cpp
 	win32/base_sysfb.cpp
 	win32/win32basevideo.cpp
-	win32/win32glvideo.cpp )
+	win32/win32glvideo.cpp
+	win32/win32vulkanvideo.cpp )
 set( PLAT_POSIX_SOURCES
 	posix/i_cd.cpp
 	posix/i_steam.cpp )
@@ -709,6 +710,11 @@ file( GLOB HEADER_FILES
 	rendering/hwrenderer/scene/*.h
 	rendering/hwrenderer/textures/*.h
 	rendering/hwrenderer/utility/*.h
+	rendering/vulkan/*.h
+	rendering/vulkan/system/*.h
+	rendering/vulkan/renderer/*.h
+	rendering/vulkan/shaders/*.h
+	rendering/vulkan/textures/*.h
 	rendering/gl/*.h
 	rendering/gl/models/*.h
 	rendering/gl/renderer/*.h
@@ -888,6 +894,21 @@ set( FASTMATH_SOURCES
 	sound/opnmidi/opnmidi_private.cpp
 	sound/opnmidi/wopn/wopn_file.c
 
+	#Vulkan stuff must go into a separate list later because it needs to be disabled for some platforms
+	rendering/vulkan/system/vk_device.cpp
+	rendering/vulkan/system/vk_swapchain.cpp
+	rendering/vulkan/system/vk_builders.cpp
+	rendering/vulkan/system/vk_framebuffer.cpp
+	rendering/vulkan/system/vk_buffers.cpp
+	rendering/vulkan/renderer/vk_renderstate.cpp
+	rendering/vulkan/renderer/vk_renderpass.cpp
+	rendering/vulkan/renderer/vk_postprocess.cpp
+	rendering/vulkan/renderer/vk_renderbuffers.cpp
+	rendering/vulkan/shaders/vk_shader.cpp
+	rendering/vulkan/textures/vk_samplers.cpp
+	rendering/vulkan/textures/vk_hwtexture.cpp
+	rendering/vulkan/thirdparty/volk/volk.c
+	rendering/vulkan/thirdparty/vk_mem_alloc/vk_mem_alloc.cpp
 )
 
 set (PCH_SOURCES
@@ -1052,9 +1073,6 @@ set (PCH_SOURCES
 	rendering/hwrenderer/postprocessing/hw_postprocess.cpp
 	rendering/hwrenderer/postprocessing/hw_postprocess_cvars.cpp
 	rendering/hwrenderer/postprocessing/hw_postprocessshader.cpp
-	rendering/hwrenderer/postprocessing/hw_shadowmapshader.cpp
-	rendering/hwrenderer/postprocessing/hw_presentshader.cpp
-	rendering/hwrenderer/postprocessing/hw_present3dRowshader.cpp
 	rendering/hwrenderer/textures/hw_material.cpp
 	rendering/hwrenderer/textures/hw_precache.cpp
 	rendering/hwrenderer/utility/hw_clock.cpp
@@ -1363,8 +1381,11 @@ include_directories( .
 	utility/nodebuilder
 	scripting
 	scripting/vm
+	rendering/vulkan/thirdparty
 	../gdtoa
 	../dumb/include
+	../glslang/glslang/Public
+	../glslang/spirv
 	${CMAKE_BINARY_DIR}/gdtoa
 	${SYSTEM_SOURCES_DIR} )
 
@@ -1442,6 +1463,9 @@ if( APPLE )
 		LINK_FLAGS "-framework Cocoa -framework IOKit -framework OpenGL"
 		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/zdoom-info.plist" )
 
+	# Dymanic libraries like libvulkan.dylib or libMoltenVK.dylib will be loaded by dlopen()
+	# if placed in the directory with the main executable
+	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rpath @executable_path" )
 endif()
 
 if( WIN32 )
@@ -1494,6 +1518,13 @@ source_group("Rendering\\Hardware Renderer\\Shaders" REGULAR_EXPRESSION "^${CMAK
 source_group("Rendering\\Hardware Renderer\\System" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/hwrenderer/system/.+")
 source_group("Rendering\\Hardware Renderer\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/hwrenderer/textures/.+")
 source_group("Rendering\\Hardware Renderer\\Utilities" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/hwrenderer/utility/.+")
+source_group("Rendering\\Vulkan Renderer\\System" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/vulkan/system/.+")
+source_group("Rendering\\Vulkan Renderer\\Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/vulkan/renderer/.+")
+source_group("Rendering\\Vulkan Renderer\\Shaders" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/vulkan/shaders/.+")
+source_group("Rendering\\Vulkan Renderer\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/vulkan/textures/.+")
+source_group("Rendering\\Vulkan Renderer\\Third Party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/vulkan/thirdparty/.+")
+source_group("Rendering\\Vulkan Renderer\\Third Party\\Volk" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/vulkan/thirdparty/volk/.+")
+source_group("Rendering\\Vulkan Renderer\\Third Party\\Vk_Mem_Alloc" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/vulkan/thirdparty/vk_mem_alloc.+")
 source_group("Rendering\\OpenGL Loader" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/gl_load/.+")
 source_group("Rendering\\OpenGL Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/gl/.+")
 source_group("Rendering\\OpenGL Renderer\\Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/gl/data/.+")

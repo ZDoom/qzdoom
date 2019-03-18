@@ -8,7 +8,10 @@ enum
 {
 	LIGHTBUF_BINDINGPOINT = 1,
 	POSTPROCESS_BINDINGPOINT = 2,
-	VIEWPOINT_BINDINGPOINT = 3
+	VIEWPOINT_BINDINGPOINT = 3,
+	LIGHTNODES_BINDINGPOINT = 4,
+	LIGHTLINES_BINDINGPOINT = 5,
+	LIGHTLIST_BINDINGPOINT = 6
 };
 
 enum class UniformType
@@ -46,7 +49,11 @@ public:
 	{
 		FString decl;
 		FString layout;
-		if (screen->glslversion < 4.20)
+		if (bindingpoint == -1)
+		{
+			layout = "push_constant";
+		}
+		else if (screen->glslversion < 4.20)
 		{
 			layout = "std140";
 		}

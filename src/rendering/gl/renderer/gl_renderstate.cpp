@@ -77,7 +77,6 @@ void FGLRenderState::Reset()
 
 	mEffectState = 0;
 	activeShader = nullptr;
-	mPassType = NORMAL_PASS;
 
 	mCurrentVertexBuffer = nullptr;
 	mCurrentVertexOffsets[0] = mVertexOffsets[0] = 0;
@@ -435,11 +434,6 @@ void FGLRenderState::SetColorMask(bool r, bool g, bool b, bool a)
 	glColorMask(r, g, b, a);
 }
 
-void FGLRenderState::EnableDrawBufferAttachments(bool on)
-{
-	EnableDrawBuffers(on ? GetPassDrawBufferCount() : 1);
-}
-
 void FGLRenderState::SetStencil(int offs, int op, int flags = -1)
 {
 	static int op2gl[] = { GL_KEEP, GL_INCR, GL_DECR };
@@ -587,14 +581,6 @@ bool FGLRenderState::SetDepthClamp(bool on)
 	else glEnable(GL_DEPTH_CLAMP);
 	mLastDepthClamp = on;
 	return res;
-}
-
-void FGLRenderState::CheckTimer(uint64_t ShaderStartTime)
-{
-	// if firstFrame is not yet initialized, initialize it to current time
-	// if we're going to overflow a float (after ~4.6 hours, or 24 bits), re-init to regain precision
-	if ((firstFrame == 0) || (screen->FrameTime - firstFrame >= 1 << 24) || ShaderStartTime >= firstFrame)
-		firstFrame = screen->FrameTime;
 }
 
 }

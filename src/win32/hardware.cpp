@@ -44,11 +44,13 @@
 #include "m_argv.h"
 #include "version.h"
 #include "win32glvideo.h"
+#include "win32vulkanvideo.h"
 #include "doomerrors.h"
 #include "i_system.h"
 #include "swrenderer/r_swrenderer.h"
 
 EXTERN_CVAR(Int, vid_maxfps)
+EXTERN_CVAR(Int, vid_backend)
 
 extern HWND Window;
 
@@ -126,7 +128,22 @@ void I_InitGraphics ()
 		// are the active app. Huh?
 	}
 
-	Video = new Win32GLVideo();
+	if (vid_backend == 0)
+	{
+		// first try Vulkan, if that fails OpenGL
+		try
+		{
+			Video = new Win32VulkanVideo();
+		}
+		catch (CRecoverableError &)
+		{
+			Video = new Win32GLVideo();
+		}
+	}
+	else
+	{
+		Video = new Win32GLVideo();
+	}
 
 	if (Video == NULL)
 		I_FatalError ("Failed to initialize display");

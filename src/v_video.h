@@ -47,7 +47,6 @@
 #include "hwrenderer/dynlights/hw_shadowmap.h"
 
 struct sector_t;
-class IShaderProgram;
 class FTexture;
 struct FPortalSceneState;
 class FSkyVertexBuffer;
@@ -421,7 +420,6 @@ public:
 	virtual IHardwareTexture *CreateHardwareTexture() { return nullptr; }
 	virtual void PrecacheMaterial(FMaterial *mat, int translation) {}
 	virtual FModelRenderer *CreateModelRenderer(int mli) { return nullptr; }
-	virtual void UnbindTexUnit(int no) {}
 	virtual void TextureFilterChanged() {}
 	virtual void BeginFrame() {}
 	virtual void SetWindowSize(int w, int h) {}
@@ -431,7 +429,6 @@ public:
 	virtual void BlurScene(float amount) {}
     
     // Interface to hardware rendering resources
-	virtual IShaderProgram *CreateShaderProgram() { return nullptr; }
 	virtual IVertexBuffer *CreateVertexBuffer() { return nullptr; }
 	virtual IIndexBuffer *CreateIndexBuffer() { return nullptr; }
 	virtual IDataBuffer *CreateDataBuffer(int bindingpoint, bool ssbo) { return nullptr; }

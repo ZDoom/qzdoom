@@ -2,20 +2,21 @@
 layout(location = 0) in vec4 aPosition;
 layout(location = 1) in vec2 aTexCoord;
 layout(location = 2) in vec4 aColor;
+
+layout(location = 0) out vec4 vTexCoord;
+layout(location = 1) out vec4 vColor;
+
 #ifndef SIMPLE	// we do not need these for simple shaders
 layout(location = 3) in vec4 aVertex2;
 layout(location = 4) in vec4 aNormal;
 layout(location = 5) in vec4 aNormal2;
-out vec4 pixelpos;
-out vec3 glowdist;
-out vec3 gradientdist;
 
-out vec4 vWorldNormal;
-out vec4 vEyeNormal;
+layout(location = 2) out vec4 pixelpos;
+layout(location = 3) out vec3 glowdist;
+layout(location = 4) out vec3 gradientdist;
+layout(location = 5) out vec4 vWorldNormal;
+layout(location = 6) out vec4 vEyeNormal;
 #endif
-
-out vec4 vTexCoord;
-out vec4 vColor;
 
 void main()
 {
@@ -33,7 +34,14 @@ void main()
 
 	vec4 eyeCoordPos = ViewMatrix * worldcoord;
 
-	vColor = aColor;
+	#ifdef HAS_UNIFORM_VERTEX_DATA
+		if (useVertexData == 0)
+			vColor = uVertexColor;
+		else
+			vColor = aColor;
+	#else
+		vColor = aColor;
+	#endif
 
 	#ifndef SIMPLE
 		pixelpos.xyz = worldcoord.xyz;
@@ -63,7 +71,14 @@ void main()
 			gl_ClipDistance[4] = worldcoord.y - ((uSplitBottomPlane.w + uSplitBottomPlane.x * worldcoord.x + uSplitBottomPlane.y * worldcoord.z) * uSplitBottomPlane.z);
 		}
 
-		vWorldNormal = NormalModelMatrix * vec4(normalize(mix(aNormal.xyz, aNormal2.xyz, uInterpolationFactor)), 1.0);
+		#ifdef HAS_UNIFORM_VERTEX_DATA
+			if (useVertexData == 0)
+				vWorldNormal = NormalModelMatrix * vec4(uVertexNormal.xyz, 1.0);
+			else
+				vWorldNormal = NormalModelMatrix * vec4(normalize(mix(aNormal.xyz, aNormal2.xyz, uInterpolationFactor)), 1.0);
+		#else
+			vWorldNormal = NormalModelMatrix * vec4(normalize(mix(aNormal.xyz, aNormal2.xyz, uInterpolationFactor)), 1.0);
+		#endif
 		vEyeNormal = NormalViewMatrix * vWorldNormal;
 	#endif
 	
@@ -79,7 +94,11 @@ void main()
 	#endif
 	
 	gl_Position = ProjectionMatrix * eyeCoordPos;
-		
+
+	#ifdef VULKAN_COORDINATE_SYSTEM
+	gl_Position.z = (gl_Position.z + gl_Position.w) / 2.0;
+	#endif
+
 	if (uClipHeightDirection != 0.0) // clip planes used for reflective flats
 	{
 		gl_ClipDistance[0] = (worldcoord.y - uClipHeight) * uClipHeightDirection;
@@ -96,5 +115,12 @@ void main()
 	// clip planes used for translucency splitting
 	gl_ClipDistance[1] = worldcoord.y - uClipSplit.x;
 	gl_ClipDistance[2] = uClipSplit.y - worldcoord.y;
-	
+
+	if (uSplitTopPlane == vec4(0.0))
+	{
+		gl_ClipDistance[3] = 1;
+		gl_ClipDistance[4] = 1;
+	}
+
+	gl_PointSize = 1.0;
 }

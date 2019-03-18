@@ -1,5 +1,5 @@
 
-in vec2 TexCoord;
+layout(location=0) in vec2 TexCoord;
 layout(location=0) out vec4 FragColor;
 
 layout(binding=0) uniform sampler2D InputTexture;
@@ -29,5 +29,5 @@ vec4 Dither(vec4 c)
 
 void main()
 {
-	FragColor = Dither(ApplyGamma(texture(InputTexture, TexCoord)));
+	FragColor = Dither(ApplyGamma(texture(InputTexture, UVOffset + TexCoord * UVScale)));
 }
