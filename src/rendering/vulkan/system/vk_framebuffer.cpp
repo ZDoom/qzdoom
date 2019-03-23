@@ -249,7 +249,7 @@ void VulkanFrameBuffer::SubmitCommands(bool finish)
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &mDrawCommands->buffer;
-		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.signalSemaphoreCount = finish ? 1 : 0;
 		submitInfo.pSignalSemaphores = &mRenderFinishedSemaphore->semaphore;
 		result = vkQueueSubmit(device->graphicsQueue, 1, &submitInfo, mRenderFinishedFence->fence);
 		if (result < VK_SUCCESS)
@@ -267,7 +267,7 @@ void VulkanFrameBuffer::SubmitCommands(bool finish)
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &mDrawCommands->buffer;
-		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.signalSemaphoreCount = finish ? 1 : 0;
 		submitInfo.pSignalSemaphores = &mRenderFinishedSemaphore->semaphore;
 		VkResult result = vkQueueSubmit(device->graphicsQueue, 1, &submitInfo, mRenderFinishedFence->fence);
 		if (result < VK_SUCCESS)
@@ -623,7 +623,7 @@ IHardwareTexture *VulkanFrameBuffer::CreateHardwareTexture()
 
 FModelRenderer *VulkanFrameBuffer::CreateModelRenderer(int mli) 
 {
-	return new FGLModelRenderer(nullptr, *GetRenderState(), mli);
+	return new FHWModelRenderer(nullptr, *GetRenderState(), mli);
 }
 
 IVertexBuffer *VulkanFrameBuffer::CreateVertexBuffer()
@@ -670,6 +670,13 @@ void VulkanFrameBuffer::TextureFilterChanged()
 
 		mSamplerManager->SetTextureFilterMode();
 	}
+}
+
+void VulkanFrameBuffer::StartPrecaching()
+{
+	// Destroy the texture descriptors to avoid problems with potentially stale textures.
+	for (VkHardwareTexture *cur = VkHardwareTexture::First; cur; cur = cur->Next)
+		cur->ResetDescriptors();
 }
 
 void VulkanFrameBuffer::BlurScene(float amount)
