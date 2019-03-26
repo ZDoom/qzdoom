@@ -53,7 +53,9 @@
 #include "gl/system/gl_framebuffer.h"
 #include "gl/shaders/gl_shader.h"
 
+#ifdef HAVE_VULKAN
 #include "rendering/vulkan/system/vk_framebuffer.h"
+#endif
 
 // MACROS ------------------------------------------------------------------
 
@@ -69,7 +71,6 @@ extern IVideo *Video;
 
 EXTERN_CVAR (Int, vid_adapter)
 EXTERN_CVAR (Int, vid_displaybits)
-EXTERN_CVAR (Int, vid_maxfps)
 EXTERN_CVAR (Int, vid_defwidth)
 EXTERN_CVAR (Int, vid_defheight)
 EXTERN_CVAR (Int, vid_backend)
@@ -100,9 +101,11 @@ namespace Priv
 	static TOptProc<library, RESULT(*)(__VA_ARGS__)> NAME("SDL_" #NAME)
 
 	SDL2_OPTIONAL_FUNCTION(int,      GetWindowBordersSize,         SDL_Window *window, int *top, int *left, int *bottom, int *right);
+#ifdef HAVE_VULKAN
 	SDL2_OPTIONAL_FUNCTION(void,     Vulkan_GetDrawableSize,       SDL_Window *window, int *width, int *height);
 	SDL2_OPTIONAL_FUNCTION(SDL_bool, Vulkan_GetInstanceExtensions, SDL_Window *window, unsigned int *count, const char **names);
 	SDL2_OPTIONAL_FUNCTION(SDL_bool, Vulkan_CreateSurface,         SDL_Window *window, VkInstance instance, VkSurfaceKHR *surface);
+#endif
 
 #undef SDL2_OPTIONAL_FUNCTION
 
@@ -191,11 +194,14 @@ public:
 	DFrameBuffer *CreateFrameBuffer ();
 
 private:
+#ifdef HAVE_VULKAN
 	VulkanDevice *device = nullptr;
+#endif
 };
 
 // CODE --------------------------------------------------------------------
 
+#ifdef HAVE_VULKAN
 void I_GetVulkanDrawableSize(int *width, int *height)
 {
 	assert(Priv::vulkanEnabled);
@@ -217,6 +223,7 @@ bool I_CreateVulkanSurface(VkInstance instance, VkSurfaceKHR *surface)
 	assert(Priv::window != nullptr);
 	return Priv::Vulkan_CreateSurface(Priv::window, instance, surface) == SDL_TRUE;
 }
+#endif
 
 
 SDLVideo::SDLVideo ()
@@ -233,6 +240,7 @@ SDLVideo::SDLVideo ()
 		Priv::library.Load({ "libSDL2.so", "libSDL2-2.0.so" });
 	}
 
+#ifdef HAVE_VULKAN
 	Priv::vulkanEnabled = vid_backend == 0
 		&& Priv::Vulkan_GetDrawableSize && Priv::Vulkan_GetInstanceExtensions && Priv::Vulkan_CreateSurface;
 
@@ -245,6 +253,7 @@ SDLVideo::SDLVideo ()
 			Priv::vulkanEnabled = false;
 		}
 	}
+#endif
 }
 
 SDLVideo::~SDLVideo ()
@@ -257,6 +266,7 @@ DFrameBuffer *SDLVideo::CreateFrameBuffer ()
 	SystemBaseFrameBuffer *fb = nullptr;
 
 	// first try Vulkan, if that fails OpenGL
+#ifdef HAVE_VULKAN
 	if (Priv::vulkanEnabled)
 	{
 		try
@@ -270,6 +280,7 @@ DFrameBuffer *SDLVideo::CreateFrameBuffer ()
 			Priv::vulkanEnabled = false;
 		}
 	}
+#endif
 
 	if (fb == nullptr)
 	{
@@ -302,8 +313,10 @@ int SystemBaseFrameBuffer::GetClientWidth()
 {
 	int width = 0;
 
+#ifdef HAVE_VULKAN
 	assert(Priv::vulkanEnabled);
 	Priv::Vulkan_GetDrawableSize(Priv::window, &width, nullptr);
+#endif
 
 	return width;
 }
@@ -312,8 +325,10 @@ int SystemBaseFrameBuffer::GetClientHeight()
 {
 	int height = 0;
 
+#ifdef HAVE_VULKAN
 	assert(Priv::vulkanEnabled);
 	Priv::Vulkan_GetDrawableSize(Priv::window, nullptr, &height);
+#endif
 
 	return height;
 }
@@ -472,13 +487,6 @@ void SystemGLFrameBuffer::SetVSync( bool vsync )
 
 void SystemGLFrameBuffer::SwapBuffers()
 {
-#if !defined(__APPLE__) && !defined(__OpenBSD__)
-	if (vid_maxfps && !cl_capfps)
-	{
-		SEMAPHORE_WAIT(FPSLimitSemaphore)
-	}
-#endif
-
 	SDL_GL_SwapWindow(Priv::window);
 }
 

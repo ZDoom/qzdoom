@@ -32,6 +32,7 @@
 #include <array>
 #include <set>
 #include <string>
+#include <algorithm>
 
 #include "vk_device.h"
 #include "vk_swapchain.h"
@@ -75,14 +76,8 @@ VulkanDevice::VulkanDevice()
 		InitVolk();
 		CreateInstance();
 		CreateSurface();
-
-		UsedDeviceFeatures.samplerAnisotropy = VK_TRUE;
-		UsedDeviceFeatures.shaderClipDistance = VK_TRUE;
-		UsedDeviceFeatures.fragmentStoresAndAtomics = VK_TRUE;
-		UsedDeviceFeatures.depthClamp = VK_TRUE;
-		UsedDeviceFeatures.shaderClipDistance = VK_TRUE;
-
 		SelectPhysicalDevice();
+		SelectFeatures();
 		CreateDevice();
 		CreateAllocator();
 	}
@@ -98,14 +93,20 @@ VulkanDevice::~VulkanDevice()
 	ReleaseResources();
 }
 
-bool VulkanDevice::CheckFeatures(const VkPhysicalDeviceFeatures &f)
+void VulkanDevice::SelectFeatures()
+{
+	UsedDeviceFeatures.samplerAnisotropy = PhysicalDevice.Features.samplerAnisotropy;
+	UsedDeviceFeatures.fragmentStoresAndAtomics = PhysicalDevice.Features.fragmentStoresAndAtomics;
+	UsedDeviceFeatures.depthClamp = PhysicalDevice.Features.depthClamp;
+	UsedDeviceFeatures.shaderClipDistance = PhysicalDevice.Features.shaderClipDistance;
+}
+
+bool VulkanDevice::CheckRequiredFeatures(const VkPhysicalDeviceFeatures &f)
 {
 	return
 		f.samplerAnisotropy == VK_TRUE &&
-		f.shaderClipDistance == VK_TRUE &&
 		f.fragmentStoresAndAtomics == VK_TRUE &&
-		f.depthClamp == VK_TRUE &&
-		f.shaderClipDistance == VK_TRUE;
+		f.depthClamp == VK_TRUE;
 }
 
 void VulkanDevice::SelectPhysicalDevice()
@@ -116,29 +117,51 @@ void VulkanDevice::SelectPhysicalDevice()
 	{
 		const auto &info = AvailableDevices[idx];
 
-		if (!CheckFeatures(info.Features))
+		if (!CheckRequiredFeatures(info.Features))
 			continue;
 
 		VulkanCompatibleDevice dev;
 		dev.device = &AvailableDevices[idx];
 
-		int i = 0;
-		for (const auto& queueFamily : info.QueueFamilies)
+		// Figure out what can present
+		for (int i = 0; i < (int)info.QueueFamilies.size(); i++)
 		{
-			// Only accept a decent GPU for now..
+			VkBool32 presentSupport = false;
+			VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(info.Device, i, surface, &presentSupport);
+			if (result == VK_SUCCESS && info.QueueFamilies[i].queueCount > 0 && presentSupport)
+			{
+				dev.presentFamily = i;
+				break;
+			}
+		}
+
+		// Look for family that can do both graphics and transfer
+		for (int i = 0; i < (int)info.QueueFamilies.size(); i++)
+		{
+			const auto &queueFamily = info.QueueFamilies[i];
 			VkQueueFlags gpuFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
 			if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & gpuFlags) == gpuFlags)
 			{
 				dev.graphicsFamily = i;
 				dev.transferFamily = i;
+				break;
 			}
+		}
 
-			VkBool32 presentSupport = false;
-			VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(info.Device, i, surface, &presentSupport);
-			if (result == VK_SUCCESS && queueFamily.queueCount > 0 && presentSupport)
-				dev.presentFamily = i;
-
-			i++;
+		// OK we didn't find any. Look for any match now.
+		if (dev.graphicsFamily == -1)
+		{
+			for (int i = 0; i < (int)info.QueueFamilies.size(); i++)
+			{
+				const auto &queueFamily = info.QueueFamilies[i];
+				if (queueFamily.queueCount > 0)
+				{
+					if (dev.graphicsFamily == -1 && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT))
+						dev.graphicsFamily = i;
+					if (dev.transferFamily == -1 && (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT))
+						dev.transferFamily = i;
+				}
+			}
 		}
 
 		std::set<std::string> requiredExtensionSearch(EnabledDeviceExtensions.begin(), EnabledDeviceExtensions.end());
@@ -163,8 +186,8 @@ void VulkanDevice::SelectPhysicalDevice()
 		static const int typeSort[] = { 4, 1, 0, 2, 3 };
 		int sortA = a.device->Properties.deviceType < 5 ? typeSort[a.device->Properties.deviceType] : (int)a.device->Properties.deviceType;
 		int sortB = b.device->Properties.deviceType < 5 ? typeSort[b.device->Properties.deviceType] : (int)b.device->Properties.deviceType;
-		if (sortA < sortB)
-			return true;
+		if (sortA != sortB)
+			return sortA < sortB;
 
 		// Then sort by the device's unique ID so that vk_device uses a consistent order
 		int sortUUID = memcmp(a.device->Properties.pipelineCacheUUID, b.device->Properties.pipelineCacheUUID, VK_UUID_SIZE);
@@ -193,10 +216,16 @@ void VulkanDevice::SelectPhysicalDevice()
 	transferFamily = SupportedDevices[selected].transferFamily;
 }
 
+bool VulkanDevice::SupportsDeviceExtension(const char *ext) const
+{
+	return std::find(EnabledDeviceExtensions.begin(), EnabledDeviceExtensions.end(), ext) != EnabledDeviceExtensions.end();
+}
+
 void VulkanDevice::CreateAllocator()
 {
 	VmaAllocatorCreateInfo allocinfo = {};
-	// allocinfo.flags = VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT; // To do: enable this for better performance
+	if (SupportsDeviceExtension(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME) && SupportsDeviceExtension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME))
+		allocinfo.flags = VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
 	allocinfo.physicalDevice = PhysicalDevice.Device;
 	allocinfo.device = device;
 	allocinfo.preferredLargeHeapBlockSize = 64 * 1024 * 1024;
@@ -346,7 +375,7 @@ VkBool32 VulkanDevice::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT mess
 		if (callbackData->pObjects[i].pObjectName)
 		{
 			FString hexname;
-			hexname.Format("0x%x", callbackData->pObjects[i].objectHandle);
+			hexname.Format("0x%llx", callbackData->pObjects[i].objectHandle);
 			msg.Substitute(hexname.GetChars(), callbackData->pObjects[i].pObjectName);
 		}
 	}

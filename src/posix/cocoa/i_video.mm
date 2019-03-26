@@ -33,8 +33,10 @@
 
 #include "gl_load/gl_load.h"
 
+#ifdef HAVE_VULKAN
 #define VK_USE_PLATFORM_MACOS_MVK
 #include "volk/volk.h"
+#endif
 
 #include "i_common.h"
 
@@ -93,6 +95,7 @@ EXTERN_CVAR(Bool, vid_hidpi)
 EXTERN_CVAR(Int,  vid_defwidth)
 EXTERN_CVAR(Int,  vid_defheight)
 EXTERN_CVAR(Int,  vid_backend)
+EXTERN_CVAR(Bool, vk_debug)
 
 CUSTOM_CVAR(Bool, vid_autoswitch, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
@@ -365,6 +368,18 @@ public:
 
 			[ms_window setContentView:vulkanView];
 
+			if (!vk_debug)
+			{
+				// Limit MoltenVK logging to errors only
+				setenv("MVK_CONFIG_LOG_LEVEL", "1", 0);
+			}
+
+			if (!vid_autoswitch)
+			{
+				// CVAR from pre-Vulkan era has a priority over vk_device selection
+				setenv("MVK_CONFIG_FORCE_LOW_POWER_GPU", "1", 0);
+			}
+
 			try
 			{
 				m_vulkanDevice = new VulkanDevice();
@@ -561,7 +576,7 @@ void SystemBaseFrameBuffer::SetMode(const bool fullscreen, const bool hiDPI)
 {
 	assert(m_window.screen != nil);
 	assert(m_window.contentView.layer != nil);
-	m_window.contentView.layer.contentsScale = hiDPI ? m_window.screen.backingScaleFactor : 1.0;
+	[m_window.contentView layer].contentsScale = hiDPI ? m_window.screen.backingScaleFactor : 1.0;
 
 	if (fullscreen)
 	{
@@ -712,16 +727,6 @@ void I_InitGraphics()
 
 // ---------------------------------------------------------------------------
 
-
-EXTERN_CVAR(Int, vid_maxfps);
-EXTERN_CVAR(Bool, cl_capfps);
-
-// So Apple doesn't support POSIX timers and I can't find a good substitute short of
-// having Objective-C Cocoa events or something like that.
-void I_SetFPSLimit(int limit)
-{
-}
-
 CUSTOM_CVAR(Bool, vid_hidpi, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
 	SystemBaseFrameBuffer::UseHiDPI(self);
@@ -811,6 +816,7 @@ void I_SetWindowTitle(const char* title)
 }
 
 
+#ifdef HAVE_VULKAN
 void I_GetVulkanDrawableSize(int *width, int *height)
 {
 	NSWindow* const window = CocoaVideo::GetWindow();
@@ -872,3 +878,4 @@ bool I_CreateVulkanSurface(VkInstance instance, VkSurfaceKHR *surface)
 	const VkResult result = vkCreateMacOSSurfaceMVK(instance, &windowCreateInfo, nullptr, surface);
 	return result == VK_SUCCESS;
 }
+#endif
