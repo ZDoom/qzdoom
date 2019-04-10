@@ -31,6 +31,7 @@ public:
 	int Samples;
 	int ClearTargets;
 	int DrawBuffers;
+	int NumTextureLayers;
 
 	bool UsesDepthStencil() const { return DepthTest || DepthWrite || StencilTest || (ClearTargets & (CT_Depth | CT_Stencil)); }
 
@@ -70,14 +71,15 @@ public:
 	void Init();
 	void RenderBuffersReset();
 	void UpdateDynamicSet();
+	void TextureSetPoolReset();
 
 	VkRenderPassSetup *GetRenderPass(const VkRenderPassKey &key);
 	int GetVertexFormat(int numBindingPoints, int numAttributes, size_t stride, const FVertexBufferAttribute *attrs);
 
+	std::unique_ptr<VulkanDescriptorSet> AllocateTextureDescriptorSet(int numLayers);
+	VulkanPipelineLayout* GetPipelineLayout(int numLayers);
+
 	std::unique_ptr<VulkanDescriptorSetLayout> DynamicSetLayout;
-	std::unique_ptr<VulkanDescriptorSetLayout> TextureSetLayout;
-	std::unique_ptr<VulkanPipelineLayout> PipelineLayout;
-	std::unique_ptr<VulkanDescriptorPool> DescriptorPool;
 	std::map<VkRenderPassKey, std::unique_ptr<VkRenderPassSetup>> RenderPassSetup;
 
 	std::unique_ptr<VulkanDescriptorSet> DynamicSet;
@@ -86,9 +88,15 @@ public:
 
 private:
 	void CreateDynamicSetLayout();
-	void CreateTextureSetLayout();
-	void CreatePipelineLayout();
 	void CreateDescriptorPool();
 	void CreateDynamicSet();
 
+	VulkanDescriptorSetLayout *GetTextureSetLayout(int numLayers);
+
+	int TextureDescriptorSetsLeft = 0;
+	int TextureDescriptorsLeft = 0;
+	std::vector<std::unique_ptr<VulkanDescriptorPool>> TextureDescriptorPools;
+	std::unique_ptr<VulkanDescriptorPool> DynamicDescriptorPool;
+	std::vector<std::unique_ptr<VulkanDescriptorSetLayout>> TextureSetLayouts;
+	std::vector<std::unique_ptr<VulkanPipelineLayout>> PipelineLayouts;
 };

@@ -48,8 +48,8 @@ const char *GetVersionString();
 #define RC_PRODUCTVERSION 2,2,9999,0
 #define RC_PRODUCTVERSION2 VERSIONSTR
 // These are for content versioning.
-#define VER_MAJOR 3
-#define VER_MINOR 8
+#define VER_MAJOR 4
+#define VER_MINOR 1
 #define VER_REVISION 0
 
 // This should always refer to the GZDoom version a derived port is based on and not reflect the derived port's version number!
@@ -65,7 +65,7 @@ const char *GetVersionString();
 // Version stored in the ini's [LastRun] section.
 // Bump it if you made some configuration change that you want to
 // be able to migrate in FGameConfigFile::DoGlobalSetup().
-#define LASTRUNVERSION "217"
+#define LASTRUNVERSION "218"
 
 // Protocol version used in demos.
 // Bump it if you change existing DEM_ commands or add new ones.

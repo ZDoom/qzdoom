@@ -17,8 +17,6 @@ VkRenderPassManager::VkRenderPassManager()
 void VkRenderPassManager::Init()
 {
 	CreateDynamicSetLayout();
-	CreateTextureSetLayout();
-	CreatePipelineLayout();
 	CreateDescriptorPool();
 	CreateDynamicSet();
 }
@@ -26,6 +24,13 @@ void VkRenderPassManager::Init()
 void VkRenderPassManager::RenderBuffersReset()
 {
 	RenderPassSetup.clear();
+}
+
+void VkRenderPassManager::TextureSetPoolReset()
+{
+	TextureDescriptorPools.clear();
+	TextureDescriptorSetsLeft = 0;
+	TextureDescriptorsLeft = 0;
 }
 
 VkRenderPassSetup *VkRenderPassManager::GetRenderPass(const VkRenderPassKey &key)
@@ -84,25 +89,42 @@ void VkRenderPassManager::CreateDynamicSetLayout()
 	DynamicSetLayout->SetDebugName("VkRenderPassManager.DynamicSetLayout");
 }
 
-void VkRenderPassManager::CreateTextureSetLayout()
+VulkanDescriptorSetLayout *VkRenderPassManager::GetTextureSetLayout(int numLayers)
 {
+	if (TextureSetLayouts.size() < (size_t)numLayers)
+		TextureSetLayouts.resize(numLayers);
+
+	auto &layout = TextureSetLayouts[numLayers - 1];
+	if (layout)
+		return layout.get();
+
 	DescriptorSetLayoutBuilder builder;
-	for (int i = 0; i < 6; i++)
+	for (int i = 0; i < numLayers; i++)
 	{
 		builder.addBinding(i, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 	}
-	TextureSetLayout = builder.create(GetVulkanFrameBuffer()->device);
-	TextureSetLayout->SetDebugName("VkRenderPassManager.TextureSetLayout");
+	layout = builder.create(GetVulkanFrameBuffer()->device);
+	layout->SetDebugName("VkRenderPassManager.TextureSetLayout");
+	return layout.get();
 }
 
-void VkRenderPassManager::CreatePipelineLayout()
+VulkanPipelineLayout* VkRenderPassManager::GetPipelineLayout(int numLayers)
 {
+	if (PipelineLayouts.size() <= (size_t)numLayers)
+		PipelineLayouts.resize(numLayers + 1);
+
+	auto &layout = PipelineLayouts[numLayers];
+	if (layout)
+		return layout.get();
+
 	PipelineLayoutBuilder builder;
 	builder.addSetLayout(DynamicSetLayout.get());
-	builder.addSetLayout(TextureSetLayout.get());
+	if (numLayers != 0)
+		builder.addSetLayout(GetTextureSetLayout(numLayers));
 	builder.addPushConstantRange(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants));
-	PipelineLayout = builder.create(GetVulkanFrameBuffer()->device);
-	PipelineLayout->SetDebugName("VkRenderPassManager.PipelineLayout");
+	layout = builder.create(GetVulkanFrameBuffer()->device);
+	layout->SetDebugName("VkRenderPassManager.PipelineLayout");
+	return layout.get();
 }
 
 void VkRenderPassManager::CreateDescriptorPool()
@@ -110,15 +132,17 @@ void VkRenderPassManager::CreateDescriptorPool()
 	DescriptorPoolBuilder builder;
 	builder.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 3);
 	builder.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1);
-	builder.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5000 * 6);
-	builder.setMaxSets(5000);
-	DescriptorPool = builder.create(GetVulkanFrameBuffer()->device);
-	DescriptorPool->SetDebugName("VkRenderPassManager.DescriptorPool");
+	builder.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1);
+	builder.setMaxSets(1);
+	DynamicDescriptorPool = builder.create(GetVulkanFrameBuffer()->device);
+	DynamicDescriptorPool->SetDebugName("VkRenderPassManager.DynamicDescriptorPool");
 }
 
 void VkRenderPassManager::CreateDynamicSet()
 {
-	DynamicSet = DescriptorPool->allocate(DynamicSetLayout.get());
+	DynamicSet = DynamicDescriptorPool->allocate(DynamicSetLayout.get());
+	if (!DynamicSet)
+		I_FatalError("CreateDynamicSet failed.\n");
 }
 
 void VkRenderPassManager::UpdateDynamicSet()
@@ -132,6 +156,25 @@ void VkRenderPassManager::UpdateDynamicSet()
 	update.addBuffer(DynamicSet.get(), 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, fb->StreamUBO->mBuffer.get(), 0, sizeof(StreamUBO));
 	update.addCombinedImageSampler(DynamicSet.get(), 4, fb->GetBuffers()->ShadowmapView.get(), fb->GetBuffers()->ShadowmapSampler.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	update.updateSets(fb->device);
+}
+
+std::unique_ptr<VulkanDescriptorSet> VkRenderPassManager::AllocateTextureDescriptorSet(int numLayers)
+{
+	if (TextureDescriptorSetsLeft == 0 || TextureDescriptorsLeft < numLayers)
+	{
+		TextureDescriptorSetsLeft = 1000;
+		TextureDescriptorsLeft = 2000;
+
+		DescriptorPoolBuilder builder;
+		builder.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TextureDescriptorsLeft);
+		builder.setMaxSets(TextureDescriptorSetsLeft);
+		TextureDescriptorPools.push_back(builder.create(GetVulkanFrameBuffer()->device));
+		TextureDescriptorPools.back()->SetDebugName("VkRenderPassManager.TextureDescriptorPool");
+	}
+
+	TextureDescriptorSetsLeft--;
+	TextureDescriptorsLeft -= numLayers;
+	return TextureDescriptorPools.back()->allocate(GetTextureSetLayout(numLayers));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -272,7 +315,7 @@ void VkRenderPassSetup::CreatePipeline(const VkRenderPassKey &key)
 	builder.setSubpassColorAttachmentCount(key.DrawBuffers);
 	builder.setRasterizationSamples((VkSampleCountFlagBits)key.Samples);
 
-	builder.setLayout(fb->GetRenderPassManager()->PipelineLayout.get());
+	builder.setLayout(fb->GetRenderPassManager()->GetPipelineLayout(key.NumTextureLayers));
 	builder.setRenderPass(RenderPass.get());
 	Pipeline = builder.create(fb->device);
 	Pipeline->SetDebugName("VkRenderPassSetup.Pipeline");
