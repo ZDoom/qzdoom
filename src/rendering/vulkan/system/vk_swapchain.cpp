@@ -6,29 +6,12 @@
 
 EXTERN_CVAR(Bool, vid_vsync);
 
-CUSTOM_CVAR(Bool, vk_hdr, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
-{
-	Printf("This won't take effect until " GAMENAME " is restarted.\n");
-}
+CVAR(Bool, vk_hdr, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 
 void I_GetVulkanDrawableSize(int *width, int *height);
 
-VulkanSwapChain::VulkanSwapChain(VulkanDevice *device) : vsync(vid_vsync), device(device)
+VulkanSwapChain::VulkanSwapChain(VulkanDevice *device) : device(device)
 {
-	try
-	{
-		SelectFormat();
-		SelectPresentMode();
-		if (!CreateSwapChain())
-			I_Error("Could not create vulkan swapchain");
-		GetImages();
-		CreateViews();
-	}
-	catch (...)
-	{
-		ReleaseResources();
-		throw;
-	}
 }
 
 VulkanSwapChain::~VulkanSwapChain()
@@ -38,11 +21,13 @@ VulkanSwapChain::~VulkanSwapChain()
 
 uint32_t VulkanSwapChain::AcquireImage(int width, int height, VulkanSemaphore *semaphore, VulkanFence *fence)
 {
-	if (lastSwapWidth != width || lastSwapHeight != height || !swapChain)
+	if (lastSwapWidth != width || lastSwapHeight != height || lastVsync != vid_vsync || lastHdr != vk_hdr || !swapChain)
 	{
 		Recreate();
 		lastSwapWidth = width;
 		lastSwapHeight = height;
+		lastVsync = vid_vsync;
+		lastHdr = vk_hdr;
 	}
 
 	uint32_t imageIndex;
@@ -55,22 +40,42 @@ uint32_t VulkanSwapChain::AcquireImage(int width, int height, VulkanSemaphore *s
 		}
 
 		VkResult result = vkAcquireNextImageKHR(device->device, swapChain, 1'000'000'000, semaphore ? semaphore->semaphore : VK_NULL_HANDLE, fence ? fence->fence : VK_NULL_HANDLE, &imageIndex);
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || result == VK_TIMEOUT)
-		{
-			Recreate();
-		}
-		else if (result == VK_SUCCESS)
+		if (result == VK_SUCCESS)
 		{
 			break;
 		}
-		else if (result == VK_NOT_READY)
+		else if (result == VK_SUBOPTIMAL_KHR)
+		{
+			// Force the recreate to happen next frame.
+			// The spec is not very clear about what happens to the semaphore or the acquired image if the swapchain is recreated before the image is released with a call to vkQueuePresentKHR.
+			lastSwapWidth = 0;
+			lastSwapHeight = 0;
+			break;
+		}
+		else if (result == VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			Recreate();
+		}
+		else if (result == VK_NOT_READY || result == VK_TIMEOUT)
 		{
 			imageIndex = 0xffffffff;
 			break;
 		}
+		else if (result == VK_ERROR_OUT_OF_HOST_MEMORY || result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
+		{
+			I_FatalError("vkAcquireNextImageKHR failed: out of memory");
+		}
+		else if (result == VK_ERROR_DEVICE_LOST)
+		{
+			I_FatalError("vkAcquireNextImageKHR failed: device lost");
+		}
+		else if (result == VK_ERROR_SURFACE_LOST_KHR)
+		{
+			I_FatalError("vkAcquireNextImageKHR failed: surface lost");
+		}
 		else
 		{
-			I_Error("Failed to acquire next image!");
+			I_FatalError("vkAcquireNextImageKHR failed");
 		}
 	}
 	return imageIndex;
@@ -97,19 +102,19 @@ void VulkanSwapChain::QueuePresent(uint32_t imageIndex, VulkanSemaphore *semapho
 		// The spec says we can recover from this.
 		// However, if we are out of memory it is better to crash now than in some other weird place further away from the source of the problem.
 
-		I_Error("vkQueuePresentKHR failed: out of memory");
+		I_FatalError("vkQueuePresentKHR failed: out of memory");
 	}
 	else if (result == VK_ERROR_DEVICE_LOST)
 	{
-		I_Error("vkQueuePresentKHR failed: device lost");
+		I_FatalError("vkQueuePresentKHR failed: device lost");
 	}
 	else if (result == VK_ERROR_SURFACE_LOST_KHR)
 	{
-		I_Error("vkQueuePresentKHR failed: surface lost");
+		I_FatalError("vkQueuePresentKHR failed: surface lost");
 	}
 	else if (result != VK_SUCCESS)
 	{
-		I_Error("vkQueuePresentKHR failed");
+		I_FatalError("vkQueuePresentKHR failed");
 	}
 }
 
@@ -132,6 +137,9 @@ void VulkanSwapChain::Recreate()
 
 bool VulkanSwapChain::CreateSwapChain(VkSwapchainKHR oldSwapChain)
 {
+	SelectFormat();
+	SelectPresentMode();
+
 	int width, height;
 	I_GetVulkanDrawableSize(&width, &height);
 
@@ -266,7 +274,7 @@ void VulkanSwapChain::SelectPresentMode()
 		I_Error("No surface present modes supported");
 
 	swapChainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-	if (vsync)
+	if (vid_vsync)
 	{
 		bool supportsFifoRelaxed = std::find(presentModes.begin(), presentModes.end(), VK_PRESENT_MODE_FIFO_RELAXED_KHR) != presentModes.end();
 		if (supportsFifoRelaxed)

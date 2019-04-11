@@ -63,6 +63,7 @@ public:
 
 	VulkanFrameBuffer(void *hMonitor, bool fullscreen, VulkanDevice *dev);
 	~VulkanFrameBuffer();
+	bool IsVulkan() override { return true; }
 
 	void Update();
 
@@ -92,7 +93,7 @@ public:
 
 	TArray<uint8_t> GetScreenshotBuffer(int &pitch, ESSType &color_type, float &gamma) override;
 
-	void SetVSync(bool vsync);
+	void SetVSync(bool vsync) override;
 
 	void Draw2D() override;
 
