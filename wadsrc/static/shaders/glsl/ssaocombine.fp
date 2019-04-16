@@ -30,6 +30,15 @@ void main()
 	vec3 fogColor = texelFetch(SceneFogTexture, ipos, 0).rgb;
 #endif
 
-	float attenutation = texture(AODepthTexture, TexCoord).x;
-	FragColor = vec4(fogColor, 1.0 - attenutation);
+	vec4 ssao = texture(AODepthTexture, TexCoord);
+	float attenutation = ssao.x;
+
+	if (DebugMode == 0)
+		FragColor = vec4(fogColor, 1.0 - attenutation);
+	else if (DebugMode < 3)
+		FragColor = vec4(attenutation, attenutation, attenutation, 1.0);
+	else if (DebugMode == 3)
+		FragColor = vec4(ssao.yyy / 1000.0, 1.0);
+	else
+		FragColor = vec4(ssao.xyz, 1.0);
 }
