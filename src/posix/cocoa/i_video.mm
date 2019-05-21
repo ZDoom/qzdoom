@@ -98,6 +98,8 @@ EXTERN_CVAR(Int,  vid_defheight)
 EXTERN_CVAR(Int,  vid_enablevulkan)
 EXTERN_CVAR(Bool, vk_debug)
 
+CVAR(Bool, mvk_debug, false, 0)
+
 CUSTOM_CVAR(Bool, vid_autoswitch, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
 	Printf("You must restart " GAMENAME " to apply graphics switching mode\n");
@@ -251,6 +253,11 @@ namespace
 	return [self.class.layerClass layer];
 }
 
+-(BOOL) isOpaque
+{
+	return YES;
+}
+
 @end
 
 
@@ -369,7 +376,21 @@ public:
 
 			[ms_window setContentView:vulkanView];
 
-			if (!vk_debug)
+			// See vk_mvk_moltenvk.h for comprehensive explanation of configuration options set below
+			// https://github.com/KhronosGroup/MoltenVK/blob/master/MoltenVK/MoltenVK/API/vk_mvk_moltenvk.h
+
+			if (vk_debug)
+			{
+				// Output errors and informational messages
+				setenv("MVK_CONFIG_LOG_LEVEL", "2", 0);
+
+				if (mvk_debug)
+				{
+					// Extensive MoltenVK logging, too spammy even for vk_debug CVAR
+					setenv("MVK_DEBUG", "1", 0);
+				}
+			}
+			else
 			{
 				// Limit MoltenVK logging to errors only
 				setenv("MVK_CONFIG_LOG_LEVEL", "1", 0);
@@ -380,6 +401,11 @@ public:
 				// CVAR from pre-Vulkan era has a priority over vk_device selection
 				setenv("MVK_CONFIG_FORCE_LOW_POWER_GPU", "1", 0);
 			}
+
+			// The following settings improve performance like suggested at
+			// https://github.com/KhronosGroup/MoltenVK/issues/581#issuecomment-487293665
+			setenv("MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS", "0", 0);
+			setenv("MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER", "0", 0);
 
 			try
 			{

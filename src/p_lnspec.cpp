@@ -1299,11 +1299,9 @@ FUNC(LS_Thing_ChangeTID)
 {
 	if (arg0 == 0)
 	{
-		if (it != NULL && !(it->ObjectFlags & OF_EuthanizeMe))
+		if (it != nullptr)
 		{
-			it->RemoveFromHash ();
-			it->tid = arg1;
-			it->AddToHash ();
+			it->SetTID(arg1);
 		}
 	}
 	else
@@ -1317,12 +1315,7 @@ FUNC(LS_Thing_ChangeTID)
 			actor = next;
 			next = iterator.Next ();
 
-			if (!(actor->ObjectFlags & OF_EuthanizeMe))
-			{
-				actor->RemoveFromHash ();
-				actor->tid = arg1;
-				actor->AddToHash ();
-			}
+			actor->SetTID(arg1);
 		}
 	}
 	return true;
@@ -3203,6 +3196,7 @@ FUNC(LS_SendToCommunicator)
 		if (it->CheckLocalView())
 		{
 			S_StopSound (CHAN_VOICE);
+			it->player->SetSubtitle(arg0);
 			S_Sound (CHAN_VOICE, name, 1, ATTN_NORM);
 
 			// Get the message from the LANGUAGE lump.

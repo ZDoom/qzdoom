@@ -252,7 +252,7 @@ class PlayerPawn : Actor
 		if (victim.player != player && victim.IsTeammate(self))
 		{
 			victim = self;
-			return String.Format("$OB_FRIENDLY%c", random[Obituary](49, 53));
+			return String.Format("$OB_FRIENDLY%d", random[Obituary](1, 4));
 		}
 		else
 		{
@@ -2693,6 +2693,7 @@ struct PlayerInfo native play	// self is what internally is known as player_t
 	native PSprite FindPSprite(int id) const;
 	native void SetLogNumber (int text);
 	native void SetLogText (String text);
+	native void SetSubtitleNumber (int text);
 	native bool Resurrect();
 
 	native String GetUserName() const;

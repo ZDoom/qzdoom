@@ -34,6 +34,8 @@ public:
 	VkPostprocess *GetPostprocess() { return mPostprocess.get(); }
 	VkRenderBuffers *GetBuffers() { return mActiveRenderBuffers; }
 
+	void FlushCommands(bool finish, bool lastsubmit = false);
+
 	unsigned int GetLightBufferBlockSize() const;
 
 	template<typename T>
@@ -57,6 +59,8 @@ public:
 		std::vector<std::unique_ptr<VulkanImageView>> ImageViews;
 		std::vector<std::unique_ptr<VulkanBuffer>> Buffers;
 		std::vector<std::unique_ptr<VulkanDescriptorSet>> Descriptors;
+		std::vector<std::unique_ptr<VulkanDescriptorPool>> DescriptorPools;
+		std::vector<std::unique_ptr<VulkanCommandBuffer>> CommandBuffers;
 	} FrameDeleteList;
 
 	std::unique_ptr<SWSceneDrawer> swdrawer;
@@ -86,7 +90,7 @@ public:
 	FModelRenderer *CreateModelRenderer(int mli) override;
 	IVertexBuffer *CreateVertexBuffer() override;
 	IIndexBuffer *CreateIndexBuffer() override;
-	IDataBuffer *CreateDataBuffer(int bindingpoint, bool ssbo) override;
+	IDataBuffer *CreateDataBuffer(int bindingpoint, bool ssbo, bool needsresize) override;
 
 	FTexture *WipeStartScreen() override;
 	FTexture *WipeEndScreen() override;
@@ -97,16 +101,22 @@ public:
 
 	void Draw2D() override;
 
+	void WaitForCommands(bool finish);
+
+	void PushGroup(const FString &name);
+	void PopGroup();
+	void UpdateGpuStats();
+
 private:
 	sector_t *RenderViewpoint(FRenderViewpoint &mainvp, AActor * camera, IntRect * bounds, float fov, float ratio, float fovratio, bool mainview, bool toscreen);
 	void RenderTextureView(FCanvasTexture *tex, AActor *Viewpoint, double FOV);
 	void DrawScene(HWDrawInfo *di, int drawmode);
 	void PrintStartupLog();
 	void CreateFanToTrisIndexBuffer();
-	void SubmitCommands(bool finish);
 	void CopyScreenToBuffer(int w, int h, void *data);
 	void UpdateShadowMap();
 	void DeleteFrameObjects();
+	void FlushCommands(VulkanCommandBuffer **commands, size_t count, bool finish, bool lastsubmit);
 
 	std::unique_ptr<VkShaderManager> mShaderManager;
 	std::unique_ptr<VkSamplerManager> mSamplerManager;
@@ -116,15 +126,33 @@ private:
 	std::unique_ptr<VkRenderPassManager> mRenderPassManager;
 	std::unique_ptr<VulkanCommandPool> mCommandPool;
 	std::unique_ptr<VulkanCommandBuffer> mTransferCommands;
-	std::unique_ptr<VulkanCommandBuffer> mDrawCommands;
-	std::unique_ptr<VulkanSemaphore> mTransferSemaphore;
 	std::unique_ptr<VkRenderState> mRenderState;
+
+	std::unique_ptr<VulkanCommandBuffer> mDrawCommands;
+
+	enum { maxConcurrentSubmitCount = 8};
+	std::unique_ptr<VulkanSemaphore> mSubmitSemaphore[maxConcurrentSubmitCount];
+	std::unique_ptr<VulkanFence> mSubmitFence[maxConcurrentSubmitCount];
+	VkFence mSubmitWaitFences[maxConcurrentSubmitCount];
+	int mNextSubmit = 0;
 
 	std::unique_ptr<VulkanSemaphore> mSwapChainImageAvailableSemaphore;
 	std::unique_ptr<VulkanSemaphore> mRenderFinishedSemaphore;
-	std::unique_ptr<VulkanFence> mRenderFinishedFence;
 
 	VkRenderBuffers *mActiveRenderBuffers = nullptr;
+
+	struct TimestampQuery
+	{
+		FString name;
+		uint32_t startIndex;
+		uint32_t endIndex;
+	};
+
+	enum { MaxTimestampQueries = 100 };
+	std::unique_ptr<VulkanQueryPool> mTimestampQueryPool;
+	int mNextTimestampQuery = 0;
+	std::vector<size_t> mGroupStack;
+	std::vector<TimestampQuery> timeElapsedQueries;
 };
 
 inline VulkanFrameBuffer *GetVulkanFrameBuffer() { return static_cast<VulkanFrameBuffer*>(screen); }

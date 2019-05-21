@@ -29,6 +29,12 @@ VKBuffer::~VKBuffer()
 		fb->FrameDeleteList.Buffers.push_back(std::move(mBuffer));
 }
 
+void VKBuffer::ResetAll()
+{
+	for (VKBuffer *cur = VKBuffer::First; cur; cur = cur->Next)
+		cur->Reset();
+}
+
 void VKBuffer::Reset()
 {
 	if (mBuffer && map)
@@ -70,7 +76,10 @@ void VKBuffer::SetData(size_t size, const void *data, bool staticdata)
 		mPersistent = screen->BuffersArePersistent();
 
 		BufferBuilder builder;
-		builder.setUsage(mBufferType, VMA_MEMORY_USAGE_CPU_TO_GPU, mPersistent ? VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT : 0);
+		builder.setUsage(mBufferType, VMA_MEMORY_USAGE_UNKNOWN, mPersistent ? VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT : 0);
+		builder.setMemoryType(
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		builder.setSize(size);
 		mBuffer = builder.create(fb->device);
 
@@ -111,7 +120,33 @@ void VKBuffer::SetSubData(size_t offset, size_t size, const void *data)
 
 void VKBuffer::Resize(size_t newsize)
 {
-	I_FatalError("VKBuffer::Resize not implemented\n");
+	auto fb = GetVulkanFrameBuffer();
+
+	// Grab old buffer
+	size_t oldsize = buffersize;
+	std::unique_ptr<VulkanBuffer> oldBuffer = std::move(mBuffer);
+	oldBuffer->Unmap();
+	map = nullptr;
+
+	// Create new buffer
+	BufferBuilder builder;
+	builder.setUsage(mBufferType, VMA_MEMORY_USAGE_UNKNOWN, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+	builder.setMemoryType(
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	builder.setSize(newsize);
+	mBuffer = builder.create(fb->device);
+	buffersize = newsize;
+
+	// Transfer data from old to new
+	fb->GetTransferCommands()->copyBuffer(oldBuffer.get(), mBuffer.get(), 0, 0, oldsize);
+	fb->WaitForCommands(false);
+
+	// Fetch pointer to new buffer
+	map = mBuffer->Map(0, newsize);
+
+	// Old buffer may be part of the dynamic set
+	fb->GetRenderPassManager()->UpdateDynamicSet();
 }
 
 void VKBuffer::Map()

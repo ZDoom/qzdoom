@@ -10,6 +10,16 @@ Postprocess hw_postprocess;
 
 PPResource *PPResource::First = nullptr;
 
+bool gpuStatActive = false;
+bool keepGpuStatActive = false;
+FString gpuStatOutput;
+
+ADD_STAT(gpu)
+{
+	keepGpuStatActive = true;
+	return gpuStatOutput;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 
 void PPBloom::UpdateTextures(int width, int height)
@@ -45,6 +55,8 @@ void PPBloom::RenderBloom(PPRenderState *renderstate, int sceneWidth, int sceneH
 	{
 		return;
 	}
+
+	renderstate->PushGroup("bloom");
 
 	UpdateTextures(sceneWidth, sceneHeight);
 
@@ -121,6 +133,8 @@ void PPBloom::RenderBloom(PPRenderState *renderstate, int sceneWidth, int sceneH
 	renderstate->SetOutputCurrent();
 	renderstate->SetAdditiveBlend();
 	renderstate->Draw();
+
+	renderstate->PopGroup();
 }
 
 void PPBloom::RenderBlur(PPRenderState *renderstate, int sceneWidth, int sceneHeight, float gameinfobluramount)
@@ -143,6 +157,8 @@ void PPBloom::RenderBlur(PPRenderState *renderstate, int sceneWidth, int sceneHe
 	{
 		return;
 	}
+
+	renderstate->PushGroup("blur");
 
 	int numLevels = 3;
 	assert(numLevels <= NumBloomLevels);
@@ -214,6 +230,8 @@ void PPBloom::RenderBlur(PPRenderState *renderstate, int sceneWidth, int sceneHe
 	renderstate->SetOutputCurrent();
 	renderstate->SetNoBlend();
 	renderstate->Draw();
+
+	renderstate->PopGroup();
 }
 
 void PPBloom::BlurStep(PPRenderState *renderstate, const BlurUniforms &blurUniforms, PPTexture &input, PPTexture &output, PPViewport viewport, bool vertical)
@@ -295,6 +313,8 @@ void PPLensDistort::Render(PPRenderState *renderstate)
 	uniforms.LensDistortionCoefficient = k;
 	uniforms.CubicDistortionValue = kcube;
 
+	renderstate->PushGroup("lens");
+
 	renderstate->Clear();
 	renderstate->Shader = &Lens;
 	renderstate->Uniforms.Set(uniforms);
@@ -303,6 +323,8 @@ void PPLensDistort::Render(PPRenderState *renderstate)
 	renderstate->SetOutputNext();
 	renderstate->SetNoBlend();
 	renderstate->Draw();
+
+	renderstate->PopGroup();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -319,6 +341,8 @@ void PPFXAA::Render(PPRenderState *renderstate)
 	FXAAUniforms uniforms;
 	uniforms.ReciprocalResolution = { 1.0f / screen->mScreenViewport.width, 1.0f / screen->mScreenViewport.height };
 
+	renderstate->PushGroup("fxaa");
+
 	renderstate->Clear();
 	renderstate->Shader = &FXAALuma;
 	renderstate->Uniforms.Clear();
@@ -332,6 +356,8 @@ void PPFXAA::Render(PPRenderState *renderstate)
 	renderstate->Uniforms.Set(uniforms);
 	renderstate->SetInputCurrent(0, PPFilterMode::Linear);
 	renderstate->Draw();
+
+	renderstate->PopGroup();
 }
 
 int PPFXAA::GetMaxVersion()
@@ -384,6 +410,8 @@ void PPCameraExposure::Render(PPRenderState *renderstate, int sceneWidth, int sc
 	{
 		return;
 	}
+
+	renderstate->PushGroup("exposure");
 
 	UpdateTextures(sceneWidth, sceneHeight);
 
@@ -439,6 +467,8 @@ void PPCameraExposure::Render(PPRenderState *renderstate, int sceneWidth, int sc
 		renderstate->SetNoBlend();
 	renderstate->Draw();
 
+	renderstate->PopGroup();
+
 	FirstExposureFrame = false;
 }
 
@@ -492,6 +522,8 @@ void PPColormap::Render(PPRenderState *renderstate, int fixedcm)
 	uniforms.MapStart = { scm->ColorizeStart[0], scm->ColorizeStart[1], scm->ColorizeStart[2], 0.f };
 	uniforms.MapRange = m;
 
+	renderstate->PushGroup("colormap");
+
 	renderstate->Clear();
 	renderstate->Shader = &Colormap;
 	renderstate->Uniforms.Set(uniforms);
@@ -500,6 +532,8 @@ void PPColormap::Render(PPRenderState *renderstate, int fixedcm)
 	renderstate->SetOutputNext();
 	renderstate->SetNoBlend();
 	renderstate->Draw();
+
+	renderstate->PopGroup();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -552,6 +586,8 @@ void PPTonemap::Render(PPRenderState *renderstate)
 	case Palette:		shader = &PaletteShader; break;
 	}
 
+	renderstate->PushGroup("tonemap");
+
 	renderstate->Clear();
 	renderstate->Shader = shader;
 	renderstate->Viewport = screen->mScreenViewport;
@@ -561,6 +597,8 @@ void PPTonemap::Render(PPRenderState *renderstate)
 	renderstate->SetOutputNext();
 	renderstate->SetNoBlend();
 	renderstate->Draw();
+
+	renderstate->PopGroup();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -697,6 +735,10 @@ void PPAmbientOcclusion::Render(PPRenderState *renderstate, float m5, int sceneW
 	ssaoUniforms.Scale = sceneScale;
 	ssaoUniforms.Offset = sceneOffset;
 
+	DepthBlurUniforms blurUniforms;
+	blurUniforms.BlurSharpness = blurSharpness;
+	blurUniforms.PowExponent = gl_ssao_exponent;
+
 	AmbientCombineUniforms combineUniforms;
 	combineUniforms.SampleCount = gl_multisample;
 	combineUniforms.Scale = screen->SceneScale();
@@ -708,6 +750,8 @@ void PPAmbientOcclusion::Render(PPRenderState *renderstate, float m5, int sceneW
 	ambientViewport.top = 0;
 	ambientViewport.width = AmbientWidth;
 	ambientViewport.height = AmbientHeight;
+
+	renderstate->PushGroup("ssao");
 
 	// Calculate linear depth values
 	renderstate->Clear();
@@ -735,11 +779,6 @@ void PPAmbientOcclusion::Render(PPRenderState *renderstate, float m5, int sceneW
 	// Blur SSAO texture
 	if (gl_ssao_debug < 2)
 	{
-		DepthBlurUniforms blurUniforms;
-		blurUniforms.BlurSharpness = blurSharpness;
-		blurUniforms.PowExponent = gl_ssao_exponent;
-		blurUniforms.InvFullResolution = { 1.0f / AmbientWidth, 0.0f };
-
 		renderstate->Clear();
 		renderstate->Shader = &BlurHorizontal;
 		renderstate->Uniforms.Set(blurUniforms);
@@ -748,8 +787,6 @@ void PPAmbientOcclusion::Render(PPRenderState *renderstate, float m5, int sceneW
 		renderstate->SetOutputTexture(&Ambient1);
 		renderstate->SetNoBlend();
 		renderstate->Draw();
-
-		blurUniforms.InvFullResolution = { 0.0f, 1.0f / AmbientHeight };
 
 		renderstate->Clear();
 		renderstate->Shader = &BlurVertical;
@@ -777,6 +814,8 @@ void PPAmbientOcclusion::Render(PPRenderState *renderstate, float m5, int sceneW
 	else
 		renderstate->SetAlphaBlend();
 	renderstate->Draw();
+
+	renderstate->PopGroup();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -807,6 +846,8 @@ void PPShadowMap::Update(PPRenderState *renderstate)
 	ShadowMapUniforms uniforms;
 	uniforms.ShadowmapQuality = (float)gl_shadowmap_quality;
 
+	renderstate->PushGroup("shadowmap");
+
 	renderstate->Clear();
 	renderstate->Shader = &ShadowMap;
 	renderstate->Uniforms.Set(uniforms);
@@ -815,6 +856,8 @@ void PPShadowMap::Update(PPRenderState *renderstate)
 	renderstate->SetOutputShadowMap();
 	renderstate->SetNoBlend();
 	renderstate->Draw();
+
+	renderstate->PopGroup();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -908,6 +951,8 @@ PPCustomShaderInstance::PPCustomShaderInstance(PostProcessShader *desc) : Desc(d
 
 void PPCustomShaderInstance::Run(PPRenderState *renderstate)
 {
+	renderstate->PushGroup(Desc->Name);
+
 	renderstate->Clear();
 	renderstate->Shader = &Shader;
 	renderstate->Viewport = screen->mScreenViewport;
@@ -919,6 +964,8 @@ void PPCustomShaderInstance::Run(PPRenderState *renderstate)
 	SetUniforms(renderstate);
 
 	renderstate->Draw();
+
+	renderstate->PopGroup();
 }
 
 void PPCustomShaderInstance::SetTextures(PPRenderState *renderstate)
@@ -1026,7 +1073,7 @@ void PPCustomShaderInstance::AddUniformField(size_t &offset, const FString &name
 
 	if (fieldsize != alignment) // Workaround for buggy OpenGL drivers that does not do std140 layout correctly for vec3
 	{
-		name2 = std::make_unique<FString>(name + "__padding");
+		name2 = std::make_unique<FString>(name + "_F39350FF12DE_padding");
 		chars = name2->GetChars();
 		FieldNames.push_back(std::move(name2));
 		Fields.push_back({ chars, UniformType::Float, offset });

@@ -197,7 +197,14 @@ DHUDMessage::DHUDMessage (FFont *font, const char *text, float x, float y, int h
 	Top = y;
 	HoldTics = (int)(holdTime * TICRATE);
 	Tics = -1;	// -1 to compensate for one additional Tick the message will receive.
-	Font = font? font : generic_ui? NewSmallFont : SmallFont;
+
+	// Try to find the optimal font if none is specified. Prefer SmallFont, but if that cannot handle this text use the IWAD's SmallFont and if that doesn't work either, use the VGA font.
+	if (font) Font = font;
+	else if (generic_ui) Font = NewSmallFont;
+	else if (SmallFont->CanPrint(text)) Font = SmallFont;
+	else if (OriginalSmallFont->CanPrint(text)) Font = OriginalSmallFont;
+	else Font = NewSmallFont;
+
 	TextColor = textColor;
 	State = 0;
 	SourceText = copystring (text);
@@ -730,8 +737,21 @@ void DHUDMessageTypeOnFadeOut::Serialize(FSerializer &arc)
 	Super::Serialize (arc);
 	arc("typeontime", TypeOnTime)
 		("currline", CurrLine)
-		("linevisible", LineVisible)
-		("linelen", LineLen);
+		("linevisible", LineVisible);
+
+	if (arc.isReading())
+	{
+		if (CurrLine < NumLines)
+		{
+			LineLen = (int)Lines[CurrLine].Text.Len();
+		}
+		else
+		{
+			LineLen = CurrLine = 0;
+		}
+
+		clamp(LineVisible, 0, LineLen);
+	}
 }
 
 //============================================================================
@@ -742,7 +762,7 @@ void DHUDMessageTypeOnFadeOut::Serialize(FSerializer &arc)
 
 bool DHUDMessageTypeOnFadeOut::Tick ()
 {
-	if (!Super::Tick ())
+	if (NumLines > 0 && !Super::Tick ())
 	{
 		if (State == 3)
 		{
@@ -813,7 +833,7 @@ void DHUDMessageTypeOnFadeOut::ScreenSizeChanged ()
 	if (State == 3)
 	{
 		CurrLine = 0;
-		LineLen = (int)Lines[0].Text.Len();
+		LineLen = NumLines > 0 ? (int)Lines[0].Text.Len() : 0;
 		Tics = (int)(charCount * TypeOnTime) - 1;
 		Tick ();
 	}

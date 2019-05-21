@@ -857,8 +857,6 @@ FShaderProgram *GLPPRenderState::GetGLShader(PPShader *shader)
 
 void GLPPRenderState::Draw()
 {
-	//FGLDebug::PushGroup(name.GetChars());
-
 	FGLPostProcessState savedState;
 
 	// Bind input textures
@@ -868,7 +866,7 @@ void GLPPRenderState::Draw()
 
 		const PPTextureInput &input = Textures[index];
 		int filter = (input.Filter == PPFilterMode::Nearest) ? GL_NEAREST : GL_LINEAR;
-		int wrap = (input.Wrap == PPWrapMode::Clamp) ? GL_CLAMP : GL_REPEAT;
+		int wrap = (input.Wrap == PPWrapMode::Clamp) ? GL_CLAMP_TO_EDGE : GL_REPEAT;
 
 		switch (input.Type)
 		{
@@ -955,7 +953,7 @@ void GLPPRenderState::Draw()
 	if (Uniforms.Data.Size() > 0)
 	{
 		if (!shader->Uniforms)
-			shader->Uniforms.reset(screen->CreateDataBuffer(POSTPROCESS_BINDINGPOINT, false));
+			shader->Uniforms.reset(screen->CreateDataBuffer(POSTPROCESS_BINDINGPOINT, false, false));
 		shader->Uniforms->SetData(Uniforms.Data.Size(), Uniforms.Data.Data());
 		shader->Uniforms->BindBase();
 	}
@@ -971,8 +969,16 @@ void GLPPRenderState::Draw()
 		buffers->NextTexture();
 
 	glViewport(screen->mScreenViewport.left, screen->mScreenViewport.top, screen->mScreenViewport.width, screen->mScreenViewport.height);
+}
 
-	//FGLDebug::PopGroup();
+void GLPPRenderState::PushGroup(const FString &name)
+{
+	FGLDebug::PushGroup(name.GetChars());
+}
+
+void GLPPRenderState::PopGroup()
+{
+	FGLDebug::PopGroup();
 }
 
 

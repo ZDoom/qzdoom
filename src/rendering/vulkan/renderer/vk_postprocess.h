@@ -8,6 +8,7 @@
 #include "hwrenderer/postprocessing/hw_postprocess.h"
 #include "vulkan/system/vk_objects.h"
 #include "vulkan/system/vk_builders.h"
+#include "vulkan/textures/vk_imagetransition.h"
 
 class FString;
 
@@ -26,24 +27,12 @@ public:
 	VkFormat OutputFormat;
 	int SwapChain;
 	int ShadowMapBuffers;
+	int StencilTest;
 	VkSampleCountFlagBits Samples;
 
 	bool operator<(const VkPPRenderPassKey &other) const { return memcmp(this, &other, sizeof(VkPPRenderPassKey)) < 0; }
 	bool operator==(const VkPPRenderPassKey &other) const { return memcmp(this, &other, sizeof(VkPPRenderPassKey)) == 0; }
 	bool operator!=(const VkPPRenderPassKey &other) const { return memcmp(this, &other, sizeof(VkPPRenderPassKey)) != 0; }
-};
-
-class VkPPImageTransition
-{
-public:
-	void addImage(VulkanImage *image, VkImageLayout *layout, VkImageLayout targetLayout, bool undefinedSrcLayout);
-	void execute(VulkanCommandBuffer *cmdbuffer);
-
-private:
-	PipelineBarrier barrier;
-	VkPipelineStageFlags srcStageMask = 0;
-	VkPipelineStageFlags dstStageMask = 0;
-	bool needbarrier = false;
 };
 
 class VkPostprocess
@@ -52,7 +41,6 @@ public:
 	VkPostprocess();
 	~VkPostprocess();
 
-	void BeginFrame();
 	void RenderBuffersReset();
 
 	void SetActiveRenderTarget();
@@ -67,15 +55,16 @@ public:
 	void ImageTransitionScene(bool undefinedSrcLayout);
 
 	void BlitSceneToPostprocess();
-	void BlitCurrentToImage(VulkanImage *image, VkImageLayout *layout, VkImageLayout finallayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	void DrawPresentTexture(const IntRect &box, bool applyGamma, bool clearBorders);
+	void BlitCurrentToImage(VkTextureImage *image, VkImageLayout finallayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	void DrawPresentTexture(const IntRect &box, bool applyGamma, bool screenshot);
 
 private:
 	void NextEye(int eyeCount);
 
+	std::unique_ptr<VulkanDescriptorSet> AllocateDescriptorSet(VulkanDescriptorSetLayout *layout);
 	VulkanSampler *GetSampler(PPFilterMode filter, PPWrapMode wrap);
 
-	std::array<std::unique_ptr<VulkanSampler>, 16> mSamplers;
+	std::array<std::unique_ptr<VulkanSampler>, 4> mSamplers;
 	std::map<VkPPRenderPassKey, std::unique_ptr<VkPPRenderPassSetup>> mRenderPassSetup;
 	std::unique_ptr<VulkanDescriptorPool> mDescriptorPool;
 	int mCurrentPipelineImage = 0;
@@ -100,10 +89,8 @@ class VkPPTexture : public PPTextureBackend
 public:
 	VkPPTexture(PPTexture *texture);
 
-	std::unique_ptr<VulkanImage> Image;
-	std::unique_ptr<VulkanImageView> View;
+	VkTextureImage TexImage;
 	std::unique_ptr<VulkanBuffer> Staging;
-	VkImageLayout Layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	VkFormat Format;
 };
 
@@ -128,23 +115,19 @@ private:
 class VkPPRenderState : public PPRenderState
 {
 public:
+	void PushGroup(const FString &name) override;
+	void PopGroup() override;
+
 	void Draw() override;
 
 private:
-	void RenderScreenQuad(VkPPRenderPassSetup *passSetup, VulkanDescriptorSet *descriptorSet, VulkanFramebuffer *framebuffer, int framebufferWidth, int framebufferHeight, int x, int y, int width, int height, const void *pushConstants, uint32_t pushConstantsSize);
+	void RenderScreenQuad(VkPPRenderPassSetup *passSetup, VulkanDescriptorSet *descriptorSet, VulkanFramebuffer *framebuffer, int framebufferWidth, int framebufferHeight, int x, int y, int width, int height, const void *pushConstants, uint32_t pushConstantsSize, bool stencilTest);
 
 	VulkanDescriptorSet *GetInput(VkPPRenderPassSetup *passSetup, const TArray<PPTextureInput> &textures, bool bindShadowMapBuffers);
-	VulkanFramebuffer *GetOutput(VkPPRenderPassSetup *passSetup, const PPOutput &output, int &framebufferWidth, int &framebufferHeight);
+	VulkanFramebuffer *GetOutput(VkPPRenderPassSetup *passSetup, const PPOutput &output, bool stencilTest, int &framebufferWidth, int &framebufferHeight);
 
 	VkPPShader *GetVkShader(PPShader *shader);
 	VkPPTexture *GetVkTexture(PPTexture *texture);
 
-	struct TextureImage
-	{
-		VulkanImage *image;
-		VulkanImageView *view;
-		VkImageLayout *layout;
-		const char *debugname;
-	};
-	TextureImage GetTexture(const PPTextureType &type, PPTexture *tex);
+	VkTextureImage *GetTexture(const PPTextureType &type, PPTexture *tex);
 };

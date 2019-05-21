@@ -225,9 +225,10 @@ class OptionMenu : Menu
 
 					if (y <= 0)
 					{
-						if (mDesc.mFont && mDesc.mTitle.Length() > 0)
+						let font = generic_ui || !mDesc.mFont? NewSmallFont : mDesc.mFont;
+						if (font && mDesc.mTitle.Length() > 0)
 						{
-							y = -y + mDesc.mFont.GetHeight();
+							y = -y + font.GetHeight();
 						}
 						else
 						{
@@ -422,13 +423,14 @@ class OptionMenu : Menu
 
 		if (y <= 0)
 		{
-			if (mDesc.mFont && mDesc.mTitle.Length() > 0)
+			let font = generic_ui || !mDesc.mFont? NewSmallFont : mDesc.mFont;
+			if (font && mDesc.mTitle.Length() > 0)
 			{
 				let tt = Stringtable.Localize(mDesc.mTitle);
-				screen.DrawText (mDesc.mFont, OptionMenuSettings.mTitleColor,
-					(screen.GetWidth() - mDesc.mFont.StringWidth(tt) * CleanXfac_1) / 2, 10*CleanYfac_1,
+				screen.DrawText (font, OptionMenuSettings.mTitleColor,
+					(screen.GetWidth() - font.StringWidth(tt) * CleanXfac_1) / 2, 10*CleanYfac_1,
 					tt, DTA_CleanNoMove_1, true);
-				y = -y + mDesc.mFont.GetHeight();
+				y = -y + font.GetHeight();
 			}
 			else
 			{
@@ -459,7 +461,7 @@ class OptionMenu : Menu
 			{
 				if (((MenuTime() % 8) < 6) || GetCurrentMenu() != self)
 				{
-					DrawOptionText(cur_indent + 3 * CleanXfac_1, y, Font.CR_UNTRANSLATED, "◄");
+					DrawOptionText(cur_indent + 3 * CleanXfac_1, y, OptionMenuSettings.mFontColorSelection, "◄");
 				}
 			}
 			y += fontheight;
@@ -471,11 +473,11 @@ class OptionMenu : Menu
 
 		if (CanScrollUp)
 		{
-			DrawOptionText(screen.GetWidth() - 11 * CleanXfac_1, ytop, Font.CR_UNTRANSLATED, "▲");
+			DrawOptionText(screen.GetWidth() - 11 * CleanXfac_1, ytop, OptionMenuSettings.mFontColorSelection, "▲");
 		}
 		if (CanScrollDown)
 		{
-			DrawOptionText(screen.GetWidth() - 11 * CleanXfac_1 , y - 8*CleanYfac_1, Font.CR_UNTRANSLATED, "▼");
+			DrawOptionText(screen.GetWidth() - 11 * CleanXfac_1 , y - 8*CleanYfac_1, OptionMenuSettings.mFontColorSelection, "▼");
 		}
 		Super.Drawer();
 	}

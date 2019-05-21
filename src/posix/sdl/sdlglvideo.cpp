@@ -145,6 +145,14 @@ namespace Priv
 		}
 	}
 
+	void DestroyWindow()
+	{
+		assert(Priv::window != nullptr);
+
+		SDL_DestroyWindow(Priv::window);
+		Priv::window = nullptr;
+	}
+
 	void SetupPixelFormat(int multisample, const int *glver)
 	{
 		SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
@@ -255,7 +263,9 @@ SDLVideo::SDLVideo ()
 
 SDLVideo::~SDLVideo ()
 {
+#ifdef HAVE_VULKAN
 	delete device;
+#endif
 }
 
 DFrameBuffer *SDLVideo::CreateFrameBuffer ()
@@ -274,6 +284,11 @@ DFrameBuffer *SDLVideo::CreateFrameBuffer ()
 		}
 		catch (CRecoverableError const&)
 		{
+			if (Priv::window != nullptr)
+			{
+				Priv::DestroyWindow();
+			}
+
 			Priv::vulkanEnabled = false;
 		}
 	}
@@ -426,8 +441,7 @@ SystemGLFrameBuffer::SystemGLFrameBuffer(void *hMonitor, bool fullscreen)
 		GLContext = SDL_GL_CreateContext(Priv::window);
 		if (GLContext == nullptr)
 		{
-			SDL_DestroyWindow(Priv::window);
-			Priv::window = nullptr;
+			Priv::DestroyWindow();
 		}
 		else
 		{
@@ -445,8 +459,7 @@ SystemGLFrameBuffer::~SystemGLFrameBuffer ()
 			SDL_GL_DeleteContext(GLContext);
 		}
 
-		SDL_DestroyWindow(Priv::window);
-		Priv::window = nullptr;
+		Priv::DestroyWindow();
 	}
 }
 

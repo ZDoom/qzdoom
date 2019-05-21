@@ -42,11 +42,13 @@ public:
 	void setSamples(VkSampleCountFlagBits samples);
 	void setFormat(VkFormat format);
 	void setUsage(VkImageUsageFlags imageUsage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY, VmaAllocationCreateFlags allocFlags = 0);
+	void setMemoryType(VkMemoryPropertyFlags requiredFlags, VkMemoryPropertyFlags preferredFlags, uint32_t memoryTypeBits = 0);
 	void setLinearTiling();
 
 	bool isFormatSupported(VulkanDevice *device);
 
-	std::unique_ptr<VulkanImage> create(VulkanDevice *device);
+	std::unique_ptr<VulkanImage> create(VulkanDevice *device, VkDeviceSize* allocatedBytes = nullptr);
+	std::unique_ptr<VulkanImage> tryCreate(VulkanDevice *device);
 
 private:
 	VkImageCreateInfo imageInfo = {};
@@ -92,6 +94,7 @@ public:
 
 	void setSize(size_t size);
 	void setUsage(VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY, VmaAllocationCreateFlags allocFlags = 0);
+	void setMemoryType(VkMemoryPropertyFlags requiredFlags, VkMemoryPropertyFlags preferredFlags, uint32_t memoryTypeBits = 0);
 
 	std::unique_ptr<VulkanBuffer> create(VulkanDevice *device);
 
@@ -108,7 +111,7 @@ public:
 	void setVertexShader(const FString &code);
 	void setFragmentShader(const FString &code);
 
-	std::unique_ptr<VulkanShader> create(VulkanDevice *device);
+	std::unique_ptr<VulkanShader> create(const char *shadername, VulkanDevice *device);
 
 private:
 	FString code;
@@ -157,6 +160,19 @@ public:
 private:
 	FixedSizeVector<VkDescriptorPoolSize, 8> poolSizes;
 	VkDescriptorPoolCreateInfo poolInfo = {};
+};
+
+class QueryPoolBuilder
+{
+public:
+	QueryPoolBuilder();
+
+	void setQueryType(VkQueryType type, int count, VkQueryPipelineStatisticFlags pipelineStatistics = 0);
+
+	std::unique_ptr<VulkanQueryPool> create(VulkanDevice *device);
+
+private:
+	VkQueryPoolCreateInfo poolInfo = {};
 };
 
 class FramebufferBuilder
@@ -387,6 +403,13 @@ inline void ImageBuilder::setUsage(VkImageUsageFlags usage, VmaMemoryUsage memor
 	allocInfo.flags = allocFlags;
 }
 
+inline void ImageBuilder::setMemoryType(VkMemoryPropertyFlags requiredFlags, VkMemoryPropertyFlags preferredFlags, uint32_t memoryTypeBits)
+{
+	allocInfo.requiredFlags = requiredFlags;
+	allocInfo.preferredFlags = preferredFlags;
+	allocInfo.memoryTypeBits = memoryTypeBits;
+}
+
 inline bool ImageBuilder::isFormatSupported(VulkanDevice *device)
 {
 	VkImageFormatProperties properties = { };
@@ -401,7 +424,7 @@ inline bool ImageBuilder::isFormatSupported(VulkanDevice *device)
 	return true;
 }
 
-inline std::unique_ptr<VulkanImage> ImageBuilder::create(VulkanDevice *device)
+inline std::unique_ptr<VulkanImage> ImageBuilder::create(VulkanDevice *device, VkDeviceSize* allocatedBytes)
 {
 	VkImage image;
 	VmaAllocation allocation;
@@ -409,6 +432,26 @@ inline std::unique_ptr<VulkanImage> ImageBuilder::create(VulkanDevice *device)
 	VkResult result = vmaCreateImage(device->allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr);
 	if (result != VK_SUCCESS)
 		I_FatalError("Could not create vulkan image");
+
+	if (allocatedBytes != nullptr)
+	{
+		VmaAllocationInfo allocatedInfo;
+		vmaGetAllocationInfo(device->allocator, allocation, &allocatedInfo);
+
+		*allocatedBytes = allocatedInfo.size;
+	}
+
+	return std::make_unique<VulkanImage>(device, image, allocation, imageInfo.extent.width, imageInfo.extent.height, imageInfo.mipLevels);
+}
+
+inline std::unique_ptr<VulkanImage> ImageBuilder::tryCreate(VulkanDevice *device)
+{
+	VkImage image;
+	VmaAllocation allocation;
+
+	VkResult result = vmaCreateImage(device->allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr);
+	if (result != VK_SUCCESS)
+		return nullptr;
 
 	return std::make_unique<VulkanImage>(device, image, allocation, imageInfo.extent.width, imageInfo.extent.height, imageInfo.mipLevels);
 }
@@ -534,6 +577,13 @@ inline void BufferBuilder::setUsage(VkBufferUsageFlags bufferUsage, VmaMemoryUsa
 	allocInfo.flags = allocFlags;
 }
 
+inline void BufferBuilder::setMemoryType(VkMemoryPropertyFlags requiredFlags, VkMemoryPropertyFlags preferredFlags, uint32_t memoryTypeBits)
+{
+	allocInfo.requiredFlags = requiredFlags;
+	allocInfo.preferredFlags = preferredFlags;
+	allocInfo.memoryTypeBits = memoryTypeBits;
+}
+
 inline std::unique_ptr<VulkanBuffer> BufferBuilder::create(VulkanDevice *device)
 {
 	VkBuffer buffer;
@@ -641,6 +691,29 @@ inline std::unique_ptr<VulkanDescriptorPool> DescriptorPoolBuilder::create(Vulka
 
 /////////////////////////////////////////////////////////////////////////////
 
+inline QueryPoolBuilder::QueryPoolBuilder()
+{
+	poolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+}
+
+inline void QueryPoolBuilder::setQueryType(VkQueryType type, int count, VkQueryPipelineStatisticFlags pipelineStatistics)
+{
+	poolInfo.queryType = type;
+	poolInfo.queryCount = count;
+	poolInfo.pipelineStatistics = pipelineStatistics;
+}
+
+inline std::unique_ptr<VulkanQueryPool> QueryPoolBuilder::create(VulkanDevice *device)
+{
+	VkQueryPool queryPool;
+	VkResult result = vkCreateQueryPool(device->device, &poolInfo, nullptr, &queryPool);
+	if (result != VK_SUCCESS)
+		I_FatalError("Could not create query pool");
+	return std::make_unique<VulkanQueryPool>(device, queryPool);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
 inline FramebufferBuilder::FramebufferBuilder()
 {
 	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -693,7 +766,7 @@ inline GraphicsPipelineBuilder::GraphicsPipelineBuilder()
 	pipelineInfo.pViewportState = &viewportState;
 	pipelineInfo.pRasterizationState = &rasterizer;
 	pipelineInfo.pMultisampleState = &multisampling;
-	pipelineInfo.pDepthStencilState = nullptr;
+	pipelineInfo.pDepthStencilState = &depthStencil;
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.subpass = 0;
@@ -823,8 +896,6 @@ inline void GraphicsPipelineBuilder::setDepthStencilEnable(bool test, bool write
 	depthStencil.depthTestEnable = test ? VK_TRUE : VK_FALSE;
 	depthStencil.depthWriteEnable = write ? VK_TRUE : VK_FALSE;
 	depthStencil.stencilTestEnable = stencil ? VK_TRUE : VK_FALSE;
-
-	pipelineInfo.pDepthStencilState = (test || write || stencil) ? &depthStencil : nullptr;
 }
 
 inline void GraphicsPipelineBuilder::setStencil(VkStencilOp failOp, VkStencilOp passOp, VkStencilOp depthFailOp, VkCompareOp compareOp, uint32_t compareMask, uint32_t writeMask, uint32_t reference)

@@ -581,13 +581,6 @@ CUSTOM_CVAR (Int, msgmidcolor2, 4, CVAR_ARCHIVE)
 	setmsgcolor (PRINTLEVELS+1, self);
 }
 
-EColorRange C_GetDefaultFontColor()
-{
-	// Ideally this should analyze the SmallFont and pick a matching color.
-	if (!generic_ui) return CR_UNTRANSLATED;
-	return gameinfo.gametype == GAME_Doom ? CR_RED : gameinfo.gametype == GAME_Chex ? CR_GREEN : gameinfo.gametype == GAME_Strife ? CR_GOLD : CR_GRAY;
-}
-
 FFont * C_GetDefaultHUDFont()
 {
 	return generic_ui? NewSmallFont : SmallFont;
@@ -787,7 +780,7 @@ void FNotifyBuffer::AddString(int printlevel, FString source)
 
 	width = DisplayWidth / active_con_scaletext(generic_ui);
 
-	FFont *font = generic_ui ? NewSmallFont : SmallFont;
+	FFont *font = generic_ui ? NewSmallFont : AlternativeSmallFont;
 	if (font == nullptr) return;	// Without an initialized font we cannot handle the message (this is for those which come here before the font system is ready.)
 
 	if (AddType == APPENDLINE && Text.Size() > 0 && Text[Text.Size() - 1].PrintLevel == printlevel)
@@ -1071,7 +1064,7 @@ void FNotifyBuffer::Draw()
 	line = Top;
 	canskip = true;
 
-	FFont *font = generic_ui ? NewSmallFont : SmallFont;
+	FFont *font = generic_ui ? NewSmallFont : AlternativeSmallFont;
 	lineadv = font->GetHeight ();
 
 	for (unsigned i = 0; i < Text.Size(); ++ i)

@@ -10,7 +10,7 @@
 
 class VKDataBuffer;
 
-class VkRenderPassKey
+class VkPipelineKey
 {
 public:
 	FRenderStyle RenderStyle;
@@ -28,12 +28,20 @@ public:
 	int CullMode;
 	int VertexFormat;
 	int DrawType;
-	int Samples;
-	int ClearTargets;
-	int DrawBuffers;
 	int NumTextureLayers;
 
-	bool UsesDepthStencil() const { return DepthTest || DepthWrite || StencilTest || (ClearTargets & (CT_Depth | CT_Stencil)); }
+	bool operator<(const VkPipelineKey &other) const { return memcmp(this, &other, sizeof(VkPipelineKey)) < 0; }
+	bool operator==(const VkPipelineKey &other) const { return memcmp(this, &other, sizeof(VkPipelineKey)) == 0; }
+	bool operator!=(const VkPipelineKey &other) const { return memcmp(this, &other, sizeof(VkPipelineKey)) != 0; }
+};
+
+class VkRenderPassKey
+{
+public:
+	int DepthStencil;
+	int Samples;
+	int DrawBuffers;
+	VkFormat DrawBufferFormat;
 
 	bool operator<(const VkRenderPassKey &other) const { return memcmp(this, &other, sizeof(VkRenderPassKey)) < 0; }
 	bool operator==(const VkRenderPassKey &other) const { return memcmp(this, &other, sizeof(VkRenderPassKey)) == 0; }
@@ -45,13 +53,17 @@ class VkRenderPassSetup
 public:
 	VkRenderPassSetup(const VkRenderPassKey &key);
 
-	std::unique_ptr<VulkanRenderPass> RenderPass;
-	std::unique_ptr<VulkanPipeline> Pipeline;
+	VulkanRenderPass *GetRenderPass(int clearTargets);
+	VulkanPipeline *GetPipeline(const VkPipelineKey &key);
+
+	VkRenderPassKey PassKey;
+	std::unique_ptr<VulkanRenderPass> RenderPasses[8];
+	std::map<VkPipelineKey, std::unique_ptr<VulkanPipeline>> Pipelines;
 	std::map<VkImageView, std::unique_ptr<VulkanFramebuffer>> Framebuffer;
 
 private:
-	void CreatePipeline(const VkRenderPassKey &key);
-	void CreateRenderPass(const VkRenderPassKey &key);
+	std::unique_ptr<VulkanRenderPass> CreateRenderPass(int clearTargets);
+	std::unique_ptr<VulkanPipeline> CreatePipeline(const VkPipelineKey &key);
 };
 
 class VkVertexFormat
@@ -60,7 +72,7 @@ public:
 	int NumBindingPoints;
 	size_t Stride;
 	std::vector<FVertexBufferAttribute> Attrs;
-	bool UseVertexData;
+	int UseVertexData;
 };
 
 class VkRenderPassManager

@@ -10,6 +10,7 @@
 #include "tarray.h"
 #include "hwrenderer/textures/hw_ihwtexture.h"
 #include "volk/volk.h"
+#include "vk_imagetransition.h"
 
 struct FMaterialState;
 class VulkanDescriptorSet;
@@ -23,6 +24,7 @@ public:
 	VkHardwareTexture();
 	~VkHardwareTexture();
 
+	static void ResetAll();
 	void Reset();
 
 	void Precache(FMaterial *mat, int translation, int flags);
@@ -37,12 +39,10 @@ public:
 	// Wipe screen
 	void CreateWipeTexture(int w, int h, const char *name);
 
-	static VkHardwareTexture *First;
-	VkHardwareTexture *Prev = nullptr;
-	VkHardwareTexture *Next = nullptr;
+	void DeleteDescriptors() override { ResetDescriptors(); }
 
-	VulkanImage *GetImage(FTexture *tex, int translation, int flags);
-	VulkanImageView *GetImageView(FTexture *tex, int translation, int flags);
+	VkTextureImage *GetImage(FTexture *tex, int translation, int flags);
+	VkTextureImage *GetDepthStencil(FTexture *tex);
 
 	static void ResetAllDescriptors();
 
@@ -50,10 +50,13 @@ private:
 	void CreateImage(FTexture *tex, int translation, int flags);
 
 	void CreateTexture(int w, int h, int pixelsize, VkFormat format, const void *pixels);
-	void GenerateMipmaps(VulkanImage *image, VulkanCommandBuffer *cmdbuffer);
 	static int GetMipLevels(int w, int h);
 
 	void ResetDescriptors();
+
+	static VkHardwareTexture *First;
+	VkHardwareTexture *Prev = nullptr;
+	VkHardwareTexture *Next = nullptr;
 
 	struct DescriptorEntry
 	{
@@ -70,9 +73,8 @@ private:
 	};
 
 	std::vector<DescriptorEntry> mDescriptorSets;
-	std::unique_ptr<VulkanImage> mImage;
-	std::unique_ptr<VulkanImageView> mImageView;
-	std::unique_ptr<VulkanBuffer> mStagingBuffer;
-	VkImageLayout mImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	VkTextureImage mImage;
 	int mTexelsize = 4;
+
+	VkTextureImage mDepthStencil;
 };

@@ -18,32 +18,6 @@ struct MatricesUBO
 	VSMatrix TextureMatrix;
 };
 
-struct StreamData
-{
-	FVector4 uObjectColor;
-	FVector4 uObjectColor2;
-	FVector4 uDynLightColor;
-	FVector4 uAddColor;
-	FVector4 uFogColor;
-	float uDesaturationFactor;
-	float uInterpolationFactor;
-	float timer;
-	int useVertexData;
-	FVector4 uVertexColor;
-	FVector4 uVertexNormal;
-
-	FVector4 uGlowTopPlane;
-	FVector4 uGlowTopColor;
-	FVector4 uGlowBottomPlane;
-	FVector4 uGlowBottomColor;
-
-	FVector4 uGradientTopPlane;
-	FVector4 uGradientBottomPlane;
-
-	FVector4 uSplitTopPlane;
-	FVector4 uSplitBottomPlane;
-};
-
 #define MAX_STREAM_DATA 256
 
 struct StreamUBO
@@ -87,7 +61,7 @@ public:
 	VkShaderManager(VulkanDevice *device);
 	~VkShaderManager();
 
-	VkShaderProgram *GetEffect(int effect);
+	VkShaderProgram *GetEffect(int effect, EPassType passType);
 	VkShaderProgram *Get(unsigned int eff, bool alphateston, EPassType passType);
 
 private:
@@ -102,5 +76,5 @@ private:
 
 	std::vector<VkShaderProgram> mMaterialShaders[MAX_PASS_TYPES];
 	std::vector<VkShaderProgram> mMaterialShadersNAT[MAX_PASS_TYPES];
-	VkShaderProgram mEffectShaders[MAX_EFFECTS];
+	std::vector<VkShaderProgram> mEffectShaders[MAX_PASS_TYPES];
 };

@@ -17,6 +17,8 @@
 #include "hwrenderer/data/hw_viewpointbuffer.h"
 #include "hwrenderer/data/shaderuniforms.h"
 
+CVAR(Int, vk_submit_size, 1000, 0);
+
 VkRenderState::VkRenderState()
 {
 	mIdentityMatrix.loadIdentity();
@@ -36,9 +38,7 @@ void VkRenderState::Draw(int dt, int index, int count, bool apply)
 	if (apply || mNeedApply)
 		Apply(dt);
 
-	drawcalls.Clock();
 	mCommandBuffer->draw(count, 1, index, 0);
-	drawcalls.Unclock();
 }
 
 void VkRenderState::DrawIndexed(int dt, int index, int count, bool apply)
@@ -46,9 +46,7 @@ void VkRenderState::DrawIndexed(int dt, int index, int count, bool apply)
 	if (apply || mNeedApply)
 		Apply(dt);
 
-	drawcalls.Clock();
 	mCommandBuffer->drawIndexed(count, 1, index, 0, 0);
-	drawcalls.Unclock();
 }
 
 bool VkRenderState::SetDepthClamp(bool on)
@@ -160,6 +158,16 @@ void VkRenderState::EnableLineSmooth(bool on)
 
 void VkRenderState::Apply(int dt)
 {
+	drawcalls.Clock();
+
+	mApplyCount++;
+	if (mApplyCount >= vk_submit_size)
+	{
+		EndRenderPass();
+		GetVulkanFrameBuffer()->FlushCommands(false);
+		mApplyCount = 0;
+	}
+
 	ApplyRenderPass(dt);
 	ApplyScissor();
 	ApplyViewport();
@@ -172,6 +180,8 @@ void VkRenderState::Apply(int dt)
 	ApplyDynamicSet();
 	ApplyMaterial();
 	mNeedApply = false;
+
+	drawcalls.Unclock();
 }
 
 void VkRenderState::ApplyDepthBias()
@@ -185,61 +195,54 @@ void VkRenderState::ApplyDepthBias()
 
 void VkRenderState::ApplyRenderPass(int dt)
 {
-	// Find a render pass that matches our state
-	VkRenderPassKey passKey;
-	passKey.ClearTargets = mRenderPassKey.ClearTargets | mClearTargets;
-	passKey.DrawType = dt;
-	passKey.VertexFormat = static_cast<VKVertexBuffer*>(mVertexBuffer)->VertexFormat;
-	passKey.RenderStyle = mRenderStyle;
-	passKey.DepthTest = mDepthTest;
-	passKey.DepthWrite = mDepthTest && mDepthWrite;
-	passKey.DepthFunc = mDepthFunc;
-	passKey.DepthClamp = mDepthClamp;
-	passKey.DepthBias = !(mBias.mFactor == 0 && mBias.mUnits == 0);
-	passKey.StencilTest = mStencilTest;
-	passKey.StencilPassOp = mStencilOp;
-	passKey.ColorMask = mColorMask;
-	passKey.CullMode = mCullMode;
-	passKey.Samples = mRenderTarget.Samples;
-	passKey.DrawBuffers = mRenderTarget.DrawBuffers;
-	passKey.NumTextureLayers = mMaterial.mMaterial ? mMaterial.mMaterial->GetLayers() : 0;
+	// Find a pipeline that matches our state
+	VkPipelineKey pipelineKey;
+	pipelineKey.DrawType = dt;
+	pipelineKey.VertexFormat = static_cast<VKVertexBuffer*>(mVertexBuffer)->VertexFormat;
+	pipelineKey.RenderStyle = mRenderStyle;
+	pipelineKey.DepthTest = mDepthTest;
+	pipelineKey.DepthWrite = mDepthTest && mDepthWrite;
+	pipelineKey.DepthFunc = mDepthFunc;
+	pipelineKey.DepthClamp = mDepthClamp;
+	pipelineKey.DepthBias = !(mBias.mFactor == 0 && mBias.mUnits == 0);
+	pipelineKey.StencilTest = mStencilTest;
+	pipelineKey.StencilPassOp = mStencilOp;
+	pipelineKey.ColorMask = mColorMask;
+	pipelineKey.CullMode = mCullMode;
+	pipelineKey.NumTextureLayers = mMaterial.mMaterial ? mMaterial.mMaterial->GetLayers() : 0;
 	if (mSpecialEffect > EFF_NONE)
 	{
-		passKey.SpecialEffect = mSpecialEffect;
-		passKey.EffectState = 0;
-		passKey.AlphaTest = false;
+		pipelineKey.SpecialEffect = mSpecialEffect;
+		pipelineKey.EffectState = 0;
+		pipelineKey.AlphaTest = false;
 	}
 	else
 	{
 		int effectState = mMaterial.mOverrideShader >= 0 ? mMaterial.mOverrideShader : (mMaterial.mMaterial ? mMaterial.mMaterial->GetShaderIndex() : 0);
-		passKey.SpecialEffect = EFF_NONE;
-		passKey.EffectState = mTextureEnabled ? effectState : SHADER_NoTexture;
-		passKey.AlphaTest = mAlphaThreshold >= 0.f;
+		pipelineKey.SpecialEffect = EFF_NONE;
+		pipelineKey.EffectState = mTextureEnabled ? effectState : SHADER_NoTexture;
+		pipelineKey.AlphaTest = mAlphaThreshold >= 0.f;
 	}
 
-	// Is this the one we already have or do we need to change render pass?
-	bool changingRenderPass = (passKey != mRenderPassKey);
+	// Is this the one we already have?
+	bool inRenderPass = mCommandBuffer;
+	bool changingPipeline = (!inRenderPass) || (pipelineKey != mPipelineKey);
 
-	if (!mCommandBuffer)
+	if (!inRenderPass)
 	{
 		mCommandBuffer = GetVulkanFrameBuffer()->GetDrawCommands();
-		changingRenderPass = true;
 		mScissorChanged = true;
 		mViewportChanged = true;
 		mStencilRefChanged = true;
 		mBias.mChanged = true;
-	}
-	else if (changingRenderPass)
-	{
-		mCommandBuffer->endRenderPass();
+
+		BeginRenderPass(mCommandBuffer);
 	}
 
-	if (changingRenderPass)
+	if (changingPipeline)
 	{
-		passKey.ClearTargets = mClearTargets;
-		BeginRenderPass(passKey, mCommandBuffer);
-		mRenderPassKey = passKey;
-		mClearTargets = 0;
+		mCommandBuffer->bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, mPassSetup->GetPipeline(pipelineKey));
+		mPipelineKey = pipelineKey;
 	}
 }
 
@@ -312,61 +315,12 @@ void VkRenderState::ApplyStreamData()
 	auto fb = GetVulkanFrameBuffer();
 	auto passManager = fb->GetRenderPassManager();
 
-	const float normScale = 1.0f / 255.0f;
-
-	mStreamData.uDesaturationFactor = mDesaturation * normScale;
-	mStreamData.uFogColor = { mFogColor.r * normScale, mFogColor.g * normScale, mFogColor.b * normScale, mFogColor.a * normScale };
-	mStreamData.uAddColor = { mAddColor.r * normScale, mAddColor.g * normScale, mAddColor.b * normScale, mAddColor.a * normScale };
-	mStreamData.uObjectColor = { mObjectColor.r * normScale, mObjectColor.g * normScale, mObjectColor.b * normScale, mObjectColor.a * normScale };
-	mStreamData.uDynLightColor = mDynColor.vec;
-	mStreamData.uInterpolationFactor = mInterpolationFactor;
-
 	mStreamData.useVertexData = passManager->VertexFormats[static_cast<VKVertexBuffer*>(mVertexBuffer)->VertexFormat].UseVertexData;
-	mStreamData.uVertexColor = mColor.vec;
-	mStreamData.uVertexNormal = mNormal.vec;
 
-	mStreamData.timer = static_cast<float>((double)(screen->FrameTime - firstFrame) * (double)mShaderTimer / 1000.);
-
-	if (mGlowEnabled)
-	{
-		mStreamData.uGlowTopPlane = mGlowTopPlane.vec;
-		mStreamData.uGlowTopColor = mGlowTop.vec;
-		mStreamData.uGlowBottomPlane = mGlowBottomPlane.vec;
-		mStreamData.uGlowBottomColor = mGlowBottom.vec;
-		mLastGlowEnabled = true;
-	}
-	else if (mLastGlowEnabled)
-	{
-		mStreamData.uGlowTopColor = { 0.0f, 0.0f, 0.0f, 0.0f };
-		mStreamData.uGlowBottomColor = { 0.0f, 0.0f, 0.0f, 0.0f };
-		mLastGlowEnabled = false;
-	}
-
-	if (mGradientEnabled)
-	{
-		mStreamData.uObjectColor2 = { mObjectColor2.r * normScale, mObjectColor2.g * normScale, mObjectColor2.b * normScale, mObjectColor2.a * normScale };
-		mStreamData.uGradientTopPlane = mGradientTopPlane.vec;
-		mStreamData.uGradientBottomPlane = mGradientBottomPlane.vec;
-		mLastGradientEnabled = true;
-	}
-	else if (mLastGradientEnabled)
-	{
-		mStreamData.uObjectColor2 = { 0.0f, 0.0f, 0.0f, 0.0f };
-		mLastGradientEnabled = false;
-	}
-
-	if (mSplitEnabled)
-	{
-		mStreamData.uSplitTopPlane = mSplitTopPlane.vec;
-		mStreamData.uSplitBottomPlane = mSplitBottomPlane.vec;
-		mLastSplitEnabled = true;
-	}
-	else if (mLastSplitEnabled)
-	{
-		mStreamData.uSplitTopPlane = { 0.0f, 0.0f, 0.0f, 0.0f };
-		mStreamData.uSplitBottomPlane = { 0.0f, 0.0f, 0.0f, 0.0f };
-		mLastSplitEnabled = false;
-	}
+	if (mMaterial.mMaterial && mMaterial.mMaterial->tex)
+		mStreamData.timer = static_cast<float>((double)(screen->FrameTime - firstFrame) * (double)mMaterial.mMaterial->tex->shaderspeed / 1000.);
+	else
+		mStreamData.timer = 0.0f;
 
 	mDataIndex++;
 	if (mDataIndex == MAX_STREAM_DATA)
@@ -387,7 +341,7 @@ void VkRenderState::ApplyPushConstants()
 		{
 			fogset = -3;	// 2D rendering with 'foggy' overlay.
 		}
-		else if ((mFogColor & 0xffffff) == 0)
+		else if ((GetFogColor() & 0xffffff) == 0)
 		{
 			fogset = gl_fogmode;
 		}
@@ -413,12 +367,12 @@ void VkRenderState::ApplyPushConstants()
 	if (mMaterial.mMaterial && mMaterial.mMaterial->tex)
 		mPushConstants.uSpecularMaterial = { mMaterial.mMaterial->tex->Glossiness, mMaterial.mMaterial->tex->SpecularLevel };
 
-	mPushConstants.uLightIndex = screen->mLights->BindUBO(mLightIndex);
+	mPushConstants.uLightIndex = mLightIndex;
 	mPushConstants.uDataIndex = mDataIndex;
 
 	auto fb = GetVulkanFrameBuffer();
 	auto passManager = fb->GetRenderPassManager();
-	mCommandBuffer->pushConstants(passManager->GetPipelineLayout(mRenderPassKey.NumTextureLayers), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, (uint32_t)sizeof(PushConstants), &mPushConstants);
+	mCommandBuffer->pushConstants(passManager->GetPipelineLayout(mPipelineKey.NumTextureLayers), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, (uint32_t)sizeof(PushConstants), &mPushConstants);
 }
 
 template<typename T>
@@ -504,11 +458,8 @@ void VkRenderState::ApplyMaterial()
 		{
 			auto fb = GetVulkanFrameBuffer();
 			auto passManager = fb->GetRenderPassManager();
-			mCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, passManager->GetPipelineLayout(mRenderPassKey.NumTextureLayers), 1, base->GetDescriptorSet(mMaterial));
+			mCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, passManager->GetPipelineLayout(mPipelineKey.NumTextureLayers), 1, base->GetDescriptorSet(mMaterial));
 		}
-
-		if (mMaterial.mMaterial && mMaterial.mMaterial->tex)
-			mShaderTimer = mMaterial.mMaterial->tex->shaderspeed;
 
 		mMaterial.mChanged = false;
 	}
@@ -516,16 +467,15 @@ void VkRenderState::ApplyMaterial()
 
 void VkRenderState::ApplyDynamicSet()
 {
-	if (mViewpointOffset != mLastViewpointOffset || mLightBufferOffset != mLastLightBufferOffset || mMatricesOffset != mLastMatricesOffset || mStreamDataOffset != mLastStreamDataOffset)
+	if (mViewpointOffset != mLastViewpointOffset || mMatricesOffset != mLastMatricesOffset || mStreamDataOffset != mLastStreamDataOffset)
 	{
 		auto fb = GetVulkanFrameBuffer();
 		auto passManager = fb->GetRenderPassManager();
 
-		uint32_t offsets[4] = { mViewpointOffset, mLightBufferOffset, mMatricesOffset, mStreamDataOffset };
-		mCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, passManager->GetPipelineLayout(mRenderPassKey.NumTextureLayers), 0, passManager->DynamicSet.get(), 4, offsets);
+		uint32_t offsets[3] = { mViewpointOffset, mMatricesOffset, mStreamDataOffset };
+		mCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, passManager->GetPipelineLayout(mPipelineKey.NumTextureLayers), 0, passManager->DynamicSet.get(), 3, offsets);
 
 		mLastViewpointOffset = mViewpointOffset;
-		mLastLightBufferOffset = mLightBufferOffset;
 		mLastMatricesOffset = mMatricesOffset;
 		mLastStreamDataOffset = mStreamDataOffset;
 	}
@@ -538,16 +488,12 @@ void VkRenderState::Bind(int bindingpoint, uint32_t offset)
 		mViewpointOffset = offset;
 		mNeedApply = true;
 	}
-	else if (bindingpoint == LIGHTBUF_BINDINGPOINT)
-	{
-		mLightBufferOffset = offset;
-		mNeedApply = true;
-	}
 }
 
 void VkRenderState::BeginFrame()
 {
 	mMaterial.Reset();
+	mApplyCount = 0;
 }
 
 void VkRenderState::EndRenderPass()
@@ -556,15 +502,11 @@ void VkRenderState::EndRenderPass()
 	{
 		mCommandBuffer->endRenderPass();
 		mCommandBuffer = nullptr;
-		mRenderPassKey = {};
+		mPipelineKey = {};
 
 		mLastViewpointOffset = 0xffffffff;
-		mLastLightBufferOffset = 0xffffffff;
 		mLastVertexBuffer = nullptr;
 		mLastIndexBuffer = nullptr;
-		mLastGlowEnabled = true;
-		mLastGradientEnabled = true;
-		mLastSplitEnabled = true;
 		mLastModelMatrixEnabled = true;
 		mLastTextureMatrixEnabled = true;
 	}
@@ -586,42 +528,54 @@ void VkRenderState::EnableDrawBuffers(int count)
 	}
 }
 
-void VkRenderState::SetRenderTarget(VulkanImageView *view, int width, int height, VkSampleCountFlagBits samples)
+void VkRenderState::SetRenderTarget(VulkanImageView *view, VulkanImageView *depthStencilView, int width, int height, VkFormat format, VkSampleCountFlagBits samples)
 {
 	EndRenderPass();
 
 	mRenderTarget.View = view;
+	mRenderTarget.DepthStencil = depthStencilView;
 	mRenderTarget.Width = width;
 	mRenderTarget.Height = height;
+	mRenderTarget.Format = format;
 	mRenderTarget.Samples = samples;
 }
 
-void VkRenderState::BeginRenderPass(const VkRenderPassKey &key, VulkanCommandBuffer *cmdbuffer)
+void VkRenderState::BeginRenderPass(VulkanCommandBuffer *cmdbuffer)
 {
 	auto fb = GetVulkanFrameBuffer();
 
-	VkRenderPassSetup *passSetup = fb->GetRenderPassManager()->GetRenderPass(key);
+	VkRenderPassKey key = {};
+	key.DrawBufferFormat = mRenderTarget.Format;
+	key.Samples = mRenderTarget.Samples;
+	key.DrawBuffers = mRenderTarget.DrawBuffers;
+	key.DepthStencil = !!mRenderTarget.DepthStencil;
 
-	auto &framebuffer = passSetup->Framebuffer[mRenderTarget.View->view];
+	mPassSetup = fb->GetRenderPassManager()->GetRenderPass(key);
+
+	auto &framebuffer = mPassSetup->Framebuffer[mRenderTarget.View->view];
 	if (!framebuffer)
 	{
 		auto buffers = fb->GetBuffers();
 		FramebufferBuilder builder;
-		builder.setRenderPass(passSetup->RenderPass.get());
+		builder.setRenderPass(mPassSetup->GetRenderPass(0));
 		builder.setSize(mRenderTarget.Width, mRenderTarget.Height);
 		builder.addAttachment(mRenderTarget.View);
 		if (key.DrawBuffers > 1)
-			builder.addAttachment(buffers->SceneFogView.get());
+			builder.addAttachment(buffers->SceneFog.View.get());
 		if (key.DrawBuffers > 2)
-			builder.addAttachment(buffers->SceneNormalView.get());
-		if (key.UsesDepthStencil())
-			builder.addAttachment(buffers->SceneDepthStencilView.get());
+			builder.addAttachment(buffers->SceneNormal.View.get());
+		if (key.DepthStencil)
+			builder.addAttachment(mRenderTarget.DepthStencil);
 		framebuffer = builder.create(GetVulkanFrameBuffer()->device);
 		framebuffer->SetDebugName("VkRenderPassSetup.Framebuffer");
 	}
 
+	// Only clear depth+stencil if the render target actually has that
+	if (!mRenderTarget.DepthStencil)
+		mClearTargets &= ~(CT_Depth | CT_Stencil);
+
 	RenderPassBegin beginInfo;
-	beginInfo.setRenderPass(passSetup->RenderPass.get());
+	beginInfo.setRenderPass(mPassSetup->GetRenderPass(mClearTargets));
 	beginInfo.setRenderArea(0, 0, mRenderTarget.Width, mRenderTarget.Height);
 	beginInfo.setFramebuffer(framebuffer.get());
 	beginInfo.addClearColor(screen->mSceneClearColor[0], screen->mSceneClearColor[1], screen->mSceneClearColor[2], screen->mSceneClearColor[3]);
@@ -631,9 +585,9 @@ void VkRenderState::BeginRenderPass(const VkRenderPassKey &key, VulkanCommandBuf
 		beginInfo.addClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	beginInfo.addClearDepthStencil(1.0f, 0);
 	cmdbuffer->beginRenderPass(beginInfo);
-	cmdbuffer->bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, passSetup->Pipeline.get());
 
 	mMaterial.mChanged = true;
+	mClearTargets = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -650,9 +604,7 @@ void VkRenderStateMolten::Draw(int dt, int index, int count, bool apply)
 		else
 			ApplyVertexBuffers();
 
-		drawcalls.Clock();
 		mCommandBuffer->drawIndexed((count - 2) * 3, 1, 0, index, 0);
-		drawcalls.Unclock();
 
 		mIndexBuffer = oldIndexBuffer;
 	}
@@ -661,8 +613,6 @@ void VkRenderStateMolten::Draw(int dt, int index, int count, bool apply)
 		if (apply || mNeedApply)
 			Apply(dt);
 
-		drawcalls.Clock();
 		mCommandBuffer->draw(count, 1, index, 0);
-		drawcalls.Unclock();
 	}
 }

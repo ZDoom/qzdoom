@@ -192,6 +192,7 @@ public:
 
 	void SetDebugName(const char *name) { device->SetDebugObjectName(name, (uint64_t)pool, VK_OBJECT_TYPE_DESCRIPTOR_POOL); }
 
+	std::unique_ptr<VulkanDescriptorSet> tryAllocate(VulkanDescriptorSetLayout *layout);
 	std::unique_ptr<VulkanDescriptorSet> allocate(VulkanDescriptorSetLayout *layout);
 
 	VulkanDevice *device;
@@ -200,6 +201,24 @@ public:
 private:
 	VulkanDescriptorPool(const VulkanDescriptorPool &) = delete;
 	VulkanDescriptorPool &operator=(const VulkanDescriptorPool &) = delete;
+};
+
+class VulkanQueryPool
+{
+public:
+	VulkanQueryPool(VulkanDevice *device, VkQueryPool pool);
+	~VulkanQueryPool();
+
+	void SetDebugName(const char *name) { device->SetDebugObjectName(name, (uint64_t)pool, VK_OBJECT_TYPE_QUERY_POOL); }
+
+	bool getResults(uint32_t firstQuery, uint32_t queryCount, size_t dataSize, void *data, VkDeviceSize stride, VkQueryResultFlags flags);
+
+	VulkanDevice *device = nullptr;
+	VkQueryPool pool = VK_NULL_HANDLE;
+
+private:
+	VulkanQueryPool(const VulkanQueryPool &) = delete;
+	VulkanQueryPool &operator=(const VulkanQueryPool &) = delete;
 };
 
 class VulkanPipeline
@@ -317,10 +336,15 @@ public:
 	void resetEvent(VkEvent event, VkPipelineStageFlags stageMask);
 	void waitEvents(uint32_t eventCount, const VkEvent* pEvents, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, uint32_t memoryBarrierCount, const VkMemoryBarrier* pMemoryBarriers, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier* pBufferMemoryBarriers, uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier* pImageMemoryBarriers);
 	void pipelineBarrier(VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags, uint32_t memoryBarrierCount, const VkMemoryBarrier* pMemoryBarriers, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier* pBufferMemoryBarriers, uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier* pImageMemoryBarriers);
+	void beginQuery(VulkanQueryPool *queryPool, uint32_t query, VkQueryControlFlags flags);
 	void beginQuery(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags);
+	void endQuery(VulkanQueryPool *queryPool, uint32_t query);
 	void endQuery(VkQueryPool queryPool, uint32_t query);
+	void resetQueryPool(VulkanQueryPool *queryPool, uint32_t firstQuery, uint32_t queryCount);
 	void resetQueryPool(VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount);
+	void writeTimestamp(VkPipelineStageFlagBits pipelineStage, VulkanQueryPool *queryPool, uint32_t query);
 	void writeTimestamp(VkPipelineStageFlagBits pipelineStage, VkQueryPool queryPool, uint32_t query);
+	void copyQueryPoolResults(VulkanQueryPool *queryPool, uint32_t firstQuery, uint32_t queryCount, VulkanBuffer *dstBuffer, VkDeviceSize dstOffset, VkDeviceSize stride, VkQueryResultFlags flags);
 	void copyQueryPoolResults(VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount, VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize stride, VkQueryResultFlags flags);
 	void pushConstants(VulkanPipelineLayout *layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues);
 	void pushConstants(VkPipelineLayout layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues);
@@ -775,9 +799,19 @@ inline void VulkanCommandBuffer::pipelineBarrier(VkPipelineStageFlags srcStageMa
 	vkCmdPipelineBarrier(buffer, srcStageMask, dstStageMask, dependencyFlags, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
 }
 
+inline void VulkanCommandBuffer::beginQuery(VulkanQueryPool *queryPool, uint32_t query, VkQueryControlFlags flags)
+{
+	beginQuery(queryPool->pool, query, flags);
+}
+
 inline void VulkanCommandBuffer::beginQuery(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags)
 {
 	vkCmdBeginQuery(buffer, queryPool, query, flags);
+}
+
+inline void VulkanCommandBuffer::endQuery(VulkanQueryPool *queryPool, uint32_t query)
+{
+	endQuery(queryPool->pool, query);
 }
 
 inline void VulkanCommandBuffer::endQuery(VkQueryPool queryPool, uint32_t query)
@@ -785,14 +819,29 @@ inline void VulkanCommandBuffer::endQuery(VkQueryPool queryPool, uint32_t query)
 	vkCmdEndQuery(buffer, queryPool, query);
 }
 
+inline void VulkanCommandBuffer::resetQueryPool(VulkanQueryPool *queryPool, uint32_t firstQuery, uint32_t queryCount)
+{
+	resetQueryPool(queryPool->pool, firstQuery, queryCount);
+}
+
 inline void VulkanCommandBuffer::resetQueryPool(VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount)
 {
 	vkCmdResetQueryPool(buffer, queryPool, firstQuery, queryCount);
 }
 
+inline void VulkanCommandBuffer::writeTimestamp(VkPipelineStageFlagBits pipelineStage, VulkanQueryPool *queryPool, uint32_t query)
+{
+	writeTimestamp(pipelineStage, queryPool->pool, query);
+}
+
 inline void VulkanCommandBuffer::writeTimestamp(VkPipelineStageFlagBits pipelineStage, VkQueryPool queryPool, uint32_t query)
 {
 	vkCmdWriteTimestamp(buffer, pipelineStage, queryPool, query);
+}
+
+inline void VulkanCommandBuffer::copyQueryPoolResults(VulkanQueryPool *queryPool, uint32_t firstQuery, uint32_t queryCount, VulkanBuffer *dstBuffer, VkDeviceSize dstOffset, VkDeviceSize stride, VkQueryResultFlags flags)
+{
+	copyQueryPoolResults(queryPool->pool, firstQuery, queryCount, dstBuffer->buffer, dstOffset, stride, flags);
 }
 
 inline void VulkanCommandBuffer::copyQueryPoolResults(VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount, VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize stride, VkQueryResultFlags flags)
@@ -884,6 +933,22 @@ inline VulkanDescriptorPool::~VulkanDescriptorPool()
 	vkDestroyDescriptorPool(device->device, pool, nullptr);
 }
 
+inline std::unique_ptr<VulkanDescriptorSet> VulkanDescriptorPool::tryAllocate(VulkanDescriptorSetLayout *layout)
+{
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = pool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = &layout->layout;
+
+	VkDescriptorSet descriptorSet;
+	VkResult result = vkAllocateDescriptorSets(device->device, &allocInfo, &descriptorSet);
+	if (result != VK_SUCCESS)
+		return nullptr;
+
+	return std::make_unique<VulkanDescriptorSet>(device, this, descriptorSet);
+}
+
 inline std::unique_ptr<VulkanDescriptorSet> VulkanDescriptorPool::allocate(VulkanDescriptorSetLayout *layout)
 {
 	VkDescriptorSetAllocateInfo allocInfo = {};
@@ -895,9 +960,28 @@ inline std::unique_ptr<VulkanDescriptorSet> VulkanDescriptorPool::allocate(Vulka
 	VkDescriptorSet descriptorSet;
 	VkResult result = vkAllocateDescriptorSets(device->device, &allocInfo, &descriptorSet);
 	if (result != VK_SUCCESS)
-		I_Error("Could not allocate descriptor sets");
+		I_FatalError("Could not allocate descriptor sets");
 
 	return std::make_unique<VulkanDescriptorSet>(device, this, descriptorSet);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+inline VulkanQueryPool::VulkanQueryPool(VulkanDevice *device, VkQueryPool pool) : device(device), pool(pool)
+{
+}
+
+inline VulkanQueryPool::~VulkanQueryPool()
+{
+	vkDestroyQueryPool(device->device, pool, nullptr);
+}
+
+inline bool VulkanQueryPool::getResults(uint32_t firstQuery, uint32_t queryCount, size_t dataSize, void *data, VkDeviceSize stride, VkQueryResultFlags flags)
+{
+	VkResult result = vkGetQueryPoolResults(device->device, pool, firstQuery, queryCount, dataSize, data, stride, flags);
+	if (result != VK_SUCCESS && result != VK_NOT_READY)
+		I_Error("vkGetQueryPoolResults failed");
+	return result == VK_SUCCESS;
 }
 
 /////////////////////////////////////////////////////////////////////////////

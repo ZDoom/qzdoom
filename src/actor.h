@@ -1180,12 +1180,14 @@ public:
 
 
 	// ThingIDs
+	void SetTID (int newTID);
+
+private:
 	void AddToHash ();
 	void RemoveFromHash ();
 
-
-private:
 	static inline int TIDHASH (int key) { return key & 127; }
+
 public:
 	static FSharedStringArena mStringPropertyData;
 private:
@@ -1267,6 +1269,11 @@ public:
 	bool isAtZ(double checkz) const
 	{
 		return fabs(Z() - checkz) < EQUAL_EPSILON;
+	}
+
+	double RenderRadius() const
+	{
+		return MAX(radius, renderradius);
 	}
 
 	DVector3 PosRelative(int grp) const;
