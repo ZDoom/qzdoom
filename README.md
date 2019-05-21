@@ -1,7 +1,7 @@
 [![QZDoom Logo](https://forum.drdteam.org/download/file.php?id=3080)](https://zdoom.org/)
 # Welcome to QZDoom!
 
-[![Build Status](https://ci.appveyor.com/api/projects/status/github/raa-eruanna/qzdoom?branch=master&svg=true)](https://ci.appveyor.com/project/raa-eruanna/qzdoom) [![Build Status](https://travis-ci.org/raa-eruanna/qzdoom.svg?branch=master)](https://travis-ci.org/raa-eruanna/qzdoom)
+[![Build Status](https://ci.appveyor.com/api/projects/status/github/madame-rachelle/qzdoom?branch=master&svg=true)](https://ci.appveyor.com/project/madame-rachelle/qzdoom) [![Build Status](https://travis-ci.org/madame-rachelle/qzdoom.svg?branch=master)](https://travis-ci.org/madame-rachelle/qzdoom)
 
 ## QZDoom is a fork of [GZDoom](https://github.com/coelckers/gzdoom) sporting features that have not yet been included in GZDoom's mainline.
 
