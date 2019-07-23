@@ -56,7 +56,7 @@
 #include "cmdlib.h"
 #include "md5.h"
 #include "po_man.h"
-#include "r_renderer.h"
+#include "swrenderer/r_renderer.h"
 #include "p_blockmap.h"
 #include "r_utility.h"
 #include "p_spec.h"
@@ -75,6 +75,7 @@
 #include "i_system.h"
 #include "v_video.h"
 #include "fragglescript/t_script.h"
+#include "atterm.h"
 
 extern AActor *SpawnMapThing (int index, FMapThing *mthing, int position);
 

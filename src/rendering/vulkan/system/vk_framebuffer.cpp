@@ -128,7 +128,14 @@ void VulkanFrameBuffer::InitializeState()
 		first = false;
 	}
 
-	gl_vendorstring = "Vulkan";
+	switch (device->PhysicalDevice.Properties.vendorID)
+	{
+	case 0x1002: vendorstring = "AMD";     break;
+	case 0x10DE: vendorstring = "NVIDIA";  break;
+	case 0x8086: vendorstring = "Intel";   break;
+	default:     vendorstring = "Unknown"; break;
+	}
+
 	hwcaps = RFL_SHADER_STORAGE_BUFFER | RFL_BUFFER_STORAGE;
 	glslversion = 4.50f;
 	uniformblockalignment = (unsigned int)device->PhysicalDevice.Properties.limits.minUniformBufferOffsetAlignment;
@@ -145,7 +152,7 @@ void VulkanFrameBuffer::InitializeState()
 
 	mVertexData = new FFlatVertexBuffer(GetWidth(), GetHeight());
 	mSkyData = new FSkyVertexBuffer;
-	mViewpoints = new GLViewpointBuffer;
+	mViewpoints = new HWViewpointBuffer;
 	mLights = new FLightBuffer();
 
 	CreateFanToTrisIndexBuffer();
@@ -165,11 +172,14 @@ void VulkanFrameBuffer::InitializeState()
 	mRenderState.reset(new VkRenderState());
 #endif
 
-	QueryPoolBuilder querybuilder;
-	querybuilder.setQueryType(VK_QUERY_TYPE_TIMESTAMP, MaxTimestampQueries);
-	mTimestampQueryPool = querybuilder.create(device);
+	if (device->graphicsTimeQueries)
+	{
+		QueryPoolBuilder querybuilder;
+		querybuilder.setQueryType(VK_QUERY_TYPE_TIMESTAMP, MaxTimestampQueries);
+		mTimestampQueryPool = querybuilder.create(device);
 
-	GetDrawCommands()->resetQueryPool(mTimestampQueryPool.get(), 0, MaxTimestampQueries);
+		GetDrawCommands()->resetQueryPool(mTimestampQueryPool.get(), 0, MaxTimestampQueries);
+	}
 }
 
 void VulkanFrameBuffer::Update()
@@ -199,6 +209,7 @@ void VulkanFrameBuffer::DeleteFrameObjects()
 {
 	FrameDeleteList.Images.clear();
 	FrameDeleteList.ImageViews.clear();
+	FrameDeleteList.Framebuffers.clear();
 	FrameDeleteList.Buffers.clear();
 	FrameDeleteList.Descriptors.clear();
 	FrameDeleteList.DescriptorPools.clear();
@@ -444,7 +455,7 @@ sector_t *VulkanFrameBuffer::RenderViewpoint(FRenderViewpoint &mainvp, AActor * 
 
 		if (mainview) // Bind the scene frame buffer and turn on draw buffers used by ssao
 		{
-			mRenderState->SetRenderTarget(GetBuffers()->SceneColor.View.get(), GetBuffers()->SceneDepthStencil.View.get(), GetBuffers()->GetWidth(), GetBuffers()->GetHeight(), VK_FORMAT_R16G16B16A16_SFLOAT, GetBuffers()->GetSceneSamples());
+			mRenderState->SetRenderTarget(&GetBuffers()->SceneColor, GetBuffers()->SceneDepthStencil.View.get(), GetBuffers()->GetWidth(), GetBuffers()->GetHeight(), VK_FORMAT_R16G16B16A16_SFLOAT, GetBuffers()->GetSceneSamples());
 			bool useSSAO = (gl_ssao != 0);
 			GetRenderState()->SetPassType(useSSAO ? GBUFFER_PASS : NORMAL_PASS);
 			GetRenderState()->EnableDrawBuffers(GetRenderState()->GetPassDrawBufferCount());
@@ -514,7 +525,7 @@ void VulkanFrameBuffer::RenderTextureView(FCanvasTexture *tex, AActor *Viewpoint
 	barrier0.addImage(image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, true);
 	barrier0.execute(GetDrawCommands());
 
-	mRenderState->SetRenderTarget(image->View.get(), depthStencil->View.get(), image->Image->width, image->Image->height, VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT);
+	mRenderState->SetRenderTarget(image, depthStencil->View.get(), image->Image->width, image->Image->height, VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT);
 
 	IntRect bounds;
 	bounds.left = bounds.top = 0;
@@ -530,7 +541,7 @@ void VulkanFrameBuffer::RenderTextureView(FCanvasTexture *tex, AActor *Viewpoint
 	barrier1.addImage(image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
 	barrier1.execute(GetDrawCommands());
 
-	mRenderState->SetRenderTarget(GetBuffers()->SceneColor.View.get(), GetBuffers()->SceneDepthStencil.View.get(), GetBuffers()->GetWidth(), GetBuffers()->GetHeight(), VK_FORMAT_R16G16B16A16_SFLOAT, GetBuffers()->GetSceneSamples());
+	mRenderState->SetRenderTarget(&GetBuffers()->SceneColor, GetBuffers()->SceneDepthStencil.View.get(), GetBuffers()->GetWidth(), GetBuffers()->GetHeight(), VK_FORMAT_R16G16B16A16_SFLOAT, GetBuffers()->GetSceneSamples());
 
 	tex->SetUpdated(true);
 }
@@ -709,11 +720,12 @@ void VulkanFrameBuffer::UpdatePalette()
 
 FTexture *VulkanFrameBuffer::WipeStartScreen()
 {
-	const auto &viewport = screen->mScreenViewport;
-	auto tex = new FWrapperTexture(viewport.width, viewport.height, 1);
+	SetViewportRects(nullptr);
+
+	auto tex = new FWrapperTexture(mScreenViewport.width, mScreenViewport.height, 1);
 	auto systex = static_cast<VkHardwareTexture*>(tex->GetSystemTexture());
 
-	systex->CreateWipeTexture(viewport.width, viewport.height, "WipeStartScreen");
+	systex->CreateWipeTexture(mScreenViewport.width, mScreenViewport.height, "WipeStartScreen");
 
 	return tex;
 }
@@ -724,11 +736,10 @@ FTexture *VulkanFrameBuffer::WipeEndScreen()
 	Draw2D();
 	Clear2D();
 
-	const auto &viewport = screen->mScreenViewport;
-	auto tex = new FWrapperTexture(viewport.width, viewport.height, 1);
+	auto tex = new FWrapperTexture(mScreenViewport.width, mScreenViewport.height, 1);
 	auto systex = static_cast<VkHardwareTexture*>(tex->GetSystemTexture());
 
-	systex->CreateWipeTexture(viewport.width, viewport.height, "WipeEndScreen");
+	systex->CreateWipeTexture(mScreenViewport.width, mScreenViewport.height, "WipeEndScreen");
 
 	return tex;
 }
@@ -823,7 +834,7 @@ void VulkanFrameBuffer::PushGroup(const FString &name)
 	if (!gpuStatActive)
 		return;
 
-	if (mNextTimestampQuery < VulkanFrameBuffer::MaxTimestampQueries)
+	if (mNextTimestampQuery < VulkanFrameBuffer::MaxTimestampQueries && device->graphicsTimeQueries)
 	{
 		TimestampQuery q;
 		q.name = name;
@@ -843,7 +854,7 @@ void VulkanFrameBuffer::PopGroup()
 	TimestampQuery &q = timeElapsedQueries[mGroupStack.back()];
 	mGroupStack.pop_back();
 
-	if (mNextTimestampQuery < VulkanFrameBuffer::MaxTimestampQueries)
+	if (mNextTimestampQuery < VulkanFrameBuffer::MaxTimestampQueries && device->graphicsTimeQueries)
 	{
 		q.endIndex = mNextTimestampQuery++;
 		GetDrawCommands()->writeTimestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, mTimestampQueryPool.get(), q.endIndex);

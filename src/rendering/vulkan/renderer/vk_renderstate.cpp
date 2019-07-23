@@ -168,13 +168,13 @@ void VkRenderState::Apply(int dt)
 		mApplyCount = 0;
 	}
 
+	ApplyStreamData();
+	ApplyMatrices();
 	ApplyRenderPass(dt);
 	ApplyScissor();
 	ApplyViewport();
 	ApplyStencilRef();
 	ApplyDepthBias();
-	ApplyStreamData();
-	ApplyMatrices();
 	ApplyPushConstants();
 	ApplyVertexBuffers();
 	ApplyDynamicSet();
@@ -327,6 +327,9 @@ void VkRenderState::ApplyStreamData()
 	{
 		mDataIndex = 0;
 		mStreamDataOffset += sizeof(StreamUBO);
+
+		if (mStreamDataOffset + sizeof(StreamUBO) >= fb->StreamUBO->Size())
+			WaitForStreamBuffers();
 	}
 	uint8_t *ptr = (uint8_t*)fb->StreamUBO->Memory();
 	memcpy(ptr + mStreamDataOffset + sizeof(StreamData) * mDataIndex, &mStreamData, sizeof(StreamData));
@@ -420,11 +423,11 @@ void VkRenderState::ApplyMatrices()
 	{
 		auto fb = GetVulkanFrameBuffer();
 
-		if (mMatricesOffset + (fb->UniformBufferAlignedSize<MatricesUBO>() << 1) < fb->MatricesUBO->Size())
-		{
-			mMatricesOffset += fb->UniformBufferAlignedSize<MatricesUBO>();
-			memcpy(static_cast<uint8_t*>(fb->MatricesUBO->Memory()) + mMatricesOffset, &mMatrices, sizeof(MatricesUBO));
-		}
+		if (mMatricesOffset + (fb->UniformBufferAlignedSize<MatricesUBO>() << 1) >= fb->MatricesUBO->Size())
+			WaitForStreamBuffers();
+
+		mMatricesOffset += fb->UniformBufferAlignedSize<MatricesUBO>();
+		memcpy(static_cast<uint8_t*>(fb->MatricesUBO->Memory()) + mMatricesOffset, &mMatrices, sizeof(MatricesUBO));
 	}
 }
 
@@ -481,6 +484,16 @@ void VkRenderState::ApplyDynamicSet()
 	}
 }
 
+void VkRenderState::WaitForStreamBuffers()
+{
+	EndRenderPass();
+	GetVulkanFrameBuffer()->WaitForCommands(false);
+	mApplyCount = 0;
+	mStreamDataOffset = 0;
+	mDataIndex = 0;
+	mMatricesOffset = 0;
+}
+
 void VkRenderState::Bind(int bindingpoint, uint32_t offset)
 {
 	if (bindingpoint == VIEWPOINT_BINDINGPOINT)
@@ -528,11 +541,11 @@ void VkRenderState::EnableDrawBuffers(int count)
 	}
 }
 
-void VkRenderState::SetRenderTarget(VulkanImageView *view, VulkanImageView *depthStencilView, int width, int height, VkFormat format, VkSampleCountFlagBits samples)
+void VkRenderState::SetRenderTarget(VkTextureImage *image, VulkanImageView *depthStencilView, int width, int height, VkFormat format, VkSampleCountFlagBits samples)
 {
 	EndRenderPass();
 
-	mRenderTarget.View = view;
+	mRenderTarget.Image = image;
 	mRenderTarget.DepthStencil = depthStencilView;
 	mRenderTarget.Width = width;
 	mRenderTarget.Height = height;
@@ -552,14 +565,14 @@ void VkRenderState::BeginRenderPass(VulkanCommandBuffer *cmdbuffer)
 
 	mPassSetup = fb->GetRenderPassManager()->GetRenderPass(key);
 
-	auto &framebuffer = mPassSetup->Framebuffer[mRenderTarget.View->view];
+	auto &framebuffer = mRenderTarget.Image->RSFramebuffers[key];
 	if (!framebuffer)
 	{
 		auto buffers = fb->GetBuffers();
 		FramebufferBuilder builder;
 		builder.setRenderPass(mPassSetup->GetRenderPass(0));
 		builder.setSize(mRenderTarget.Width, mRenderTarget.Height);
-		builder.addAttachment(mRenderTarget.View);
+		builder.addAttachment(mRenderTarget.Image->View.get());
 		if (key.DrawBuffers > 1)
 			builder.addAttachment(buffers->SceneFog.View.get());
 		if (key.DrawBuffers > 2)

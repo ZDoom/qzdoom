@@ -43,6 +43,7 @@
 #include "m_argv.h"
 #include "doomerrors.h"
 #include "swrenderer/r_swrenderer.h"
+#include "atterm.h"
 
 IVideo *Video;
 

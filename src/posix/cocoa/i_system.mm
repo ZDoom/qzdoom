@@ -48,11 +48,7 @@
 #include "v_text.h"
 #include "x86.h"
 #include "cmdlib.h"
-
-
-EXTERN_CVAR(String, language)
-
-uint32_t LanguageIDs[4];
+#include "atterm.h"
 
 
 void I_Tactile(int /*on*/, int /*off*/, int /*total*/)

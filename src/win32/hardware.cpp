@@ -32,7 +32,6 @@
 **
 */
 
-#define _WIN32_WINNT 0x0501
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>
@@ -50,6 +49,7 @@
 #include "doomerrors.h"
 #include "i_system.h"
 #include "swrenderer/r_swrenderer.h"
+#include "atterm.h"
 
 EXTERN_CVAR(Int, vid_enablevulkan)
 
@@ -137,7 +137,7 @@ void I_InitGraphics ()
 		{
 			Video = new Win32VulkanVideo();
 		}
-		catch (CRecoverableError &error)
+		catch (CVulkanError &error)
 		{
 			Printf(TEXTCOLOR_RED "Initialization of Vulkan failed: %s\n", error.what());
 			Video = new Win32GLVideo();

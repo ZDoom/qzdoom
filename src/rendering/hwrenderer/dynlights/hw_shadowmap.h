@@ -34,6 +34,12 @@ public:
 		UpdateCycles.Clock();
 	}
 
+	unsigned int NodesCount() const
+	{
+		assert(mAABBTree);
+		return mAABBTree->NodesCount();
+	}
+
 protected:
 	void CollectLights();
 	bool ValidateAABBTree(FLevelLocals *lev);
@@ -59,6 +65,8 @@ protected:
 	IShadowMap &operator=(IShadowMap &) = delete;
 
 	// OpenGL storage buffer with the list of lights in the shadow map texture
+	// These buffers need to be accessed by the OpenGL backend directly so that they can be bound.
+public:
 	IDataBuffer *mLightList = nullptr;
 
 	// OpenGL storage buffers for the AABB tree
