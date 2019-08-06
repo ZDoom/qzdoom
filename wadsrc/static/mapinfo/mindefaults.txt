@@ -57,6 +57,8 @@ gameinfo
 	statscreen_mapnamefont = "*BigFont"
 	statscreen_finishedfont = "*BigFont"
 	statscreen_enteringfont = "*BigFont"
+	statscreen_contentfont = "*BigFont"
+	statscreen_authorFont = "*SmallFont"
 	messageboxclass = "MessageBoxMenu"
 }
 

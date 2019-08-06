@@ -193,6 +193,14 @@ enum DrawTextureTags
 	DTA_Monospace,			// Strings only: Use a fixed distance between characters.
 };
 
+class Shape2DTransform : Object native
+{
+	native void Clear();
+	native void Rotate(double angle);
+	native void Scale(Vector2 scaleVec);
+	native void Translate(Vector2 translateVec);
+}
+
 class Shape2D : Object native
 {
 	enum EClearWhich
@@ -201,6 +209,8 @@ class Shape2D : Object native
 		C_Coords = 2,
 		C_Indices = 4,
 	};
+
+	native void SetTransform(Shape2DTransform transform);
 
 	native void Clear( int which = C_Verts|C_Coords|C_Indices );
 	native void PushVertex( Vector2 v );
@@ -313,6 +323,7 @@ struct Font native
 	native int GetMaxAscender(String code);
 	native bool CanPrint(String code);
 	native int GetHeight();
+	native int GetDisplacement();
 	native String GetCursor();
 
 	native static int FindFontColor(Name color);
@@ -392,6 +403,8 @@ struct GameInfoStruct native
 	native GIFont mStatscreenMapNameFont;
 	native GIFont mStatscreenEnteringFont;
 	native GIFont mStatscreenFinishedFont;
+	native GIFont mStatscreenContentFont;
+	native GIFont mStatscreenAuthorFont;
 	native double gibfactor;
 	native bool intermissioncounter;
 	native Name mSliderColor;
@@ -605,7 +618,7 @@ struct TraceResults native
 	native bool unlinked;		// passed through a portal without static offset.
 
 	native ETraceResult HitType;
-	native F3DFloor ffloor;
+	// F3DFloor *ffloor;
 
 	native Sector CrossedWater;		// For Boom-style, Transfer_Heights-based deep water
 	native vector3 CrossedWaterPos;	// remember the position so that we can use it for spawning the splash
@@ -673,6 +686,7 @@ struct LevelLocals native
 	native String NextSecretMap;
 	native readonly String F1Pic;
 	native readonly int maptype;
+	native readonly String AuthorName;
 	native readonly String Music;
 	native readonly int musicorder;
 	native readonly TextureID skytexture1;
@@ -775,6 +789,8 @@ struct LevelLocals native
 	native play bool CreateCeiling(sector sec, int type, line ln, double speed, double speed2, double height = 0, int crush = -1, int silent = 0, int change = 0, int crushmode = 0 /*Floor.crushDoom*/);
 	native play bool CreateFloor(sector sec, int floortype, line ln, double speed, double height = 0, int crush = -1, int change = 0, bool crushmode = false, bool hereticlower = false);
 
+	native void ExitLevel(int position, bool keepFacing);
+	native void SecretExitLevel(int position);
 }
 
 struct StringTable native
@@ -817,6 +833,10 @@ struct State native
 	native bool ValidateSpriteFrame();
 	native TextureID, bool, Vector2 GetSpriteTexture(int rotation, int skin = 0, Vector2 scale = (0,0));
 	native bool InStateSequence(State base);
+}
+
+struct F3DFloor native
+{
 }
 
 struct Wads
