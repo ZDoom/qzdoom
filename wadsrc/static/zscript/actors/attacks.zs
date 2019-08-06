@@ -492,7 +492,7 @@ extend class Actor
 		let bo = Spawn(missile, pos + (0, 0, (-Floorclip + GetBobOffset() + zheight + 35 + (player? player.crouchoffset : 0.))), ALLOW_REPLACE);
 		if (bo)
 		{
-			self.PlaySpawnSound(bo);
+			bo.PlaySpawnSound(self);
 			if (xyvel != 0)
 				bo.Speed = xyvel;
 			bo.Angle = Angle + (random[grenade](-4, 3) * (360./256.));

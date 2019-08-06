@@ -176,6 +176,9 @@ bool IShadowMap::PerformUpdate()
 		UpdateCycles.Clock();
 		UploadAABBTree();
 		UploadLights();
+		mLightList->BindBase();
+		mNodesBuffer->BindBase();
+		mLinesBuffer->BindBase();
 		return true;
 	}
 	return false;

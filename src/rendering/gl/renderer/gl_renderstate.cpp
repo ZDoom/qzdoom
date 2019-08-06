@@ -189,21 +189,9 @@ bool FGLRenderState::ApplyShader()
 		matrixToGL(identityMatrix, activeShader->normalmodelmatrix_index);
 	}
 
-	int index = mLightIndex;
-	// Mess alert for crappy AncientGL!
-	if (!screen->mLights->GetBufferType() && index >= 0)
-	{
-		size_t start, size;
-		index = screen->mLights->GetBinding(index, &start, &size);
-
-		if (start != mLastMappedLightIndex)
-		{
-			mLastMappedLightIndex = start;
-			static_cast<GLDataBuffer*>(screen->mLights->GetBuffer())->BindRange(nullptr, start, size);
-		}
-	}
-
+	auto index = screen->mLights->BindUBO(mLightIndex);
 	activeShader->muLightIndex.Set(index);
+
 	return true;
 }
 

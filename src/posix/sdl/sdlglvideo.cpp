@@ -242,7 +242,7 @@ SDLVideo::SDLVideo ()
 	// Load optional SDL functions
 	if (!Priv::library.IsLoaded())
 	{
-		Priv::library.Load({ "libSDL2-2.0.so.0", "libSDL2-2.0.so", "libSDL2.so" });
+		Priv::library.Load({ "libSDL2.so", "libSDL2-2.0.so" });
 	}
 
 #ifdef HAVE_VULKAN
@@ -282,7 +282,7 @@ DFrameBuffer *SDLVideo::CreateFrameBuffer ()
 			device = new VulkanDevice();
 			fb = new VulkanFrameBuffer(nullptr, fullscreen, device);
 		}
-		catch (CVulkanError const&)
+		catch (CRecoverableError const&)
 		{
 			if (Priv::window != nullptr)
 			{

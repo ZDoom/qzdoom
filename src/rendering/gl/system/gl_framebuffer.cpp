@@ -126,7 +126,7 @@ void OpenGLFrameBuffer::InitializeState()
 	glslversion = gl.glslversion;
 	uniformblockalignment = gl.uniformblockalignment;
 	maxuniformblock = gl.maxuniformblock;
-	vendorstring = gl.vendorstring;
+	gl_vendorstring = gl.vendorstring;
 
 	if (first)
 	{
@@ -154,13 +154,11 @@ void OpenGLFrameBuffer::InitializeState()
 
 	mVertexData = new FFlatVertexBuffer(GetWidth(), GetHeight());
 	mSkyData = new FSkyVertexBuffer;
-	mViewpoints = new HWViewpointBuffer;
+	mViewpoints = new GLViewpointBuffer;
 	mLights = new FLightBuffer();
 
 	GLRenderer = new FGLRenderer(this);
 	GLRenderer->Initialize(GetWidth(), GetHeight());
-
-	static_cast<GLDataBuffer*>(mLights->GetBuffer())->BindBase();
 
 	mDebug = std::make_shared<FGLDebug>();
 	mDebug->Update();

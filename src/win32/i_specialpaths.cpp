@@ -33,6 +33,7 @@
 **
 */
 
+#define _WIN32_WINNT 0x0601
 #include <windows.h>
 #include <lmcons.h>
 #include <shlobj.h>
@@ -100,14 +101,40 @@ bool UseKnownFolders()
 
 bool GetKnownFolder(int shell_folder, REFKNOWNFOLDERID known_folder, bool create, FString &path)
 {
-	PWSTR wpath;
-	if (FAILED(SHGetKnownFolderPath(known_folder, create ? KF_FLAG_CREATE : 0, NULL, &wpath)))
+	using OptWin32::SHGetKnownFolderPath;
+
+	WCHAR pathstr[MAX_PATH];
+
+	// SHGetKnownFolderPath knows about more folders than SHGetFolderPath, but is
+	// new to Vista, hence the reason we support both.
+	if (!SHGetKnownFolderPath)
 	{
-		return false;
+		if (shell_folder < 0)
+		{ // Not supported by SHGetFolderPath
+			return false;
+		}
+		if (create)
+		{
+			shell_folder |= CSIDL_FLAG_CREATE;
+		}
+		if (FAILED(SHGetFolderPathW(NULL, shell_folder, NULL, 0, pathstr)))
+		{
+			return false;
+		}
+		path = pathstr;
+		return true;
 	}
-	path = wpath;
-	CoTaskMemFree(wpath);
-	return true;
+	else
+	{
+		PWSTR wpath;
+		if (FAILED(SHGetKnownFolderPath(known_folder, create ? KF_FLAG_CREATE : 0, NULL, &wpath)))
+		{
+			return false;
+		}
+		path = wpath;
+		CoTaskMemFree(wpath);
+		return true;
+	}
 }
 
 //===========================================================================

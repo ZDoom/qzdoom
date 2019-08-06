@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "swrenderer/r_renderer.h"
+#include "r_renderer.h"
 #include "swrenderer/scene/r_scene.h"
 
 struct FSoftwareRenderer : public FRenderer

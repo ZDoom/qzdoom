@@ -4,7 +4,6 @@
 
 class VulkanSemaphore;
 class VulkanFence;
-class VulkanFramebuffer;
 
 class VulkanSwapChain
 {
@@ -23,7 +22,6 @@ public:
 
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
-	std::vector<std::unique_ptr<VulkanFramebuffer>> framebuffers;
 
 	VkExtent2D actualExtent;
 

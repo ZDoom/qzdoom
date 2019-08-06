@@ -201,12 +201,7 @@ public:
 		o = nullptr;
 		return *this;
 	}
-
-	T Get() throw()
-	{
-		return GC::ReadBarrier(pp);
-	}
-
+	
 	operator T() throw()
 	{
 		return GC::ReadBarrier(pp);

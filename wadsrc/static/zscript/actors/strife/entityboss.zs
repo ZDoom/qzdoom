@@ -289,7 +289,7 @@ class EntitySecond : SpectralMonster
 	{
 		if (CheckBossDeath ())
 		{
-			Level.ExitLevel(0, false);
+			Exit_Normal(0);
 		}
 	}
 }

@@ -82,13 +82,10 @@ static FString ParseMultiString(FScanner &scanner, int error)
 		}
 	}
 	
-	bool first = true;
-
 	do
 	{
 		scanner.MustGetToken(TK_StringConst);
-		if (first) first = false;
-		else build += "\n";
+		if (build.Len() > 0) build += "\n";
 		build += scanner.String;
 	} 
 	while (scanner.CheckToken(','));
@@ -219,7 +216,15 @@ static int ParseStandardProperty(FScanner &scanner, UMapEntry *mape)
 		if (Episode.IsEmpty()) return 0;
 		if (Episode.Compare("-") == 0)
 		{
-			AllEpisodes.Clear();
+			// clear the given episode
+			for (unsigned i = 0; i < AllEpisodes.Size(); i++)
+			{
+				if (AllEpisodes[i].mEpisodeMap.CompareNoCase(mape->MapName) == 0)
+				{
+					AllEpisodes.Delete(i);
+					break;
+				}
+			}
 		}
 		else
 		{
@@ -227,22 +232,10 @@ static int ParseStandardProperty(FScanner &scanner, UMapEntry *mape)
 			// add the given episode
 			FEpisode epi;
 
-			if (split.Size() > 1)
-			{
-				epi.mEpisodeName = strbin1(split[1]);
-			}
-			if (split.Size() > 2 && split[2].IsNotEmpty())
-			{
-				split[2].ToLower();
-				epi.mShortcut = split[2][0];
-			}
-			else
-			{
-				epi.mShortcut = '\0';
-			}
+			epi.mEpisodeName = strbin1(split[1]);
 			epi.mEpisodeMap = mape->MapName;
 			epi.mPicName = split[0];
-			epi.mNoSkill = false;
+			epi.mShortcut = split[2][0];
 
 			unsigned i;
 			for (i = 0; i < AllEpisodes.Size(); i++)
@@ -371,7 +364,7 @@ int ParseUMapInfo(int lumpnum)
 			if (!parsed.MapName.Compare(Maps[i].MapName))
 			{
 				Maps[i] = parsed;
-				continue;
+				return 1;
 			}
 		}
 		// Not found so create a new one.
@@ -387,7 +380,7 @@ void CommitUMapinfo(level_info_t *defaultinfo)
 {
 	for (auto &map : Maps)
 	{
-		auto levelinfo = FindLevelInfo(map.MapName, false);
+		auto levelinfo = FindLevelInfo(map.MapName);
 		if (levelinfo == nullptr)
 		{
 			// Map did not exist yet.
@@ -469,7 +462,6 @@ void CommitUMapinfo(level_info_t *defaultinfo)
 				levelinfo->ExitMapTexts[NAME_Secret] = { 0, 0 };
 		}
 		if (map.nointermission) levelinfo->flags |= LEVEL_NOINTERMISSION;
-		if (!(levelinfo->flags2 & LEVEL2_NEEDCLUSTERTEXT)) levelinfo->flags2 |= LEVEL2_NOCLUSTERTEXT;	// UMAPINFO should ignore cluster intermission texts.
 	}
 
 

@@ -39,6 +39,7 @@
 #include "v_video.h"
 #include "r_defs.h"
 #include "r_utility.h"
+#include "r_renderer.h"
 #include "doomstat.h"
 #include "gi.h"
 #include "g_level.h"

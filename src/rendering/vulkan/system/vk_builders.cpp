@@ -177,11 +177,7 @@ std::unique_ptr<VulkanShader> ShaderBuilder::create(const char *shadername, Vulk
 	VkShaderModule shaderModule;
 	VkResult result = vkCreateShaderModule(device->device, &createInfo, nullptr, &shaderModule);
 	if (result != VK_SUCCESS)
-	{
-		FString msg;
-		msg.Format("Could not create vulkan shader module for '%s': %s", shadername, VkResultToString(result).GetChars());
-		VulkanError(msg.GetChars());
-	}
+		I_FatalError("Could not create vulkan shader module for '%s'", shadername);
 
 	return std::make_unique<VulkanShader>(device, shaderModule);
 }

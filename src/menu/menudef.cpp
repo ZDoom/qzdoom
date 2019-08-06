@@ -50,7 +50,6 @@
 #include "gstrings.h"
 #include "teaminfo.h"
 #include "r_data/sprites.h"
-#include "atterm.h"
 
 
 void ClearSaveGames();
@@ -136,7 +135,6 @@ DEFINE_ACTION_FUNCTION(FOptionValues, GetText)
 
 void DeinitMenus()
 {
-	M_ClearMenus();
 	{
 		FOptionMap::Iterator it(OptionValues);
 
@@ -150,6 +148,7 @@ void DeinitMenus()
 	}
 	MenuDescriptors.Clear();
 	OptionValues.Clear();
+	CurrentMenu = nullptr;
 	savegameManager.ClearSaveGames();
 }
 
@@ -1123,9 +1122,9 @@ void M_StartupEpisodeMenu(FGameStartup *gs)
 			// center the menu on the screen if the top space is larger than the bottom space
 			int totalheight = posy + AllEpisodes.Size() * ld->mLinespacing - topy;
 
-			if (totalheight < 190 || AllEpisodes.Size() == 1)
+			if (totalheight < CleanHeight-10 || AllEpisodes.Size() == 1)
 			{
-				int newtop = (200 - totalheight + topy) / 2;
+				int newtop = (CleanHeight - totalheight + topy) / 2;
 				int topdelta = newtop - topy;
 				if (topdelta < 0)
 				{
@@ -1723,9 +1722,9 @@ void M_StartupSkillMenu(FGameStartup *gs)
 				// center the menu on the screen if the top space is larger than the bottom space
 				int totalheight = posy + MenuSkills.Size() * ld->mLinespacing - topy;
 
-				if (totalheight < 190 || MenuSkills.Size() == 1)
+				if (totalheight < CleanHeight-10 || MenuSkills.Size() == 1)
 				{
-					int newtop = (200 - totalheight + topy) / 2;
+					int newtop = (CleanHeight - totalheight + topy) / 2;
 					int topdelta = newtop - topy;
 					if (topdelta < 0)
 					{

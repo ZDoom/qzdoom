@@ -41,31 +41,6 @@
 
 // TYPES -------------------------------------------------------------------
 
-// WildMidi implementation of a MIDI device ---------------------------------
-
-class WildMIDIDevice : public SoftSynthMIDIDevice
-{
-public:
-	WildMIDIDevice(const char *args, int samplerate);
-	~WildMIDIDevice();
-	
-	int Open(MidiCallback, void *userdata);
-	void PrecacheInstruments(const uint16_t *instruments, int count);
-	FString GetStats();
-	int GetDeviceType() const override { return MDEV_WILDMIDI; }
-	
-protected:
-	WildMidi_Renderer *Renderer;
-	
-	void HandleEvent(int status, int parm1, int parm2);
-	void HandleLongEvent(const uint8_t *data, int len);
-	void ComputeOutput(float *buffer, int len);
-	void WildMidiSetOption(int opt, int set);
-};
-
-
-
-
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
 
 // PUBLIC FUNCTION PROTOTYPES ----------------------------------------------
@@ -256,15 +231,3 @@ void WildMIDIDevice::WildMidiSetOption(int opt, int set)
 {
 	Renderer->SetOption(opt, set);
 }
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-MIDIDevice *CreateWildMIDIDevice(const char *args, int samplerate)
-{
-	return new WildMIDIDevice(args, samplerate);
-}
-

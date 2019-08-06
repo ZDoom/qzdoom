@@ -101,8 +101,6 @@ enum
 	FLOP_COSH,
 	FLOP_SINH,
 	FLOP_TANH,
-
-	FLOP_ROUND,
 };
 
 // Cast operations

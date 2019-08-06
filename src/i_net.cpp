@@ -62,7 +62,6 @@
 #include "st_start.h"
 #include "m_misc.h"
 #include "doomerrors.h"
-#include "atterm.h"
 
 #include "i_net.h"
 

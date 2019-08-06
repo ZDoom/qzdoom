@@ -194,7 +194,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 			{
 				for (i = 0; i < lcount; i++)
 				{
-					int position = lfirst + i;
+					int position = '!' + i;
 					mysnprintf(buffer, countof(buffer), nametemplate, i + start);
 
 					lump = TexMan.CheckForTexture(buffer, ETextureType::MiscPatch);
@@ -233,7 +233,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 					for (auto entry : array)
 					{
 						FTexture *tex = TexMan.GetTexture(entry, false);
-						if (tex && tex->SourceLump >= 0 && Wads.GetLumpFile(tex->SourceLump) <= Wads.GetMaxIwadNum() && tex->UseType == ETextureType::MiscPatch)
+						if (tex && tex->SourceLump >= 0 && Wads.GetLumpFile(tex->SourceLump) <= Wads.GetIwadNum() && tex->UseType == ETextureType::MiscPatch)
 						{
 							texs[i] = tex;
 						}
@@ -253,7 +253,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 				{
 					if (texs[i])
 					{
-						int position = lfirst + i;
+						int position = '!' + i;
 						Type = Multilump;
 						if (position < minchar) minchar = position;
 						if (position > maxchar) maxchar = position;
@@ -290,7 +290,6 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 		auto count = maxchar - minchar + 1;
 		Chars.Resize(count);
 		int fontheight = 0;
-		int asciiheight = 0;
 
 		for (i = 0; i < count; i++)
 		{
@@ -311,10 +310,6 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 					if (height > fontheight)
 					{
 						fontheight = height;
-					}
-					if (height > asciiheight && FirstChar + 1 < 128)
-					{
-						asciiheight = height;
 					}
 				}
 
@@ -357,14 +352,11 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 			}
 		}
 		if (FontHeight == 0) FontHeight = fontheight;
-		if (AsciiHeight == 0) AsciiHeight = asciiheight;
 
 		FixXMoves();
 	}
 
 	if (!noTranslate) LoadTranslations();
-
-
 }
 
 void FFont::ReadSheetFont(TArray<FolderEntry> &folderdata, int width, int height, const DVector2 &Scale)
@@ -1198,11 +1190,6 @@ void FFont::FixXMoves()
 				}
 			}
 			Chars[i].XMove = SpaceWidth;
-		}
-		if (Chars[i].OriginalPic)
-		{
-			int ofs = Chars[i].OriginalPic->GetScaledTopOffset(0);
-			if (ofs > Displacement) Displacement = ofs;
 		}
 	}
 }

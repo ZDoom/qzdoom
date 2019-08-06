@@ -35,6 +35,7 @@
 // HEADER FILES ------------------------------------------------------------
 
 #define WIN32_LEAN_AND_MEAN
+#define _WIN32_WINNT 0x0501
 #include <windows.h>
 #include <richedit.h>
 #include <tlhelp32.h>
@@ -510,7 +511,7 @@ HANDLE WriteLogFile(HWND edit)
 //
 //==========================================================================
 
-void CreateCrashLog (const char *custominfo, DWORD customsize, HWND richlog)
+void CreateCrashLog (char *custominfo, DWORD customsize, HWND richlog)
 {
 	// Do not collect information more than once.
 	if (NumFiles != 0)

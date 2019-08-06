@@ -12,7 +12,6 @@
 #include "hwrenderer/textures/hw_material.h"
 
 class VkRenderPassSetup;
-class VkTextureImage;
 
 class VkRenderState : public FRenderState
 {
@@ -44,7 +43,7 @@ public:
 	void EnableDrawBuffers(int count) override;
 
 	void BeginFrame();
-	void SetRenderTarget(VkTextureImage *image, VulkanImageView *depthStencilView, int width, int height, VkFormat Format, VkSampleCountFlagBits samples);
+	void SetRenderTarget(VulkanImageView *view, VulkanImageView *depthStencilView, int width, int height, VkFormat Format, VkSampleCountFlagBits samples);
 	void Bind(int bindingpoint, uint32_t offset);
 	void EndRenderPass();
 	void EndFrame();
@@ -63,7 +62,6 @@ protected:
 	void ApplyVertexBuffers();
 	void ApplyMaterial();
 
-	void WaitForStreamBuffers();
 	void BeginRenderPass(VulkanCommandBuffer *cmdbuffer);
 
 	bool mDepthClamp = true;
@@ -114,7 +112,7 @@ protected:
 
 	struct RenderTarget
 	{
-		VkTextureImage *Image = nullptr;
+		VulkanImageView *View = nullptr;
 		VulkanImageView *DepthStencil = nullptr;
 		int Width = 0;
 		int Height = 0;

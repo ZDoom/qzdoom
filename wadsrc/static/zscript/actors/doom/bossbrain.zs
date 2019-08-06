@@ -214,7 +214,7 @@ extend class Actor
 				}
 			} while (count != 0);
 		}
-		Level.ExitLevel(0, false);
+		Exit_Normal(0);
 	}
 
 	void A_BrainSpit(class<Actor> spawntype = null)

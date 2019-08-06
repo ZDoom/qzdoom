@@ -32,6 +32,7 @@
 **
 */
 
+#define _WIN32_WINNT	0x0400
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>
@@ -45,7 +46,6 @@
 
 #include "i_cd.h"
 #include "helperthread.h"
-#include "atterm.h"
 
 extern HWND Window;
 extern HINSTANCE g_hInst;

@@ -34,6 +34,7 @@
 // HEADER FILES ------------------------------------------------------------
 
 #define WIN32_LEAN_AND_MEAN
+#define _WIN32_WINNT 0x0501
 #include <windows.h>
 
 #include "i_input.h"
@@ -41,6 +42,7 @@
 #include "templates.h"
 #include "gameconfigfile.h"
 #include "m_argv.h"
+#include "rawinput.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -900,17 +902,23 @@ bool FRawPS2Manager::GetDevice()
 {
 	RAWINPUTDEVICE rid;
 
+	if (MyRegisterRawInputDevices == NULL ||
+		MyGetRawInputDeviceList == NULL ||
+		MyGetRawInputDeviceInfoA == NULL)
+	{
+		return false;
+	}
 	rid.usUsagePage = HID_GENERIC_DESKTOP_PAGE;
 	rid.usUsage = HID_GDP_JOYSTICK;
 	rid.dwFlags = RIDEV_INPUTSINK;
 	rid.hwndTarget = Window;
-	if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
+	if (!MyRegisterRawInputDevices(&rid, 1, sizeof(rid)))
 	{
 		return false;
 	}
 	rid.dwFlags = RIDEV_REMOVE;
 	rid.hwndTarget = NULL;	// Must be NULL for RIDEV_REMOVE.
-	RegisterRawInputDevices(&rid, 1, sizeof(rid));
+	MyRegisterRawInputDevices(&rid, 1, sizeof(rid));
 	EnumDevices();
 	return true;
 }
@@ -1006,7 +1014,7 @@ FRawPS2Controller *FRawPS2Manager::EnumDevices()
 	RAWINPUTDEVICELIST *devices;
 	UINT i, j;
 
-	if (GetRawInputDeviceList(NULL, &nDevices, sizeof(RAWINPUTDEVICELIST)) != 0)
+	if (MyGetRawInputDeviceList(NULL, &nDevices, sizeof(RAWINPUTDEVICELIST)) != 0)
 	{
 		return NULL;
 	}
@@ -1014,7 +1022,7 @@ FRawPS2Controller *FRawPS2Manager::EnumDevices()
 	{
 		return NULL;
 	}
-	if ((numDevices = GetRawInputDeviceList(devices, &nDevices, sizeof(RAWINPUTDEVICELIST))) == (UINT)-1)
+	if ((numDevices = MyGetRawInputDeviceList(devices, &nDevices, sizeof(RAWINPUTDEVICELIST))) == (UINT)-1)
 	{
 		free(devices);
 		return NULL;
@@ -1030,7 +1038,7 @@ FRawPS2Controller *FRawPS2Manager::EnumDevices()
 			UINT cbSize;
 
 			cbSize = rdi.cbSize = sizeof(rdi);
-			if ((INT)GetRawInputDeviceInfoA(devices[i].hDevice, RIDI_DEVICEINFO, &rdi, &cbSize) >= 0)
+			if ((INT)MyGetRawInputDeviceInfoA(devices[i].hDevice, RIDI_DEVICEINFO, &rdi, &cbSize) >= 0)
 			{
 				// All the PS2 adapters report themselves as joysticks.
 				// (By comparison, the 360 controller reports itself as a gamepad.)
@@ -1073,41 +1081,41 @@ FRawPS2Controller *FRawPS2Manager::EnumDevices()
 						// <Enumerator>#<Device ID>#<Device Interface Class GUID>
 						// The Device ID has multiple #-seperated parts and uniquely identifies
 						// this device and which USB port it is connected to.
-						wchar_t name[256];
+						char name[256];
 						UINT namelen = countof(name);
-						wchar_t *devid, *devidend;
+						char *devid, *devidend;
 
-						if (GetRawInputDeviceInfoW(devices[i].hDevice, RIDI_DEVICENAME, name, &namelen) == (UINT)-1)
+						if (MyGetRawInputDeviceInfoA(devices[i].hDevice, RIDI_DEVICENAME, name, &namelen) == (UINT)-1)
 						{ // Can't get name. Skip it, since there's stuff in there we need for config.
 							continue;
 						}
 
-						devid = wcschr(name, '#');
+						devid = strchr(name, '#');
 						if (devid == NULL)
 						{ // Should not happen
 							continue;
 						}
-						devidend = wcsrchr(++devid, '#');
+						devidend = strrchr(++devid, '#');
 						if (devidend != NULL)
 						{
 							*devidend = '\0';
 						}
 
-						FAdapterHandle handle = { devices[i].hDevice, type, 0, FString(devid) };
+						FAdapterHandle handle = { devices[i].hDevice, type, 0, devid };
 
 						// Adapters that support more than one controller have a seperate device
 						// entry for each controller. We can examine the name to determine which
 						// controller this device is for.
 						if (Descriptors[type].ControllerNumber >= 0)
 						{
-							wchar_t *col = wcsstr(devid, L"&Col");
+							char *col = strstr(devid, "&Col");
 							if (col != NULL)
 							{
 								// I have no idea if this number is base 16 or base 10. Every
 								// other number in the name is base 16, so I assume this one is
 								// too, but since I don't have anything that goes higher than 02,
 								// I can't be sure.
-								handle.ControllerNumber = wcstoul(col + 4, NULL, 16);
+								handle.ControllerNumber = strtoul(col + 4, NULL, 16);
 							}
 						}
 						adapters.Push(handle);
@@ -1260,7 +1268,7 @@ void FRawPS2Manager::DoRegister()
 		{
 			rid.dwFlags = RIDEV_REMOVE;
 			rid.hwndTarget = NULL;
-			if (RegisterRawInputDevices(&rid, 1, sizeof(rid)))
+			if (MyRegisterRawInputDevices(&rid, 1, sizeof(rid)))
 			{
 				Registered = false;
 			}
@@ -1272,7 +1280,7 @@ void FRawPS2Manager::DoRegister()
 		{
 			rid.dwFlags = RIDEV_INPUTSINK;
 			rid.hwndTarget = Window;
-			if (RegisterRawInputDevices(&rid, 1, sizeof(rid)))
+			if (MyRegisterRawInputDevices(&rid, 1, sizeof(rid)))
 			{
 				Registered = true;
 			}

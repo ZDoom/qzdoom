@@ -50,7 +50,6 @@
 #include "types.h"
 #include "scriptutil.h"
 #include "i_system.h"
-#include "atterm.h"
 
 // MACROS ------------------------------------------------------------------
 

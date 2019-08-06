@@ -61,14 +61,14 @@ void JitCompiler::EmitCALL_K()
 	else
 	{
 		auto ptr = newTempIntPtr();
-		cc.mov(ptr, asmjit::imm(target));
+		cc.mov(ptr, asmjit::imm_ptr(target));
 		EmitVMCall(ptr, target);
 	}
 
 	pc += C; // Skip RESULTs
 }
 
-void JitCompiler::EmitVMCall(asmjit::x86::Gp vmfunc, VMFunction *target)
+void JitCompiler::EmitVMCall(asmjit::X86Gp vmfunc, VMFunction *target)
 {
 	using namespace asmjit;
 
@@ -83,14 +83,14 @@ void JitCompiler::EmitVMCall(asmjit::x86::Gp vmfunc, VMFunction *target)
 
 	FillReturns(pc + 1, C);
 
-	x86::Gp paramsptr = newTempIntPtr();
+	X86Gp paramsptr = newTempIntPtr();
 	cc.lea(paramsptr, x86::ptr(vmframe, offsetParams));
 
 	auto scriptcall = newTempIntPtr();
 	cc.mov(scriptcall, x86::ptr(vmfunc, myoffsetof(VMScriptFunction, ScriptCall)));
 
 	auto result = newResultInt32();
-	auto call = cc.call(scriptcall, FuncSignatureT<int, VMFunction *, VMValue*, int, VMReturn*, int>());
+	auto call = cc.call(scriptcall, FuncSignature5<int, VMFunction *, VMValue*, int, VMReturn*, int>());
 	call->setRet(0, result);
 	call->setArg(0, vmfunc);
 	call->setArg(1, paramsptr);
@@ -109,9 +109,9 @@ int JitCompiler::StoreCallParams()
 {
 	using namespace asmjit;
 
-	x86::Gp stackPtr = newTempIntPtr();
-	x86::Gp tmp = newTempIntPtr();
-	x86::Xmm tmp2 = newTempXmmSd();
+	X86Gp stackPtr = newTempIntPtr();
+	X86Gp tmp = newTempIntPtr();
+	X86Xmm tmp2 = newTempXmmSd();
 
 	int numparams = 0;
 	for (unsigned int i = 0; i < ParamOpcodes.Size(); i++)
@@ -150,7 +150,7 @@ int JitCompiler::StoreCallParams()
 			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), regS[bc]);
 			break;
 		case REGT_STRING | REGT_KONST:
-			cc.mov(tmp, asmjit::imm(&konsts[bc]));
+			cc.mov(tmp, asmjit::imm_ptr(&konsts[bc]));
 			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, sp)), tmp);
 			break;
 		case REGT_POINTER:
@@ -162,7 +162,7 @@ int JitCompiler::StoreCallParams()
 			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), stackPtr);
 			break;
 		case REGT_POINTER | REGT_KONST:
-			cc.mov(tmp, asmjit::imm(konsta[bc].v));
+			cc.mov(tmp, asmjit::imm_ptr(konsta[bc].v));
 			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), tmp);
 			break;
 		case REGT_FLOAT:
@@ -193,7 +193,7 @@ int JitCompiler::StoreCallParams()
 			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), stackPtr);
 			break;
 		case REGT_FLOAT | REGT_KONST:
-			cc.mov(tmp, asmjit::imm(konstf + bc));
+			cc.mov(tmp, asmjit::imm_ptr(konstf + bc));
 			cc.movsd(tmp2, asmjit::x86::qword_ptr(tmp));
 			cc.movsd(x86::qword_ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, f)), tmp2);
 			break;
@@ -323,36 +323,14 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 		I_Error("Native direct member function calls not implemented\n");
 	}
 
-	if (target->ImplicitArgs > 0)
-	{
-		auto label = EmitThrowExceptionLabel(X_READ_NIL);
-
-		assert(ParamOpcodes.Size() > 0);
-		const VMOP *param = ParamOpcodes[0];
-		const int bc = param->i16u;
-		asmjit::x86::Gp *reg = nullptr;
-
-		switch (param->a & REGT_TYPE)
-		{
-		case REGT_STRING:  reg = &regS[bc]; break;
-		case REGT_POINTER: reg = &regA[bc]; break;
-		default:
-			I_Error("Unexpected register type for self pointer\n");
-			break;
-		}
-		
-		cc.test(*reg, *reg);
-		cc.jz(label);
-	}
-
-	asmjit::BaseNode *cursorBefore = cc.cursor();
-	auto call = cc.call(imm(target->DirectNativeCall), CreateFuncSignature());
+	asmjit::CBNode *cursorBefore = cc.getCursor();
+	auto call = cc.call(imm_ptr(target->DirectNativeCall), CreateFuncSignature());
 	call->setInlineComment(target->PrintableName.GetChars());
-	asmjit::BaseNode *cursorAfter = cc.cursor();
+	asmjit::CBNode *cursorAfter = cc.getCursor();
 	cc.setCursor(cursorBefore);
 
-	x86::Gp tmp;
-	x86::Xmm tmp2;
+	X86Gp tmp;
+	X86Xmm tmp2;
 
 	int numparams = 0;
 	for (unsigned int i = 0; i < ParamOpcodes.Size(); i++)
@@ -384,7 +362,7 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 				break;
 			case REGT_STRING | REGT_KONST:
 				tmp = newTempIntPtr();
-				cc.mov(tmp, imm(&konsts[bc]));
+				cc.mov(tmp, imm_ptr(&konsts[bc]));
 				call->setArg(slot, tmp);
 				break;
 			case REGT_POINTER:
@@ -392,7 +370,7 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 				break;
 			case REGT_POINTER | REGT_KONST:
 				tmp = newTempIntPtr();
-				cc.mov(tmp, imm(konsta[bc].v));
+				cc.mov(tmp, imm_ptr(konsta[bc].v));
 				call->setArg(slot, tmp);
 				break;
 			case REGT_FLOAT:
@@ -411,7 +389,7 @@ void JitCompiler::EmitNativeCall(VMNativeFunction *target)
 			case REGT_FLOAT | REGT_KONST:
 				tmp = newTempIntPtr();
 				tmp2 = newTempXmmSd();
-				cc.mov(tmp, asmjit::imm(konstf + bc));
+				cc.mov(tmp, asmjit::imm_ptr(konstf + bc));
 				cc.movsd(tmp2, asmjit::x86::qword_ptr(tmp));
 				call->setArg(slot, tmp2);
 				break;
@@ -580,7 +558,7 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 	{
 		if (ParamOpcodes[i]->op == OP_PARAMI)
 		{
-			args.Push(Type::IdOfT<int>::kTypeId);
+			args.Push(TypeIdOf<int>::kTypeId);
 			key += "i";
 		}
 		else // OP_PARAM
@@ -595,33 +573,33 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 			case REGT_INT | REGT_ADDROF:
 			case REGT_POINTER | REGT_ADDROF:
 			case REGT_FLOAT | REGT_ADDROF:
-				args.Push(Type::IdOfT<void*>::kTypeId);
+				args.Push(TypeIdOf<void*>::kTypeId);
 				key += "v";
 				break;
 			case REGT_INT:
 			case REGT_INT | REGT_KONST:
-				args.Push(Type::IdOfT<int>::kTypeId);
+				args.Push(TypeIdOf<int>::kTypeId);
 				key += "i";
 				break;
 			case REGT_STRING:
 			case REGT_STRING | REGT_KONST:
-				args.Push(Type::IdOfT<void*>::kTypeId);
+				args.Push(TypeIdOf<void*>::kTypeId);
 				key += "s";
 				break;
 			case REGT_FLOAT:
 			case REGT_FLOAT | REGT_KONST:
-				args.Push(Type::IdOfT<double>::kTypeId);
+				args.Push(TypeIdOf<double>::kTypeId);
 				key += "f";
 				break;
 			case REGT_FLOAT | REGT_MULTIREG2:
-				args.Push(Type::IdOfT<double>::kTypeId);
-				args.Push(Type::IdOfT<double>::kTypeId);
+				args.Push(TypeIdOf<double>::kTypeId);
+				args.Push(TypeIdOf<double>::kTypeId);
 				key += "ff";
 				break;
 			case REGT_FLOAT | REGT_MULTIREG3:
-				args.Push(Type::IdOfT<double>::kTypeId);
-				args.Push(Type::IdOfT<double>::kTypeId);
-				args.Push(Type::IdOfT<double>::kTypeId);
+				args.Push(TypeIdOf<double>::kTypeId);
+				args.Push(TypeIdOf<double>::kTypeId);
+				args.Push(TypeIdOf<double>::kTypeId);
 				key += "fff";
 				break;
 
@@ -635,7 +613,7 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 	const VMOP *retval = pc + 1;
 	int numret = C;
 
-	uint32_t rettype = Type::IdOfT<void>::kTypeId;
+	uint32_t rettype = TypeIdOf<void>::kTypeId;
 
 	// Check if first return value can be placed in the function's real return value slot
 	int startret = 1;
@@ -650,15 +628,15 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 		switch (type)
 		{
 		case REGT_INT:
-			rettype = Type::IdOfT<int>::kTypeId;
+			rettype = TypeIdOf<int>::kTypeId;
 			key += "ri";
 			break;
 		case REGT_FLOAT:
-			rettype = Type::IdOfT<double>::kTypeId;
+			rettype = TypeIdOf<double>::kTypeId;
 			key += "rf";
 			break;
 		case REGT_POINTER:
-			rettype = Type::IdOfT<void*>::kTypeId;
+			rettype = TypeIdOf<void*>::kTypeId;
 			key += "rv";
 			break;
 		case REGT_STRING:
@@ -676,7 +654,7 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 			I_Error("Expected OP_RESULT to follow OP_CALL\n");
 		}
 
-		args.Push(Type::IdOfT<void*>::kTypeId);
+		args.Push(TypeIdOf<void*>::kTypeId);
 		key += "v";
 	}
 
@@ -685,6 +663,6 @@ asmjit::FuncSignature JitCompiler::CreateFuncSignature()
 	if (!cachedArgs) cachedArgs.reset(new TArray<uint8_t>(args));
 
 	FuncSignature signature;
-	signature.init(CallConv::kIdHost, FuncSignature::kNoVarArgs, rettype, cachedArgs->Data(), cachedArgs->Size());
+	signature.init(CallConv::kIdHost, rettype, cachedArgs->Data(), cachedArgs->Size());
 	return signature;
 }

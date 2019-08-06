@@ -3,8 +3,6 @@
 #include "r_data/matrix.h"
 #include "r_utility.h"
 
-struct HWDrawInfo;
-
 struct HWViewpointUniforms
 {
 	VSMatrix mProjectionMatrix;
@@ -25,7 +23,7 @@ struct HWViewpointUniforms
 		mNormalViewMatrix.computeNormalMatrix(mViewMatrix);
 	}
 
-	void SetDefaults(HWDrawInfo *drawInfo);
+	void SetDefaults();
 
 };
 

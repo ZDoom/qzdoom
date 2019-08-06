@@ -933,8 +933,7 @@ void pre_resample(Sample * sp)
 		return;
 	}
 
-	// [EP] Fix the bad allocation count.
-	dest = newdata = (sample_t *)safe_malloc(((int32_t)(newlen >> (FRACTION_BITS - 1)) + 2)*sizeof(sample_t));
+	dest = newdata = (sample_t *)safe_malloc((int32_t)(newlen >> (FRACTION_BITS - 1)) + 2);
 	dest[newlen >> FRACTION_BITS] = 0;
 
 	*dest++ = src[0];

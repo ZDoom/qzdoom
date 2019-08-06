@@ -393,7 +393,8 @@ inline VulkanSemaphore::VulkanSemaphore(VulkanDevice *device) : device(device)
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	VkResult result = vkCreateSemaphore(device->device, &semaphoreInfo, nullptr, &semaphore);
-	CheckVulkanError(result, "Could not create semaphore");
+	if (result != VK_SUCCESS)
+		I_Error("Failed to create semaphore!");
 }
 
 inline VulkanSemaphore::~VulkanSemaphore()
@@ -408,7 +409,8 @@ inline VulkanFence::VulkanFence(VulkanDevice *device) : device(device)
 	VkFenceCreateInfo fenceInfo = {};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	VkResult result = vkCreateFence(device->device, &fenceInfo, nullptr, &fence);
-	CheckVulkanError(result, "Could not create fence!");
+	if (result != VK_SUCCESS)
+		I_Error("Failed to create fence!");
 }
 
 inline VulkanFence::~VulkanFence()
@@ -449,7 +451,8 @@ inline VulkanCommandPool::VulkanCommandPool(VulkanDevice *device, int queueFamil
 	poolInfo.flags = 0;
 
 	VkResult result = vkCreateCommandPool(device->device, &poolInfo, nullptr, &pool);
-	CheckVulkanError(result, "Could not create command pool");
+	if (result != VK_SUCCESS)
+		I_Error("Could not create command pool");
 }
 
 inline VulkanCommandPool::~VulkanCommandPool()
@@ -539,7 +542,8 @@ inline VulkanCommandBuffer::VulkanCommandBuffer(VulkanCommandPool *pool) : pool(
 	allocInfo.commandBufferCount = 1;
 
 	VkResult result = vkAllocateCommandBuffers(pool->device->device, &allocInfo, &buffer);
-	CheckVulkanError(result, "Could not create command buffer");
+	if (result != VK_SUCCESS)
+		I_Error("Could not create command buffer");
 }
 
 inline VulkanCommandBuffer::~VulkanCommandBuffer()
@@ -551,17 +555,19 @@ inline void VulkanCommandBuffer::begin()
 {
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 	beginInfo.pInheritanceInfo = nullptr;
 
 	VkResult result = vkBeginCommandBuffer(buffer, &beginInfo);
-	CheckVulkanError(result, "Could not begin recording command buffer");
+	if (result != VK_SUCCESS)
+		I_Error("Failed to begin recording command buffer!");
 }
 
 inline void VulkanCommandBuffer::end()
 {
 	VkResult result = vkEndCommandBuffer(buffer);
-	CheckVulkanError(result, "Could not end command buffer recording");
+	if (result != VK_SUCCESS)
+		I_Error("Failed to record command buffer!");
 }
 
 inline void VulkanCommandBuffer::debugFullPipelineBarrier()
@@ -953,7 +959,8 @@ inline std::unique_ptr<VulkanDescriptorSet> VulkanDescriptorPool::allocate(Vulka
 
 	VkDescriptorSet descriptorSet;
 	VkResult result = vkAllocateDescriptorSets(device->device, &allocInfo, &descriptorSet);
-	CheckVulkanError(result, "Could not allocate descriptor sets");
+	if (result != VK_SUCCESS)
+		I_FatalError("Could not allocate descriptor sets");
 
 	return std::make_unique<VulkanDescriptorSet>(device, this, descriptorSet);
 }
@@ -972,7 +979,8 @@ inline VulkanQueryPool::~VulkanQueryPool()
 inline bool VulkanQueryPool::getResults(uint32_t firstQuery, uint32_t queryCount, size_t dataSize, void *data, VkDeviceSize stride, VkQueryResultFlags flags)
 {
 	VkResult result = vkGetQueryPoolResults(device->device, pool, firstQuery, queryCount, dataSize, data, stride, flags);
-	CheckVulkanError(result, "vkGetQueryPoolResults failed");
+	if (result != VK_SUCCESS && result != VK_NOT_READY)
+		I_Error("vkGetQueryPoolResults failed");
 	return result == VK_SUCCESS;
 }
 

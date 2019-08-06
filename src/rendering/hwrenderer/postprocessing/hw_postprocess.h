@@ -762,17 +762,16 @@ public:
 struct ShadowMapUniforms
 {
 	float ShadowmapQuality;
-	int NodesCount;
-	float Padding0, Padding1;
+	float Padding0, Padding1, Padding2;
 
 	static std::vector<UniformFieldDesc> Desc()
 	{
 		return
 		{
 			{ "ShadowmapQuality", UniformType::Float, offsetof(ShadowMapUniforms, ShadowmapQuality) },
-			{ "NodesCount", UniformType::Int, offsetof(ShadowMapUniforms, NodesCount) },
 			{ "Padding0", UniformType::Float, offsetof(ShadowMapUniforms, Padding0) },
 			{ "Padding1", UniformType::Float, offsetof(ShadowMapUniforms, Padding1) },
+			{ "Padding2", UniformType::Float, offsetof(ShadowMapUniforms, Padding2) },
 		};
 	}
 };
@@ -834,10 +833,6 @@ public:
 	PPPresent present;
 	PPShadowMap shadowmap;
 	PPCustomShaders customShaders;
-
-
-	void Pass1(PPRenderState *state, int fixedcm, int sceneWidth, int sceneHeight);
-	void Pass2(PPRenderState* state, int fixedcm, int sceneWidth, int sceneHeight);
 };
 
 extern Postprocess hw_postprocess;

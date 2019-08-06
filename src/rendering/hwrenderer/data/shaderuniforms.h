@@ -126,16 +126,14 @@ public:
 			mBuffer = screen->CreateDataBuffer(bindingpoint, false, false);
 	}
 
-	void SetData()
+	void Set(bool bind = true)
 	{
 		if (mBuffer != nullptr)
 			mBuffer->SetData(sizeof(T), &Values);
-	}
 
-	IDataBuffer* GetBuffer() const
-	{
-		// OpenGL needs to mess around with this in ways that should not be part of the interface.
-		return mBuffer;
+		// Let's hope this can be done better when things have moved further ahead.
+		// This really is not the best place to add something that depends on API behavior.
+		if (bind) mBuffer->BindBase();
 	}
 
 	T *operator->() { return &Values; }

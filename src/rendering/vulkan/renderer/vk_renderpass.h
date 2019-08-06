@@ -59,6 +59,7 @@ public:
 	VkRenderPassKey PassKey;
 	std::unique_ptr<VulkanRenderPass> RenderPasses[8];
 	std::map<VkPipelineKey, std::unique_ptr<VulkanPipeline>> Pipelines;
+	std::map<VkImageView, std::unique_ptr<VulkanFramebuffer>> Framebuffer;
 
 private:
 	std::unique_ptr<VulkanRenderPass> CreateRenderPass(int clearTargets);

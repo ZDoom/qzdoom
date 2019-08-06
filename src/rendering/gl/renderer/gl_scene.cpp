@@ -57,7 +57,6 @@
 #include "hwrenderer/scene/hw_portal.h"
 #include "hwrenderer/utility/hw_vrmodes.h"
 #include "gl/renderer/gl_renderer.h"
-#include "gl/system/gl_buffers.h"
 
 //==========================================================================
 //

@@ -43,7 +43,7 @@
 #include "a_keys.h"
 #include "p_enemy.h"
 #include "gstrings.h"
-#include "i_music.h"
+#include "sound/i_music.h"
 #include "p_setup.h"
 #include "d_net.h"
 #include "d_event.h"
@@ -586,7 +586,6 @@ static void HandleReply(player_t *player, bool isconsole, int nodenum, int reply
 	{
 		int rootnode = npc->ConversationRoot;
 		const unsigned next = (unsigned)(rootnode + reply->NextNode - 1);
-		FString nextname = reply->NextNodeName;
 
 		if (next < Level->StrifeDialogues.Size())
 		{
@@ -607,10 +606,7 @@ static void HandleReply(player_t *player, bool isconsole, int nodenum, int reply
 		}
 		else
 		{
-			if (nextname.IsEmpty())
-				Printf ("Next node %u is invalid, no such dialog page\n", next);
-			else
-				Printf ("Next node %u ('%s') is invalid, no such dialog page\n", next, nextname.GetChars());
+			Printf ("Next node %u is invalid, no such dialog page\n", next);
 		}
 	}
 

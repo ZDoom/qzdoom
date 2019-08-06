@@ -29,7 +29,6 @@
 #include "gl_load/gl_system.h"
 #include "templates.h"
 #include "c_cvars.h"
-#include "doomtype.h"
 #include "r_data/colormaps.h"
 #include "hwrenderer/textures/hw_material.h"
 
