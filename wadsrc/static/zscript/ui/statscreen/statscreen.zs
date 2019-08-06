@@ -106,6 +106,7 @@ class StatusScreen abstract play version("2.5")
 	PatchInfo 		mapname;
 	PatchInfo 		finished;
 	PatchInfo 		entering;
+	PatchInfo		content;
 
 	TextureID 		p_secret;
 	TextureID 		kills;
@@ -153,16 +154,14 @@ class StatusScreen abstract play version("2.5")
 		// draw <LevelName> 
 		if (tex.isValid())
 		{
-			int w,h;
-			[w, h] = TexMan.GetSize(tex);
 			let size = TexMan.GetScaledSize(tex);
 			screen.DrawTexture(tex, true, (screen.GetWidth() - size.X * CleanXfac) /2, y, DTA_CleanNoMove, true);
-			if (h > 50)
+			if (size.Y > 50)
 			{ // Fix for Deus Vult II and similar wads that decide to make these hugely tall
 			  // patches with vast amounts of empty space at the bottom.
-				size.Y = TexMan.CheckRealHeight(tex) * size.Y / h;
+				size.Y = TexMan.CheckRealHeight(tex);
 			}
-			return y + (h + BigFont.GetHeight()/4) * CleanYfac;
+			return y + int(Size.Y) * CleanYfac;
 		}
 		else if (levelname.Length() > 0)
 		{
@@ -177,7 +176,7 @@ class StatusScreen abstract play version("2.5")
 				screen.DrawText(mapname.mFont, mapname.mColor, (screen.GetWidth() - lines.StringWidth(i) * CleanXfac) / 2, y + h, lines.StringAt(i), DTA_CleanNoMove, true);
 				h += lumph;
 			}
-			return y + h + lumph/4;
+			return y + h;
 		}
 		return 0;
 	}
@@ -233,13 +232,35 @@ class StatusScreen abstract play version("2.5")
 
 	virtual int drawLF ()
 	{
-		int y = TITLEY * CleanYfac;
+		bool ispatch = wbs.LName0.isValid();
+		int oldy = TITLEY * CleanYfac;
+		int h;
+		
+		if (!ispatch)
+		{
+			let asc = mapname.mFont.GetMaxAscender(lnametexts[1]);
+			if (asc > TITLEY - 2)
+			{
+				oldy = (asc+2) * CleanYfac;
+			}
+		}
+		
+		int y = DrawName(oldy, wbs.LName0, lnametexts[0]);
 
-		y = DrawName(y, wbs.LName0, lnametexts[0]);
-	
-		// Adjustment for different font sizes for map name and 'finished'.
-		y -= ((mapname.mFont.GetHeight() - finished.mFont.GetHeight()) * CleanYfac) / 4;
-
+		// If the displayed info is made of patches we need some additional offsetting here.
+		if (ispatch) 
+		{
+			int h1 = BigFont.GetHeight() - BigFont.GetDisplacement();
+			int h2 = (y - oldy) / CleanYfac / 4;
+			let disp = min(h1, h2);
+			// The offset getting applied here must at least be as tall as the largest ascender in the following text to avoid overlaps.
+			if (!TexMan.OkForLocalization(finishedPatch, "$WI_FINISHED"))
+			{
+				disp += finished.mFont.GetMaxAscender("$WI_FINISHED");
+ 			}
+			y += disp * CleanYfac;
+		}
+		
 		// draw "Finished!"
 
 		int statsy = multiplayer? NG_STATSY : SP_STATSY * CleanYFac;
@@ -263,10 +284,36 @@ class StatusScreen abstract play version("2.5")
 
 	virtual void drawEL ()
 	{
-		int y = TITLEY * CleanYfac;
+		bool ispatch = TexMan.OkForLocalization(enteringPatch, "$WI_ENTERING");
+		int oldy = TITLEY * CleanYfac;
 
-		y = DrawPatchOrText(y, entering, enteringPatch, "$WI_ENTERING");
-		y += entering.mFont.GetHeight() * CleanYfac / 4;
+		if (!ispatch)
+		{
+			let asc = entering.mFont.GetMaxAscender("$WI_ENTERING");
+			if (asc > TITLEY - 2)
+			{
+				oldy = (asc+2) * CleanYfac;
+			}
+		}
+
+		int y = DrawPatchOrText(oldy, entering, enteringPatch, "$WI_ENTERING");
+		
+		// If the displayed info is made of patches we need some additional offsetting here.
+		
+		if (ispatch)
+		{
+			int h1 = BigFont.GetHeight() - BigFont.GetDisplacement();
+			let size = TexMan.GetScaledSize(enteringPatch);
+			int h2 = int(size.Y);
+			let disp = min(h1, h2) / 4;
+			// The offset getting applied here must at least be as tall as the largest ascender in the following text to avoid overlaps.
+			if (!wbs.LName1.isValid())
+			{
+				disp += mapname.mFont.GetMaxAscender(lnametexts[1]);
+			}
+			y += disp * CleanYfac;
+		}
+
 		DrawName(y, wbs.LName1, lnametexts[1]);
 	}
 
@@ -754,6 +801,7 @@ class StatusScreen abstract play version("2.5")
 		entering.Init(gameinfo.mStatscreenEnteringFont);
 		finished.Init(gameinfo.mStatscreenFinishedFont);
 		mapname.Init(gameinfo.mStatscreenMapNameFont);
+		content.Init(gameinfo.mStatscreenContentFont);
 
 		Kills = TexMan.CheckForTexture("WIOSTK", TexMan.Type_MiscPatch);			// "kills"
 		Secret = TexMan.CheckForTexture("WIOSTS", TexMan.Type_MiscPatch);		// "scrt", not used

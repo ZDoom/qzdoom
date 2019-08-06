@@ -86,7 +86,7 @@ EXTERN_CVAR (Int, con_scaletext)
 EXTERN_CVAR(Bool, vid_fps)
 EXTERN_CVAR(Bool, inter_subtitles)
 CVAR(Int, hud_scale, 0, CVAR_ARCHIVE);
-
+CVAR(Bool, log_vgafont, false, CVAR_ARCHIVE)
 
 DBaseStatusBar *StatusBar;
 
@@ -1211,10 +1211,10 @@ void DBaseStatusBar::DrawLog ()
 	if (CPlayer->LogText.IsNotEmpty())
 	{
 		// This uses the same scaling as regular HUD messages
-		auto scale = active_con_scaletext(generic_ui);
+		auto scale = active_con_scaletext(generic_ui || log_vgafont);
 		hudwidth = SCREENWIDTH / scale;
 		hudheight = SCREENHEIGHT / scale;
-		FFont *font = C_GetDefaultHUDFont();
+		FFont *font = (generic_ui || log_vgafont)? NewSmallFont : SmallFont;
 
 		int linelen = hudwidth<640? Scale(hudwidth,9,10)-40 : 560;
 		const FString & text = (inter_subtitles && CPlayer->SubtitleCounter) ? CPlayer->SubtitleText : CPlayer->LogText;
