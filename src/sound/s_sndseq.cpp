@@ -308,7 +308,7 @@ void DSeqNode::Serialize(FSerializer &arc)
 	unsigned int i;
 	FName seqName = NAME_None;
 	int delayTics = 0;
-	FSoundID id;
+	FSoundID id = 0;
 	float volume;
 	float atten = ATTN_NORM;
 	int seqnum;
@@ -797,7 +797,7 @@ static void AddSequence (int curseq, FName seqname, FName slot, int stopsound, c
 }
 
 DSeqNode::DSeqNode (FLevelLocals *l, int sequence, int modenum)
-: m_ModeNum(modenum), m_SequenceChoices(0)
+: m_CurrentSoundID(0), m_ModeNum(modenum), m_SequenceChoices(0)
 {
 	Level = l;
 	ActivateSequence (sequence);
@@ -808,7 +808,7 @@ DSeqNode::DSeqNode (FLevelLocals *l, int sequence, int modenum)
 	}
 	else
 	{
-		Level->SequenceListHead->m_Prev = this;		GC::WriteBarrier(Level->SequenceListHead->m_Prev, this);
+		Level->SequenceListHead->m_Prev = this;		GC::WriteBarrier(Level->SequenceListHead, this);
 		m_Next = Level->SequenceListHead;			GC::WriteBarrier(this, Level->SequenceListHead);
 		Level->SequenceListHead = this;
 		m_Prev = nullptr;

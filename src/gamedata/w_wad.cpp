@@ -146,9 +146,12 @@ void FWadCollection::InitMultipleFiles (TArray<FString> &filenames, const TArray
 	{
 		int baselump = NumLumps;
 		AddFile (filenames[i]);
+		
+		if (i == (unsigned)MaxIwadIndex) MoveLumpsInFolder("after_iwad/");
+		FStringf path("filter/%s", Files.Last()->GetHash().GetChars());
+		MoveLumpsInFolder(path);
 	}
-	MoveIWadModifiers();
-
+	
 	NumLumps = LumpInfo.Size();
 	if (NumLumps == 0)
 	{
@@ -895,7 +898,7 @@ void FWadCollection::RenameSprites (const TArray<FString> &deletelumps)
 		}
 		else if (LumpInfo[i].lump->Namespace == ns_global)
 		{
-			if (LumpInfo[i].wadnum == GetIwadNum() && deletelumps.Find(LumpInfo[i].lump->Name) < deletelumps.Size())
+			if (LumpInfo[i].wadnum >= GetIwadNum() && LumpInfo[i].wadnum <= GetMaxIwadNum() && deletelumps.Find(LumpInfo[i].lump->Name) < deletelumps.Size())
 			{
 				LumpInfo[i].lump->Name[0] = 0;	// Lump must be deleted from directory.
 			}
@@ -1056,38 +1059,37 @@ void FWadCollection::FixMacHexen()
 
 //==========================================================================
 //
-// MoveIWadModifiers
+// MoveLumpsInFolder
 //
-// Moves all content from the after_iwad subfolder of the internal
-// resources to the first positions in the lump directory after the IWAD.
+// Moves all content from the given subfolder of the internal
+// resources to the current end of the directory.
 // Used to allow modifying content in the base files, this is needed
 // so that Hacx and Harmony can override some content that clashes
-// with localization.
+// with localization, and to inject modifying data into mods, in case
+// this is needed for some compatibility requirement.
 //
 //==========================================================================
 
-void FWadCollection::MoveIWadModifiers()
-{
-	TArray<LumpRecord> lumpsToMove;
+static FResourceLump placeholderLump;
 
+void FWadCollection::MoveLumpsInFolder(const char *path)
+{
+	auto len = strlen(path);
+	auto wadnum = LumpInfo.Last().wadnum;
+	
 	unsigned i;
 	for (i = 0; i < LumpInfo.Size(); i++)
 	{
 		auto& li = LumpInfo[i];
 		if (li.wadnum >= GetIwadNum()) break;
-		if (li.lump->FullName.Left(11).CompareNoCase("after_iwad/") == 0)
+		if (li.lump->FullName.Left(len).CompareNoCase(path) == 0)
 		{
-			lumpsToMove.Push(li);
-			LumpInfo.Delete(i--);
+			LumpInfo.Push(li);
+			li.lump = &placeholderLump;			// Make the old entry point to something empty. We cannot delete the lump record here because it'd require adjustment of all indices in the list.
+			auto &ln = LumpInfo.Last();
+			ln.wadnum = wadnum;					// pretend this is from the WAD this is injected into.
+			ln.lump->LumpNameSetup(ln.lump->FullName.Mid(len));
 		}
-	}
-	if (lumpsToMove.Size() == 0) return;
-	for (; i < LumpInfo.Size() && LumpInfo[i].wadnum <= Wads.GetMaxIwadNum(); i++);
-	for (auto& li : lumpsToMove)
-	{
-		li.lump->LumpNameSetup(li.lump->FullName.Mid(11));
-		li.wadnum = Wads.GetMaxIwadNum();	// pretend this comes from the IWAD itself.
-		LumpInfo.Insert(i++, li);
 	}
 }
 

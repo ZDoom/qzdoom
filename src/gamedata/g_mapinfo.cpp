@@ -50,7 +50,6 @@
 #include "g_levellocals.h"
 #include "events.h"
 #include "i_system.h"
-#include "atterm.h"
 
 static TArray<cluster_info_t> wadclusterinfos;
 TArray<level_info_t> wadlevelinfos;
@@ -61,6 +60,8 @@ static cluster_info_t TheDefaultClusterInfo;
 TArray<FEpisode> AllEpisodes;
 
 extern TMap<int, FString> HexenMusic;
+
+TArray<int> ParsedLumps(8, true);
 
 //==========================================================================
 //
@@ -1020,6 +1021,15 @@ DEFINE_MAP_OPTION(titlepatch, true)
 {
 	parse.ParseAssign();
 	parse.ParseLumpOrTextureName(info->PName);
+	if (parse.format_type == FMapInfoParser::FMT_New)
+	{
+		if (parse.sc.CheckString(","))
+		{
+			parse.sc.MustGetNumber();
+			if (parse.sc.Number) info->flags3 |= LEVEL3_HIDEAUTHORNAME;
+			else info->flags3 &= ~LEVEL3_HIDEAUTHORNAME;
+		}
+	}
 }
 
 DEFINE_MAP_OPTION(partime, true)
@@ -1674,6 +1684,7 @@ MapFlagHandlers[] =
 	{ "compat_explode1",				MITYPE_COMPATFLAG, 0, COMPATF2_EXPLODE1 },
 	{ "compat_explode2",				MITYPE_COMPATFLAG, 0, COMPATF2_EXPLODE2 },
 	{ "compat_railing",					MITYPE_COMPATFLAG, 0, COMPATF2_RAILING },
+	{ "compat_scriptwait",				MITYPE_COMPATFLAG, 0, COMPATF2_SCRIPTWAIT },
 	{ "cd_start_track",					MITYPE_EATNEXT,	0, 0 },
 	{ "cd_end1_track",					MITYPE_EATNEXT,	0, 0 },
 	{ "cd_end2_track",					MITYPE_EATNEXT,	0, 0 },
@@ -2151,17 +2162,6 @@ void FMapInfoParser::ParseEpisodeInfo ()
 
 //==========================================================================
 //
-// Clears episode definitions
-//
-//==========================================================================
-
-void ClearEpisodes()
-{
-	AllEpisodes.Clear();
-}
-
-//==========================================================================
-//
 // SetLevelNum
 // Avoid duplicate levelnums. The level being set always has precedence.
 //
@@ -2191,6 +2191,15 @@ void FMapInfoParser::ParseMapInfo (int lump, level_info_t &gamedefaults, level_i
 
 	defaultinfo = gamedefaults;
 	HexenHack = false;
+
+	if (ParsedLumps.Find(lump) != ParsedLumps.Size())
+	{
+		sc.ScriptMessage("MAPINFO file is processed more than once\n");
+	}
+	else
+	{
+		ParsedLumps.Push(lump);
+	}
 
 	while (sc.GetString ())
 	{
@@ -2256,7 +2265,7 @@ void FMapInfoParser::ParseMapInfo (int lump, level_info_t &gamedefaults, level_i
 		}
 		else if (sc.Compare("clearepisodes"))
 		{
-			ClearEpisodes();
+			AllEpisodes.Clear();
 		}
 		else if (sc.Compare("skill"))
 		{
@@ -2366,16 +2375,17 @@ void FMapInfoParser::ParseMapInfo (int lump, level_info_t &gamedefaults, level_i
 
 void DeinitIntermissions();
 
-static void ClearMapinfo()
+void G_ClearMapinfo()
 {
 	wadclusterinfos.Clear();
 	wadlevelinfos.Clear();
-	ClearEpisodes();
+	AllEpisodes.Clear();
 	AllSkills.Clear();
 	DefaultSkill = -1;
 	DeinitIntermissions();
 	primaryLevel->info = nullptr;
 	primaryLevel->F1Pic = "";
+	ParsedLumps.Clear();
 }
 
 //==========================================================================
@@ -2390,9 +2400,6 @@ void G_ParseMapInfo (FString basemapinfo)
 {
 	int lump, lastlump = 0;
 	level_info_t gamedefaults;
-
-	ClearMapinfo();
-	atterm(ClearMapinfo);
 
 	// Parse the default MAPINFO for the current game. This lump *MUST* come from zdoom.pk3.
 	if (basemapinfo.IsNotEmpty())

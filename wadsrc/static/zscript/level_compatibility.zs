@@ -628,6 +628,24 @@ class LevelCompatibility native play
 				break;
 			}
 			
+			case '6C620F43705BEC0ABBABBF46AC3E62D2': // Doom II MAP10
+			{
+				// Allow player to leave exit room
+				SetLineSpecial(786, Door_Raise, 0, 16, 150, 0);
+				SetLineActivation(786, SPAC_Use);
+				SetLineFlags(786, Line.ML_REPEAT_SPECIAL);
+				break;
+			}
+			
+			case '1AF4DEC2627360A55B3EB397BC15C39D': // Doom II MAP12
+			{
+				// Missing texture
+				SetWallTexture(648, Line.back, Side.bottom, "PIPES");
+				// Remove erroneous tag for teleporter at the south building
+				ClearSectorTags(149);
+				break;
+			}
+			
 			case 'FBA6547B9FD44E95671A923A066E516F': // Doom II MAP13
 			{
 				// Missing texture
@@ -671,6 +689,7 @@ class LevelCompatibility native play
 			
 			case '1A540BA717BF9EC85F8522594C352F2A': // Doom II, map15
 			{
+				// Remove unreachable secret
 				SetSectorSpecial(147, 0);
 				// Missing textures
 				SetWallTexture(94, Line.back, Side.top, "METAL");
@@ -716,6 +735,9 @@ class LevelCompatibility native play
 				{
 					SetWallTextureID(286+i, Line.back, Side.bottom, STEP4);
 				}
+				// Southwest teleporter in the teleporter room now works on
+				// easier difficulties
+				SetThingSkills(112, 31);
 				break;
 			}
 			
@@ -724,6 +746,13 @@ class LevelCompatibility native play
 				// push ceiling down in glitchy sectors above the stair switches
 				OffsetSectorPlane(50, Sector.ceiling, -56);
 				OffsetSectorPlane(54, Sector.ceiling, -56);
+				break;
+			}
+			
+			case '4AA9B3CE449FB614497756E96509F096': // Doom II MAP22
+			{
+				// Only use switch once to raise sector to rocket launcher
+				SetLineFlags(120, 0, Line.ML_REPEAT_SPECIAL);
 				break;
 			}
 			
@@ -743,8 +772,17 @@ class LevelCompatibility native play
 			
 			case '110F84DE041052B59307FAF0293E6BC0': // Doom II, map27
 			{
+				// Remove unreachable secret
 				SetSectorSpecial(93, 0);
+				// Missing texture
 				SetWallTexture(582, Line.back, Side.top, "ZIMMER3");
+				// Make line near switch to level exit passable
+				SetLineFlags(342, 0, Line.ML_BLOCKING);
+				// Can leave Pain Elemental room if stuck
+				SetLineSpecial(580, Door_Open, 0, 16);
+				SetLineActivation(580, SPAC_Use);
+				SetLineSpecial(581, Door_Open, 0, 16);
+				SetLineActivation(581, SPAC_Use);
 				break;
 			}
 			
@@ -761,6 +799,12 @@ class LevelCompatibility native play
 				SetWallTexture(531, Line.back, Side.top, "WOOD8");
 				SetWallTexture(547, Line.back, Side.top, "WOOD8");
 				SetWallTexture(548, Line.back, Side.top, "WOOD8");
+				// Raise holes near level exit when walking over them
+				for(int i=0; i<12; i++)
+				{
+					SetLineSpecial(584+i, Floor_RaiseToNearest, 5, 8);
+					SetLineActivation(584+i, SPAC_Cross);
+				}
 				break;
 			}
 			
@@ -1311,6 +1355,80 @@ class LevelCompatibility native play
 			{
 				// Fix misplaced vertex
 				SetVertex(202, -2, -873);
+				break;
+			}
+			case 'E9EB4D16CA7E491E98D61615E4613E70': // sigil.wad e5m2
+			{
+				// Floating Skulls missing in lower difficulties
+				SetThingSkills(113, 31);
+				SetThingSkills(114, 31);
+				break;
+			}
+			case 'C43B99F34E5211F9AF24459842852B0D': // sigil.wad e5m4
+			{
+				// Fix missing texture on the Baron-invulnerability-secret platform
+				SetWallTexture(1926, Line.back, Side.bottom, "MARBLE3");
+				break;
+			}
+			case 'A7C4FC8CAEB3E375B7214E35C6298B03': // Illusions of Home e1m6
+			{
+				// Convert zero-tagged GR door into regular open-stay door to fix map
+				SetLineActivation(37, SPAC_Use);
+				SetLineSpecial(37, Door_Open, 0, 16);
+				SetLineActivation(203, SPAC_Use);
+				SetLineSpecial(203, Door_Open, 0, 16);
+				break;
+			}
+			case '5084755C29FB0A1912113E36F37C958A': // Illusions of Home e3m4
+			{
+				// Fix action of final switch
+				SetLineSpecial(765, Door_Open, 6, 16);
+				break;
+			}
+			case '0EF86635676FD512CE0E962040125553': // Illusions of Home e3m7
+			{
+				// Fix red key and missing texture in red key area
+				SetThingFlags(247, 2016);
+				SetThingSkills(247, 31);
+				SetWallTexture(608, Line.back, Side.bottom, "GRAY5");
+				break;
+			}
+
+			case '1C795660D2BA9FC93DA584C593FD1DA3': // Scythe 2 MAP17
+			{
+				// Texture displays incorrectly in hardware renderer
+				SetVertex(2687, -4540, -1083); //Fixes bug with minimal effect on geometry
+				break;
+			}
+			case '7483D7BDB8375358F12D146E1D63A85C': // Scythe 2 MAP24
+			{
+				// Missing texture
+				TextureID adel_q62 = TexMan.CheckForTexture("ADEL_Q62", TexMan.Type_Wall);
+				SetWallTextureID(7775, Line.front, Side.bottom, adel_q62);
+				break;
+			}
+
+			case '16E621E46F87418F6F8DB71D68433AE0': // Hell Revealed MAP23
+			{
+				// Arachnotrons near beginning sometimes don't spawn if imps block
+				// their one-time teleport. Make these teleports repeatable to ensure
+				// maxkills are always possible.
+				SetLineFlags(2036, Line.ML_REPEAT_SPECIAL);
+				SetLineFlags(2038, Line.ML_REPEAT_SPECIAL);
+				SetLineFlags(2039, Line.ML_REPEAT_SPECIAL);
+				SetLineFlags(2040, Line.ML_REPEAT_SPECIAL);
+				break;
+			}
+
+			case '0E379EEBEB189F294ED122BC60D10A68': // Hellbound MAP29
+			{
+				// Remove the cyberdemons stuck in the closet boxes that cannot teleport.
+				SetThingFlags(2970,0);
+				SetThingFlags(2969,0);
+				SetThingFlags(2968,0);
+				SetThingFlags(2169,0);
+				SetThingFlags(2168,0);
+				SetThingFlags(2167,0);
 			}
 		}
 	}

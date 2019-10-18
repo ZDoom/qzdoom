@@ -46,7 +46,6 @@
 #include "a_weapons.h"
 #include "d_player.h"
 #include "p_setup.h"
-#include "i_music.h"
 #include "am_map.h"
 #include "v_video.h"
 #include "gi.h"
@@ -1340,9 +1339,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(_Sector, SetXOffset, SetXOffset)
 	 return 0;
  }
 
- static F3DFloor* Get3DFloor(sector_t *self, int index)
+ static F3DFloor* Get3DFloor(sector_t *self, unsigned int index)
  {
- 	 if ((index < 0) || (index >= self->e->XFloor.ffloors.Size()))
+ 	 if (index >= self->e->XFloor.ffloors.Size())
  	 	return nullptr;
 	 return self->e->XFloor.ffloors[index];
  }
@@ -1365,9 +1364,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(_Sector, SetXOffset, SetXOffset)
 	 ACTION_RETURN_INT(self->e->XFloor.ffloors.Size());
  }
 
- static sector_t* GetAttached(sector_t *self, int index)
+ static sector_t* GetAttached(sector_t *self, unsigned int index)
  {
- 	 if ((index < 0) || (index >= self->e->XFloor.attached.Size()))
+ 	 if (index >= self->e->XFloor.attached.Size())
  	 	return nullptr;
 	 return self->e->XFloor.attached[index];
  }
