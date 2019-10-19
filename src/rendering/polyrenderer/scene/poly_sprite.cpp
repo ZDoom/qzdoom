@@ -66,6 +66,10 @@ bool RenderPolySprite::GetLine(AActor *thing, DVector2 &left, DVector2 &right)
 	else
 		offsetX = tex->GetLeftOffsetPo() * thingxscalemul;
 
+	uint32_t type = (thing->renderflags & RF_SPRITETYPEMASK);
+	if (!(type & (RF_FLATSPRITE | RF_WALLSPRITE)))
+		offsetX -= thing->SpriteOffset.X;
+
 	left = DVector2(pos.X - viewpoint.Sin * offsetX, pos.Y + viewpoint.Cos * offsetX);
 	right = DVector2(left.X + viewpoint.Sin * spriteWidth, left.Y - viewpoint.Cos * spriteWidth);
 	return true;
@@ -114,6 +118,9 @@ void RenderPolySprite::Render(PolyRenderThread *thread, AActor *thing, subsector
 
 	posZ -= (tex->GetHeight() - tex->GetTopOffsetPo()) * thingyscalemul;
 	posZ = PerformSpriteClipAdjustment(thing, thingpos, spriteHeight, posZ);
+
+	if (!(spritetype & (RF_FLATSPRITE | RF_WALLSPRITE)))
+		posZ -= thing->SpriteOffset.Y;
 
 	//double depth = 1.0;
 	//visstyle_t visstyle = GetSpriteVisStyle(thing, depth);
