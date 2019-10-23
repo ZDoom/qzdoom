@@ -7129,7 +7129,15 @@ FxExpression *FxStructMember::Resolve(FCompileContext &ctx)
 		{
 			// since this is a vector, all potential things that may get here are single float or an xy-vector.
 			auto locvar = static_cast<FxLocalVariable *>(classx);
-			locvar->RegOffset = int(membervar->Offset / 8);
+			if (!(locvar->Variable->VarFlags & VARF_Out))
+			{
+				locvar->RegOffset = int(membervar->Offset / 8);
+			}
+			else
+			{
+				locvar->RegOffset = int(membervar->Offset);
+			}
+			
 			locvar->ValueType = membervar->Type;
 			classx = nullptr;
 			delete this;
@@ -9039,6 +9047,14 @@ FxExpression *FxVMFunctionCall::Resolve(FCompileContext& ctx)
 					else
 					{
 						ArgList[i]->RequestAddress(ctx, &writable);
+
+						if ((flag & VARF_Out) && !writable)
+						{
+							ScriptPosition.Message(MSG_ERROR, "Argument must be a modifiable value");
+							delete this;
+							return nullptr;
+						}
+
 						if (flag & VARF_Ref)ArgList[i]->ValueType = NewPointer(ArgList[i]->ValueType);
 					}
 
@@ -11284,14 +11300,6 @@ FxExpression *FxLocalVariableDeclaration::Resolve(FCompileContext &ctx)
 {
 	CHECKRESOLVED();
 
-	if (IsDynamicArray())
-	{
-		auto stackVar = new FxStackVariable(ValueType, StackOffset, ScriptPosition);
-		FArgumentList argsList;
-		clearExpr = new FxMemberFunctionCall(stackVar, "Clear", argsList, ScriptPosition);
-		SAFE_RESOLVE(clearExpr, ctx);
-	}
-
 	if (ctx.Block == nullptr)
 	{
 		ScriptPosition.Message(MSG_ERROR, "Variable declaration outside compound statement");
@@ -11348,6 +11356,15 @@ FxExpression *FxLocalVariableDeclaration::Resolve(FCompileContext &ctx)
 			}
 		}
 	}
+
+	if (IsDynamicArray())
+	{
+		auto stackVar = new FxStackVariable(ValueType, StackOffset, ScriptPosition);
+		FArgumentList argsList;
+		clearExpr = new FxMemberFunctionCall(stackVar, "Clear", argsList, ScriptPosition);
+		SAFE_RESOLVE(clearExpr, ctx);
+	}
+
 	ctx.Block->LocalVars.Push(this);
 	return this;
 }
