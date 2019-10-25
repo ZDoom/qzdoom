@@ -847,21 +847,11 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 
 		r.Scale(sprscale.X, sprscale.Y);
 
-		// Disable this for flat/wall sprites. Facing sprites work just fine though.
-		float SOX = thing->SpriteOffset.X;
-		float SOY = thing->SpriteOffset.Y;
-
-		if (spritetype & (RF_FLATSPRITE | RF_WALLSPRITE))
-		{
-			SOX = 0.f;
-			SOY = 0.f;
-		}
-
-		float rightfac = -r.left - SOX;
+		float rightfac = -r.left;
 		float leftfac = rightfac - r.width;
 		float bottomfac = -r.top;
 		float topfac = bottomfac - r.height;
-		z1 = z - r.top - SOY;
+		z1 = z - r.top;
 		z2 = z1 - r.height;
 
 		float spriteheight = sprscale.Y * r.height;

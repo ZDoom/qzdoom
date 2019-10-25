@@ -1005,11 +1005,6 @@ namespace swrenderer
 		sprite.pos = thing->InterpolatedPosition(Thread->Viewport->viewpoint.TicFrac);
 		sprite.pos.Z += thing->GetBobOffset(Thread->Viewport->viewpoint.TicFrac);
 
-		// The X offsetting is performed in r_sprite.cpp, in RenderSprite::Project().
-		uint32_t type = (thing->renderflags & RF_SPRITETYPEMASK);
-		if (!(type & (RF_FLATSPRITE | RF_WALLSPRITE)))
-			sprite.pos.Z -= thing->SpriteOffset.Y;
-
 		sprite.spritenum = thing->sprite;
 		sprite.tex = nullptr;
 		sprite.voxel = nullptr;
