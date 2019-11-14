@@ -114,7 +114,7 @@ namespace swrenderer
 		for (DrawSegment *seg : portaldrawsegs)
 		{
 			// ignore segs from other portals
-			if (seg->CurrentPortalUniq != renderportal->CurrentPortalUniq)
+			if (seg->drawsegclip.CurrentPortalUniq != renderportal->CurrentPortalUniq)
 				continue;
 
 			// (all checks that are already done in R_CollectPortals have been removed for performance reasons.)
@@ -154,19 +154,17 @@ namespace swrenderer
 			DrawSegment *ds = drawseglist->Segment(index);
 
 			// [ZZ] the same as above
-			if (ds->CurrentPortalUniq != renderportal->CurrentPortalUniq)
+			if (ds->drawsegclip.CurrentPortalUniq != renderportal->CurrentPortalUniq)
 				continue;
-			if (ds->texcoords || ds->bFogBoundary)
+
+			if (ds->HasTranslucentMidTexture() || ds->Has3DFloorWalls() || ds->HasFogBoundary())
 			{
 				RenderDrawSegment renderer(Thread);
 				renderer.Render(ds, ds->x1, ds->x2, clip3DFloor);
-				if (renew && ds->bFogBoundary) // don't draw fogboundary again
-					ds->bFogBoundary = false;
-
-				if (renew && ds->sprclipped)
+				if (renew)
 				{
-					memcpy(ds->sprtopclip, ds->bkup, (ds->x2 - ds->x1) * sizeof(short));
-					ds->sprclipped = false;
+					ds->ClearFogBoundary(); // don't draw fogboundary again
+					ds->drawsegclip.SetRangeUndrawn(ds->x1, ds->x2);
 				}
 			}
 		}

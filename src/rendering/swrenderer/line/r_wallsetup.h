@@ -28,7 +28,7 @@
 namespace swrenderer
 {
 	struct FWallCoords;
-	struct FWallTmapVals;
+	struct DrawSegmentClipInfo;
 
 	enum class ProjectedWallCull
 	{
@@ -45,35 +45,55 @@ namespace swrenderer
 		ProjectedWallCull Project(RenderViewport *viewport, double z1, double z2, const FWallCoords *wallc);
 		ProjectedWallCull Project(RenderViewport *viewport, const secplane_t &plane, const FWallCoords *wallc, seg_t *line, bool xflip);
 		ProjectedWallCull Project(RenderViewport *viewport, double z, const FWallCoords *wallc);
+
+		void ClipTop(int x1, int x2, const DrawSegmentClipInfo& clip);
+		void ClipBottom(int x1, int x2, const DrawSegmentClipInfo& clip);
+	};
+
+	struct FWallTmapVals
+	{
+		void InitFromWallCoords(RenderThread* thread, const FWallCoords* wallc);
+		void InitFromLine(RenderThread* thread, seg_t* line);
+
+	private:
+		float UoverZorg, UoverZstep;
+		float InvZorg, InvZstep;
+
+		friend class ProjectedWallTexcoords;
 	};
 
 	class ProjectedWallTexcoords
 	{
 	public:
-		void Project(RenderViewport *viewport, double walxrepeat, int x1, int x2, const FWallTmapVals &WallT, bool flipx = false);
+		void ProjectTop(RenderViewport* viewport, sector_t* frontsector, sector_t* backsector, seg_t* lineseg, int x1, int x2, const FWallTmapVals& WallT, FSoftwareTexture* pic);
+		void ProjectMid(RenderViewport* viewport, sector_t* frontsector, seg_t* lineseg, int x1, int x2, const FWallTmapVals& WallT, FSoftwareTexture* pic);
+		void ProjectBottom(RenderViewport* viewport, sector_t* frontsector, sector_t* backsector, seg_t* lineseg, int x1, int x2, const FWallTmapVals& WallT, FSoftwareTexture* pic);
+		void ProjectTranslucent(RenderViewport* viewport, sector_t* frontsector, sector_t* backsector, seg_t* lineseg, int x1, int x2, const FWallTmapVals& WallT, FSoftwareTexture* pic);
+		void Project3DFloor(RenderViewport* viewport, F3DFloor* rover, seg_t* lineseg, int x1, int x2, const FWallTmapVals& WallT, FSoftwareTexture* pic);
+		void ProjectSprite(RenderViewport* viewport, double topZ, double scale, bool flipX, bool flipY, int x1, int x2, const FWallTmapVals& WallT, FSoftwareTexture* pic);
+
+		float VStep(int x) const;
+		fixed_t UPos(int x) const;
 
 	private:
-		float VStep[MAXWIDTH]; // swall
-		fixed_t UPos[MAXWIDTH]; // lwall
+		void Project(RenderViewport* viewport, double walxrepeat, int x1, int x2, const FWallTmapVals& WallT, bool flipx = false);
 
-		friend class DrawSegmentWallTexcoords;
-		friend class RenderWallPart;
-		friend class SpriteDrawerArgs;
-	};
+		static fixed_t GetXOffset(seg_t* lineseg, FSoftwareTexture* tex, side_t::ETexpart texpart);
+		static double GetRowOffset(seg_t* lineseg, FSoftwareTexture* tex, side_t::ETexpart texpart);
+		static double GetXScale(side_t* sidedef, FSoftwareTexture* tex, side_t::ETexpart texpart);
+		static double GetYScale(side_t* sidedef, FSoftwareTexture* tex, side_t::ETexpart texpart);
 
-	class DrawSegmentWallTexcoords
-	{
-	public:
-		void Set(RenderThread *thread, const ProjectedWallTexcoords& texcoords, int x1, int x2, fixed_t xoffset, double yscale);
+		double CenterX;
+		double WallTMapScale2;
+		double walxrepeat;
+		int x1;
+		int x2;
+		FWallTmapVals WallT;
+		bool flipx;
 
-		float yscale;
-		float iscale, iscalestep;
-
-		explicit operator bool() const { return UPos; }
-
-	private:
-		float* VStep = nullptr; // swall
-		fixed_t* UPos = nullptr; // maskedtexturecol
+		float yscale = 1.0f;
+		fixed_t xoffset = 0;
+		double texturemid = 0.0f;
 
 		friend class RenderWallPart;
 		friend class SpriteDrawerArgs;
