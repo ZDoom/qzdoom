@@ -51,8 +51,7 @@ namespace swrenderer
 	struct DrawSegment
 	{
 		seg_t *curline;
-		float light, lightstep;
-		short x1, x2; // Same as sx1 and sx2, but clipped to the drawseg
+		short x1, x2;
 
 		FWallCoords WallC;
 		FWallTmapVals tmapvals;
@@ -70,8 +69,6 @@ namespace swrenderer
 		void SetHas3DFloorFrontSectorWalls() { flags |= 2; }
 		void SetHas3DFloorBackSectorWalls() { flags |= 1; }
 		void SetHasTranslucentMidTexture() { flags |= 4; }
-
-		void ClearFogBoundary() { flags &= ~8; } // Note: this shouldn't be needed as fog boundaries should be able to clip same way as 3dfloor walls
 
 	private:
 		int flags = 0; // 1=backsector, 2=frontsector, 4=midtexture, 8=fogboundary

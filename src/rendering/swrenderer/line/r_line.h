@@ -74,8 +74,6 @@ namespace swrenderer
 		void RenderMiddleTexture(int x1, int x2);
 		void RenderBottomTexture(int x1, int x2);
 
-		FLightNode *GetLightList();
-
 		bool IsFogBoundary(sector_t *front, sector_t *back) const;
 		bool SkyboxCompare(sector_t *frontsector, sector_t *backsector) const;
 
@@ -114,8 +112,6 @@ namespace swrenderer
 		// Wall segment variables:
 
 		bool rw_prepped;
-
-		ProjectedWallLight mLight;
 
 		bool markfloor; // False if the back side is the same plane.
 		bool markceiling;
