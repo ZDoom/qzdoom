@@ -366,8 +366,7 @@ void AActor::Serialize(FSerializer &arc)
 		A("spawntime", SpawnTime)
 		A("spawnorder", SpawnOrder)
 		A("friction", Friction)
-		A("userlights", UserLights)
-		A("SpriteOffset", SpriteOffset);
+		A("userlights", UserLights);
 }
 
 #undef A

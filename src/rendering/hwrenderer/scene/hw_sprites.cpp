@@ -846,11 +846,12 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 			thing->renderflags ^= RF_XFLIP;
 
 		r.Scale(sprscale.X, sprscale.Y);
-		
-		float SpriteOffY = thing->SpriteOffset.Y;
-		float rightfac = -r.left - thing->SpriteOffset.X;
+
+		float rightfac = -r.left;
 		float leftfac = rightfac - r.width;
-		z1 = z - r.top - SpriteOffY;
+		float bottomfac = -r.top;
+		float topfac = bottomfac - r.height;
+		z1 = z - r.top;
 		z2 = z1 - r.height;
 
 		float spriteheight = sprscale.Y * r.height;
@@ -861,46 +862,37 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 			PerformSpriteClipAdjustment(thing, thingpos, spriteheight);
 		}
 
+		float viewvecX;
+		float viewvecY;
 		switch (spritetype)
 		{
 		case RF_FACESPRITE:
-		{
-			float viewvecX = vp.ViewVector.X;
-			float viewvecY = vp.ViewVector.Y;
+			viewvecX = vp.ViewVector.X;
+			viewvecY = vp.ViewVector.Y;
 
 			x1 = x - viewvecY*leftfac;
 			x2 = x - viewvecY*rightfac;
 			y1 = y + viewvecX*leftfac;
 			y2 = y + viewvecX*rightfac;
 			break;
-		}
+
 		case RF_FLATSPRITE:
 		{
-			float bottomfac = -r.top - SpriteOffY;
-			float topfac = bottomfac - r.height;
-
 			x1 = x + leftfac;
 			x2 = x + rightfac;
 			y1 = y - topfac;
 			y2 = y - bottomfac;
-			// [MC] Counteract in case of any potential problems. Tests so far haven't
-			// shown any outstanding issues but that doesn't mean they won't appear later
-			// when more features are added.
-			z1 += SpriteOffY;
-			z2 += SpriteOffY;
-			break;
 		}
+		break;
 		case RF_WALLSPRITE:
-		{
-			float viewvecX = Angles.Yaw.Cos();
-			float viewvecY = Angles.Yaw.Sin();
+			viewvecX = Angles.Yaw.Cos();
+			viewvecY = Angles.Yaw.Sin();
 
 			x1 = x + viewvecY*leftfac;
 			x2 = x + viewvecY*rightfac;
 			y1 = y - viewvecX*leftfac;
 			y2 = y - viewvecX*rightfac;
 			break;
-		}
 		}
 	}
 	else

@@ -66,8 +66,6 @@ bool RenderPolySprite::GetLine(AActor *thing, DVector2 &left, DVector2 &right)
 	else
 		offsetX = tex->GetLeftOffsetPo() * thingxscalemul;
 
-	offsetX -= thing->SpriteOffset.X;
-
 	left = DVector2(pos.X - viewpoint.Sin * offsetX, pos.Y + viewpoint.Cos * offsetX);
 	right = DVector2(left.X + viewpoint.Sin * spriteWidth, left.Y - viewpoint.Cos * spriteWidth);
 	return true;
@@ -115,7 +113,7 @@ void RenderPolySprite::Render(PolyRenderThread *thread, AActor *thing, subsector
 	double spriteHeight = thingyscalemul * tex->GetHeight();
 
 	posZ -= (tex->GetHeight() - tex->GetTopOffsetPo()) * thingyscalemul;
-	posZ = PerformSpriteClipAdjustment(thing, thingpos, spriteHeight, posZ) - thing->SpriteOffset.Y;
+	posZ = PerformSpriteClipAdjustment(thing, thingpos, spriteHeight, posZ);
 
 	//double depth = 1.0;
 	//visstyle_t visstyle = GetSpriteVisStyle(thing, depth);

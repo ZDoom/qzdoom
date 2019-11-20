@@ -95,9 +95,6 @@ namespace swrenderer
 		}
 		//tx2 = tx >> 4;
 
-		// The Y offsetting is done in r_opaque_pass.cpp, in RenderOpaquePass::GetThingSprite().
-		tx += thing->SpriteOffset.X;
-
 		// too far off the side?
 		if (fabs(tx / 64) > fabs(tz))
 		{
