@@ -334,7 +334,6 @@ void ST_CreateStatusBar(bool bTitleLevel)
 // Constructor
 //
 //---------------------------------------------------------------------------
-
 DBaseStatusBar::DBaseStatusBar ()
 {
 	CompleteBorder = false;
@@ -347,20 +346,7 @@ DBaseStatusBar::DBaseStatusBar ()
 	ShowLog = false;
 	defaultScale = { (double)CleanXfac, (double)CleanYfac };
 
-	// Create the AltHud object. Todo: Make class type configurable.
-	FName classname = "AltHud";
-	auto cls = PClass::FindClass(classname);
-	if (cls)
-	{
-		AltHud = cls->CreateNew();
-
-		VMFunction * func = PClass::FindFunction(classname, "Init"); 
-		if (func != nullptr)
-		{
-			VMValue params[] = { AltHud };
-			VMCall(func, params, countof(params), nullptr, 0);
-		}
-	}
+	CreateAltHUD();
 }
 
 static void ValidateResolution(int &hres, int &vres)
