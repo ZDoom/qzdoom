@@ -885,6 +885,12 @@ OptionValue GPUSwitch
 	2.0, "$OPTVAL_INTEGRATED"
 }
 
+OptionValue PreferBackend
+{
+	0, "$OPTVAL_OPENGL"
+	1, "$OPTVAL_VULKAN"
+	2, "$OPTVAL_SOFTPOLY"
+}
 
 OptionMenu "TrueColorOptions" protected
 {
@@ -2208,6 +2214,8 @@ OptionMenu VideoModeMenu protected
 {
 	Title "$VIDMNU_TITLE"
 
+	Option "$VIDMNU_PREFERBACKEND",		"vid_preferbackend", "PreferBackend"
+	StaticText " "
 	Option "$VIDMNU_RENDERMODE",		"vid_rendermode", "RenderMode"
 	Option "$VIDMNU_FULLSCREEN",		"fullscreen", "YesNo"
 
@@ -2760,7 +2768,6 @@ OptionMenu "vkoptions"
 	StaticText "$VK_WARNING"
 	StaticText "$VK_RESTART"
 	StaticText ""
-	Option "$VKMNU_ENABLE",				"vid_enablevulkan", "OnOff"
 	TextField "$VKMNU_DEVICE",			vk_device
 	Option "$VKMNU_HDR",				"vk_hdr", "OnOff"
 }
