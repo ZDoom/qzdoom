@@ -576,7 +576,7 @@ OpenALSoundRenderer::OpenALSoundRenderer()
 	// Make sure one source is capable of stereo output with the rest doing
 	// mono, without running out of voices
 	attribs.Push(ALC_MONO_SOURCES);
-	attribs.Push(MAX<ALCint>(*snd_channels, 2) - 1);
+	attribs.Push(std::max<ALCint>(snd_channels, 2) - 1);
 	attribs.Push(ALC_STEREO_SOURCES);
 	attribs.Push(1);
 	if(ALC.SOFT_HRTF)
@@ -686,7 +686,7 @@ OpenALSoundRenderer::OpenALSoundRenderer()
 	// At least Apple's OpenAL implementation returns zeroes,
 	// although it can generate reasonable number of sources.
 
-	const int numChannels = MAX<int>(*snd_channels, 2);
+	const int numChannels = std::max<int>(snd_channels, 2);
 	int numSources = numMono + numStereo;
 
 	if (0 == numSources)
@@ -694,7 +694,7 @@ OpenALSoundRenderer::OpenALSoundRenderer()
 		numSources = numChannels;
 	}
 
-	Sources.Resize(MIN<int>(numChannels, numSources));
+	Sources.Resize(std::min<int>(numChannels, numSources));
 	for(unsigned i = 0;i < Sources.Size();i++)
 	{
 		alGenSources(1, &Sources[i]);
@@ -917,6 +917,7 @@ void OpenALSoundRenderer::SetSfxVolume(float volume)
 {
 	SfxVolume = volume;
 
+	if (!soundEngine) return;
 	FSoundChan *schan = soundEngine->GetChannels();
 	while(schan)
 	{
@@ -1523,7 +1524,7 @@ FISoundChannel *OpenALSoundRenderer::StartSound3D(SoundHandle sfx, SoundListener
 			 * distance that corresponds to the area radius. */
 			alSourcef(source, AL_SOURCE_RADIUS, (chanflags&SNDF_AREA) ?
 				// Clamp in case the max distance is <= the area radius
-				1.f/MAX<float>(GetRolloff(rolloff, AREA_SOUND_RADIUS), 0.00001f) : 0.f
+				1.f/std::max<float>(GetRolloff(rolloff, AREA_SOUND_RADIUS), 0.00001f) : 0.f
 			);
 		}
 		else if((chanflags&SNDF_AREA) && dist_sqr < AREA_SOUND_RADIUS*AREA_SOUND_RADIUS)
@@ -1669,10 +1670,10 @@ void OpenALSoundRenderer::ChannelPitch(FISoundChannel *chan, float pitch)
 	alDeferUpdatesSOFT();
 
 	ALuint source = GET_PTRID(chan->SysChannel);
-	if (WasInWater && !(chan->ChanFlags & CHAN_UI))
-		alSourcef(source, AL_PITCH, MAX(pitch, 0.0001f)*PITCH_MULT);
+	if (WasInWater && !(chan->ChanFlags & CHANF_UI))
+		alSourcef(source, AL_PITCH, std::max(pitch, 0.0001f)*PITCH_MULT);
 	else
-		alSourcef(source, AL_PITCH, MAX(pitch, 0.0001f));
+		alSourcef(source, AL_PITCH, std::max(pitch, 0.0001f));
 }
 
 void OpenALSoundRenderer::FreeSource(ALuint source)
@@ -1947,7 +1948,7 @@ void OpenALSoundRenderer::UpdateListener(SoundListener *listener)
 				while (schan)
 				{
 					ALuint source = GET_PTRID(schan->SysChannel);
-					if (source && !(schan->ChanFlags & CHAN_UI))
+					if (source && !(schan->ChanFlags & CHANF_UI))
 					{
 						alSourcei(source, AL_DIRECT_FILTER, EnvFilters[0]);
 						alSource3i(source, AL_AUXILIARY_SEND_FILTER, EnvSlot, 0, EnvFilters[1]);
@@ -1960,7 +1961,7 @@ void OpenALSoundRenderer::UpdateListener(SoundListener *listener)
 			while (schan)
 			{
 				ALuint source = GET_PTRID(schan->SysChannel);
-				if (source && !(schan->ChanFlags & CHAN_UI))
+				if (source && !(schan->ChanFlags & CHANF_UI))
 					alSourcef(source, AL_PITCH, schan->Pitch / 128.0f * PITCH_MULT);
 				schan = schan->NextChan;
 			}
@@ -1985,7 +1986,7 @@ void OpenALSoundRenderer::UpdateListener(SoundListener *listener)
 			while (schan)
 			{
 				ALuint source = GET_PTRID(schan->SysChannel);
-				if (source && !(schan->ChanFlags & CHAN_UI))
+				if (source && !(schan->ChanFlags & CHANF_UI))
 				{
 					alSourcei(source, AL_DIRECT_FILTER, EnvFilters[0]);
 					alSource3i(source, AL_AUXILIARY_SEND_FILTER, EnvSlot, 0, EnvFilters[1]);
@@ -1998,7 +1999,7 @@ void OpenALSoundRenderer::UpdateListener(SoundListener *listener)
 		while (schan)
 		{
 			ALuint source = GET_PTRID(schan->SysChannel);
-			if (source && !(schan->ChanFlags & CHAN_UI))
+			if (source && !(schan->ChanFlags & CHANF_UI))
 				alSourcef(source, AL_PITCH, schan->Pitch / 128.0f);
 			schan = schan->NextChan;
 		}
