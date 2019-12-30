@@ -804,17 +804,7 @@ void R_SetupFrame (FRenderViewpoint &viewpoint, FViewWindow &viewwindow, AActor 
 		viewpoint.sector = viewpoint.camera->Sector;
 		viewpoint.showviewer = false;
 	}
-
-	if (viewpoint.camera->player != nullptr)
-	{
-		auto plr = viewpoint.camera->player;
-		int flags = plr->GetFlags();
-
-		viewpoint.Angles.Yaw = ((flags & PPF_VIEWABSANGLE) ? 0. : viewpoint.camera->Angles.Yaw) + plr->viewangle;
-		viewpoint.Angles.Pitch = ((flags & PPF_VIEWABSPITCH) ? 0. : viewpoint.camera->Angles.Pitch) + plr->viewpitch;
-		viewpoint.Angles.Roll = ((flags & PPF_VIEWABSROLL) ? 0. : viewpoint.camera->Angles.Roll) + plr->viewroll;
-	}
-	iview->New.Angles = viewpoint.Angles;
+	iview->New.Angles = viewpoint.camera->Angles;
 	if (viewpoint.camera->player != 0)
 	{
 		player = viewpoint.camera->player;

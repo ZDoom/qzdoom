@@ -30,7 +30,6 @@ class PlayerPawn : Actor
 	Name 		Portrait;
 	Name 		Slot[10];
 	double 		HexenArmor[5];
-	double		ViewAngle, ViewPitch, ViewRoll;
 
 	// [GRB] Player class properties
 	double		JumpZ;
@@ -80,9 +79,6 @@ class PlayerPawn : Actor
 	flagdef NoThrustWhenInvul: PlayerFlags, 0;
 	flagdef CanSuperMorph: PlayerFlags, 1;
 	flagdef CrouchableMorph: PlayerFlags, 2;
-	flagdef ViewAbsAngle: PlayerFlags, 5;
-	flagdef ViewAbsPitch: PlayerFlags, 6;
-	flagdef ViewAbsRoll: PlayerFlags, 7;
 	
 	Default
 	{
@@ -507,24 +503,6 @@ class PlayerPawn : Actor
 			}
 		}
 	}
-
-	//-----------------------------------------------------------------------
-	// CalcView
-	// 
-	// Performs the camera offsetting for the view angles (yaw/pitch/roll)
-	//-----------------------------------------------------------------------
-	virtual void CalcView()
-	{
-		let player = self.player;
-
-		// Do not update the view if someone else is holding the camera.
-		if (player == NULL || player.mo != self || player.camera != self)
-			return;
-
-		player.viewangle = viewangle;
-		player.viewpitch = viewpitch;
-		player.viewroll = viewroll;
-	}
 	
 	/*
 	==================
@@ -706,8 +684,7 @@ class PlayerPawn : Actor
 				Pitch = 0.;
 			}
 		}
-		player.mo.CalcHeight();
-		player.mo.CalcView();
+		player.mo.CalcHeight ();
 			
 		if (player.attacker && player.attacker != self)
 		{ // Watch killer
@@ -1639,8 +1616,7 @@ class PlayerPawn : Actor
 
 		CheckPitch();
 		HandleMovement();
-		CalcHeight();
-		CalcView();
+		CalcHeight ();
 
 		if (!(player.cheats & CF_PREDICTING))
 		{
@@ -2631,9 +2607,6 @@ struct PlayerInfo native play	// self is what internally is known as player_t
 	native float DesiredFOV;
 	native float FOV;
 	native double viewz;
-	native double viewangle;
-	native double viewpitch;
-	native double viewroll;
 	native double viewheight;
 	native double deltaviewheight;
 	native double bob;
