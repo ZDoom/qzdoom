@@ -34,6 +34,7 @@
 #include "templates.h"
 #include "m_bbox.h"
 #include "dobjgc.h"
+#include "r_data/r_translate.h"
 
 // Some more or less basic data types
 // we depend on.
@@ -601,24 +602,6 @@ FSerializer &Serialize(FSerializer &arc, const char *key, secspecial_t &spec, se
 
 enum class EMoveResult { ok, crushed, pastdest };
 
-struct TextureManipulation
-{
-	enum
-	{
-		BlendNone = 0,
-		BlendAlpha = 1,
-		BlendScreen = 2,
-		BlendOverlay = 3,
-		BlendHardLight = 4,
-		BlendMask = 7,
-		InvertBit = 8
-	};
-	PalEntry AddColor;		// Alpha contains the blend flags
-	PalEntry ModulateColor;	// Alpha may contain a multiplier to get higher values than 1.0 without promoting this to 4 full floats.
-	PalEntry BlendColor;
-	float DesaturationFactor;
-};
-
 struct sector_t
 {
 
@@ -1047,66 +1030,40 @@ public:
 		Flags &= ~SECF_SPECIALFLAGS;
 	}
 
+	void CheckExColorFlag();
+
+	void InitAllExcolors()
+	{
+		if (SpecialColors[sector_t::wallbottom] != 0xffffffff || SpecialColors[sector_t::walltop] != 0xffffffff || AdditiveColors[sector_t::walltop] != 0xffffffff) CheckExColorFlag();
+	}
+
 	void SetSpecialColor(int slot, int r, int g, int b)
 	{
 		SpecialColors[slot] = PalEntry(255, r, g, b);
+		if ((slot == sector_t::wallbottom || slot == sector_t::walltop) && SpecialColors[slot] != 0xffffffff) CheckExColorFlag();
 	}
 
 	void SetSpecialColor(int slot, PalEntry rgb)
 	{
 		rgb.a = 255;
 		SpecialColors[slot] = rgb;
+		if ((slot == sector_t::wallbottom || slot == sector_t::walltop) && rgb != 0xffffffff) CheckExColorFlag();
 	}
 
 	void SetAdditiveColor(int slot, PalEntry rgb)
 	{
 		rgb.a = 255;
 		AdditiveColors[slot] = rgb;
+		if ((slot == sector_t::walltop) && AdditiveColors[slot] != 0xffffffff) CheckExColorFlag(); // Wallbottom of this is not used.
+
 	}
 
 	// TextureFX parameters
 
-	void SetTextureFx(int slot, const TextureManipulation &tm)
+	void SetTextureFx(int slot, const TextureManipulation *tm)
 	{
-		planes[slot].TextureFx = tm;	// this is for getting the data from a texture.
-	}
-
-	void SetTextureModulateColor(int slot, PalEntry rgb)
-	{
-		rgb.a = planes[slot].TextureFx.ModulateColor.a;
-		planes[slot].TextureFx.ModulateColor = rgb;
-	}
-
-	void SetTextureModulateScaleFactor(int slot, int fac)
-	{
-		planes[slot].TextureFx.ModulateColor.a = (uint8_t)fac;
-	}
-
-	void SetTextureAdditiveColor(int slot, PalEntry rgb)
-	{
-		rgb.a = planes[slot].TextureFx.AddColor.a;
-		planes[slot].TextureFx.AddColor = rgb;
-	}
-
-	void SetTextureBlendColor(int slot, PalEntry rgb)
-	{
-		planes[slot].TextureFx.BlendColor = rgb;
-	}
-
-	void SetTextureDesaturationFactor(int slot, double fac)
-	{
-		planes[slot].TextureFx.DesaturationFactor = (float)fac;
-	}
-
-	void SetTextureBlendMode(int slot, int mode)
-	{
-		planes[slot].TextureFx.AddColor.a = (planes[slot].TextureFx.AddColor.a & ~TextureManipulation::BlendMask) | (mode & TextureManipulation::BlendMask);
-	}
-
-	void SetTextureInvert(int slot, bool on)
-	{
-		if (on) planes[slot].TextureFx.AddColor.a |= TextureManipulation::InvertBit;
-		else planes[slot].TextureFx.AddColor.a &= ~TextureManipulation::InvertBit;
+		if (tm) planes[slot].TextureFx = *tm;	// this is for getting the data from a texture.
+		else planes[slot].TextureFx = {};
 	}
 
 
@@ -1194,6 +1151,7 @@ enum
 	WALLF_WRAP_MIDTEX	 = 32,	// Like the line counterpart, but only for this side.
 	WALLF_POLYOBJ		 = 64,	// This wall belongs to a polyobject.
 	WALLF_LIGHT_FOG      = 128,	// This wall's Light is used even in fog.
+	WALLF_EXTCOLOR		 = 256,	// enables the extended color options (flagged to allow the renderer to easily skip the relevant code)
 };
 
 struct side_t
@@ -1250,7 +1208,7 @@ struct side_t
 	uint32_t	LeftSide, RightSide;	// [RH] Group walls into loops
 	uint16_t	TexelLength;
 	int16_t		Light;
-	uint8_t		Flags;
+	uint16_t	Flags;
 	int			UDMFIndex;		// needed to access custom UDMF fields which are stored in loading order.
 	FLightNode * lighthead;		// all dynamic lights that may affect this wall
 	seg_t **segs;	// all segs belonging to this sidedef in ascending order. Used for precise rendering
@@ -1385,10 +1343,11 @@ struct side_t
 
 	void EnableAdditiveColor(int which, bool enable)
 	{
-		int flag = enable ? part::UseOwnAdditiveColor : 0;
+		const int flag = part::UseOwnAdditiveColor;
 		if (enable)
 		{
 			textures[which].flags |= flag;
+			Flags |= WALLF_EXTCOLOR;
 		}
 		else
 		{
@@ -1402,42 +1361,17 @@ struct side_t
 		textures[which].AdditiveColor = rgb;
 	}
 
-	void SetTextureModulateColor(int slot, PalEntry rgb)
+	void SetTextureFx(int slot, const TextureManipulation* tm)
 	{
-		rgb.a = textures[slot].TextureFx.ModulateColor.a;
-		textures[slot].TextureFx.ModulateColor = rgb;
-	}
-
-	void SetTextureModulateScaleFactor(int slot, int fac)
-	{
-		textures[slot].TextureFx.ModulateColor.a = (uint8_t)fac;
-	}
-
-	void SetTextureAdditiveColor(int slot, PalEntry rgb)
-	{
-		rgb.a = textures[slot].TextureFx.AddColor.a;
-		textures[slot].TextureFx.AddColor = rgb;
-	}
-
-	void SetTextureBlendColor(int slot, PalEntry rgb)
-	{
-		textures[slot].TextureFx.BlendColor = rgb;
-	}
-
-	void SetTextureDesaturationFactor(int slot, double fac)
-	{
-		textures[slot].TextureFx.DesaturationFactor = (float)fac;
-	}
-
-	void SetTextureBlendMode(int slot, int mode)
-	{
-		textures[slot].TextureFx.AddColor.a = (textures[slot].TextureFx.AddColor.a & ~TextureManipulation::BlendMask) | (mode & TextureManipulation::BlendMask);
-	}
-
-	void SetTextureInvert(int slot, bool on)
-	{
-		if (on) textures[slot].TextureFx.AddColor.a |= TextureManipulation::InvertBit;
-		else textures[slot].TextureFx.AddColor.a &= ~TextureManipulation::InvertBit;
+		if (tm)
+		{
+			textures[slot].TextureFx = *tm;	// this is for getting the data from a texture.
+			if (tm->AddColor.a) Flags |= WALLF_EXTCOLOR;
+		}
+		else
+		{
+			textures[slot].TextureFx = {};
+		}
 	}
 
 	PalEntry GetAdditiveColor(int which, sector_t *frontsector) const
@@ -1784,6 +1718,16 @@ inline void sector_t::SetFade(PalEntry pe) { ::SetFade(this, pe); }
 inline int sector_t::GetFloorLight() const { return ::GetFloorLight(this); }
 inline int sector_t::GetCeilingLight() const { return ::GetCeilingLight(this); }
 inline double sector_t::GetFriction(int plane, double *movefac) const { return ::GetFriction(this, plane, movefac); }
+
+inline void sector_t::CheckExColorFlag()
+{
+	for (auto ld : Lines)
+	{
+		if (ld->frontsector == this) ld->sidedef[0]->Flags |= WALLF_EXTCOLOR;
+		if (ld->backsector == this) ld->sidedef[1]->Flags |= WALLF_EXTCOLOR;
+	}
+}
+
 
 
 #endif

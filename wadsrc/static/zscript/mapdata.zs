@@ -67,7 +67,7 @@ struct Side native play
 	//DBaseDecal*	AttachedDecals;	// [RH] Decals bound to the wall
 	native readonly Line linedef;
 	native int16	Light;
-	native uint8	Flags;
+	native uint16	Flags;
 
 	native TextureID GetTexture(int which);
 	native void SetTexture(int which, TextureID tex);
@@ -87,6 +87,7 @@ struct Side native play
 	native Color GetAdditiveColor(int tier);
 	native void SetAdditiveColor(int tier, Color color);
 	native void EnableAdditiveColor(int tier, bool enable);
+	native void SetColorization(int tier, Name cname);
 	//native DInterpolation *SetInterpolation(int position);
 	//native void StopInterpolation(int position);
 
@@ -158,7 +159,7 @@ struct Line native play
 	native uint						activation;	// activation type
 	native int						special;
 	native int						args[5];	// <--- hexen-style arguments (expanded to ZDoom's full width)
-	native double					alpha;		// <--- translucency (0=invisible, FRACUNIT=opaque)
+	native double					alpha;		// <--- translucency (0=invisible, 1.0=opaque)
 	native readonly Side			sidedef[2];
 	native readonly double			bbox[4];	// bounding box, for the extent of the LineDef.
 	native readonly Sector			frontsector, backsector;
@@ -469,6 +470,7 @@ struct Sector native play
 	native void SetGlowColor(int pos, color color);
 	native void SetSpecialColor(int pos, color color);
 	native void SetAdditiveColor(int pos, Color color);
+	native void SetColorization(int tier, Name cname);
 	
 	native TextureID GetTexture(int pos);
 	native void SetTexture(int pos, TextureID tex, bool floorclip = true);

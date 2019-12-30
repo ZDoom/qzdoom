@@ -1295,6 +1295,18 @@ public:
 				Flag(sd->Flags, WALLF_NOAUTODECALS, key);
 				continue;
 
+			case NAME_colorization_top:
+				sd->SetTextureFx(side_t::top, TexMan.GetTextureManipulation(CheckString(key)));
+				break;
+
+			case NAME_colorization_mid:
+				sd->SetTextureFx(side_t::mid, TexMan.GetTextureManipulation(CheckString(key)));
+				break;
+
+			case NAME_colorization_bottom:
+				sd->SetTextureFx(side_t::bottom, TexMan.GetTextureManipulation(CheckString(key)));
+				break;
+
 			case NAME_nogradient_top:
 				Flag(sd->textures[side_t::top].flags, side_t::part::NoGradient, key);
 				break;
@@ -1308,7 +1320,8 @@ public:
 				break;
 
 			case NAME_useowncolors_top:
-				Flag(sd->textures[side_t::top].flags, side_t::part::UseOwnSpecialColors, key);
+				if (Flag(sd->textures[side_t::top].flags, side_t::part::UseOwnSpecialColors, key))
+					sd->Flags |= WALLF_EXTCOLOR;
 				break;
 
 			case NAME_uppercolor_top:
@@ -1332,7 +1345,9 @@ public:
 				break;
 
 			case NAME_useowncolors_mid:
-				Flag(sd->textures[side_t::mid].flags, side_t::part::UseOwnSpecialColors, key);
+				if (Flag(sd->textures[side_t::mid].flags, side_t::part::UseOwnSpecialColors, key))
+					sd->Flags |= WALLF_EXTCOLOR;
+
 				break;
 
 			case NAME_uppercolor_mid:
@@ -1356,7 +1371,8 @@ public:
 				break;
 
 			case NAME_useowncolors_bottom:
-				Flag(sd->textures[side_t::bottom].flags, side_t::part::UseOwnSpecialColors, key);
+				if (Flag(sd->textures[side_t::bottom].flags, side_t::part::UseOwnSpecialColors, key))
+					sd->Flags |= WALLF_EXTCOLOR;
 				break;
 
 			case NAME_uppercolor_bottom:
@@ -1380,13 +1396,17 @@ public:
 				break;
 
 			case NAME_useowncoloradd_top:
-				sd->textures[side_t::top].flags |= side_t::part::UseOwnAdditiveColor * CheckBool(key);
+				Flag(sd->textures[side_t::top].flags, side_t::part::UseOwnAdditiveColor, key);
+				sd->Flags |= WALLF_EXTCOLOR;
 
 			case NAME_useowncoloradd_mid:
-				sd->textures[side_t::mid].flags |= side_t::part::UseOwnAdditiveColor * CheckBool(key);
+				if (Flag(sd->textures[side_t::mid].flags, side_t::part::UseOwnAdditiveColor, key))
+					sd->Flags |= WALLF_EXTCOLOR;
 
 			case NAME_useowncoloradd_bottom:
-				sd->textures[side_t::bottom].flags |= side_t::part::UseOwnAdditiveColor * CheckBool(key);
+				if (Flag(sd->textures[side_t::bottom].flags, side_t::part::UseOwnAdditiveColor, key))
+					sd->Flags |= WALLF_EXTCOLOR;
+				break;
 
 			default:
 				break;
@@ -1640,6 +1660,14 @@ public:
 
 				case NAME_ColorAdd_Sprites:
 					sec->AdditiveColors[sector_t::sprites] = CheckInt(key) | 0xff000000;
+					break;
+
+				case NAME_colorization_floor:
+					sec->SetTextureFx(sector_t::floor, TexMan.GetTextureManipulation(CheckString(key)));
+					break;
+
+				case NAME_colorization_ceiling:
+					sec->SetTextureFx(sector_t::ceiling, TexMan.GetTextureManipulation(CheckString(key)));
 					break;
 
 				case NAME_Desaturation:
@@ -2284,6 +2312,11 @@ public:
 
 		// Create the real linedefs and decompress the sidedefs
 		ProcessLineDefs();
+		// enable the excolor flag on all sidedefs which need it for a gradient transfer from the sector.
+		for (auto& sec : Level->sectors)
+		{
+			sec.CheckExColorFlag();	
+		}
 	}
 };
 
