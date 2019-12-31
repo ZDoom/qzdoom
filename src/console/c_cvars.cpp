@@ -1756,11 +1756,15 @@ void C_GrabCVarDefaults ()
 
 	while ((lump = Wads.FindLump("DEFCVARS", &lastlump)) != -1)
 	{
+		// don't parse from wads
+		if (lastlump > Wads.GetLastLump(Wads.GetMaxIwadNum()))
+			I_FatalError("Cannot load DEFCVARS from a wadfile!\n");
+
 		FScanner sc(lump);
 
 		sc.MustGetString();
 		if (!sc.Compare("version"))
-			sc.ScriptError("Must declare version for defcvars!");
+			sc.ScriptError("Must declare version for defcvars! (currently: %i)", gamelastrunversion);
 		sc.MustGetNumber();
 		lumpversion = sc.Number;
 		if (lumpversion > gamelastrunversion)
