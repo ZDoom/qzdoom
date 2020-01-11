@@ -2164,8 +2164,6 @@ OptionValue "RenderMode"
 {
 	0, "$OPTVAL_SWDOOM"
 	1, "$OPTVAL_SWDOOMTC"
-	2, "$OPTVAL_SWPOLY"
-	3, "$OPTVAL_SWPOLYTC"
 	4,  "$OPTVAL_HWPOLY"
 }
 
@@ -2726,6 +2724,7 @@ OptionString "LanguageOptions"
 	"de", "Deutsch (German)"
 	"es", "Español (España) (Castilian Spanish)"
 	"esm", "Español (Latino) (Latin American Spanish)"
+	"eo", "Esperanto"
 	"fi", "Suomi (Finnish)"
 	"fr", "Français (French)"
 	"it", "Italiano (Italian)"

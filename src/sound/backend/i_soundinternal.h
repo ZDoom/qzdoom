@@ -6,8 +6,6 @@
 
 #include "vectors.h"
 #include "tarray.h"
-#include "zmusic/sounddecoder.h"
-#include "../../libraries/music_common/fileio.h"
 #include "tflags.h"
 
 enum EChanFlag
@@ -29,6 +27,7 @@ enum EChanFlag
 	CHANF_VIRTUAL = 2048,	// internal: Channel is currently virtual
 	CHANF_NOSTOP = 4096,	// only for A_PlaySound. Does not start if channel is playing something.
 	CHANF_OVERLAP = 8192, // [MK] Does not stop any sounds in the channel and instead plays over them.
+	CHANF_LOCAL = 16384,	// only plays locally for the calling actor
 };
 
 typedef TFlags<EChanFlag> EChanFlags;
@@ -139,9 +138,6 @@ struct FISoundChannel
 	bool		ManualRolloff;
 	EChanFlags	ChanFlags;
 };
-
-
-void FindLoopTags(MusicIO::FileInterface *fr, uint32_t *start, bool *startass, uint32_t *end, bool *endass);
 
 class SoundStream;
 

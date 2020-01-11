@@ -1251,7 +1251,7 @@ FString C_GetMassCVarString (uint32_t filter, bool compact)
 	{
 		for (cvar = CVars; cvar != NULL; cvar = cvar->m_Next)
 		{
-			if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE|CVAR_IGNORE)))
+			if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE|CVAR_IGNORE|CVAR_NOSAVEGAME)))
 			{
 				UCVarValue val = cvar->GetGenericRep(CVAR_String);
 				dump << '\\' << cvar->GetName() << '\\' << val.String;
@@ -1769,8 +1769,8 @@ void C_GrabCVarDefaults ()
 		lumpversion = sc.Number;
 		if (lumpversion > gamelastrunversion)
 			sc.ScriptError("Unsupported version %i (%i supported)", lumpversion, gamelastrunversion);
-		if (lumpversion < 218)
-			sc.ScriptError("Version must be at least 218 (current version %i)", gamelastrunversion);
+		if (lumpversion < 219)
+			sc.ScriptError("Version must be at least 219 (current version %i)", gamelastrunversion);
 
 		FBaseCVar *var;
 

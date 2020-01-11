@@ -213,7 +213,7 @@ class Inventory : Actor
 		bInvisible = false;
 		if (DoRespawn ())
 		{
-			A_PlaySound ("misc/spawn", CHAN_VOICE);
+			A_StartSound ("misc/spawn", CHAN_VOICE);
 		}
 	}
 
@@ -250,7 +250,7 @@ class Inventory : Actor
 		if (DoRespawn ())
 		{
 			SetState (SpawnState);
-			A_PlaySound ("misc/spawn", CHAN_VOICE);
+			A_StartSound ("misc/spawn", CHAN_VOICE);
 			Spawn ("ItemFog", Pos, ALLOW_REPLACE);
 		}
 	}
@@ -1074,7 +1074,7 @@ class Inventory : Actor
 			chan = CHAN_ITEM;
 			flags = CHANF_MAYBE_LOCAL;
 		}
-		toucher.A_StartSound(PickupSound, chan, flags, 1, false, atten);
+		toucher.A_StartSound(PickupSound, chan, flags, 1, atten);
 	}
 
 	//===========================================================================

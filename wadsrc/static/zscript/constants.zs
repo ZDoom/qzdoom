@@ -423,6 +423,7 @@ enum ESoundFlags
 	CHAN_OVERLAP = 8192,
 
 	// Same as above, with an F appended to allow better distinction of channel and channel flags.
+	CHANF_DEFAULT = 0,	// just to make the code look better and avoid literal 0's.
 	CHANF_LISTENERZ = 8,
 	CHANF_MAYBE_LOCAL = 16,
 	CHANF_UI = 32,
@@ -430,6 +431,10 @@ enum ESoundFlags
 	CHANF_LOOP = 256,
 	CHANF_NOSTOP = 4096,
 	CHANF_OVERLAP = 8192,
+	CHANF_LOCAL = 16384,
+
+
+	CHANF_LOOPING = CHANF_LOOP | CHANF_NOSTOP, // convenience value for replicating the old 'looping' boolean.
 
 };
 

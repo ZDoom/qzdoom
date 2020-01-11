@@ -268,11 +268,9 @@ void ZCCCompiler::ProcessMixin(ZCC_MixinDef *cnode, PSymbolTreeNode *treenode)
 {
 	ZCC_MixinWork *cls = new ZCC_MixinWork(cnode, treenode);
 
-	Mixins.Push(cls);
-
 	auto node = cnode->Body;
 
-	// Need to check if the class actually has a body.
+	// Need to check if the mixin actually has a body.
 	if (node != nullptr) do
 	{
 		if (cnode->MixinType == ZCC_Mixin_Class)
@@ -288,9 +286,12 @@ void ZCCCompiler::ProcessMixin(ZCC_MixinDef *cnode, PSymbolTreeNode *treenode)
 			case AST_EnumTerminator:
 			case AST_States:
 			case AST_FuncDeclarator:
-			case AST_Default:
 			case AST_StaticArrayStatement:
 				break;
+
+			case AST_Default:
+				Error(node, "Default blocks currently disabled in mixins");
+				return;
 
 			default:
 				assert(0 && "Unhandled AST node type");
@@ -300,6 +301,8 @@ void ZCCCompiler::ProcessMixin(ZCC_MixinDef *cnode, PSymbolTreeNode *treenode)
 
 		node = node->SiblingNext;
 	} while (node != cnode->Body);
+
+	Mixins.Push(cls);
 }
 
 //==========================================================================
@@ -388,22 +391,22 @@ ZCCCompiler::ZCCCompiler(ZCC_AST &ast, DObject *_outer, PSymbolTable &_symbols, 
 		ZCC_TreeNode *node = ast.TopNode;
 		PSymbolTreeNode *tnode;
 
-		// [pbeta] Mixins must be processed before everything else.
+		// [pbeta] Anything that must be processed before classes, structs, etc. should go here.
 		do
 		{
 			switch (node->NodeType)
 			{
+			// [pbeta] Mixins must be processed before everything else.
 			case AST_MixinDef:
 				if ((tnode = AddTreeNode(static_cast<ZCC_NamedNode *>(node)->NodeName, node, GlobalTreeNodes)))
 				{
-					switch (node->NodeType)
-					{
-					case AST_MixinDef:
-						ProcessMixin(static_cast<ZCC_MixinDef *>(node), tnode);
-						break;
-					}
+					ProcessMixin(static_cast<ZCC_MixinDef *>(node), tnode);
+					break;
 				}
 				break;
+
+			default:
+				break; // Shut GCC up.
 			}
 			node = node->SiblingNext;
 		} while (node != ast.TopNode);

@@ -37,9 +37,16 @@
 #include <string>
 #include <algorithm>
 #include <assert.h>
+#include "zmusic/zmusic_internal.h"
 #include "zmusic/musinfo.h"
 #include "mididevices/mididevice.h"
 #include "midisources/midisource.h"
+
+#ifdef HAVE_SYSTEM_MIDI
+#ifdef __linux__
+#include "mididevices/music_alsa_state.h"
+#endif
+#endif
 
 // MACROS ------------------------------------------------------------------
 
@@ -226,8 +233,8 @@ EMidiDevice MIDIStreamer::SelectMIDIDevice(EMidiDevice device)
 	case -7:		return MDEV_ADL;
 	case -8:		return MDEV_OPN;
 	default:
-		#ifdef _WIN32
-					return MDEV_MMAPI;
+		#ifdef HAVE_SYSTEM_MIDI
+					return MDEV_STANDARD;
 		#else
 					return MDEV_SNDSYS;
 		#endif
@@ -268,19 +275,21 @@ MIDIDevice *MIDIStreamer::CreateMIDIDevice(EMidiDevice devtype, int samplerate)
 				dev = CreateOPNMIDIDevice(Args.c_str());
 				break;
 
-			case MDEV_MMAPI:
+			case MDEV_STANDARD:
 
+#ifdef HAVE_SYSTEM_MIDI
 #ifdef _WIN32
 				dev = CreateWinMIDIDevice(std::max(0, miscConfig.snd_mididevice));
+#elif __linux__
+                dev = CreateAlsaMIDIDevice(std::max(0, miscConfig.snd_mididevice));
+#endif
 				break;
 #endif
-				// Intentional fall-through for non-Windows systems.
+				// Intentional fall-through for systems without standard midi support
 
-#ifdef HAVE_FLUIDSYNTH
 			case MDEV_FLUIDSYNTH:
 				dev = CreateFluidSynthMIDIDevice(samplerate, Args.c_str());
 				break;
-#endif // HAVE_FLUIDSYNTH
 
 			case MDEV_OPL:
 				dev = CreateOplMIDIDevice(Args.c_str());
@@ -308,9 +317,11 @@ MIDIDevice *MIDIStreamer::CreateMIDIDevice(EMidiDevice devtype, int samplerate)
 			else if (!checked[MDEV_TIMIDITY]) devtype = MDEV_TIMIDITY;
 			else if (!checked[MDEV_WILDMIDI]) devtype = MDEV_WILDMIDI;
 			else if (!checked[MDEV_GUS]) devtype = MDEV_GUS;
-#ifdef _WIN32
-			else if (!checked[MDEV_MMAPI]) devtype = MDEV_MMAPI;
+#ifdef HAVE_SYSTEM_MIDI
+			else if (!checked[MDEV_STANDARD]) devtype = MDEV_STANDARD;
 #endif
+			else if (!checked[MDEV_ADL]) devtype = MDEV_ADL;
+			else if (!checked[MDEV_OPN]) devtype = MDEV_OPN;
 			else if (!checked[MDEV_OPL]) devtype = MDEV_OPL;
 
 			if (devtype == MDEV_DEFAULT)
@@ -323,13 +334,15 @@ MIDIDevice *MIDIStreamer::CreateMIDIDevice(EMidiDevice devtype, int samplerate)
 	if (selectedDevice != requestedDevice && (selectedDevice != lastSelectedDevice || requestedDevice != lastRequestedDevice))
 	{
 		static const char *devnames[] = {
-			"Windows Default",
+			"System Default",
 			"OPL",
 			"",
 			"Timidity++",
 			"FluidSynth",
 			"GUS",
-			"WildMidi"
+			"WildMidi",
+			"ADL",
+			"OPN",
 		};
 
 		lastRequestedDevice = requestedDevice;
@@ -374,9 +387,9 @@ bool MIDIStreamer::DumpWave(const char *filename, int subsong, int samplerate)
 
 	assert(MIDI == NULL);
 	auto devtype = SelectMIDIDevice(DeviceType);
-	if (devtype == MDEV_MMAPI)
+	if (devtype == MDEV_STANDARD)
 	{
-		throw std::runtime_error("MMAPI device is not supported");
+		throw std::runtime_error("System MIDI device is not supported");
 	}
 	auto iMIDI = CreateMIDIDevice(devtype, samplerate);
 	auto writer = new MIDIWaveWriter(filename, static_cast<SoftSynthMIDIDevice*>(iMIDI));
@@ -1004,9 +1017,18 @@ MusInfo* CreateMIDIStreamer(MIDISource *source, EMidiDevice devtype, const char*
 	return me;
 }
 
-void MIDIDumpWave(MIDISource* source, EMidiDevice devtype, const char *devarg, const char *outname, int subsong, int samplerate)
+DLL_EXPORT bool ZMusic_MIDIDumpWave(ZMusic_MidiSource source, EMidiDevice devtype, const char *devarg, const char *outname, int subsong, int samplerate)
 {
-	MIDIStreamer me(devtype, devarg);
-	me.SetMIDISource(source);
-	me.DumpWave(outname, subsong, samplerate);
+	try
+	{
+		MIDIStreamer me(devtype, devarg);
+		me.SetMIDISource(source);
+		me.DumpWave(outname, subsong, samplerate);
+		return true;
+	}
+	catch (const std::exception & ex)
+	{
+		SetError(ex.what());
+		return false;
+	}
 }

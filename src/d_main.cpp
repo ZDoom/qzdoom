@@ -277,7 +277,7 @@ void D_ToggleHud()
 	static int saved_screenblocks;
 	static bool saved_drawplayersprite, saved_showmessages;
 
-	if (hud_toggled = !hud_toggled)
+	if ((hud_toggled = !hud_toggled))
 	{
 		saved_screenblocks = screenblocks;
 		saved_drawplayersprite = r_drawplayersprites;
@@ -1476,6 +1476,10 @@ void ParseCVarInfo()
 				else if (stricmp(sc.String, "latch") == 0)
 				{
 					cvarflags |= CVAR_LATCH;
+				}
+				else if (stricmp(sc.String, "nosave") == 0)
+				{
+					cvarflags |= CVAR_NOSAVEGAME;
 				}
 				else
 				{
