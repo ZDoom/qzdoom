@@ -141,7 +141,7 @@ class BasicArmor : Armor
 	//
 	//===========================================================================
 
-	override void AbsorbDamage (int damage, Name damageType, out int newdamage)
+	override void AbsorbDamage (int damage, Name damageType, out int newdamage, Actor inflictor, Actor source, int flags)
 	{
 		int saved;
 
@@ -201,7 +201,8 @@ class BasicArmor : Armor
 		// Once the armor has absorbed its part of the damage, then apply its damage factor, if any, to the player
 		if ((damage > 0) && (ArmorType != 'None')) // BasicArmor is not going to have any damage factor, so skip it.
 		{
-			newdamage = ApplyDamageFactors(ArmorType, damageType, damage, damage);
+			damage = int(damage * DamageFactor);
+			newdamage = (damage < 1) ? 0 : ApplyDamageFactors(ArmorType, damageType, damage, damage);
 		}
 	}
 }
@@ -552,7 +553,7 @@ class HexenArmor : Armor
 	//
 	//===========================================================================
 
-	override void AbsorbDamage (int damage, Name damageType, out int newdamage)
+	override void AbsorbDamage (int damage, Name damageType, out int newdamage, Actor inflictor, Actor source, int flags)
 	{
 		if (!DamageTypeDefinition.IgnoreArmor(damageType))
 		{

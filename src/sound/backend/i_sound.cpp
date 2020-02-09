@@ -127,15 +127,15 @@ public:
 	void SetMusicVolume (float volume)
 	{
 	}
-	std::pair<SoundHandle,bool> LoadSound(uint8_t *sfxdata, int length, bool monoize, FSoundLoadBuffer *pBuffer)
+	SoundHandle LoadSound(uint8_t *sfxdata, int length)
 	{
 		SoundHandle retval = { NULL };
-		return std::make_pair(retval, true);
+		return retval;
 	}
-	std::pair<SoundHandle,bool> LoadSoundRaw(uint8_t *sfxdata, int length, int frequency, int channels, int bits, int loopstart, int loopend, bool monoize)
+	SoundHandle LoadSoundRaw(uint8_t *sfxdata, int length, int frequency, int channels, int bits, int loopstart, int loopend)
 	{
 		SoundHandle retval = { NULL };
-        return std::make_pair(retval, true);
+        return retval;
 	}
 	void UnloadSound (SoundHandle sfx)
 	{
@@ -339,7 +339,7 @@ FString SoundStream::GetStats()
 //
 //==========================================================================
 
-std::pair<SoundHandle,bool> SoundRenderer::LoadSoundVoc(uint8_t *sfxdata, int length, bool monoize)
+SoundHandle SoundRenderer::LoadSoundVoc(uint8_t *sfxdata, int length)
 {
 	uint8_t * data = NULL;
 	int len, frequency, channels, bits, loopstart, loopend;
@@ -370,7 +370,7 @@ std::pair<SoundHandle,bool> SoundRenderer::LoadSoundVoc(uint8_t *sfxdata, int le
 			switch (blocktype)
 			{
 			case 1: // Sound data
-				if (noextra && (codec == -1 || codec == sfxdata[i+1]))
+				if (/*noextra &*/ (codec == -1 || codec == sfxdata[i + 1])) // NAM contains a VOC where a valid data block follows an extra block.
 				{
 					frequency = 1000000/(256 - sfxdata[i]);
 					channels = 1;
@@ -382,6 +382,7 @@ std::pair<SoundHandle,bool> SoundRenderer::LoadSoundVoc(uint8_t *sfxdata, int le
 					else okay = false;
 					len += blocksize - 2;
 				}
+				else okay = false;
 				break;
 			case 2: // Sound data continuation
 				if (codec == -1)
@@ -483,14 +484,7 @@ std::pair<SoundHandle,bool> SoundRenderer::LoadSoundVoc(uint8_t *sfxdata, int le
 		}
 
 	} while (false);
-	std::pair<SoundHandle,bool> retval = LoadSoundRaw(data, len, frequency, channels, bits, loopstart, loopend, monoize);
+	SoundHandle retval = LoadSoundRaw(data, len, frequency, channels, bits, loopstart, loopend);
 	if (data) delete[] data;
 	return retval;
 }
-
-std::pair<SoundHandle, bool> SoundRenderer::LoadSoundBuffered(FSoundLoadBuffer *buffer, bool monoize)
-{
-	SoundHandle retval = { NULL };
-	return std::make_pair(retval, true);
-}
-
