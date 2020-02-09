@@ -2857,6 +2857,76 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetRoll)
 
 //===========================================================================
 //
+// A_SetViewAngle
+//
+// Set actor's viewangle (in degrees).
+//
+//===========================================================================
+
+DEFINE_ACTION_FUNCTION(AActor, A_SetViewAngle)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(angle);
+	PARAM_INT(flags);
+	PARAM_INT(ptr);
+
+	AActor *ref = COPY_AAPTR(self, ptr);
+	if (ref != NULL)
+	{
+		ref->SetViewAngle(angle, flags);
+	}
+	return 0;
+}
+
+//===========================================================================
+//
+// A_SetViewPitch
+//
+// Set actor's viewpitch (in degrees).
+//
+//===========================================================================
+
+DEFINE_ACTION_FUNCTION(AActor, A_SetViewPitch)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(pitch);
+	PARAM_INT(flags);
+	PARAM_INT(ptr);
+
+	AActor *ref = COPY_AAPTR(self, ptr);
+
+	if (ref != NULL)
+	{
+		ref->SetViewPitch(pitch, flags);
+	}
+	return 0;
+}
+
+//===========================================================================
+//
+// [MC] A_SetViewRoll
+//
+// Set actor's viewroll (in degrees).
+//
+//===========================================================================
+
+DEFINE_ACTION_FUNCTION(AActor, A_SetViewRoll)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(roll);
+	PARAM_INT(flags);
+	PARAM_INT(ptr);
+	AActor *ref = COPY_AAPTR(self, ptr);
+
+	if (ref != NULL)
+	{
+		ref->SetViewRoll(roll, flags);
+	}
+	return 0;
+}
+
+//===========================================================================
+//
 // A_SetUserVar
 //
 //===========================================================================

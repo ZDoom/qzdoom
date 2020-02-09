@@ -841,9 +841,13 @@ public:
 	}
 
 	// These also set CF_INTERPVIEW for players.
+	DAngle ClampPitch(DAngle p);
 	void SetPitch(DAngle p, int fflags);
 	void SetAngle(DAngle ang, int fflags);
 	void SetRoll(DAngle roll, int fflags);
+	void SetViewPitch(DAngle p, int fflags);
+	void SetViewAngle(DAngle ang, int fflags);
+	void SetViewRoll(DAngle roll, int fflags);
 
 	PClassActor *GetBloodType(int type = 0) const;
 

@@ -3350,89 +3350,109 @@ DEFINE_ACTION_FUNCTION(AActor, SetShade)
 	return 0;
 }
 
+// [MC] Helper function for Set(View)Pitch. 
+DAngle AActor::ClampPitch(DAngle p)
+{	
+	// clamp the pitch we set
+	DAngle min, max;
+
+	if (player != nullptr)
+	{
+		min = player->MinPitch;
+		max = player->MaxPitch;
+	}
+	else
+	{
+		min = -89.;
+		max = 89.;
+	}
+	p = clamp(p, min, max);
+	return p;
+}
+
 void AActor::SetPitch(DAngle p, int fflags)
 {
-	if (player != NULL || fflags & SPF_FORCECLAMP)
-	{ // clamp the pitch we set
-		DAngle min, max;
-
-		if (player != NULL)
-		{
-			min = player->MinPitch;
-			max = player->MaxPitch;
-		}
-		else
-		{
-			min = -89.;
-			max = 89.;
-		}
-		p = clamp(p, min, max);
-	}
-
-	bool view = (fflags & SPF_VIEW);
-	bool changed = false;
-	if (view)
+	if (player != nullptr || (fflags & SPF_FORCECLAMP))
 	{
-		if (p != ViewAngles.Pitch)
-		{
-			ViewAngles.Pitch = p;
-			changed = true;
-		}
+		p = ClampPitch(p);
 	}
-	else if (p != Angles.Pitch)
+
+	if (p != Angles.Pitch)
 	{
 		Angles.Pitch = p;
-		changed = true;
+		if (player != nullptr && (fflags & SPF_INTERPOLATE))
+		{
+			player->cheats |= CF_INTERPVIEW;
+		}
 	}
-	if (changed && player != nullptr && (fflags & SPF_INTERPOLATE))
-	{
-		player->cheats |= CF_INTERPVIEW;
-	}
+	
 }
 
 void AActor::SetAngle(DAngle ang, int fflags)
 {
-	bool view = (fflags & SPF_VIEW);
-	bool changed = false;
-	if (view)
-	{
-		if (ang != ViewAngles.Yaw)
-		{
-			ViewAngles.Yaw = ang;
-			changed = true;
-		}
-	}
-	else if (ang != Angles.Yaw)
+	if (ang != Angles.Yaw)
 	{
 		Angles.Yaw = ang;
-		changed = true;
+		if (player != nullptr && (fflags & SPF_INTERPOLATE))
+		{
+			player->cheats |= CF_INTERPVIEW;
+		}
 	}
-	if (changed && player != nullptr && (fflags & SPF_INTERPOLATE))
-	{
-		player->cheats |= CF_INTERPVIEW;
-	}
+	
 }
 
 void AActor::SetRoll(DAngle r, int fflags)
 {
-	bool view = (fflags & SPF_VIEW);
-	bool changed = false;
-	if (view)
-	{
-		if (r != ViewAngles.Roll)
-		{
-			ViewAngles.Roll = r;
-			changed = true;
-		}
-	}
-	else if (r != Angles.Roll)
+	if (r != Angles.Roll)
 	{
 		Angles.Roll = r;
-		changed = true;
+		if (player != nullptr && (fflags & SPF_INTERPOLATE))
+		{
+			player->cheats |= CF_INTERPVIEW;
+		}
 	}
-	if (changed && player != nullptr && (fflags & SPF_INTERPOLATE))
+}
+
+void AActor::SetViewPitch(DAngle p, int fflags)
+{
+	if (player != NULL || (fflags & SPF_FORCECLAMP))
 	{
-		player->cheats |= CF_INTERPVIEW;
+		p = ClampPitch(p);
+	}
+
+	if (p != ViewAngles.Pitch)
+	{
+		ViewAngles.Pitch = p;
+		if (player != nullptr && (fflags & SPF_INTERPOLATE))
+		{
+			player->cheats |= CF_INTERPVIEW;
+		}
+	}
+
+}
+
+void AActor::SetViewAngle(DAngle ang, int fflags)
+{
+	if (ang != ViewAngles.Yaw)
+	{
+		ViewAngles.Yaw = ang;
+		if (player != nullptr && (fflags & SPF_INTERPOLATE))
+		{
+			player->cheats |= CF_INTERPVIEW;
+		}
+	}
+
+}
+
+void AActor::SetViewRoll(DAngle r, int fflags)
+{
+	if (r != ViewAngles.Roll)
+	{
+		ViewAngles.Roll = r;
+		if (player != nullptr && (fflags & SPF_INTERPOLATE))
+		{
+			player->cheats |= CF_INTERPVIEW;
+		}
 	}
 }
 
