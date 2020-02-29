@@ -812,6 +812,12 @@ void G_DoCompleted (void)
 	// Close the conversation menu if open.
 	P_FreeStrifeConversations ();
 
+	S_StopAllChannels();
+	for (auto Level : AllLevels())
+	{
+		SN_StopAllSequences(Level);
+	}
+
 	if (primaryLevel->DoCompleted(nextlevel, staticWmInfo))
 	{
 		gamestate = GS_INTERMISSION;
@@ -2226,7 +2232,6 @@ int IsPointInMap(FLevelLocals *Level, double x, double y, double z)
 
 void FLevelLocals::SetMusic()
 {
-	if (cdtrack == 0 || !S_ChangeCDMusic(cdtrack, cdid))
-		S_ChangeMusic(Music, musicorder);
+	S_ChangeMusic(Music, musicorder);
 }
 
