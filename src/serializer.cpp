@@ -2165,7 +2165,7 @@ template<> FSerializer &Serialize(FSerializer &arc, const char *key, FFont *&fon
 FString DictionaryToString(const Dictionary &dict)
 {
 	Dictionary::ConstPair *pair;
-	Dictionary::ConstIterator i { dict };
+	Dictionary::ConstIterator i { dict.Map };
 
 	rapidjson::StringBuffer buffer;
 	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -2190,7 +2190,7 @@ Dictionary *DictionaryFromString(const FString &string)
 		return nullptr;
 	}
 
-	Dictionary *const dict = new Dictionary;
+	Dictionary *const dict = Create<Dictionary>();
 
 	if (string.IsEmpty())
 	{
@@ -2214,7 +2214,7 @@ Dictionary *DictionaryFromString(const FString &string)
 			return dict;
 		}
 
-		dict->Insert(i->name.GetString(), i->value.GetString());
+		dict->Map.Insert(i->name.GetString(), i->value.GetString());
 	}
 
 	return dict;

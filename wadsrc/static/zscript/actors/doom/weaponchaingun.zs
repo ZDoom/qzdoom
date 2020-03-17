@@ -70,9 +70,13 @@ extend class StateProvider
 			{
 				// Removed most of the mess that was here in the C++ code because SetSafeFlash already does some thorough validation.
 				State atk = weap.FindState('Fire');
-				State cur = player.GetPSprite(PSP_WEAPON).CurState;
-				int theflash = atk == cur? 0:1;
-				player.SetSafeFlash(weap, flash, theflash);
+				let psp = player.GetPSprite(PSP_WEAPON);
+				if (psp) 
+				{
+					State cur = psp.CurState;
+					int theflash = atk == cur? 0:1;
+					player.SetSafeFlash(weap, flash, theflash);
+				}
 			}
 		}
 		player.mo.PlayAttacking2 ();

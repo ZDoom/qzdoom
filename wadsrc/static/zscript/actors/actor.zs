@@ -46,19 +46,19 @@ struct FLineTraceData
 		TRACE_HasHitSky
 	};
 
-	Actor HitActor;
-	Line HitLine;
-	Sector HitSector;
-	F3DFloor Hit3DFloor;
-	TextureID HitTexture;
-	Vector3 HitLocation;
-	Vector3 HitDir;
-	double Distance;
-	int NumPortals;
-	int LineSide;
-	int LinePart;
-	int SectorPlane;
-	int HitType;
+	native Actor HitActor;
+	native Line HitLine;
+	native Sector HitSector;
+	native F3DFloor Hit3DFloor;
+	native TextureID HitTexture;
+	native Vector3 HitLocation;
+	native Vector3 HitDir;
+	native double Distance;
+	native int NumPortals;
+	native int LineSide;
+	native int LinePart;
+	native int SectorPlane;
+	native int HitType;
 }
 
 struct LinkContext
@@ -341,17 +341,17 @@ class Actor : Thinker native
 	//int ConversationRoot; // THe root of the current dialogue
 
 	// deprecated things.
-	native readonly deprecated("2.3") double X;
-	native readonly deprecated("2.3") double Y;
-	native readonly deprecated("2.3") double Z;
-	native readonly deprecated("2.3") double VelX;
-	native readonly deprecated("2.3") double VelY;
-	native readonly deprecated("2.3") double VelZ;
-	native readonly deprecated("2.3") double MomX;
-	native readonly deprecated("2.3") double MomY;
-	native readonly deprecated("2.3") double MomZ;
-	native deprecated("2.3") double ScaleX;
-	native deprecated("2.3") double ScaleY;
+	native readonly deprecated("2.3", "Use Pos.X instead") double X;
+	native readonly deprecated("2.3", "Use Pos.Y instead") double Y;
+	native readonly deprecated("2.3", "Use Pos.Z instead") double Z;
+	native readonly deprecated("2.3", "Use Vel.X instead") double VelX;
+	native readonly deprecated("2.3", "Use Vel.Y instead") double VelY;
+	native readonly deprecated("2.3", "Use Vel.Z instead") double VelZ;
+	native readonly deprecated("2.3", "Use Vel.X instead") double MomX;
+	native readonly deprecated("2.3", "Use Vel.Y instead") double MomY;
+	native readonly deprecated("2.3", "Use Vel.Z instead") double MomZ;
+	native deprecated("2.3", "Use Scale.X instead") double ScaleX;
+	native deprecated("2.3", "Use Scale.Y instead") double ScaleY;
 
 	//FStrifeDialogueNode *Conversation; // [RH] The dialogue to show when this actor is used.;
 	
@@ -598,7 +598,7 @@ class Actor : Thinker native
 	native static int ApplyDamageFactors(class<Inventory> itemcls, Name damagetype, int damage, int defdamage);
 	native void RemoveFromHash();
 	native void ChangeTid(int newtid);
-	deprecated("3.8") static int FindUniqueTid(int start = 0, int limit = 0)
+	deprecated("3.8", "Use Level.FindUniqueTid() instead") static int FindUniqueTid(int start = 0, int limit = 0)
 	{
 		return level.FindUniqueTid(start, limit);
 	}
@@ -908,7 +908,7 @@ class Actor : Thinker native
 		return true;
 	}
 
-	deprecated("2.3") void A_FaceConsolePlayer(double MaxTurnAngle = 0) {}
+	deprecated("2.3", "This function does nothing and is only for Zandronum compatibility") void A_FaceConsolePlayer(double MaxTurnAngle = 0) {}
 
 	void A_SetSpecial(int spec, int arg0 = 0, int arg1 = 0, int arg2 = 0, int arg3 = 0, int arg4 = 0)
 	{
@@ -1054,18 +1054,18 @@ class Actor : Thinker native
 	native void A_Wander(int flags = 0);
 	native void A_Look2();
 
-	deprecated("2.3") native void A_BulletAttack();
+	deprecated("2.3", "Use A_CustomBulletAttack() instead") native void A_BulletAttack();
 	native void A_WolfAttack(int flags = 0, sound whattoplay = "weapons/pistol", double snipe = 1.0, int maxdamage = 64, int blocksize = 128, int pointblank = 2, int longrange = 4, double runspeed = 160.0, class<Actor> pufftype = "BulletPuff");
-	deprecated("4.3") native clearscope void A_PlaySound(sound whattoplay = "weapons/pistol", int slot = CHAN_BODY, double volume = 1.0, bool looping = false, double attenuation = ATTN_NORM, bool local = false, double pitch = 0.0);
-	native clearscope void A_StartSound(sound whattoplay, int slot = CHAN_BODY, int flags = 0, double volume = 1.0, double attenuation = ATTN_NORM, double pitch = 0.0);
+	deprecated("4.3", "Use A_StartSound() instead") native clearscope void A_PlaySound(sound whattoplay = "weapons/pistol", int slot = CHAN_BODY, double volume = 1.0, bool looping = false, double attenuation = ATTN_NORM, bool local = false, double pitch = 0.0);
+	native clearscope void A_StartSound(sound whattoplay, int slot = CHAN_BODY, int flags = 0, double volume = 1.0, double attenuation = ATTN_NORM, double pitch = 0.0, double startTime = 0.0);
 	native void A_SoundVolume(int slot, double volume);
 	native void A_SoundPitch(int slot, double pitch);
-	deprecated("2.3") void A_PlayWeaponSound(sound whattoplay) { A_StartSound(whattoplay, CHAN_WEAPON); }
+	deprecated("2.3", "Use A_StartSound(<sound>, CHAN_WEAPON) instead") void A_PlayWeaponSound(sound whattoplay) { A_StartSound(whattoplay, CHAN_WEAPON); }
 	native void A_StopSound(int slot = CHAN_VOICE);	// Bad default but that's what is originally was...
 	void A_StopAllSounds()	{	A_StopSounds(0,0);	}
 	native void A_StopSounds(int chanmin, int chanmax);
-	deprecated("2.3") native void A_PlaySoundEx(sound whattoplay, name slot, bool looping = false, int attenuation = 0);
-	deprecated("2.3") native void A_StopSoundEx(name slot);
+	deprecated("2.3", "Use A_StartSound() instead") native void A_PlaySoundEx(sound whattoplay, name slot, bool looping = false, int attenuation = 0);
+	deprecated("2.3", "Use A_StopSound() instead") native void A_StopSoundEx(name slot);
 	native clearscope bool IsActorPlayingSound(int channel, Sound snd = 0);
 	native void A_SeekerMissile(int threshold, int turnmax, int flags = 0, int chance = 50, int distance = 10);
 	native action state A_Jump(int chance, statelabel label, ...);
@@ -1086,7 +1086,7 @@ class Actor : Thinker native
 	native void A_ExtChase(bool usemelee, bool usemissile, bool playactive = true, bool nightmarefast = false);
 	native void A_DropInventory(class<Inventory> itemtype, int amount = -1);
 	native void A_SetBlend(color color1, double alpha, int tics, color color2 = 0, double alpha2 = 0.);
-	deprecated("2.3") native void A_ChangeFlag(string flagname, bool value);
+	deprecated("2.3", "Use 'b<FlagName> = [true/false]' instead") native void A_ChangeFlag(string flagname, bool value);
 	native void A_ChangeCountFlags(int kill = FLAG_NO_CHANGE, int item = FLAG_NO_CHANGE, int secret = FLAG_NO_CHANGE);
 	native void A_RaiseMaster(int flags = 0);
 	native void A_RaiseChildren(int flags = 0);
@@ -1125,10 +1125,10 @@ class Actor : Thinker native
 	native void A_SetViewAngle(double angle = 0, int flags = 0, int ptr = AAPTR_DEFAULT);
 	native void A_SetViewPitch(double pitch, int flags = 0, int ptr = AAPTR_DEFAULT);
 	native void A_SetViewRoll(double roll, int flags = 0, int ptr = AAPTR_DEFAULT);
-	deprecated("2.3") native void A_SetUserVar(name varname, int value);
-	deprecated("2.3") native void A_SetUserArray(name varname, int index, int value);
-	deprecated("2.3") native void A_SetUserVarFloat(name varname, double value);
-	deprecated("2.3") native void A_SetUserArrayFloat(name varname, int index, double value);
+	deprecated("2.3", "User variables are deprecated in ZScript. Actor variables are directly accessible") native void A_SetUserVar(name varname, int value);
+	deprecated("2.3", "User variables are deprecated in ZScript. Actor variables are directly accessible") native void A_SetUserArray(name varname, int index, int value);
+	deprecated("2.3", "User variables are deprecated in ZScript. Actor variables are directly accessible") native void A_SetUserVarFloat(name varname, double value);
+	deprecated("2.3", "User variables are deprecated in ZScript. Actor variables are directly accessible") native void A_SetUserArrayFloat(name varname, int index, double value);
 	native void A_Quake(int intensity, int duration, int damrad, int tremrad, sound sfx = "world/quake");
 	native void A_QuakeEx(int intensityX, int intensityY, int intensityZ, int duration, int damrad, int tremrad, sound sfx = "world/quake", int flags = 0, double mulWaveX = 1, double mulWaveY = 1, double mulWaveZ = 1, int falloff = 0, int highpoint = 0, double rollIntensity = 0, double rollWave = 0);
 	action native void A_SetTics(int tics);

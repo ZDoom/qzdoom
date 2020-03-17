@@ -47,6 +47,7 @@
 #include "gstrings.h"
 #include "g_levellocals.h"
 #include "p_checkposition.h"
+#include "p_linetracedata.h"
 #include "v_font.h"
 #include "menu/menu.h"
 #include "teaminfo.h"
@@ -844,21 +845,6 @@ void InitThingdef()
 	wbplayerstruct->Size = sizeof(wbplayerstruct_t);
 	wbplayerstruct->Align = alignof(wbplayerstruct_t);
 
-	auto dictionarystruct = NewStruct("Dictionary", nullptr, true);
-	dictionarystruct->Size = sizeof(Dictionary);
-	dictionarystruct->Align = alignof(Dictionary);
-	NewPointer(dictionarystruct, false)->InstallHandlers(
-		[](FSerializer &ar, const char *key, const void *addr)
-		{
-			ar(key, *(Dictionary **)addr);
-		},
-		[](FSerializer &ar, const char *key, void *addr)
-		{
-			Serialize<Dictionary>(ar, key, *(Dictionary **)addr, nullptr);
-			return true;
-		}
-	);
-
 	FAutoSegIterator probe(CRegHead, CRegTail);
 
 	while (*++probe != NULL)
@@ -919,6 +905,9 @@ void InitThingdef()
 	frp->Size = sizeof(FRailParams);
 	frp->Align = alignof(FRailParams);
 
+	auto fltd = NewStruct("FLineTraceData", nullptr);
+	fltd->Size = sizeof(FLineTraceData);
+	fltd->Align = alignof(FLineTraceData);
 
 	FieldTable.Clear();
 	if (FieldTable.Size() == 0)

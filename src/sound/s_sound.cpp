@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "templates.h"
 #include "s_soundinternal.h"
 #include "m_swap.h"
 #include "superfasthash.h"
@@ -368,7 +369,7 @@ FSoundID SoundEngine::ResolveSound(const void *, int, FSoundID soundid, float &a
 
 FSoundChan *SoundEngine::StartSound(int type, const void *source,
 	const FVector3 *pt, int channel, EChanFlags flags, FSoundID sound_id, float volume, float attenuation,
-	FRolloffInfo *forcedrolloff, float spitch)
+	FRolloffInfo *forcedrolloff, float spitch, float startTime)
 {
 	sfxinfo_t *sfx;
 	EChanFlags chanflags = flags;
@@ -566,13 +567,17 @@ FSoundChan *SoundEngine::StartSound(int type, const void *source,
 		if (chanflags & (CHANF_UI|CHANF_NOPAUSE)) startflags |= SNDF_NOPAUSE;
 		if (chanflags & CHANF_UI) startflags |= SNDF_NOREVERB;
 
+		startTime = (startflags & SNDF_LOOP)
+			? fmod(startTime, (float)GSnd->GetMSLength(sfx->data) / 1000.f)
+			: clamp<float>(startTime, 0.f, (float)GSnd->GetMSLength(sfx->data) / 1000.f);
+
 		if (attenuation > 0 && type != SOURCE_None)
 		{
-            chan = (FSoundChan*)GSnd->StartSound3D (sfx->data, &listener, float(volume), rolloff, float(attenuation), pitch, basepriority, pos, vel, channel, startflags, NULL);
+			chan = (FSoundChan*)GSnd->StartSound3D (sfx->data, &listener, float(volume), rolloff, float(attenuation), pitch, basepriority, pos, vel, channel, startflags, NULL, startTime);
 		}
 		else
 		{
-			chan = (FSoundChan*)GSnd->StartSound (sfx->data, float(volume), pitch, startflags, NULL);
+			chan = (FSoundChan*)GSnd->StartSound (sfx->data, float(volume), pitch, startflags, NULL, startTime);
 		}
 	}
 	if (chan == NULL && (chanflags & CHANF_LOOP))
