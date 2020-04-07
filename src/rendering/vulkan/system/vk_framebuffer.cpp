@@ -404,7 +404,8 @@ sector_t *VulkanFrameBuffer::RenderView(player_t *player)
 		NoInterpolateView = false;
 
 		// Shader start time does not need to be handled per level. Just use the one from the camera to render from.
-		GetRenderState()->CheckTimer(player->camera->Level->ShaderStartTime);
+		if (player->camera)
+			GetRenderState()->CheckTimer(player->camera->Level->ShaderStartTime);
 		// prepare all camera textures that have been used in the last frame.
 		// This must be done for all levels, not just the primary one!
 		for (auto Level : AllLevels())
@@ -651,7 +652,7 @@ void VulkanFrameBuffer::PrecacheMaterial(FMaterial *mat, int translation)
 	if (tex->isSWCanvas()) return;
 
 	// Textures that are already scaled in the texture lump will not get replaced by hires textures.
-	int flags = mat->isExpanded() ? CTF_Expand : (gl_texture_usehires && !tex->isScaled()) ? CTF_CheckHires : 0;
+	int flags = mat->isExpanded() ? CTF_Expand : 0;
 	auto base = static_cast<VkHardwareTexture*>(mat->GetLayer(0, translation));
 
 	base->Precache(mat, translation, flags);
