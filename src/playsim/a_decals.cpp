@@ -40,10 +40,11 @@
 #include "decallib.h"
 #include "c_dispatch.h"
 #include "d_net.h"
-#include "serializer.h"
+#include "serializer_doom.h"
 #include "doomdata.h"
 #include "g_levellocals.h"
 #include "vm.h"
+#include "texturemanager.h"
 
 EXTERN_CVAR (Bool, cl_spreaddecals)
 EXTERN_CVAR (Int, cl_maxdecals)

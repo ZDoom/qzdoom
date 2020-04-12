@@ -88,7 +88,8 @@
 #include "po_man.h"
 #include "p_spec.h"
 #include "p_checkposition.h"
-#include "serializer.h"
+#include "serializer_doom.h"
+#include "serialize_obj.h"
 #include "r_utility.h"
 #include "thingdef.h"
 #include "d_player.h"
@@ -227,7 +228,6 @@ void AActor::Serialize(FSerializer &arc)
 		A("tics", tics)
 		A("state", state)
 		A("damage", DamageVal)
-		.Terrain("floorterrain", floorterrain, &def->floorterrain)
 		A("projectilekickback", projectileKickback)
 		A("flags", flags)
 		A("flags2", flags2)
@@ -261,7 +261,6 @@ void AActor::Serialize(FSerializer &arc)
 		A("floorclip", Floorclip)
 		A("tid", tid)
 		A("special", special)
-		.Args("args", args, def->args, special)
 		A("accuracy", accuracy)
 		A("stamina", stamina)
 		("goal", goal)
@@ -369,6 +368,9 @@ void AActor::Serialize(FSerializer &arc)
 		A("userlights", UserLights)
 		A("SpriteOffset", SpriteOffset)
 		A("viewangles", ViewAngles);
+
+		SerializeTerrain(arc, "floorterrain", floorterrain, &def->floorterrain);
+		SerializeArgs(arc, "args", args, def->args, special);
 }
 
 #undef A
@@ -4069,7 +4071,7 @@ void AActor::Tick ()
 		// Check for poison damage, but only once per PoisonPeriod tics (or once per second if none).
 		if (PoisonDurationReceived && (Level->time % (PoisonPeriodReceived ? PoisonPeriodReceived : TICRATE) == 0))
 		{
-			P_DamageMobj(this, NULL, Poisoner, PoisonDamageReceived, PoisonDamageTypeReceived ? PoisonDamageTypeReceived : (FName)NAME_Poison, 0);
+			P_DamageMobj(this, NULL, Poisoner, PoisonDamageReceived, PoisonDamageTypeReceived != NAME_None ? PoisonDamageTypeReceived : (FName)NAME_Poison, 0);
 
 			--PoisonDurationReceived;
 
@@ -4979,6 +4981,62 @@ EXTERN_CVAR(Float, fov)
 
 extern bool demonew;
 
+//==========================================================================
+//
+// This once was the main method for pointer cleanup, but
+// nowadays its only use is swapping out PlayerPawns.
+// This requires pointer fixing throughout all objects and a few
+// global variables, but it only needs to look at pointers that
+// can point to a player.
+//
+//==========================================================================
+
+void StaticPointerSubstitution(AActor* old, AActor* notOld)
+{
+	DObject* probe;
+	size_t changed = 0;
+	int i;
+
+	if (old == nullptr) return;
+
+	// This is only allowed to replace players. For everything else the results are undefined.
+	if (!old->IsKindOf(NAME_PlayerPawn) || (notOld != nullptr && !notOld->IsKindOf(NAME_PlayerPawn))) return;
+
+	// Go through all objects.
+	i = 0; DObject* last = 0;
+	for (probe = GC::Root; probe != NULL; probe = probe->ObjNext)
+	{
+		i++;
+		changed += probe->PointerSubstitution(old, notOld);
+		last = probe;
+	}
+
+	// Go through players.
+	for (i = 0; i < MAXPLAYERS; i++)
+	{
+		if (playeringame[i])
+		{
+			AActor* replacement = notOld;
+			auto& p = players[i];
+
+			if (p.mo == old)					p.mo = replacement, changed++;
+			if (p.poisoner.ForceGet() == old)			p.poisoner = replacement, changed++;
+			if (p.attacker.ForceGet() == old)			p.attacker = replacement, changed++;
+			if (p.camera.ForceGet() == old)				p.camera = replacement, changed++;
+			if (p.ConversationNPC.ForceGet() == old)	p.ConversationNPC = replacement, changed++;
+			if (p.ConversationPC.ForceGet() == old)		p.ConversationPC = replacement, changed++;
+		}
+	}
+
+	// Go through sectors. Only the level this actor belongs to is relevant.
+	for (auto& sec : old->Level->sectors)
+	{
+		if (sec.SoundTarget == old) sec.SoundTarget = notOld;
+	}
+}
+
+
+
 AActor *FLevelLocals::SpawnPlayer (FPlayerStart *mthing, int playernum, int flags)
 {
 	player_t *p;
@@ -5241,7 +5299,7 @@ AActor *FLevelLocals::SpawnPlayer (FPlayerStart *mthing, int playernum, int flag
 				if (sec.SoundTarget == oldactor) sec.SoundTarget = nullptr;
 			}
 
-			DObject::StaticPointerSubstitution (oldactor, p->mo);
+			StaticPointerSubstitution (oldactor, p->mo);
 
 			localEventManager->PlayerRespawned(PlayerNum(p));
 			Behaviors.StartTypedScripts (SCRIPT_Respawn, p->mo, true);
@@ -5593,7 +5651,7 @@ AActor *FLevelLocals::SpawnMapThing (FMapThing *mthing, int position)
 	{
 		if (mthing->arg0str != NAME_None)
 		{
-			PalEntry color = V_GetColor(nullptr, mthing->arg0str);
+			PalEntry color = V_GetColor(nullptr, mthing->arg0str.GetChars());
 			mobj->args[0] = color.r;
 			mobj->args[1] = color.g;
 			mobj->args[2] = color.b;
@@ -7319,7 +7377,7 @@ int AActor::GetModifiedDamage(FName damagetype, int damage, bool passive, AActor
 	{
 		IFVIRTUALPTRNAME(inv, NAME_Inventory, ModifyDamage)
 		{
-			VMValue params[8] = { (DObject*)inv, damage, int(damagetype), &damage, passive, inflictor, source, flags };
+			VMValue params[8] = { (DObject*)inv, damage, damagetype.GetIndex(), &damage, passive, inflictor, source, flags };
 			VMCall(func, params, 8, nullptr, 0);
 		}
 		inv = inv->Inventory;
