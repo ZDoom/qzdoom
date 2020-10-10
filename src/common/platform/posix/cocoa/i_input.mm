@@ -52,8 +52,6 @@
 EXTERN_CVAR(Int, m_use_mouse)
 
 CVAR(Bool, use_mouse,    true,  CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Bool, m_noprescale, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Bool, m_filter,     false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool, k_allowfullscreentoggle, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
@@ -75,7 +73,7 @@ size_t s_skipMouseMoves;
 
 void CheckGUICapture()
 {
-	bool wantCapt = sysCallbacks && sysCallbacks->WantGuiCapture && sysCallbacks->WantGuiCapture();
+	bool wantCapt = sysCallbacks.WantGuiCapture && sysCallbacks.WantGuiCapture();
 
 	if (wantCapt != GUICapture)
 	{
@@ -151,7 +149,7 @@ void CheckNativeMouse()
 		}
 		else
 		{
-			bool captureModeInGame = sysCallbacks && sysCallbacks->CaptureModeInGame && sysCallbacks->CaptureModeInGame();
+			bool captureModeInGame = sysCallbacks.CaptureModeInGame && sysCallbacks.CaptureModeInGame();
 			wantNative = (!m_use_mouse || MENU_WaitKey != menuactive)
 				&& (!captureModeInGame || GUICapture);
 		}
@@ -163,7 +161,7 @@ void CheckNativeMouse()
 			&& (MENU_On == menuactive || MENU_OnNoPause == menuactive);
 	}
 
-	if (!wantNative && sysCallbacks && sysCallbacks->WantNativeMouse && sysCallbacks->WantNativeMouse())
+	if (!wantNative && sysCallbacks.WantNativeMouse && sysCallbacks.WantNativeMouse())
 		wantNative = true;
 
 	I_SetNativeMouse(wantNative);
@@ -488,42 +486,9 @@ void ProcessMouseMoveInMenu(NSEvent* theEvent)
 void ProcessMouseMoveInGame(NSEvent* theEvent)
 {
 	int x([theEvent deltaX]);
-	int y(-[theEvent deltaY]);
+	int y([theEvent deltaY]);
 
-	if (0 == x && 0 == y)
-	{
-		return;
-	}
-
-	if (!m_noprescale)
-	{
-		x <<= 2;
-	}
-
-	event_t event = {};
-
-	static int lastX = 0, lastY = 0;
-
-	if (m_filter)
-	{
-		event.x = (x + lastX) / 2;
-		event.y = (y + lastY) / 2;
-	}
-	else
-	{
-		event.x = x;
-		event.y = y;
-	}
-
-	lastX = x;
-	lastY = y;
-
-	if (0 != event.x || 0 != event.y)
-	{
-		event.type = EV_Mouse;
-		
-		D_PostEvent(&event);
-	}
+	PostMouseMove(x, y);
 }
 
 

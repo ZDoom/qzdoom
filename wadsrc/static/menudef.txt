@@ -231,7 +231,6 @@ ListMenu "EpisodeMenu"
 
 ListMenu "SkillMenu"
 {
-
 	IfGame(Doom, Chex)
 	{
 		StaticPatch 96, 14, "M_NEWG", 0, "$MNU_NEWGAME"
@@ -289,6 +288,7 @@ ListMenu "LoadGameMenu"
 	StaticTextCentered 160, -10, "$MNU_LOADGAME"
 	Position 80,54
 	Class "LoadMenu"	// uses its own implementation
+	Size Clean
 }
 
 //-------------------------------------------------------------------------------------------
@@ -302,6 +302,7 @@ ListMenu "SaveGameMenu"
 	StaticTextCentered 160, -10, "$MNU_SAVEGAME"
 	Position 80,54
 	Class "SaveMenu"	// uses its own implementation
+	Size Clean
 }
 
 //-------------------------------------------------------------------------------------------
@@ -504,17 +505,27 @@ ListMenu "PlayerMenu"
 //
 //-------------------------------------------------------------------------------------------
 
+OptionValue "Layouts"
+{
+	0, "$OPTVAL_MODERN"
+	1, "$OPTVAL_CLASSICZ"
+	2, "$OPTVAL_MODERNLEFT"
+}
+
 OptionMenu "CustomizeControls" protected
 {
 	Title "$CNTRLMNU_TITLE"
 
 	Submenu    "$CNTRLMNU_ACTION"      , "ActionControlsMenu"
-	Submenu    "$CNTRLMNU_CHAT"        , "ChatControlsMenu"
 	Submenu    "$CNTRLMNU_WEAPONS"     , "WeaponsControlMenu"
 	Submenu    "$CNTRLMNU_INVENTORY"   , "InventoryControlsMenu"
+	Submenu    "$MAPCNTRLMNU_CONTROLS" , "MapControlsMenu"
 	Submenu    "$CNTRLMNU_OTHER"       , "OtherControlsMenu"
 	Submenu    "$CNTRLMNU_POPUPS"      , "StrifeControlsMenu"
-	Submenu    "$MAPCNTRLMNU_CONTROLS" , "MapControlsMenu"
+	Submenu    "$MNU_MULTIPLAYER"        , "ChatControlsMenu"
+	StaticText ""
+	Option "$CNTRLMNU_LAYOUT",			"cl_defaultconfiguration", "Layouts"
+	SafeCommand "$OPTMNU_DEFAULTS",		"resetb2defaults"
 }
 
 OptionMenu "ActionControlsMenu" protected
@@ -564,23 +575,17 @@ OptionMenu "ActionControlsMenu" protected
 	Control    "$CNTRLMNU_RUN"              , "+speed"
 	Control    "$CNTRLMNU_TOGGLERUN"        , "toggle cl_run"
 	Control    "$CNTRLMNU_STRAFE"           , "+strafe"
-
-	StaticText ""
-	Control    "$CNTRLMNU_SCOREBOARD"       , "+showscores"
-	Control    "$CNTRLMNU_TOGGLESCOREBOARD" , "togglescoreboard"
-
-	StaticText ""
-	Control    "$CNTRLMNU_USER1"            , "+user1"
-	Control    "$CNTRLMNU_USER2"            , "+user2"
-	Control    "$CNTRLMNU_USER3"            , "+user3"
-	Control    "$CNTRLMNU_USER4"            , "+user4"
 }
 
 OptionMenu "ChatControlsMenu" protected
 {
-	Title "$CNTRLMNU_CHAT_TITLE"
+	Title "$MNU_MULTIPLAYER"
 	ScrollTop 2
 	StaticTextSwitchable "$CNTRLMNU_SWITCHTEXT1", "$CNTRLMNU_SWITCHTEXT2", "ControlMessage"
+
+	StaticText ""
+	Control    "$CNTRLMNU_SCOREBOARD"       , "+showscores"
+	Control    "$CNTRLMNU_TOGGLESCOREBOARD" , "togglescoreboard"
 
 	StaticText ""
 	Control    "$CNTRLMNU_SAY"     , "messagemode"
@@ -608,6 +613,12 @@ OptionMenu "WeaponsControlMenu" protected
 	Control    "$CNTRLMNU_SLOT8"          , "slot 8"
 	Control    "$CNTRLMNU_SLOT9"          , "slot 9"
 	Control    "$CNTRLMNU_SLOT0"          , "slot 0"
+
+	StaticText ""
+	Control    "$CNTRLMNU_USER1"            , "+user1"
+	Control    "$CNTRLMNU_USER2"            , "+user2"
+	Control    "$CNTRLMNU_USER3"            , "+user3"
+	Control    "$CNTRLMNU_USER4"            , "+user4"
 }
 
 OptionMenu "InventoryControlsMenu" protected
@@ -724,8 +735,8 @@ OptionMenu "MouseOptions" protected
 	Option "$MOUSEMNU_SHOWBACKBUTTON",	"m_show_backbutton", "Corners", "use_mouse"
 	Option "$MOUSEMNU_CURSOR",			"vid_cursor", "Cursors"
 	StaticText 	""
-	Slider "$MOUSEMNU_SENSITIVITY",		"mouse_sensitivity", 0.5, 2.5, 0.1
-	Option "$MOUSEMNU_NOPRESCALE",		"m_noprescale", "NoYes"
+	Slider "$MOUSEMNU_SENSITIVITY_X",	"m_sensitivity_x", 0.5, 8, 0.25
+	Slider "$MOUSEMNU_SENSITIVITY_Y",	"m_sensitivity_y", 0.5, 8, 0.25
 	Option "$MOUSEMNU_SMOOTHMOUSE",		"m_filter", "YesNo"
 	StaticText 	""
 	Slider "$MOUSEMNU_TURNSPEED",		"m_yaw", 0, 2.5, 0.1
@@ -734,7 +745,7 @@ OptionMenu "MouseOptions" protected
 	Slider "$MOUSEMNU_STRAFESPEED",		"m_side", 0, 2.5, 0.1
 	StaticText 	""
 	Option "$MOUSEMNU_ALWAYSMOUSELOOK",	"freelook", "OnOff"
-	Option "$MOUSEMNU_INVERTMOUSEX",		"invertmousex", "OnOff"
+	Option "$MOUSEMNU_INVERTMOUSEX",	"invertmousex", "OnOff"
 	Option "$MOUSEMNU_INVERTMOUSE",		"invertmouse", "OnOff"
 	Option "$MOUSEMNU_LOOKSPRING",		"lookspring", "OnOff"
 	Option "$MOUSEMNU_LOOKSTRAFE",		"lookstrafe", "OnOff"
@@ -1214,6 +1225,7 @@ OptionMenu "MiscOptions" protected
 	Slider "$MISCMNU_QUICKSAVECOUNT",			"quicksaverotationcount", 1, 20, 1, 0
 	Option "$MISCMNU_DEHLOAD",					"dehload", "dehopt"
 	Option "$MISCMNU_ENABLESCRIPTSCREENSHOTS",	"enablescriptscreenshot", "OnOff"
+	Option "$MISCMNU_SETSLOTSTRICT",			"setslotstrict", "YesNo"
 	Option "$MISCMNU_INTERSCROLL",				"nointerscrollabort", "OffOn"
 	StaticText " "
 	Option "$MISCMNU_CACHENODES",				"gl_cachenodes", "OnOff"
@@ -1663,6 +1675,7 @@ OptionMenu CoopOptions protected
 	Position -35
 	Title 	"$GMPLYMNU_COOPERATIVE"
 
+	Option "$GMPLYMNU_MULTIPLAYERTHINGS",	 	"sv_nothingspawn", "NoYes"
 	Option "$GMPLYMNU_MULTIPLAYERWEAPONS",	 	"sv_noweaponspawn", "NoYes"
 	Option "$GMPLYMNU_LOSEINVENTORY",			"sv_cooploseinventory", "YesNo"
 	Option "$GMPLYMNU_KEEPKEYS",				"sv_cooplosekeys", "NoYes"
@@ -2122,6 +2135,12 @@ OptionMenu ModReplayerOptions protected
 	3, "$ADLVLMODEL_DMX"
 	4, "$ADLVLMODEL_APOGEE"
 	5, "$ADLVLMODEL_WIN9X"
+	6, "$ADLVLMODEL_DMX_FIXED"
+	7, "$ADLVLMODEL_APOGEE_FIXED"
+	8, "$ADLVLMODEL_AIL"
+	9, "$ADLVLMODEL_WIN9XGENERIC"
+	10, "$ADLVLMODEL_HMI"
+	11, "$ADLVLMODEL_HMIOLD"
  }
 
  OptionValue ADLOplCores
@@ -2129,6 +2148,8 @@ OptionMenu ModReplayerOptions protected
 	0, "$OPTVAL_NUKEDOPL3"
 	1, "$OPTVAL_NUKEDOPL3174"
 	2, "$OPTVAL_DOSBOXOPL3"
+	3, "$OPTVAL_OPALOPL3"
+	4, "$OPTVAL_JAVAOPL3"
  }
 
  OptionValue OpnCores
@@ -2136,6 +2157,9 @@ OptionMenu ModReplayerOptions protected
 	0, "$OPTVAL_MAMEOPN2"
 	1, "$OPTVAL_NUKEDOPN2"
 	2, "$OPTVAL_GENSOPN2"
+	4, "$OPTVAL_NP2OPNA"
+	5, "$OPTVAL_MAMEOPNA"
+	6, "$OPTVAL_PMDWINOPNA"
  }
 
  OptionMenu ADLOptions protected
@@ -2561,6 +2585,7 @@ OptionMenu "GLTextureGLOptions" protected
 	Option "$GLTEXMNU_RESIZETEX",		gl_texture_hqresize_textures,	"OnOff"
 	Option "$GLTEXMNU_RESIZESPR",		gl_texture_hqresize_sprites,	"OnOff"
 	Option "$GLTEXMNU_RESIZEFNT",		gl_texture_hqresize_fonts,		"OnOff"
+	Option "$GLTEXMNU_RESIZESKN",		gl_texture_hqresize_skins,		"OnOff"
 	Option "$GLTEXMNU_PRECACHETEX",		gl_precache,					"YesNo"
 	Option "$GLTEXMNU_SORTDRAWLIST", 	gl_sort_textures,				"YesNo"
 	Class "GLTextureGLOptions"

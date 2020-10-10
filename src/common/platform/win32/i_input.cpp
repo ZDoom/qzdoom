@@ -135,8 +135,7 @@ LPDIRECTINPUT			g_pdi3;
 extern bool AppActive;
 
 int SessionState = 0;
-int BlockMouseMove; 
-extern double refreshfreq;
+int BlockMouseMove;
 
 static bool EventHandlerResultForNativeMouse;
 
@@ -148,7 +147,7 @@ extern int chatmodeon;
 
 static void I_CheckGUICapture ()
 {
-	bool wantCapt = sysCallbacks && sysCallbacks->WantGuiCapture && sysCallbacks->WantGuiCapture();
+	bool wantCapt = sysCallbacks.WantGuiCapture && sysCallbacks.WantGuiCapture();
 
 	if (wantCapt != GUICapture)
 	{
@@ -345,22 +344,6 @@ bool CallHook(FInputDevice *device, HWND hWnd, UINT message, WPARAM wParam, LPAR
 	return device->WndProcHook(hWnd, message, wParam, lParam, result);
 }
 
-void GetRefreshRate(HWND hWnd)
-{
-	HMONITOR moni = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
-	MONITORINFOEXA moninf;
-	moninf.cbSize = sizeof(moninf);
-	if (GetMonitorInfoA(moni, (LPMONITORINFO)&moninf))
-	{
-		DEVMODEA dm;
-		dm.dmSize = sizeof(DEVMODEA);
-		if (EnumDisplaySettingsA(moninf.szDevice, ENUM_CURRENT_SETTINGS, &dm))
-		{
-			refreshfreq = dm.dmDisplayFrequency;
-		}
-	}
-}
-
 LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result;
@@ -411,7 +394,7 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		return result;
 	}
 
-	if (message == WM_LBUTTONDOWN && sysCallbacks && sysCallbacks->WantLeftButton() && sysCallbacks->WantLeftButton())
+	if (message == WM_LBUTTONDOWN && sysCallbacks.WantLeftButton() && sysCallbacks.WantLeftButton())
 	{
 		if (GUIWndProcHook(hWnd, message, wParam, lParam, &result))
 		{
@@ -446,7 +429,6 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_SETFOCUS:
-		GetRefreshRate(hWnd);
 		I_CheckNativeMouse (false, EventHandlerResultForNativeMouse);	// This cannot call the event handler. Doing it from here is unsafe.
 		break;
 
@@ -491,8 +473,6 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_DISPLAYCHANGE:
-		GetRefreshRate(hWnd);
-		// fall through
 	case WM_STYLECHANGED:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 
@@ -524,7 +504,7 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			SetPriorityClass (GetCurrentProcess (), INGAME_PRIORITY_CLASS);
 		}
-		else if (!noidle && !(sysCallbacks && sysCallbacks->NetGame && sysCallbacks->NetGame()))
+		else if (!noidle && !(sysCallbacks.NetGame && sysCallbacks.NetGame()))
 		{
 			SetPriorityClass (GetCurrentProcess (), IDLE_PRIORITY_CLASS);
 		}
@@ -769,7 +749,7 @@ void I_StartTic ()
 	BlockMouseMove--;
 	buttonMap.ResetButtonTriggers ();
 	I_CheckGUICapture ();
-	EventHandlerResultForNativeMouse = sysCallbacks && sysCallbacks->WantNativeMouse && sysCallbacks->WantNativeMouse();
+	EventHandlerResultForNativeMouse = sysCallbacks.WantNativeMouse && sysCallbacks.WantNativeMouse();
 	I_CheckNativeMouse (false, EventHandlerResultForNativeMouse);
 	I_GetEvent ();
 }

@@ -161,6 +161,7 @@ public:
 	virtual UCVarValue GetGenericRep (ECVarType type) const = 0;
 	virtual UCVarValue GetFavoriteRep (ECVarType *type) const = 0;
 
+	virtual const char *GetHumanStringDefault(int precision = -1) const;
 	virtual UCVarValue GetGenericRepDefault (ECVarType type) const = 0;
 	virtual UCVarValue GetFavoriteRepDefault (ECVarType *type) const = 0;
 	virtual void SetGenericRepDefault (UCVarValue value, ECVarType type) = 0;
@@ -176,6 +177,13 @@ public:
 	static void ListVars (const char *filter, bool plain);
 	
 	const FString &GetDescription() const { return Description; };
+	const FString& GetToggleMessage(int which) { return ToggleMessages[which]; }
+	void SetToggleMessages(const char* on, const char* off)
+	{
+		ToggleMessages[0] = off;
+		ToggleMessages[1] = on;
+	}
+
 
 protected:
 	virtual void DoSet (UCVarValue value, ECVarType type) = 0;
@@ -192,13 +200,13 @@ protected:
 	FString VarName;
 	FString SafeValue;
 	FString Description;
+	FString ToggleMessages[2];
 	uint32_t Flags;
 	bool inCallback = false;
 
 private:
 	FBaseCVar (const FBaseCVar &var) = delete;
 	FBaseCVar (const char *name, uint32_t flags);
-
 	void (*m_Callback)(FBaseCVar &);
 	FBaseCVar *m_Next;
 
@@ -332,6 +340,7 @@ public:
 	virtual UCVarValue GetFavoriteRepDefault (ECVarType *type) const override;
 	virtual void SetGenericRepDefault (UCVarValue value, ECVarType type) override;
 	const char *GetHumanString(int precision) const override;
+	const char *GetHumanStringDefault(int precision) const override;
 
 	float operator= (float floatval)
 		{ UCVarValue val; val.Float = floatval; SetGenericRep (val, CVAR_Float); return floatval; }

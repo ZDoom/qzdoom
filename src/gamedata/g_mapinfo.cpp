@@ -198,6 +198,14 @@ void G_ClearSnapshots (void)
 	{
 		wadlevelinfos[i].Snapshot.Clean();
 	}
+
+	// Clear current levels' snapshots just in case they are not defined via MAPINFO,
+	// so they were not handled by the loop above
+	if (primaryLevel && primaryLevel->info)
+		primaryLevel->info->Snapshot.Clean();
+	if (currentVMLevel && currentVMLevel->info)
+		currentVMLevel->info->Snapshot.Clean();
+
 	// Since strings are only locked when snapshotting a level, unlock them
 	// all now, since we got rid of all the snapshots that cared about them.
 	GlobalACSStrings.UnlockAll();
@@ -1644,6 +1652,7 @@ MapFlagHandlers[] =
 	{ "nolightfade",					MITYPE_SETFLAG3,	LEVEL3_NOLIGHTFADE, 0 },
 	{ "nocoloredspritelighting",		MITYPE_SETFLAG3,	LEVEL3_NOCOLOREDSPRITELIGHTING, 0 },
 	{ "forceworldpanning",				MITYPE_SETFLAG3,	LEVEL3_FORCEWORLDPANNING, 0 },
+	{ "propermonsterfallingdamage",			MITYPE_SETFLAG3,	LEVEL3_PROPERMONSTERFALLINGDAMAGE, 0 },
 	{ "nobotnodes",						MITYPE_IGNORE,	0, 0 },		// Skulltag option: nobotnodes
 	{ "compat_shorttex",				MITYPE_COMPATFLAG, COMPATF_SHORTTEX, 0 },
 	{ "compat_stairs",					MITYPE_COMPATFLAG, COMPATF_STAIRINDEX, 0 },

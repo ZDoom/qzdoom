@@ -1243,9 +1243,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, GetRadiusDamage, P_GetRadiusDamage)
 	ACTION_RETURN_INT(P_GetRadiusDamage(self, thing, damage, distance, fulldmgdistance, oldradiusdmg));
 }
 
-static int RadiusAttack(AActor *self, AActor *bombsource, int bombdamage, int bombdistance, int damagetype, int flags, int fulldamagedistance)
+static int RadiusAttack(AActor *self, AActor *bombsource, int bombdamage, int bombdistance, int damagetype, int flags, int fulldamagedistance, int species)
 {
-	return P_RadiusAttack(self, bombsource, bombdamage, bombdistance, ENamedName(damagetype), flags, fulldamagedistance);
+	return P_RadiusAttack(self, bombsource, bombdamage, bombdistance, ENamedName(damagetype), flags, fulldamagedistance, ENamedName(species));
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(AActor, RadiusAttack, RadiusAttack)
@@ -1257,7 +1257,8 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, RadiusAttack, RadiusAttack)
 	PARAM_INT(damagetype);
 	PARAM_INT(flags);
 	PARAM_INT(fulldamagedistance);
-	ACTION_RETURN_INT(RadiusAttack(self, bombsource, bombdamage, bombdistance, damagetype, flags, fulldamagedistance));
+	PARAM_INT(species);
+	ACTION_RETURN_INT(RadiusAttack(self, bombsource, bombdamage, bombdistance, damagetype, flags, fulldamagedistance, species));
 }
 
 static int ZS_GetSpriteIndex(int sprt)
@@ -1775,6 +1776,7 @@ DEFINE_FIELD_NAMED(AActor, __Pos, pos)
 DEFINE_FIELD_NAMED(AActor, __Pos.X, x)
 DEFINE_FIELD_NAMED(AActor, __Pos.Y, y)
 DEFINE_FIELD_NAMED(AActor, __Pos.Z, z)
+DEFINE_FIELD(AActor, SpriteOffset)
 DEFINE_FIELD(AActor, Prev)
 DEFINE_FIELD(AActor, SpriteAngle)
 DEFINE_FIELD(AActor, SpriteRotation)
@@ -1914,6 +1916,7 @@ DEFINE_FIELD(AActor, WallBounceSound)
 DEFINE_FIELD(AActor, CrushPainSound)
 DEFINE_FIELD(AActor, MaxDropOffHeight)
 DEFINE_FIELD(AActor, MaxStepHeight)
+DEFINE_FIELD(AActor, MaxSlopeSteepness)
 DEFINE_FIELD(AActor, PainChance)
 DEFINE_FIELD(AActor, PainType)
 DEFINE_FIELD(AActor, DeathType)
@@ -1942,6 +1945,9 @@ DEFINE_FIELD(AActor, RenderRequired)
 DEFINE_FIELD(AActor, friendlyseeblocks)
 DEFINE_FIELD(AActor, SpawnTime)
 DEFINE_FIELD(AActor, InventoryID)
+DEFINE_FIELD_NAMED(AActor, ViewAngles.Yaw, viewangle)
+DEFINE_FIELD_NAMED(AActor, ViewAngles.Pitch, viewpitch)
+DEFINE_FIELD_NAMED(AActor, ViewAngles.Roll, viewroll)
 
 DEFINE_FIELD_X(FCheckPosition, FCheckPosition, thing);
 DEFINE_FIELD_X(FCheckPosition, FCheckPosition, pos);
@@ -1997,5 +2003,3 @@ DEFINE_FIELD_X(FLineTraceData, FLineTraceData, LineSide);
 DEFINE_FIELD_X(FLineTraceData, FLineTraceData, LinePart);
 DEFINE_FIELD_X(FLineTraceData, FLineTraceData, SectorPlane);
 DEFINE_FIELD_X(FLineTraceData, FLineTraceData, HitType);
-
-

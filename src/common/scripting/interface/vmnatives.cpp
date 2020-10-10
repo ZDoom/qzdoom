@@ -78,7 +78,8 @@ DEFINE_ACTION_FUNCTION(_TexMan, GetName)
 
 static int CheckForTexture(const FString& name, int type, int flags)
 {
-	return TexMan.CheckForTexture(name, static_cast<ETextureType>(type), flags).GetIndex();
+	// ForceLookup is intentionally blocked here, this flag is for internal use only.
+	return TexMan.CheckForTexture(name, static_cast<ETextureType>(type), (flags & ~FTextureManager::TEXMAN_ForceLookup)).GetIndex();
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, CheckForTexture, CheckForTexture)
@@ -568,6 +569,14 @@ DEFINE_ACTION_FUNCTION(FKeyBindings, NameKeys)
 	ACTION_RETURN_STRING(buffer);
 }
 
+DEFINE_ACTION_FUNCTION(FKeyBindings, NameAllKeys)
+{
+	PARAM_PROLOGUE;
+	PARAM_POINTER(array, TArray<int>);
+	auto buffer = C_NameKeys(array->Data(), array->Size(), true);
+	ACTION_RETURN_STRING(buffer);
+}
+
 DEFINE_ACTION_FUNCTION(FKeyBindings, GetKeysForCommand)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FKeyBindings);
@@ -577,6 +586,15 @@ DEFINE_ACTION_FUNCTION(FKeyBindings, GetKeysForCommand)
 	if (numret > 0) ret[0].SetInt(k1);
 	if (numret > 1) ret[1].SetInt(k2);
 	return MIN(numret, 2);
+}
+
+DEFINE_ACTION_FUNCTION(FKeyBindings, GetAllKeysForCommand)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FKeyBindings);
+	PARAM_POINTER(array, TArray<int>);
+	PARAM_STRING(cmd);
+	*array = self->GetKeysForCommand(cmd);
+	return 0;
 }
 
 DEFINE_ACTION_FUNCTION(FKeyBindings, UnbindACommand)

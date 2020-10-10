@@ -150,6 +150,11 @@ const char *FBaseCVar::GetHumanString(int precision) const
 	return GetGenericRep(CVAR_String).String;
 }
 
+const char *FBaseCVar::GetHumanStringDefault(int precision) const
+{
+	return GetGenericRepDefault(CVAR_String).String;
+}
+
 void FBaseCVar::ForceSet (UCVarValue value, ECVarType type, bool nouserinfosend)
 {
 	DoSet (value, type);
@@ -650,6 +655,16 @@ const char *FFloatCVar::GetHumanString(int precision) const
 		precision = 6;
 	}
 	mysnprintf(cstrbuf, countof(cstrbuf), "%.*g", precision, Value);
+	return cstrbuf;
+}
+
+const char *FFloatCVar::GetHumanStringDefault(int precision) const
+{
+	if (precision < 0)
+	{
+		precision = 6;
+	}
+	mysnprintf(cstrbuf, countof(cstrbuf), "%.*g", precision, DefaultValue);
 	return cstrbuf;
 }
 
@@ -1519,7 +1534,12 @@ CCMD (toggle)
 			val = var->GetGenericRep (CVAR_Bool);
 			val.Bool = !val.Bool;
 			var->SetGenericRep (val, CVAR_Bool);
-			Printf ("\"%s\" = \"%s\"\n", var->GetName(),
+			auto msg = var->GetToggleMessage(val.Bool);
+			if (msg.IsNotEmpty())
+			{
+				Printf(PRINT_NOTIFY, "%s\n", msg.GetChars());
+			}
+			else Printf ("\"%s\" = \"%s\"\n", var->GetName(),
 				val.Bool ? "true" : "false");
 		}
 	}

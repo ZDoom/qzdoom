@@ -30,6 +30,7 @@ struct sfxinfo_t
 	int16_t		NearLimit;				// 0 means unlimited
 	float		LimitRange;				// Range for sound limiting (squared for faster computations)
 	float		DefPitch;				// A defined pitch instead of a random one the sound plays at, similar to A_StartSound.
+	float		DefPitchMax;			// Randomized range with stronger control over pitch itself.
 
 	unsigned		bRandomHeader:1;
 	unsigned		bLoadRAW:1;
@@ -165,6 +166,7 @@ struct FSoundChan : public FISoundChannel
 	FSoundID	OrgID;		// Sound ID of sound used to start this channel.
 	float		Volume;
 	int 		EntChannel;	// Actor's sound channel.
+	int			UserData;	// Not used by the engine, the caller can use this to store some additional info.
 	int16_t		Pitch;		// Pitch variation.
 	int16_t		NearLimit;
 	int8_t		Priority;
@@ -302,6 +304,10 @@ public:
 	virtual void CacheSound(sfxinfo_t* sfx);
 	void CacheSound(int sfx) { CacheSound(&S_sfx[sfx]); }
 	void UnloadSound(sfxinfo_t* sfx);
+	void UnloadSound(int sfx)
+	{
+		UnloadSound(&S_sfx[sfx]);
+	}
 
 	void UpdateSounds(int time);
 
@@ -409,6 +415,7 @@ public:
 	// Allow this to be overridden for special needs.
 	virtual float GetRolloff(const FRolloffInfo* rolloff, float distance);
 	virtual void ChannelEnded(FISoundChannel* ichan); // allows the client to do bookkeeping on the sound.
+	virtual void SoundDone(FISoundChannel* ichan); // gets called when the sound has been completely taken down.
 
 	// Lookup utilities.
 	int FindSound(const char* logicalname);

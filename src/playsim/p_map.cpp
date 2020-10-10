@@ -474,7 +474,7 @@ bool	P_TeleportMove(AActor* thing, const DVector3 &pos, bool telefrag, bool modi
 			continue;
 
 		// Don't let players and monsters block item teleports (all other actor types will still block.)
-		if (thing->IsKindOf(NAME_Inventory) && !(thing->flags & MF_SOLID) && ((th->flags3 & MF3_ISMONSTER) || th->player != nullptr))
+		if ((thing->IsKindOf(NAME_Inventory) || (thing->flags2 & MF2_TELESTOMP)) && !(thing->flags & MF_SOLID) && ((th->flags3 & MF3_ISMONSTER) || th->player != nullptr))
 			continue;
 
 		// monsters don't stomp things except on boss level
@@ -952,7 +952,7 @@ bool PIT_CheckLine(FMultiBlockLinesIterator &mit, FMultiBlockLinesIterator::Chec
 	if (!(tm.thing->flags & MF_DROPOFF) &&
 		!(tm.thing->flags & (MF_NOGRAVITY | MF_NOCLIP)))
 	{
-		if ((open.frontfloorplane.fC() < STEEPSLOPE) != (open.backfloorplane.fC() < STEEPSLOPE))
+		if ((open.frontfloorplane.fC() < tm.thing->MaxSlopeSteepness) != (open.backfloorplane.fC() < tm.thing->MaxSlopeSteepness))
 		{
 			// on the boundary of a steep slope
 			return false;
@@ -1298,14 +1298,14 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 	if (thing == tm.thing)
 		return true;
 
+	if ((thing->flags2 | tm.thing->flags2) & MF2_THRUACTORS)
+		return true;
+
 	if (!((thing->flags & (MF_SOLID | MF_SPECIAL | MF_SHOOTABLE)) || thing->flags6 & MF6_TOUCHY))
 		return true;	// can't hit thing
 
 	double blockdist = thing->radius + tm.thing->radius;
 	if (fabs(thing->X() - cres.Position.X) >= blockdist || fabs(thing->Y() - cres.Position.Y) >= blockdist)
-		return true;
-
-	if ((thing->flags2 | tm.thing->flags2) & MF2_THRUACTORS)
 		return true;
 
 	if ((tm.thing->flags6 & MF6_THRUSPECIES) && (tm.thing->GetSpecies() == thing->GetSpecies()))
@@ -1528,7 +1528,8 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 		// MBF bouncer might have a non-0 damage value, but they must not deal damage on impact either.
 		if ((tm.thing->BounceFlags & BOUNCE_Actors) && (tm.thing->IsZeroDamage() || !(tm.thing->flags & MF_MISSILE)))
 		{
-			return ((tm.thing->target == thing && !(tm.thing->flags8 & MF8_HITOWNER)) || !(thing->flags & MF_SOLID));
+			return (((tm.thing->target == thing && !(tm.thing->flags8 & MF8_HITOWNER)) || !(thing->flags & MF_SOLID)) && 
+				(tm.thing->SpecialMissileHit(thing) != 0));
 		}
 
 		switch (tm.thing->SpecialMissileHit(thing))
@@ -1787,6 +1788,7 @@ bool P_CheckPosition(AActor *thing, const DVector2 &pos, FCheckPosition &tm, boo
 	FMultiBlockThingsIterator it2(pcheck, thing->Level, pos.X, pos.Y, thing->Z(), thing->Height, thing->radius, false, newsec);
 	FMultiBlockThingsIterator::CheckResult tcres;
 
+	if (!(thing->flags2 & MF2_THRUACTORS))
 	while ((it2.Next(&tcres)))
 	{
 		if (!PIT_CheckThing(it2, tcres, it2.Box(), tm))
@@ -3253,7 +3255,7 @@ const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move)
 		if (t < 0)
 		{ // Desired location is behind (below) the plane
 			// (i.e. Walking up the plane)
-			if (plane->fC() < STEEPSLOPE)
+			if (plane->fC() < actor->MaxSlopeSteepness)
 			{ // Can't climb up slopes of ~45 degrees or more
 				if (actor->flags & MF_NOCLIP)
 				{
@@ -3264,12 +3266,12 @@ const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move)
 					const msecnode_t *node;
 					bool dopush = true;
 
-					if (plane->fC() > STEEPSLOPE * 2 / 3)
+					if (plane->fC() > actor->MaxSlopeSteepness * 2 / 3)
 					{
 						for (node = actor->touching_sectorlist; node; node = node->m_tnext)
 						{
 							sector_t *sec = node->m_sector;
-							if (sec->floorplane.fC() >= STEEPSLOPE)
+							if (sec->floorplane.fC() >= actor->MaxSlopeSteepness)
 							{
 								DVector3 pos = actor->PosRelative(sec) +move;
 
@@ -3513,8 +3515,18 @@ bool P_BounceWall(AActor *mo)
 extern FRandom pr_bounce;
 bool P_BounceActor(AActor *mo, AActor *BlockingMobj, bool ontop)
 {
+	if (mo && (mo->flags & MF_MISSILE) && BlockingMobj)
+	{
+		switch (mo->SpecialMissileHit(BlockingMobj))
+		{
+			case 1:		return true;
+			case 0:		return false;
+			default:	break;
+		}
+	}
+
 	//Don't go through all of this if the actor is reflective and wants things to pass through them.
-	if (BlockingMobj && ((BlockingMobj->flags2 & MF2_REFLECTIVE) && (BlockingMobj->flags7 & MF7_THRUREFLECT))) return true;
+	if (BlockingMobj && ((BlockingMobj->flags2 & MF2_REFLECTIVE) && (BlockingMobj->flags7 & MF7_THRUREFLECT)))	return true;
 	if (mo && BlockingMobj && ((mo->BounceFlags & BOUNCE_AllActors)
 		|| ((mo->flags & MF_MISSILE) && (!(mo->flags2 & MF2_RIP) 
 		|| (BlockingMobj->flags5 & MF5_DONTRIP) 
@@ -5868,7 +5880,7 @@ int P_GetRadiusDamage(AActor *self, AActor *thing, int damage, int distance, int
 //==========================================================================
 
 int P_RadiusAttack(AActor *bombspot, AActor *bombsource, int bombdamage, int bombdistance, FName bombmod,
-	int flags, int fulldamagedistance)
+	int flags, int fulldamagedistance, FName species)
 {
 	if (bombdistance <= 0)
 		return 0;
@@ -5915,6 +5927,11 @@ int P_RadiusAttack(AActor *bombspot, AActor *bombsource, int bombdamage, int bom
 			((bombsource->flags6 & MF6_DONTHARMSPECIES) && (thing->GetSpecies() == bombsource->GetSpecies()))
 			)
 			)	continue;
+
+		if((species != NAME_None) && (thing->Species != species))
+		{
+			continue;
+		}
 
 		targets.Push(thing);
 	}

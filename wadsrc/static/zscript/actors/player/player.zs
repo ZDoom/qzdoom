@@ -49,6 +49,7 @@ class PlayerPawn : Actor
 	double		ViewBob;				// [SP] ViewBob Multiplier
 	double		FullHeight;
 	double		curBob;
+	float		prevBob;
 
 	meta Name HealingRadiusType;
 	meta Name InvulMode;
@@ -1572,6 +1573,7 @@ class PlayerPawn : Actor
 	virtual void PlayerThink()
 	{
 		let player = self.player;
+		prevBob = player.bob;
 		UserCmd cmd = player.cmd;
 		
 		CheckFOV();
@@ -2351,9 +2353,14 @@ class PlayerPawn : Actor
 
 			if (curbob != 0)
 			{
+				double bobVal = player.bob;
+				if (i == 0)
+				{
+					bobVal = prevBob;
+				}
 				//[SP] Added in decorate player.viewbob checks
-				double bobx = (player.bob * BobIntensity * Rangex * ViewBob);
-				double boby = (player.bob * BobIntensity * Rangey * ViewBob);
+				double bobx = (bobVal * BobIntensity * Rangex * ViewBob);
+				double boby = (bobVal * BobIntensity * Rangey * ViewBob);
 				switch (bobstyle)
 				{
 				case Bob_Normal:
@@ -2431,6 +2438,18 @@ class PlayerPawn : Actor
 		else player.air_finished = int.max;
 		return wasdrowning;
 	}
+
+	//===========================================================================
+	//
+	// PlayerPawn :: Travelled
+	//
+	// Called when the player moves to another map, in case it needs to do
+	// special reinitialization. This is called after all carried items have
+	// executed their respective Travelled() virtuals too.
+	//
+	//===========================================================================
+
+	virtual void Travelled() {}
 
 	//----------------------------------------------------------------------------
 	//

@@ -155,14 +155,13 @@ bool 			noblit; 				// for comparative timing purposes
 
 bool	 		viewactive;
 
-bool 			netgame;				// only true if packets are broadcast 
-bool			multiplayer;
 bool			multiplayernext = false;		// [SP] Map coop/dm implementation
 player_t		players[MAXPLAYERS];
 bool			playeringame[MAXPLAYERS];
 
-int 			consoleplayer;			// player taking events
 int 			gametic;
+
+time_t 			epochoffset = 0;		// epoch start in seconds (0 = January 1st, 1970)
 
 CVAR(Bool, demo_compress, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG);
 FString			newdemoname;
@@ -207,16 +206,14 @@ CVAR (Bool,		invertmouse,	false,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)		// Invert mous
 CVAR (Bool,		invertmousex,	false,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)		// Invert mouse look left/right?
 CVAR (Bool,		freelook,		true,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)		// Always mlook?
 CVAR (Bool,		lookstrafe,		false,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)		// Always strafe with mouse?
-CVAR (Float,	m_pitch,		1.f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)		// Mouse speeds
-CVAR (Float,	m_yaw,			1.f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
 CVAR (Float,	m_forward,		1.f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
 CVAR (Float,	m_side,			2.f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
  
 int 			turnheld;								// for accelerative turning 
  
 // mouse values are used once 
-int 			mousex;
-int 			mousey; 		
+float 			mousex;
+float 			mousey; 		
 
 FString			savegamefile;
 FString			savedescription;
@@ -689,6 +686,7 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	if (buttonMap.ButtonDown(Button_MoveDown))		cmd->ucmd.buttons |= BT_MOVEDOWN;
 	if (buttonMap.ButtonDown(Button_MoveUp))		cmd->ucmd.buttons |= BT_MOVEUP;
 	if (buttonMap.ButtonDown(Button_ShowScores))	cmd->ucmd.buttons |= BT_SHOWSCORES;
+	if (speed) cmd->ucmd.buttons |= BT_RUN;
 
 	// Handle joysticks/game controllers.
 	float joyaxes[NUM_JOYAXIS];
@@ -723,7 +721,7 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	// Handle mice.
 	if (!buttonMap.ButtonDown(Button_Mlook) && !freelook)
 	{
-		forward += (int)((float)mousey * m_forward);
+		forward += xs_CRoundToInt(mousey * m_forward);
 	}
 
 	cmd->ucmd.pitch = LocalViewPitch >> 16;
@@ -735,7 +733,7 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	}
 
 	if (strafe || lookstrafe)
-		side += (int)((float)mousex * m_side);
+		side += xs_CRoundToInt(mousex * m_side);
 
 	mousex = mousey = 0;
 
@@ -1037,8 +1035,8 @@ bool G_Responder (event_t *ev)
 
 	// [RH] mouse buttons are sent as key up/down events
 	case EV_Mouse: 
-		mousex = (int)(ev->x * mouse_sensitivity);
-		mousey = (int)(ev->y * mouse_sensitivity);
+		mousex = ev->x;
+		mousey = ev->y;
 		break;
 	}
 
@@ -1811,8 +1809,11 @@ void G_DoPlayerPop(int playernum)
 
 void G_ScreenShot (const char *filename)
 {
-	shotfile = filename;
-	gameaction = ga_screenshot;
+	if (gameaction == ga_nothing)
+	{
+		shotfile = filename;
+		gameaction = ga_screenshot;
+	}
 }
 
 
@@ -3072,7 +3073,10 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, MakeScreenShot)
 
 void G_MakeAutoSave()
 {
-	gameaction = ga_autosave;
+	if (gameaction == ga_nothing)
+	{
+		gameaction = ga_autosave;
+	}
 }
 
 DEFINE_ACTION_FUNCTION(FLevelLocals, MakeAutoSave)
