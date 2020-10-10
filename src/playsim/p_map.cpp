@@ -5384,6 +5384,27 @@ void P_AimCamera(AActor *t1, DVector3 &campos, DAngle &camangle, sector_t *&Came
 	camangle = trace.SrcAngleFromTarget - 180.;
 }
 
+void P_AdjustViewPos(AActor *t1, DVector3 orig, DVector3 &campos, sector_t *&CameraSector, bool &unlinked)
+{
+	FTraceResults trace;
+	DVector3 vvec = campos - orig;
+	double distance = vvec.Length();
+
+	// Trace handles all of the portal crossing, which is why there is no usage of Vec#Offset(Z).
+	if (Trace(orig, t1->Sector, vvec.Unit(), distance, 0, 0, t1, trace) &&
+		trace.Distance > 5)
+	{
+		// Position camera slightly in front of hit thing
+		campos = orig + vvec.Unit() * (trace.Distance - 5);
+	}
+	else
+	{
+		campos = trace.HitPos - trace.HitVector * 1 / 256.;
+	}
+	CameraSector = trace.Sector;
+	unlinked = trace.unlinked;
+}
+
 
 //==========================================================================
 //
