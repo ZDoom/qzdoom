@@ -416,6 +416,7 @@ enum ActorFlag8
 	MF8_FALLDAMAGE		= 0x00000800,	// Monster will take fall damage regardless of map settings.
 	MF8_VIEWPOSNOANGLES	= 0x00001000,	// [MC] View position takes no angles into account
 	MF8_ABSVIEWPOS		= 0x00002000,	// [MC] Absolute position, so the actor must update it manually.
+	MF8_THRUACTORLEVEL	= 0x00004000,	// Actors with the same ThruActorLevel can pass through each other.
 };
 
 // --- mobj.renderflags ---
@@ -1176,6 +1177,9 @@ public:
 	int RipperLevel;
 	int RipLevelMin;
 	int RipLevelMax;
+	int16_t ThruActorLevel;
+	int16_t ThruActorLevelMin;
+	int16_t ThruActorLevelMax;
 
 	int ConversationRoot;				// THe root of the current dialogue
 	FStrifeDialogueNode* Conversation;	// [RH] The dialogue to show when this actor is "used."
