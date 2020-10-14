@@ -171,7 +171,6 @@ class Actor : Thinker native
 	native int RipperLevel;
 	native int RipLevelMin;
 	native int RipLevelMax;
-	native int16 ThruActorLevel, ThruActorLevelMin, ThruActorLevelMax;
 	native name Species;
 	native Actor Alternative;
 	native Actor goal;
@@ -336,9 +335,6 @@ class Actor : Thinker native
 	property Ripperlevel: RipperLevel;
 	property RipLevelMin: RipLevelMin;
 	property RipLevelMax: RipLevelMax;
-	property ThruActorLevel: ThruActorLevel;
-	property ThruActorLevelMin: ThruActorLevelMin;
-	property ThruActorLevelMax: ThruActorLevelMax;
 	property RenderHidden: RenderHidden;
 	property RenderRequired: RenderRequired;
 	property FriendlySeeBlocks: FriendlySeeBlocks;
@@ -401,9 +397,6 @@ class Actor : Thinker native
 		RipperLevel 0;
 		RipLevelMin 0;
 		RipLevelMax 0;
-		ThruActorLevel 0;
-		ThruActorLevelMin 1; // int16, so [-32767, 32767] is the range.
-		ThruActorLevelMax 32767; // int16 too
 		DefThreshold 100;
 		BloodType "Blood", "BloodSplatter", "AxeBlood";
 		ExplosionDamage 128;
@@ -870,9 +863,6 @@ class Actor : Thinker native
 	void A_SetRipperLevel(int level) { RipperLevel = level; }
 	void A_SetRipMin(int minimum) { RipLevelMin = minimum; }
 	void A_SetRipMax(int maximum) { RipLevelMax = maximum; }
-	void A_SetThruActorLevel(int level) { ThruActorLevel = level; }
-	void A_SetThruActorLevelMin(int minimum) { ThruActorLevelMin = minimum; }
-	void A_SetThruActorLevelMax(int maximum) { ThruActorLevelMax = maximum; }
 	void A_ScreamAndUnblock() { A_Scream(); A_NoBlocking(); }
 	void A_ActiveAndUnblock() { A_ActiveSound(); A_NoBlocking(); }
 	
