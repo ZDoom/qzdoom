@@ -5,7 +5,10 @@ class RandomSpawner : Actor
 {
 	
 	const MAX_RANDOMSPAWNERS_RECURSION = 32; // Should be largely more than enough, honestly.
-	
+	protected bool fakeboss;
+	protected Name Chosen;
+	protected Actor Spawned;
+
 	Default
 	{
 		+NOBLOCKMAP
@@ -16,6 +19,11 @@ class RandomSpawner : Actor
 	
 	virtual void PostSpawn(Actor spawned)
 	{}
+
+	// NOTE: Actor WILL return null if called before PostBeginPlay can process!
+	// Wait one tic after spawn before using this function to get the actor.
+	Actor, Name GetSpawned()
+	{	return Spawned, Chosen;	}
 	
 	static bool IsMonster(DropItem di)
 	{
@@ -106,6 +114,7 @@ class RandomSpawner : Actor
 	{
 		Super.BeginPlay();
 		let s = ChooseSpawn();
+		Chosen = s;
 
 		if (s == 'Unknown') // Spawn error markers immediately.
 		{
@@ -162,6 +171,7 @@ class RandomSpawner : Actor
 		}
 
 		Actor newmobj = null;
+		fakeboss = (bBOSS || bBOSSDEATH);
 		bool boss = false;
 
 		if (Species == 'None')
@@ -231,7 +241,10 @@ class RandomSpawner : Actor
 				newmobj.CheckMissileSpawn(0);
 			// Bouncecount is used to count how many recursions we're in.
 			if (newmobj is 'RandomSpawner')
+			{
 				newmobj.bouncecount = ++bouncecount;
+				if (bBOSS)	newmobj.bBOSS = true;
+			}
 			// If the spawned actor has either of those flags, it's a boss.
 			if (newmobj.bBossDeath || newmobj.bBoss)
 				boss = true;
@@ -240,9 +253,10 @@ class RandomSpawner : Actor
 			if (rep && (rep.bBossDeath || rep.bBoss))
 				boss = true;
 
+			Spawned = newmobj;
 			PostSpawn(newmobj);
 		}
-		if (boss)
+		if (boss || fakeboss)
 			tracer = newmobj;
 		else	// "else" because a boss-replacing spawner must wait until it can call A_BossDeath.
 			Destroy();
@@ -253,7 +267,8 @@ class RandomSpawner : Actor
 		Super.Tick();
 		if (tracer == null || tracer.health <= 0)
 		{
-			A_BossDeath();
+			if (!fakeboss)
+				A_BossDeath();
 			Destroy();
 		}
 	}
