@@ -22,7 +22,7 @@
 
 #include "v_video.h"
 #include "m_png.h"
-#include "templates.h"
+
 #include "r_videoscale.h"
 #include "i_time.h"
 #include "v_text.h"
@@ -219,8 +219,8 @@ void PolyFrameBuffer::RenderTextureView(FCanvasTexture* tex, std::function<void(
 
 	IntRect bounds;
 	bounds.left = bounds.top = 0;
-	bounds.width = std::min(tex->GetWidth(), image->GetWidth());
-	bounds.height = std::min(tex->GetHeight(), image->GetHeight());
+	bounds.width = min(tex->GetWidth(), image->GetWidth());
+	bounds.height = min(tex->GetHeight(), image->GetHeight());
 
 	renderFunc(bounds);
 
