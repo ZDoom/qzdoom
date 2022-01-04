@@ -23,6 +23,8 @@
 #ifndef __GLC_DYNLIGHT_H
 #define __GLC_DYNLIGHT_H
 
+#include "tarray.h"
+
 struct FDynLightData
 {
 	TArray<float> arrays[3];
@@ -49,7 +51,7 @@ struct FDynLightData
 		if (siz[1] > max) siz[1] = max;
 		if (siz[2] > max) siz[2] = max;
 	}
-    
+
 
 };
 
