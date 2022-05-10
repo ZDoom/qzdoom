@@ -31,7 +31,7 @@
 
 #include <stdlib.h>
 
-#include "templates.h"
+
 #include "m_random.h"
 
 #include "doomdef.h"
@@ -1092,7 +1092,7 @@ void P_RandomChaseDir (AActor *actor)
 	int turndir;
 
 	// Friendly monsters like to head toward a player
-	if (actor->flags & MF_FRIENDLY)
+	if (actor->flags & MF_FRIENDLY && !(actor->flags8 & MF8_DONTFOLLOWPLAYERS))
 	{
 		AActor *player;
 		DVector2 delta;
@@ -2189,6 +2189,7 @@ enum ChaseFlags
 	CHF_NODIRECTIONTURN = 64,
 	CHF_NOPOSTATTACKTURN = 128,
 	CHF_STOPIFBLOCKED = 256,
+	CHF_DONTIDLE = 512,
 };
 
 void A_Wander(AActor *self, int flags)
@@ -2430,7 +2431,7 @@ void A_DoChase (AActor *actor, bool fastchase, FState *meleestate, FState *missi
 		}
 		if (actor->target == NULL)
 		{
-			if (actor->flags & MF_FRIENDLY)
+			if (flags & CHF_DONTIDLE || actor->flags & MF_FRIENDLY)
 			{
 				//A_Look(actor);
 				if (actor->target == NULL)
@@ -2827,7 +2828,7 @@ bool P_CheckForResurrection(AActor* self, bool usevilestates, FState* state = nu
 				{
 					corpsehit->Translation = info->Translation; // Clean up bloodcolor translation from crushed corpses
 				}
-				if (self->Level->ib_compatflags & BCOMPATF_VILEGHOSTS)
+				if (self->Level->i_compatflags & COMPATF_VILEGHOSTS)
 				{
 					corpsehit->Height *= 4;
 					// [GZ] This was a commented-out feature, so let's make use of it,
@@ -2987,12 +2988,12 @@ void A_Face(AActor *self, AActor *other, DAngle max_turn, DAngle max_pitch, DAng
 		{
 			if (self->Angles.Pitch > other_pitch)
 			{
-				max_pitch = MIN(max_pitch, (self->Angles.Pitch - other_pitch).Normalized360());
+				max_pitch = min(max_pitch, (self->Angles.Pitch - other_pitch).Normalized360());
 				self->Angles.Pitch -= max_pitch;
 			}
 			else
 			{
-				max_pitch = MIN(max_pitch, (other_pitch - self->Angles.Pitch).Normalized360());
+				max_pitch = min(max_pitch, (other_pitch - self->Angles.Pitch).Normalized360());
 				self->Angles.Pitch += max_pitch;
 			}
 		}

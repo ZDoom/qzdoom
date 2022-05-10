@@ -221,6 +221,36 @@ void FIWadManager::ParseIWadInfo(const char *fn, const char *data, int datasize,
 					sc.MustGetString();
 					iwad->Song = sc.String;
 				}
+				else if (sc.Compare("LoadLights"))
+				{
+					sc.MustGetStringName("=");
+					sc.MustGetNumber();
+					iwad->LoadLights = sc.Number;
+				}
+				else if (sc.Compare("LoadBrightmaps"))
+				{
+					sc.MustGetStringName("=");
+					sc.MustGetNumber();
+					iwad->LoadBrightmaps = sc.Number;
+				}
+				else if (sc.Compare("LoadWidescreen"))
+				{
+					sc.MustGetStringName("=");
+					sc.MustGetNumber();
+					iwad->LoadWidescreen = sc.Number;
+				}
+				else if (sc.Compare("DiscordAppId"))
+				{
+					sc.MustGetStringName("=");
+					sc.MustGetString();
+					iwad->DiscordAppId = sc.String;
+				}
+				else if (sc.Compare("SteamAppId"))
+				{
+					sc.MustGetStringName("=");
+					sc.MustGetString();
+					iwad->SteamAppId = sc.String;
+				}
 				else
 				{
 					sc.ScriptError("Unknown keyword '%s'", sc.String);
@@ -805,8 +835,16 @@ const FIWADInfo *FIWadManager::FindIWAD(TArray<FString> &wadfiles, const char *i
 		GameStartupInfo.BkColor = iwad_info->BkColor;
 		GameStartupInfo.FgColor = iwad_info->FgColor;
 	}
+	if (GameStartupInfo.LoadWidescreen == -1)
+		GameStartupInfo.LoadWidescreen = iwad_info->LoadWidescreen;
+	if (GameStartupInfo.LoadLights == -1)
+		GameStartupInfo.LoadLights = iwad_info->LoadLights;
+	if (GameStartupInfo.LoadBrightmaps == -1)
+		GameStartupInfo.LoadBrightmaps = iwad_info->LoadBrightmaps;
 	if (GameStartupInfo.Type == 0) GameStartupInfo.Type = iwad_info->StartupType;
 	if (GameStartupInfo.Song.IsEmpty()) GameStartupInfo.Song = iwad_info->Song;
+	if (GameStartupInfo.DiscordAppId.IsEmpty()) GameStartupInfo.DiscordAppId = iwad_info->DiscordAppId;
+	if (GameStartupInfo.SteamAppId.IsEmpty()) GameStartupInfo.SteamAppId = iwad_info->SteamAppId;
 	I_SetIWADInfo();
 	return iwad_info;
 }

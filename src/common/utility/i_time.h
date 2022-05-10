@@ -38,3 +38,14 @@ uint64_t I_nsTime();
 
 // Reset the timer after a lengthy operation
 void I_ResetFrameTime();
+
+// Return a decimal fraction to scale input operations at framerate
+double I_GetInputFrac(bool const synchronised, double const ticrate = GameTicRate);
+
+// Reset the last input check to after a lengthy operation
+void I_ResetInputTime();
+
+// Pause a bit.
+// [RH] Despite the name, it apparently never waited for the VBL, even in
+// the original DOS version (if the Heretic/Hexen source is any indicator).
+void I_WaitVBL(int count);

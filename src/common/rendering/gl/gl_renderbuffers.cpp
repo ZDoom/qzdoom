@@ -30,7 +30,7 @@
 #include "gl_postprocessstate.h"
 #include "gl_shaderprogram.h"
 #include "gl_buffers.h"
-#include "templates.h"
+
 #include <random>
 
 EXTERN_CVAR(Int, gl_debug_level)
@@ -443,8 +443,6 @@ bool FGLRenderBuffers::CheckFrameBufferCompleteness()
 	GLenum result = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (result == GL_FRAMEBUFFER_COMPLETE)
 		return true;
-
-	bool FailedCreate = true;
 
 	if (gl_debug_level > 0)
 	{

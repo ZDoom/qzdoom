@@ -229,7 +229,6 @@ DObject::DObject ()
 	ObjNext = GC::Root;
 	GCNext = nullptr;
 	GC::Root = this;
-	GC::AllocCount++;
 }
 
 DObject::DObject (PClass *inClass)
@@ -239,7 +238,6 @@ DObject::DObject (PClass *inClass)
 	ObjNext = GC::Root;
 	GCNext = nullptr;
 	GC::Root = this;
-	GC::AllocCount++;
 }
 
 //==========================================================================
@@ -267,7 +265,7 @@ DObject::~DObject ()
 				Release();
 			}
 		}
-		
+
 		if (nullptr != type)
 		{
 			type->DestroySpecials(this);
@@ -277,7 +275,6 @@ DObject::~DObject ()
 
 void DObject::Release()
 {
-	if (GC::AllocCount > 0) GC::AllocCount--;
 	DObject **probe;
 
 	// Unlink this object from the GC list.
@@ -494,6 +491,11 @@ void DObject::CheckIfSerialized () const
 DEFINE_ACTION_FUNCTION(DObject, MSTime)
 {
 	ACTION_RETURN_INT((uint32_t)I_msTime());
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DObject, MSTimef, I_msTimeF)
+{
+	ACTION_RETURN_FLOAT(I_msTimeF());
 }
 
 void *DObject::ScriptVar(FName field, PType *type)

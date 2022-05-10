@@ -14,6 +14,8 @@ enum gamestate_t : int
 	GS_STARTUP,			// [RH] Console is fullscreen, and game is just starting
 	GS_TITLELEVEL,		// [RH] A combination of GS_LEVEL and GS_DEMOSCREEN
 	GS_INTRO,
+	GS_CUTSCENE,
+
 	GS_MENUSCREEN = GS_DEMOSCREEN,
 
 	GS_FORCEWIPE = -1,
@@ -21,5 +23,6 @@ enum gamestate_t : int
 	GS_FORCEWIPEBURN = -3,
 	GS_FORCEWIPEMELT = -4
 };
+
 
 extern	gamestate_t 	gamestate;

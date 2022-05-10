@@ -183,6 +183,7 @@ struct _ native	// These are the global variables, the struct is only here to av
 	native MenuDelegateBase menuDelegate;
 	native readonly int consoleplayer;
 	native readonly double NotifyFontScale;
+	native readonly int paused;
 }
 
 struct System native
@@ -202,7 +203,6 @@ struct System native
 		}
 		return false;
 	}
-	 	
 }
 
 struct MusPlayingInfo native
@@ -412,8 +412,9 @@ struct Screen native
 	native static Color PaletteColor(int index);
 	native static int GetWidth();
 	native static int GetHeight();
+	native static Vector2 GetTextScreenSize();
 	native static void Clear(int left, int top, int right, int bottom, Color color, int palcolor = -1);
-	native static void Dim(Color col, double amount, int x, int y, int w, int h);
+	native static void Dim(Color col, double amount, int x, int y, int w, int h, ERenderStyle style = STYLE_Translucent);
 
 	native static vararg void DrawTexture(TextureID tex, bool animate, double x, double y, ...);
 	native static vararg void DrawShape(TextureID tex, bool animate, Shape2D s, ...);
@@ -586,7 +587,8 @@ class Object native
 	private native static Class<Object> BuiltinNameToClass(Name nm, Class<Object> filter);
 	private native static Object BuiltinClassCast(Object inptr, Class<Object> test);
 	
-	native static uint MSTime();
+	deprecated("4.8", "Use MSTimeF instead") native static uint MSTime();
+	native static double MSTimeF();
 	native vararg static void ThrowAbortException(String fmt, ...);
 
 	native virtualscope void Destroy();

@@ -64,6 +64,7 @@
 #include "gameconfigfile.h"
 #include "d_player.h"
 #include "teaminfo.h"
+#include "i_time.h"
 #include "hwrenderer/scene/hw_drawinfo.h"
 
 EXTERN_CVAR(Int, cl_gfxlocalization)
@@ -77,10 +78,10 @@ CVAR(Bool, m_simpleoptions, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 typedef void(*hfunc)();
 DMenu* CreateMessageBoxMenu(DMenu* parent, const char* message, int messagemode, bool playsound, FName action = NAME_None, hfunc handler = nullptr);
 bool OkForLocalization(FTextureID texnum, const char* substitute);
-void I_WaitVBL(int count);
 
 
 FNewGameStartup NewGameStartupInfo;
+int LastSkill = -1;
 
 
 bool M_SetSpecialMenu(FName& menu, int param)
@@ -147,6 +148,7 @@ bool M_SetSpecialMenu(FName& menu, int param)
 	{
 		// sent from the skill menu for a skill that needs to be confirmed
 		NewGameStartupInfo.Skill = param;
+		LastSkill = param;
 
 		const char *msg = AllSkills[param].MustConfirmText;
 		if (*msg==0) msg = GStrings("NIGHTMARE");
@@ -157,6 +159,7 @@ bool M_SetSpecialMenu(FName& menu, int param)
 	case NAME_Startgame:
 		// sent either from skill menu or confirmation screen. Skill gets only set if sent from skill menu
 		// Now we can finally start the game. Ugh...
+		LastSkill = param;
 		NewGameStartupInfo.Skill = param;
 		[[fallthrough]];
 	case NAME_StartgameConfirmed:
@@ -620,7 +623,7 @@ void M_StartupEpisodeMenu(FNewGameStartup *gs)
 					if (*c == '$') c = GStrings(c + 1);
 					int textwidth = ld->mFont->StringWidth(c);
 					int textright = posx + textwidth;
-					if (posx + textright > 320) posx = std::max(0, 320 - textright);
+					if (posx + textright > 320) posx = max(0, 320 - textright);
 				}
 
 				for(unsigned i = 0; i < AllEpisodes.Size(); i++)
@@ -1048,7 +1051,7 @@ void M_StartupSkillMenu(FNewGameStartup *gs)
 	}
 	if (MenuSkills.Size() == 0) I_Error("No valid skills for menu found. At least one must be defined.");
 
-	int defskill = DefaultSkill;
+	int defskill = LastSkill > -1? LastSkill : DefaultSkill; // use the last selected skill, if available.
 	if ((unsigned int)defskill >= MenuSkills.Size())
 	{
 		defskill = SkillIndices[(MenuSkills.Size() - 1) / 2];
@@ -1164,7 +1167,7 @@ void M_StartupSkillMenu(FNewGameStartup *gs)
 				if (*c == '$') c = GStrings(c + 1);
 				int textwidth = ld->mFont->StringWidth(c);
 				int textright = posx + textwidth;
-				if (posx + textright > 320) posx = std::max(0, 320 - textright);
+				if (posx + textright > 320) posx = max(0, 320 - textright);
 			}
 
 			unsigned firstitem = ld->mItems.Size();

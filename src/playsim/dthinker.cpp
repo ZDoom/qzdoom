@@ -247,7 +247,7 @@ void FThinkerCollection::RunThinkers(FLevelLocals *Level)
 		Printf(TEXTCOLOR_YELLOW "Total, ms   Averg, ms   Calls   Actor class\n");
 		Printf(TEXTCOLOR_YELLOW "----------  ----------  ------  --------------------\n");
 
-		const unsigned count = MIN(profilelimit > 0 ? profilelimit : UINT_MAX, sorted.Size());
+		const unsigned count = min(profilelimit > 0 ? profilelimit : UINT_MAX, sorted.Size());
 
 		for (unsigned i = 0; i < count; ++i)
 		{
@@ -616,7 +616,6 @@ int FThinkerList::TickThinkers(FThinkerList *dest)
 			ThinkCount++;
 			node->CallTick();
 			node->ObjectFlags &= ~OF_JustSpawned;
-			GC::CheckGC();
 		}
 		node = NextToThink;
 	}
@@ -667,7 +666,6 @@ int FThinkerList::ProfileThinkers(FThinkerList *dest)
 			node->CallTick();
 			prof.timer.Unclock();
 			node->ObjectFlags &= ~OF_JustSpawned;
-			GC::CheckGC();
 		}
 		node = NextToThink;
 	}

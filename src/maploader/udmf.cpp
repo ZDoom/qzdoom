@@ -1123,6 +1123,12 @@ public:
 				ld->healthgroup = CheckInt(key);
 				break;
 
+			case NAME_lightcolorline:
+			case NAME_lightintensityline:
+			case NAME_lightdistanceline:
+				CHECK_N(Zd | Zdt)
+				break;
+
 			default:
 				if (strnicmp("user_", key.GetChars(), 5))
 					DPrintf(DMSG_WARNING, "Unknown UDMF linedef key %s\n", key.GetChars());
@@ -1300,6 +1306,30 @@ public:
 
 			case NAME_lightabsolute:
 				Flag(sd->Flags, WALLF_ABSLIGHTING, key);
+				continue;
+
+			case NAME_light_top:
+				sd->SetLight(CheckInt(key), side_t::top);
+				continue;
+				
+			case NAME_lightabsolute_top:
+				Flag(sd->Flags, WALLF_ABSLIGHTING_TOP, key);
+				continue;
+
+			case NAME_light_mid:
+				sd->SetLight(CheckInt(key), side_t::mid);
+				continue;
+
+			case NAME_lightabsolute_mid:
+				Flag(sd->Flags, WALLF_ABSLIGHTING_MID, key);
+				continue;
+
+			case NAME_light_bottom:
+				sd->SetLight(CheckInt(key), side_t::bottom);
+				continue;
+
+			case NAME_lightabsolute_bottom:
+				Flag(sd->Flags, WALLF_ABSLIGHTING_BOTTOM, key);
 				continue;
 
 			case NAME_lightfog:
@@ -1948,7 +1978,16 @@ public:
 				case NAME_Health3DGroup:
 					sec->health3dgroup = CheckInt(key);
 					break;
-					
+
+				case NAME_lightcolorfloor:
+				case NAME_lightintensityfloor:
+				case NAME_lightdistancefloor:
+				case NAME_lightcolorceiling:
+				case NAME_lightintensityceiling:
+				case NAME_lightdistanceceiling:
+					CHECK_N(Zd | Zdt)
+					break;
+
 				default:
 					if (strnicmp("user_", key.GetChars(), 5))
 						DPrintf(DMSG_WARNING, "Unknown UDMF sector key %s\n", key.GetChars());

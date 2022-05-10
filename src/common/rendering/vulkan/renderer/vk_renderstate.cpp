@@ -26,7 +26,7 @@
 #include "vulkan/renderer/vk_renderpass.h"
 #include "vulkan/renderer/vk_renderbuffers.h"
 #include "vulkan/textures/vk_hwtexture.h"
-#include "templates.h"
+
 #include "hw_skydome.h"
 #include "hw_viewpointuniforms.h"
 #include "hw_lightbuffer.h"
@@ -228,7 +228,7 @@ void VkRenderState::ApplyRenderPass(int dt)
 	pipelineKey.ColorMask = mColorMask;
 	pipelineKey.CullMode = mCullMode;
 	pipelineKey.NumTextureLayers = mMaterial.mMaterial ? mMaterial.mMaterial->NumLayers() : 0;
-	pipelineKey.NumTextureLayers = std::max(pipelineKey.NumTextureLayers, SHADER_MIN_REQUIRED_TEXTURE_LAYERS);// Always force minimum 8 textures as the shader requires it
+	pipelineKey.NumTextureLayers = max(pipelineKey.NumTextureLayers, SHADER_MIN_REQUIRED_TEXTURE_LAYERS);// Always force minimum 8 textures as the shader requires it
 	if (mSpecialEffect > EFF_NONE)
 	{
 		pipelineKey.SpecialEffect = mSpecialEffect;

@@ -5,7 +5,7 @@
 
 ## QZDoom is a fork of [GZDoom](https://github.com/coelckers/gzdoom) for beta testing new features that have not yet been included in GZDoom's mainline.
 
-Copyright (c) 1998-2021 ZDoom + GZDoom teams, and contributors
+Copyright (c) 1998-2022 ZDoom + GZDoom teams, and contributors
 
 Doom Source (c) 1997 id Software, Raven Software, and contributors
 
