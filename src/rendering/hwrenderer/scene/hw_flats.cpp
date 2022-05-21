@@ -334,6 +334,10 @@ void HWFlat::DrawFlat(HWDrawInfo *di, FRenderState &state, bool translucent)
 	{
 		if (sector->special != GLSector_Skybox)
 		{
+			if (level.info->DirectionalLightMode == 2)
+			{
+				state.SetDirectionalLight(di->GetDirectionalLight());
+			}
 			state.SetMaterial(texture, UF_Texture, 0, CLAMP_NONE, 0, -1);
 			SetPlaneTextureRotation(state, &plane, texture);
 			DrawSubsectors(di, state);
@@ -362,6 +366,10 @@ void HWFlat::DrawFlat(HWDrawInfo *di, FRenderState &state, bool translucent)
 		{
 			if (!texture->GetTranslucency()) state.AlphaFunc(Alpha_GEqual, gl_mask_threshold);
 			else state.AlphaFunc(Alpha_GEqual, 0.f);
+			if (level.info->DirectionalLightMode == 2)
+			{
+				state.SetDirectionalLight(di->GetDirectionalLight());
+			}
 			state.SetMaterial(texture, UF_Texture, 0, CLAMP_NONE, 0, -1);
 			SetPlaneTextureRotation(state, &plane, texture);
 			DrawSubsectors(di, state);
@@ -369,6 +377,7 @@ void HWFlat::DrawFlat(HWDrawInfo *di, FRenderState &state, bool translucent)
 		}
 		state.SetRenderStyle(DefaultRenderStyle());
 	}
+	state.SetDirectionalLight(FVector4(0.f, 0.f, 0.f, 0.f));
 	state.SetObjectColor(0xffffffff);
 	state.SetAddColor(0);
 	state.ApplyTextureManipulation(nullptr);

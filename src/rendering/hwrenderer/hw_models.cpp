@@ -67,17 +67,23 @@ void FHWModelRenderer::BeginDrawModel(FRenderStyle style, FSpriteModelFrame *smf
 
 	state.mModelMatrix = objectToWorldMatrix;
 	state.EnableModelMatrix(true);
+
+	if (level.info->DirectionalLightMode >= 1 && !(smf->flags & MDL_NODIRECTIONALLIGHT))
+	{
+		state.SetDirectionalLight(di->GetDirectionalLight());
+	}
 }
 
 void FHWModelRenderer::EndDrawModel(FRenderStyle style, FSpriteModelFrame *smf)
 {
+	state.SetDirectionalLight(FVector4(0.f, 0.f, 0.f, 0.f));
 	state.EnableModelMatrix(false);
 	state.SetDepthFunc(DF_Less);
 	if (!(style == DefaultRenderStyle()) && !(smf->flags & MDL_DONTCULLBACKFACES))
 		state.SetCulling(Cull_None);
 }
 
-void FHWModelRenderer::BeginDrawHUDModel(FRenderStyle style, const VSMatrix &objectToWorldMatrix, bool mirrored)
+void FHWModelRenderer::BeginDrawHUDModel(FRenderStyle style, FSpriteModelFrame *smf, const VSMatrix &objectToWorldMatrix, bool mirrored)
 {
 	state.SetDepthFunc(DF_LEqual);
 
@@ -91,10 +97,16 @@ void FHWModelRenderer::BeginDrawHUDModel(FRenderStyle style, const VSMatrix &obj
 
 	state.mModelMatrix = objectToWorldMatrix;
 	state.EnableModelMatrix(true);
+
+	if (level.info->DirectionalLightMode >= 1 && !(smf->flags & MDL_NODIRECTIONALLIGHT))
+	{
+		state.SetDirectionalLight(di->GetDirectionalLight());
+	}
 }
 
 void FHWModelRenderer::EndDrawHUDModel(FRenderStyle style)
 {
+	state.SetDirectionalLight(FVector4(0.f, 0.f, 0.f, 0.f));
 	state.EnableModelMatrix(false);
 
 	state.SetDepthFunc(DF_Less);

@@ -35,10 +35,23 @@ vec3 lightContribution(int i, vec3 normal)
 	}
 }
 
+float lightDirectionalAttenuation(vec3 normal)
+{
+	vec3 lightDirectionalDir = uDirectionalLight.xyz;
+	return clamp(dot(lightDirectionalDir, normal), 0.0, 1.0);
+}
+
 vec3 ProcessMaterialLight(Material material, vec3 color)
 {
 	vec4 dynlight = uDynLightColor;
 	vec3 normal = material.Normal;
+
+	if (uDirectionalLight.w != 0 && normal != vec3(0.0))
+	{
+		float lightDirectionalStrength = uDirectionalLight.w;
+		dynlight.rgb += color * lightDirectionalAttenuation(normal) * lightDirectionalStrength;
+		color *= 1.0 - lightDirectionalStrength;
+	}
 
 	if (uLightIndex >= 0)
 	{
