@@ -83,7 +83,14 @@ template<class T> int ArrayPop(T *self)
 
 template<class T> void ArrayDelete(T *self, int index, int count)
 {
-	self->Delete(index, count);
+	if(index < 0 || index >= self->Size())
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Trying to delete past end of Array, Size = %u, Index = %i, Count = %i",self->Size(), index, count);
+	}
+	else
+	{
+		self->Delete(index, count);
+	}
 }
 
 template<class T, class U, int fill = 1> void ArrayInsert(T *self, int index, U val)
@@ -202,7 +209,14 @@ DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_I8, Delete, ArrayDelete<FDynArray_I8>)
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_I8);
 	PARAM_INT(index);
 	PARAM_INT(count);
-	self->Delete(index, count);
+	if(index < 0 || index >= self->Size())
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Trying to delete past end of Array, Size = %u, Index = %i, Count = %i",self->Size(), index, count);
+	}
+	else
+	{
+		self->Delete(index, count);
+	}
 	return 0;
 }
 
@@ -313,7 +327,14 @@ DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_I16, Delete, ArrayDelete<FDynArray_I16>)
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_I16);
 	PARAM_INT(index);
 	PARAM_INT(count);
-	self->Delete(index, count);
+	if(index < 0 || index >= self->Size())
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Trying to delete past end of Array, Size = %u, Index = %i, Count = %i",self->Size(), index, count);
+	}
+	else
+	{
+		self->Delete(index, count);
+	}
 	return 0;
 }
 
@@ -446,7 +467,14 @@ DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_I32, Delete, ArrayDelete<FDynArray_I32>)
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_I32);
 	PARAM_INT(index);
 	PARAM_INT(count);
-	self->Delete(index, count);
+	if(index < 0 || index >= self->Size())
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Trying to delete past end of Array, Size = %u, Index = %i, Count = %i",self->Size(), index, count);
+	}
+	else
+	{
+		self->Delete(index, count);
+	}
 	return 0;
 }
 
@@ -557,7 +585,14 @@ DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_F32, Delete, ArrayDelete<FDynArray_F32>)
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_F32);
 	PARAM_INT(index);
 	PARAM_INT(count);
-	self->Delete(index, count);
+	if(index < 0 || index >= self->Size())
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Trying to delete past end of Array, Size = %u, Index = %i, Count = %i",self->Size(), index, count);
+	}
+	else
+	{
+		self->Delete(index, count);
+	}
 	return 0;
 }
 
@@ -668,7 +703,14 @@ DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_F64, Delete, ArrayDelete<FDynArray_F64>)
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_F64);
 	PARAM_INT(index);
 	PARAM_INT(count);
-	self->Delete(index, count);
+	if(index < 0 || index >= self->Size())
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Trying to delete past end of Array, Size = %u, Index = %i, Count = %i",self->Size(), index, count);
+	}
+	else
+	{
+		self->Delete(index, count);
+	}
 	return 0;
 }
 
@@ -779,7 +821,14 @@ DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_Ptr, Delete, ArrayDelete<FDynArray_Ptr>)
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_Ptr);
 	PARAM_INT(index);
 	PARAM_INT(count);
-	self->Delete(index, count);
+	if(index < 0 || index >= self->Size())
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Trying to delete past end of Array, Size = %u, Index = %i, Count = %i",self->Size(), index, count);
+	}
+	else
+	{
+		self->Delete(index, count);
+	}
 	return 0;
 }
 
@@ -915,7 +964,14 @@ DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_Obj, Delete, ArrayDelete<FDynArray_Obj>)
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_Obj);
 	PARAM_INT(index);
 	PARAM_INT(count);
-	self->Delete(index, count);
+	if(index < 0 || index >= self->Size())
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Trying to delete past end of Array, Size = %u, Index = %i, Count = %i",self->Size(), index, count);
+	}
+	else
+	{
+		self->Delete(index, count);
+	}
 	return 0;
 }
 
@@ -1051,7 +1107,14 @@ DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_String, Delete, ArrayDelete<FDynArray_St
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_String);
 	PARAM_INT(index);
 	PARAM_INT(count);
-	self->Delete(index, count);
+	if(index < 0 || index >= self->Size())
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Trying to delete past end of Array, Size = %u, Index = %i, Count = %i",self->Size(), index, count);
+	}
+	else
+	{
+		self->Delete(index, count);
+	}
 	return 0;
 }
 
