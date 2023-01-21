@@ -1,21 +1,25 @@
 //
 //---------------------------------------------------------------------------
 //
-// Copyright(C) 2018 Marisa Kirisame
-// All rights reserved.
+// Copyright (c) 2018-2022 Marisa Kirisame, UnSX Team
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 //
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+// IN THE SOFTWARE.
 //
 //--------------------------------------------------------------------------
 //
@@ -44,6 +48,7 @@ float unpackuvert( uint32_t n, int c )
 bool FUE1Model::Load( const char *filename, int lumpnum, const char *buffer, int length )
 {
 	int lumpnum2;
+	hasSurfaces = true;
 	FString realfilename = fileSystem.GetFileFullName(lumpnum);
 	if ( (size_t)realfilename.IndexOf("_d.3d") == realfilename.Len()-5 )
 	{
@@ -160,13 +165,17 @@ void FUE1Model::LoadGeometry()
 	// populate poly groups (subdivided by texture number and type)
 	// this method minimizes searches in the group list as much as possible
 	// while still doing a single pass through the poly list
+	groups.Reset();
 	int curgroup = -1;
 	UE1Group Group;
+	hasWeaponTriangle = false;
+	int weapontri = -1;
 	for ( int i=0; i<numPolys; i++ )
 	{
-		// while we're at it, look for attachment triangles
-		// technically only one should exist, but we ain't following the specs 100% here
-		if ( dpolys[i].type&PT_WeaponTriangle ) specialPolys.Push(i);
+		// while we're at it, look for a weapon triangle
+		// (technically only one should exist)
+		if ( dpolys[i].type&PT_WeaponTriangle )
+			weapontri = i;
 		if ( curgroup == -1 )
 		{
 			// no group, create it
@@ -196,37 +205,38 @@ void FUE1Model::LoadGeometry()
 		groups[curgroup].P.Push(i);
 		groups[curgroup].numPolys++;
 	}
-	// ... and it's finally done
-	mDataLoaded = true;
+	if ( weapontri != -1 )
+	{
+		// TODO: generate TRS array from special poly to interface as a pseudo-bone
+		hasWeaponTriangle = true;
+	}
 }
 
 void FUE1Model::UnloadGeometry()
 {
-	mDataLoaded = false;
-	specialPolys.Reset();
-	numVerts = 0;
-	numFrames = 0;
-	numPolys = 0;
-	numGroups = 0;
+	for ( unsigned i=0; i<verts.Size(); i++ )
+		verts[i].P.Reset();
 	verts.Reset();
-	for ( int i=0; i<numPolys; i++ )
+	for ( unsigned i=0; i<polys.Size(); i++ )
 		polys[i].Normals.Reset();
 	polys.Reset();
-	for ( int i=0; i<numGroups; i++ )
+	for ( unsigned i=0; i<groups.Size(); i++ )
 		groups[i].P.Reset();
-	groups.Reset();
+	// do not unload groups themselves, they're needed for rendering
 }
 
-int FUE1Model::FindFrame( const char *name )
+int FUE1Model::FindFrame(const char* name, bool nodefault)
 {
-	// unsupported, there are no named frames
-	return -1;
+	// there are no named frames, but we need something here to properly interface with it. So just treat the string as an index number.
+	auto index = strtol(name, nullptr, 0);
+	if (index < 0 || index >= numFrames) return FErr_NotFound;
+	return index;
 }
 
-void FUE1Model::RenderFrame( FModelRenderer *renderer, FGameTexture *skin, int frame, int frame2, double inter, int translation )
+void FUE1Model::RenderFrame( FModelRenderer *renderer, FGameTexture *skin, int frame, int frame2, double inter, int translation, const FTextureID* surfaceskinids, const TArray<VSMatrix>& boneData, int boneStartPosition)
 {
 	// the moment of magic
-	if ( (frame >= numFrames) || (frame2 >= numFrames) ) return;
+	if ( (frame < 0) || (frame2 < 0) || (frame >= numFrames) || (frame2 >= numFrames) ) return;
 	renderer->SetInterpolation(inter);
 	int vsize, fsize = 0, vofs = 0;
 	for ( int i=0; i<numGroups; i++ ) fsize += groups[i].numPolys*3;
@@ -242,9 +252,9 @@ void FUE1Model::RenderFrame( FModelRenderer *renderer, FGameTexture *skin, int f
 		FGameTexture *sskin = skin;
 		if ( !sskin )
 		{
-			int ssIndex = groups[i].texNum + curMDLIndex * MD3_MAX_SURFACES;
-			if (curSpriteMDLFrame && curSpriteMDLFrame->surfaceskinIDs[ssIndex].isValid())
-				sskin = TexMan.GetGameTexture(curSpriteMDLFrame->surfaceskinIDs[ssIndex], true);
+			int ssIndex = groups[i].texNum;
+			if (surfaceskinids && surfaceskinids[ssIndex].isValid())
+				sskin = TexMan.GetGameTexture(surfaceskinids[ssIndex], true);
 			if ( !sskin )
 			{
 				vofs += vsize;
@@ -254,7 +264,7 @@ void FUE1Model::RenderFrame( FModelRenderer *renderer, FGameTexture *skin, int f
 		// TODO: Handle per-group render styles and other flags once functions for it are implemented
 		// Future note: poly renderstyles should always be enforced unless the actor itself has a style other than Normal
 		renderer->SetMaterial(sskin,false,translation);
-		renderer->SetupFrame(this, vofs+frame*fsize,vofs+frame2*fsize,vsize);
+		renderer->SetupFrame(this, vofs + frame * fsize, vofs + frame2 * fsize, vsize, {}, -1);
 		renderer->DrawArrays(0,vsize);
 		vofs += vsize;
 	}
@@ -265,8 +275,7 @@ void FUE1Model::BuildVertexBuffer( FModelRenderer *renderer )
 {
 	if (GetVertexBuffer(renderer->GetType()))
 		return;
-	if ( !mDataLoaded )
-		LoadGeometry();
+	LoadGeometry();
 	int vsize = 0;
 	for ( int i=0; i<numGroups; i++ )
 		vsize += groups[i].numPolys*3;
@@ -299,19 +308,20 @@ void FUE1Model::BuildVertexBuffer( FModelRenderer *renderer )
 		}
 	}
 	vbuf->UnlockVertexBuffer();
+	UnloadGeometry(); // don't forget this, save precious RAM
 }
 
-void FUE1Model::AddSkins( uint8_t *hitlist )
+void FUE1Model::AddSkins( uint8_t *hitlist, const FTextureID* surfaceskinids)
 {
 	for (int i = 0; i < numGroups; i++)
 	{
-		int ssIndex = groups[i].texNum + curMDLIndex * MD3_MAX_SURFACES;
-		if (curSpriteMDLFrame && curSpriteMDLFrame->surfaceskinIDs[ssIndex].isValid())
-			hitlist[curSpriteMDLFrame->surfaceskinIDs[ssIndex].GetIndex()] |= FTextureManager::HIT_Flat;
+		int ssIndex = groups[i].texNum;
+		if (surfaceskinids && surfaceskinids[ssIndex].isValid())
+			hitlist[surfaceskinids[ssIndex].GetIndex()] |= FTextureManager::HIT_Flat;
 	}
 }
 
 FUE1Model::~FUE1Model()
 {
-	UnloadGeometry();
+	groups.Reset();
 }

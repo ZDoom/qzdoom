@@ -41,7 +41,7 @@
 #include "c_cvars.h"
 #include "c_bind.h"
 #include "c_dispatch.h"
-#include "templates.h"
+
 #include "menu.h"
 #include "vm.h"
 #include "gstrings.h"
@@ -80,7 +80,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DStatusBarCore, StatusbarToRealCoords, StatusbarTo
 	if (numret > 1) ret[1].SetFloat(y);
 	if (numret > 2) ret[2].SetFloat(w);
 	if (numret > 3) ret[3].SetFloat(h);
-	return MIN(4, numret);
+	return min(4, numret);
 }
 
 void SBar_DrawTexture(DStatusBarCore* self, int texid, double x, double y, int flags, double alpha, double w, double h, double scaleX, double scaleY, int style, int color, int translation, double clipwidth)
@@ -228,7 +228,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DStatusBarCore, TransformRect, SBar_TransformRect)
 	if (numret > 1) ret[1].SetFloat(y);
 	if (numret > 2) ret[2].SetFloat(w);
 	if (numret > 3) ret[3].SetFloat(h);
-	return MIN(4, numret);
+	return min(4, numret);
 }
 
 static void SBar_Fill(DStatusBarCore* self, int color, double x, double y, double w, double h, int flags)
@@ -437,7 +437,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, GetSize, GetTextureSize)
 	x = GetTextureSize(texid, &y);
 	if (numret > 0) ret[0].SetInt(x);
 	if (numret > 1) ret[1].SetInt(y);
-	return MIN(numret, 2);
+	return min(numret, 2);
 }
 
 //==========================================================================
@@ -522,11 +522,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, CheckRealHeight, CheckRealHeight)
 	ACTION_RETURN_INT(CheckRealHeight(texid));
 }
 
-bool OkForLocalization(FTextureID texnum, const char* substitute);
-
 static int OkForLocalization_(int index, const FString& substitute)
 {
-	return OkForLocalization(FSetTextureID(index), substitute);
+	return sysCallbacks.OkForLocalization? sysCallbacks.OkForLocalization(FSetTextureID(index), substitute) : false;
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, OkForLocalization, OkForLocalization_)
@@ -550,6 +548,15 @@ DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, UseGamePalette, UseGamePalette)
 	PARAM_PROLOGUE;
 	PARAM_INT(texid);
 	ACTION_RETURN_INT(UseGamePalette(texid));
+}
+
+FCanvas* GetTextureCanvas(const FString& texturename);
+
+DEFINE_ACTION_FUNCTION(_TexMan, GetCanvas)
+{
+	PARAM_PROLOGUE;
+	PARAM_STRING(texturename);
+	ACTION_RETURN_POINTER(GetTextureCanvas(texturename));
 }
 
 //=====================================================================================
@@ -710,6 +717,19 @@ DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetDefaultKerning, GetDefaultKerning)
 	ACTION_RETURN_INT(self->GetDefaultKerning());
 }
 
+static double GetDisplayTopOffset(FFont* font, int c)
+{
+	auto texc = font->GetChar(c, CR_UNDEFINED, nullptr);
+	return texc ? texc->GetDisplayTopOffset() : 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetDisplayTopOffset, GetDisplayTopOffset)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	PARAM_INT(code);
+	ACTION_RETURN_FLOAT(GetDisplayTopOffset(self, code));
+}
+
 //==========================================================================
 //
 // file system
@@ -747,6 +767,16 @@ DEFINE_ACTION_FUNCTION(_Wads, FindLump)
 	PARAM_INT(ns);
 	const bool isLumpValid = startlump >= 0 && startlump < fileSystem.GetNumEntries();
 	ACTION_RETURN_INT(isLumpValid ? fileSystem.FindLump(name, &startlump, 0 != ns) : -1);
+}
+
+DEFINE_ACTION_FUNCTION(_Wads, FindLumpFullName)
+{
+	PARAM_PROLOGUE;
+	PARAM_STRING(name);
+	PARAM_INT(startlump);
+	PARAM_BOOL(noext);
+	const bool isLumpValid = startlump >= 0 && startlump < fileSystem.GetNumEntries();
+	ACTION_RETURN_INT(isLumpValid ? fileSystem.FindLumpFullName(name, &startlump, noext) : -1);
 }
 
 DEFINE_ACTION_FUNCTION(_Wads, GetLumpName)
@@ -941,7 +971,7 @@ DEFINE_ACTION_FUNCTION(FKeyBindings, GetKeysForCommand)
 	self->GetKeysForCommand(cmd.GetChars(), &k1, &k2);
 	if (numret > 0) ret[0].SetInt(k1);
 	if (numret > 1) ret[1].SetInt(k2);
-	return MIN(numret, 2);
+	return min(numret, 2);
 }
 
 DEFINE_ACTION_FUNCTION(FKeyBindings, GetAllKeysForCommand)
@@ -989,7 +1019,7 @@ DEFINE_ACTION_FUNCTION(DOptionMenuItemCommand, DoCommand)
 	}
 
 	UnsafeExecutionScope scope(unsafe);
-	C_DoCommand(cmd);
+	AddCommandString(cmd);
 	return 0;
 }
 
@@ -1006,6 +1036,18 @@ DEFINE_ACTION_FUNCTION(_Console, Printf)
 
 	FString s = FStringFormat(VM_ARGS_NAMES);
 	Printf("%s\n", s.GetChars());
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(_Console, PrintfEx)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(printlevel);
+	PARAM_VA_POINTER(va_reginfo)	// Get the hidden type information array
+
+	FString s = FStringFormat(VM_ARGS_NAMES,1);
+
+	Printf(printlevel,"%s\n", s.GetChars());
 	return 0;
 }
 
@@ -1055,7 +1097,12 @@ DEFINE_ACTION_FUNCTION_NATIVE(_System, MusicEnabled, MusicEnabled)
 	ACTION_RETURN_INT(MusicEnabled());
 }
 
-DEFINE_ACTION_FUNCTION_NATIVE(_System, GetTimeFrac, I_GetTimeFrac)
+static double Jit_GetTimeFrac() // cannot use I_GetTimwfrac directly due to default arguments.
+{
+	return I_GetTimeFrac();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_System, GetTimeFrac, Jit_GetTimeFrac)
 {
 	ACTION_RETURN_FLOAT(I_GetTimeFrac());
 }
@@ -1082,3 +1129,136 @@ DEFINE_FIELD(DStatusBarCore, drawClip);
 DEFINE_FIELD(DStatusBarCore, fullscreenOffsets);
 DEFINE_FIELD(DStatusBarCore, defaultScale);
 DEFINE_FIELD(DHUDFont, mFont);
+
+//
+// Quaternion
+void QuatFromAngles(double yaw, double pitch, double roll, DQuaternion* pquat)
+{
+	*pquat = DQuaternion::FromAngles(DAngle::fromDeg(yaw), DAngle::fromDeg(pitch), DAngle::fromDeg(roll));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_QuatStruct, FromAngles, QuatFromAngles)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(yaw);
+	PARAM_FLOAT(pitch);
+	PARAM_FLOAT(roll);
+
+	DQuaternion quat;
+	QuatFromAngles(yaw, pitch, roll, &quat);
+	ACTION_RETURN_QUAT(quat);
+}
+
+void QuatAxisAngle(double x, double y, double z, double angleDeg, DQuaternion* pquat)
+{
+	auto axis = DVector3(x, y, z);
+	auto angle = DAngle::fromDeg(angleDeg);
+	*pquat = DQuaternion::AxisAngle(axis, angle);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_QuatStruct, AxisAngle, QuatAxisAngle)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(z);
+	PARAM_FLOAT(angle);
+
+	DQuaternion quat;
+	QuatAxisAngle(x, y, z, angle, &quat);
+	ACTION_RETURN_QUAT(quat);
+}
+
+void QuatNLerp(
+	double ax, double ay, double az, double aw,
+	double bx, double by, double bz, double bw,
+	double t,
+	DQuaternion* pquat
+)
+{
+	auto from = DQuaternion { ax, ay, az, aw };
+	auto to   = DQuaternion { bx, by, bz, bw };
+	*pquat = DQuaternion::NLerp(from, to, t);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_QuatStruct, NLerp, QuatNLerp)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(ax);
+	PARAM_FLOAT(ay);
+	PARAM_FLOAT(az);
+	PARAM_FLOAT(aw);
+	PARAM_FLOAT(bx);
+	PARAM_FLOAT(by);
+	PARAM_FLOAT(bz);
+	PARAM_FLOAT(bw);
+	PARAM_FLOAT(t);
+
+	DQuaternion quat;
+	QuatNLerp(ax, ay, az, aw, bx, by, bz, bw, t, &quat);
+	ACTION_RETURN_QUAT(quat);
+}
+
+void QuatSLerp(
+	double ax, double ay, double az, double aw,
+	double bx, double by, double bz, double bw,
+	double t,
+	DQuaternion* pquat
+)
+{
+	auto from = DQuaternion { ax, ay, az, aw };
+	auto to   = DQuaternion { bx, by, bz, bw };
+	*pquat = DQuaternion::SLerp(from, to, t);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_QuatStruct, SLerp, QuatSLerp)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(ax);
+	PARAM_FLOAT(ay);
+	PARAM_FLOAT(az);
+	PARAM_FLOAT(aw);
+	PARAM_FLOAT(bx);
+	PARAM_FLOAT(by);
+	PARAM_FLOAT(bz);
+	PARAM_FLOAT(bw);
+	PARAM_FLOAT(t);
+
+	DQuaternion quat;
+	QuatSLerp(ax, ay, az, aw, bx, by, bz, bw, t, &quat);
+	ACTION_RETURN_QUAT(quat);
+}
+
+void QuatConjugate(
+	double x, double y, double z, double w,
+	DQuaternion* pquat
+)
+{
+	*pquat = DQuaternion(x, y, z, w).Conjugate();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_QuatStruct, Conjugate, QuatConjugate)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(DQuaternion);
+
+	DQuaternion quat;
+	QuatConjugate(self->X, self->Y, self->Z, self->W, &quat);
+	ACTION_RETURN_QUAT(quat);
+}
+
+void QuatInverse(
+	double x, double y, double z, double w,
+	DQuaternion* pquat
+)
+{
+	*pquat = DQuaternion(x, y, z, w).Inverse();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_QuatStruct, Inverse, QuatInverse)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(DQuaternion);
+
+	DQuaternion quat;
+	QuatInverse(self->X, self->Y, self->Z, self->W, &quat);
+	ACTION_RETURN_QUAT(quat);
+}

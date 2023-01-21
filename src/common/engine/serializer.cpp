@@ -290,6 +290,28 @@ bool FSerializer::BeginObject(const char *name)
 //
 //==========================================================================
 
+bool FSerializer::HasObject(const char* name)
+{
+	if (isReading())
+	{
+		auto val = r->FindKey(name);
+		if (val != nullptr)
+		{
+			if (val->IsObject())
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
 void FSerializer::EndObject()
 {
 	if (isWriting())
@@ -601,7 +623,7 @@ void FSerializer::WriteObjects()
 void FSerializer::ReadObjects(bool hubtravel)
 {
 	bool founderrors = false;
-	
+
 	if (isReading() && BeginArray("objects"))
 	{
 		// Do not link any thinker that's being created here. This will be done by deserializing the thinker list later.
@@ -619,7 +641,6 @@ void FSerializer::ReadObjects(bool hubtravel)
 				if (BeginObject(nullptr))
 				{
 					FString clsname;	// do not deserialize the class type directly so that we can print appropriate errors.
-					int pindex = -1;
 
 					Serialize(*this, "classtype", clsname, nullptr);
 					PClass *cls = PClass::FindClass(clsname);
@@ -643,6 +664,7 @@ void FSerializer::ReadObjects(bool hubtravel)
 			if (!founderrors)
 			{
 				// Reset to start;
+				unsigned size = r->mObjects.Size();
 				r->mObjects.Last().mIndex = 0;
 
 				for (unsigned i = 0; i < r->mDObjects.Size(); i++)
@@ -652,7 +674,6 @@ void FSerializer::ReadObjects(bool hubtravel)
 					{
 						if (obj != nullptr)
 						{
-							int pindex = -1;
 							try
 							{
 								obj->SerializeUserVars(*this);
@@ -660,8 +681,9 @@ void FSerializer::ReadObjects(bool hubtravel)
 							}
 							catch (CRecoverableError &err)
 							{
+								r->mObjects.Clamp(size);	// close all inner objects.
 								// In case something in here throws an error, let's continue and deal with it later.
-								Printf(TEXTCOLOR_RED "'%s'\n while restoring %s\n", err.GetMessage(), obj ? obj->GetClass()->TypeName.GetChars() : "invalid object");
+								Printf(PRINT_NONOTIFY | PRINT_BOLD, TEXTCOLOR_RED "'%s'\n while restoring %s\n", err.GetMessage(), obj ? obj->GetClass()->TypeName.GetChars() : "invalid object");
 								mErrors++;
 							}
 						}
@@ -1310,9 +1332,9 @@ FSerializer &Serialize(FSerializer &arc, const char *key, FSoundID &sid, FSoundI
 	if (!arc.soundNamesAreUnique)
 	{
 		//If sound name here is not reliable, we need to save by index instead.
-		int id = sid;
+		int id = sid.index();
 		Serialize(arc, key, id, nullptr);
-		if (arc.isReading()) sid = FSoundID(id);
+		if (arc.isReading()) sid = FSoundID::fromInt(id);
 	}
 	else if (arc.isWriting())
 	{
@@ -1332,16 +1354,16 @@ FSerializer &Serialize(FSerializer &arc, const char *key, FSoundID &sid, FSoundI
 			assert(val->IsString() || val->IsNull());
 			if (val->IsString())
 			{
-				sid = UnicodeToString(val->GetString());
+				sid = S_FindSound(UnicodeToString(val->GetString()));
 			}
 			else if (val->IsNull())
 			{
-				sid = 0;
+				sid = NO_SOUND;
 			}
 			else
 			{
 				Printf(TEXTCOLOR_RED "string type expected for '%s'\n", key);
-				sid = 0;
+				sid = NO_SOUND;
 				arc.mErrors++;
 			}
 		}

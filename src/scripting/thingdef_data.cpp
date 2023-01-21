@@ -338,6 +338,12 @@ static FFlagDef ActorFlagDefs[]=
 	DEFINE_FLAG(MF8, MAP07BOSS2, AActor, flags8),
 	DEFINE_FLAG(MF8, AVOIDHAZARDS, AActor, flags8),
 	DEFINE_FLAG(MF8, STAYONLIFT, AActor, flags8),
+	DEFINE_FLAG(MF8, DONTFOLLOWPLAYERS, AActor, flags8),
+	DEFINE_FLAG(MF8, SEEFRIENDLYMONSTERS, AActor, flags8),
+	DEFINE_FLAG(MF8, CROSSLINECHECK, AActor, flags8),
+	DEFINE_FLAG(MF8, MASTERNOSEE, AActor, flags8),
+	DEFINE_FLAG(MF8, ADDLIGHTLEVEL, AActor, flags8),
+	DEFINE_FLAG(MF8, ONLYSLAMSOLID, AActor, flags8),
 
 	// Effect flags
 	DEFINE_FLAG(FX, VISIBILITYPULSE, AActor, effects),
@@ -363,6 +369,8 @@ static FFlagDef ActorFlagDefs[]=
 	DEFINE_FLAG(RF, ZDOOMTRANS, AActor, renderflags),
 	DEFINE_FLAG(RF, CASTSPRITESHADOW, AActor, renderflags),
 	DEFINE_FLAG(RF, NOSPRITESHADOW, AActor, renderflags),
+	DEFINE_FLAG(RF2, INVISIBLEINMIRRORS, AActor, renderflags2),
+	DEFINE_FLAG(RF2, ONLYVISIBLEINMIRRORS, AActor, renderflags2),
 
 	// Bounce flags
 	DEFINE_FLAG2(BOUNCE_Walls, BOUNCEONWALLS, AActor, BounceFlags),
@@ -700,6 +708,10 @@ void InitThingdef()
 	sectorportalstruct->Size = sizeof(FSectorPortal);
 	sectorportalstruct->Align = alignof(FSectorPortal);
 
+	auto lineportalstruct = NewStruct("LinePortal", nullptr, true);
+	lineportalstruct->Size = sizeof(FLinePortal);
+	lineportalstruct->Align = alignof(FLinePortal);
+
 	auto playerclassstruct = NewStruct("PlayerClass", nullptr, true);
 	playerclassstruct->Size = sizeof(FPlayerClass);
 	playerclassstruct->Align = alignof(FPlayerClass);
@@ -712,6 +724,10 @@ void InitThingdef()
 	teamstruct->Size = sizeof(FTeam);
 	teamstruct->Align = alignof(FTeam);
 
+	auto terraindefstruct = NewStruct("TerrainDef", nullptr, true);
+	terraindefstruct->Size = sizeof(FTerrainDef);
+	terraindefstruct->Align = alignof(FTerrainDef);
+
 	PStruct *pstruct = NewStruct("PlayerInfo", nullptr, true);
 	pstruct->Size = sizeof(player_t);
 	pstruct->Align = alignof(player_t);
@@ -723,21 +739,6 @@ void InitThingdef()
 			[](FSerializer &ar, const char *key, void *addr)
 		{
 			Serialize<player_t>(ar, key, *(player_t **)addr, nullptr);
-			return true;
-		}
-	);
-
-	auto fontstruct = NewStruct("FFont", nullptr, true);
-	fontstruct->Size = sizeof(FFont);
-	fontstruct->Align = alignof(FFont);
-	NewPointer(fontstruct, false)->InstallHandlers(
-		[](FSerializer &ar, const char *key, const void *addr)
-		{
-			ar(key, *(FFont **)addr);
-		},
-			[](FSerializer &ar, const char *key, void *addr)
-		{
-			Serialize<FFont>(ar, key, *(FFont **)addr, nullptr);
 			return true;
 		}
 	);
@@ -789,6 +790,10 @@ void InitThingdef()
 	auto fltd = NewStruct("FLineTraceData", nullptr);
 	fltd->Size = sizeof(FLineTraceData);
 	fltd->Align = alignof(FLineTraceData);
+
+	auto fspp = NewStruct("FSpawnParticleParams", nullptr);
+	fspp->Size = sizeof(FSpawnParticleParams);
+	fspp->Align = alignof(FSpawnParticleParams);
 }
 
 void SynthesizeFlagFields()
@@ -813,7 +818,7 @@ void SynthesizeFlagFields()
 DEFINE_ACTION_FUNCTION(DObject, BAM)
 {
 	PARAM_PROLOGUE;
-	PARAM_FLOAT(ang);
-	ACTION_RETURN_INT(DAngle(ang).BAMs());
+	PARAM_ANGLE(ang);
+	ACTION_RETURN_INT(ang.BAMs());
 }
 

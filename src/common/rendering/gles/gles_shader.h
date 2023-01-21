@@ -6,7 +6,7 @@
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
+// the Free Software Foundation, either version 2 of the License, or
 // (at your option) any later version.
 //
 // This program is distributed in the hope that it will be useful,
@@ -277,13 +277,14 @@ public:
 #endif
 
 	bool hasSpotLight;
+	bool paletteInterpolate;
 };
 
 class FShader
 {
 	friend class FShaderCollection;
 	friend class FGLRenderState;
-	
+
 	FName mName;
 
 	FString mVertProg;
@@ -325,6 +326,7 @@ public: class ShaderVariantData
 		FBufferedUniform1i muTextureMode;
 		FBufferedUniform4f muLightParms;
 		FBufferedUniform2f muClipSplit;
+		FBufferedUniform1i muBoneIndexBase;
 		FBufferedUniform4i muLightRange;
 		FBufferedUniformPE muFogColor;
 		FBufferedUniform4f muDynLightColor;
@@ -355,6 +357,7 @@ public: class ShaderVariantData
 
 
 		int lights_index = 0;
+		int bones_index = 0;
 		int modelmatrix_index = 0;
 		int normalmodelmatrix_index = 0;
 		int texturematrix_index = 0;
@@ -378,7 +381,7 @@ public:
 	FShader(const char *name)
 		: mName(name)
 	{
-		
+
 	}
 
 	~FShader();
@@ -393,9 +396,9 @@ public:
 	{
 		uint32_t tag = 0;
 		tag |= (flavour.textureMode & 0x7);
-		
+
 		tag |= (flavour.texFlags & 7) << 3;
-		
+
 		tag |= (flavour.blendFlags & 7) << 6;
 
 		tag |= (flavour.twoDFog & 1) << 7;
@@ -419,15 +422,15 @@ public:
 #ifdef NPOT_EMULATION
 		tag |= (flavour.npotEmulation & 1) << 22;
 #endif
-		
 		tag |= (flavour.hasSpotLight & 1) << 23;
+		tag |= (flavour.paletteInterpolate & 1) << 24;
 
 		return tag;
 	}
 
 	bool Bind(ShaderFlavourData& flavour);
 
-	
+
 };
 
 //==========================================================================
@@ -461,7 +464,7 @@ class FShaderCollection
 
 	void Clean();
 	void CompileShaders(EPassType passType);
-	
+
 public:
 	FShaderCollection(EPassType passType);
 	~FShaderCollection();
@@ -480,7 +483,10 @@ public:
 		{
 			return mMaterialShaders[eff];
 		}
-		return NULL;
+		else // This can happen if we try and active a user shader which is not loaded, so return default shader so it does not crash
+		{
+			return mMaterialShaders[0];
+		}
 	}
 };
 

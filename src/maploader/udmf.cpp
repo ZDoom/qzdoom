@@ -262,7 +262,7 @@ double UDMFParserBase::CheckCoordinate(FName key)
 
 DAngle UDMFParserBase::CheckAngle(FName key)
 {
-	return DAngle(CheckFloat(key)).Normalized360();
+	return DAngle::fromDeg(CheckFloat(key)).Normalized360();
 }
 
 bool UDMFParserBase::CheckBool(FName key)
@@ -737,21 +737,27 @@ public:
 				break;
 
 			case NAME_ScaleX:
-				th->Scale.X = CheckFloat(key);
+				th->Scale.X = (float)CheckFloat(key);
 				break;
 
 			case NAME_ScaleY:
-				th->Scale.Y = CheckFloat(key);
+				th->Scale.Y = (float)CheckFloat(key);
 				break;
 
 			case NAME_Scale:
-				th->Scale.X = th->Scale.Y = CheckFloat(key);
+				th->Scale.X = th->Scale.Y = (float)CheckFloat(key);
 				break;
 
 			case NAME_FriendlySeeBlocks:
 				CHECK_N(Zd | Zdt)
 				th->friendlyseeblocks = CheckInt(key);
 				break;
+
+			case NAME_lm_suncolor:
+			case NAME_lm_sampledistance:
+			case NAME_lm_gridsize:
+				CHECK_N(Zd | Zdt)
+					break;
 
 			default:
 				CHECK_N(Zd | Zdt)
@@ -1123,6 +1129,16 @@ public:
 				ld->healthgroup = CheckInt(key);
 				break;
 
+			case NAME_lm_lightcolorline:
+			case NAME_lm_lightintensityline:
+			case NAME_lm_lightdistanceline:
+			case NAME_lm_sampledist_line:
+			case NAME_lm_sampledist_top:
+			case NAME_lm_sampledist_mid:
+			case NAME_lm_sampledist_bot:
+				CHECK_N(Zd | Zdt)
+				break;
+
 			default:
 				if (strnicmp("user_", key.GetChars(), 5))
 					DPrintf(DMSG_WARNING, "Unknown UDMF linedef key %s\n", key.GetChars());
@@ -1300,6 +1316,30 @@ public:
 
 			case NAME_lightabsolute:
 				Flag(sd->Flags, WALLF_ABSLIGHTING, key);
+				continue;
+
+			case NAME_light_top:
+				sd->SetLight(CheckInt(key), side_t::top);
+				continue;
+				
+			case NAME_lightabsolute_top:
+				Flag(sd->Flags, WALLF_ABSLIGHTING_TOP, key);
+				continue;
+
+			case NAME_light_mid:
+				sd->SetLight(CheckInt(key), side_t::mid);
+				continue;
+
+			case NAME_lightabsolute_mid:
+				Flag(sd->Flags, WALLF_ABSLIGHTING_MID, key);
+				continue;
+
+			case NAME_light_bottom:
+				sd->SetLight(CheckInt(key), side_t::bottom);
+				continue;
+
+			case NAME_lightabsolute_bottom:
+				Flag(sd->Flags, WALLF_ABSLIGHTING_BOTTOM, key);
 				continue;
 
 			case NAME_lightfog:
@@ -1948,7 +1988,18 @@ public:
 				case NAME_Health3DGroup:
 					sec->health3dgroup = CheckInt(key);
 					break;
-					
+
+				case NAME_lm_lightcolorfloor:
+				case NAME_lm_lightintensityfloor:
+				case NAME_lm_lightdistancefloor:
+				case NAME_lm_lightcolorceiling:
+				case NAME_lm_lightintensityceiling:
+				case NAME_lm_lightdistanceceiling:
+				case NAME_lm_sampledist_floor:
+				case NAME_lm_sampledist_ceiling:
+					CHECK_N(Zd | Zdt)
+					break;
+
 				default:
 					if (strnicmp("user_", key.GetChars(), 5))
 						DPrintf(DMSG_WARNING, "Unknown UDMF sector key %s\n", key.GetChars());

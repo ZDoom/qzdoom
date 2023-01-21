@@ -55,6 +55,7 @@
 #include "r_data/r_canvastexture.h"
 #include "r_data/r_interpolate.h"
 #include "doom_aabbtree.h"
+#include "doom_levelmesh.h"
 
 //============================================================================
 //
@@ -102,6 +103,7 @@ struct EventManager;
 typedef TMap<int, int> FDialogueIDMap;				// maps dialogue IDs to dialogue array index (for ACS)
 typedef TMap<FName, int> FDialogueMap;				// maps actor class names to dialogue array index
 typedef TMap<int, FUDMFKeys> FUDMFKeyMap;
+class DIntermissionController;
 
 struct FLevelLocals
 {
@@ -122,12 +124,13 @@ struct FLevelLocals
 
 	friend class MapLoader;
 
+	DIntermissionController* CreateIntermission();
 	void Tick();
 	void Mark();
 	void AddScroller(int secnum);
 	void SetInterMusic(const char *nextmap);
 	void SetMusicVolume(float v);
-	void ClearLevelData();
+	void ClearLevelData(bool fullgc = true);
 	void ClearPortals();
 	bool CheckIfExitIsGood(AActor *self, level_info_t *newmap);
 	void FormatMapName(FString &mapname, const char *mapnamecolor);
@@ -429,7 +432,6 @@ public:
 	
 	void SetMusic();
 
-
 	TArray<vertex_t> vertexes;
 	TArray<sector_t> sectors;
 	TArray<extsector_t> extsectors; // container for non-trivial sector information. sector_t must be trivially copyable for *_fakeflat to work as intended.
@@ -451,6 +453,20 @@ public:
 	TArray<FSectorPortal> sectorPortals;
 	TArray<FLinePortal> linePortals;
 
+	// Lightmaps
+	TArray<LightmapSurface> LMSurfaces;
+	TArray<float> LMTexCoords;
+	int LMTextureCount = 0;
+	int LMTextureSize = 0;
+	TArray<uint16_t> LMTextureData;
+	TArray<LightProbe> LightProbes;
+	int LPMinX = 0;
+	int LPMinY = 0;
+	int LPWidth = 0;
+	int LPHeight = 0;
+	static const int LPCellSize = 32;
+	TArray<LightProbeCell> LPCells;
+
 	// Portal information.
 	FDisplacementTable Displacements;
 	FPortalBlockmap PortalBlockmap;
@@ -461,6 +477,7 @@ public:
 	FCanvasTextureInfo canvasTextureInfo;
 	EventManager *localEventManager = nullptr;
 	DoomLevelAABBTree* aabbTree = nullptr;
+	DoomLevelMesh* levelMesh = nullptr;
 
 	// [ZZ] Destructible geometry information
 	TMap<int, FHealthGroup> healthGroups;
@@ -525,7 +542,7 @@ public:
 
 	static const int BODYQUESIZE = 32;
 	TObjPtr<AActor*> bodyque[BODYQUESIZE];
-	TObjPtr<DAutomapBase*> automap = nullptr;
+	TObjPtr<DAutomapBase*> automap = MakeObjPtr<DAutomapBase*>(nullptr);
 	int bodyqueslot;
 	
 	// For now this merely points to the global player array, but with this in place, access to this array can be moved over to the level.
@@ -584,6 +601,12 @@ public:
 		return p->camera == mo;
 	}
 
+	bool MBF21Enabled() const
+	{
+		// The affected features only are a problem with Doom format maps - the flag should have no effect in Hexen and UDMF format.
+		return !(i_compatflags2 & COMPATF2_NOMBF21) || maptype != MAPTYPE_DOOM;
+	}
+
 	int NumMapSections;
 
 	uint32_t		flags;
@@ -631,6 +654,7 @@ public:
 	DSeqNode *SequenceListHead;
 
 	// [RH] particle globals
+	uint32_t			OldestParticle; // [MC] Oldest particle for replacing with PS_REPLACE
 	uint32_t			ActiveParticles;
 	uint32_t			InactiveParticles;
 	TArray<particle_t>	Particles;
@@ -669,10 +693,10 @@ public:
 
 	// links to global game objects
 	TArray<TObjPtr<AActor *>> CorpseQueue;
-	TObjPtr<DFraggleThinker *> FraggleScriptThinker = nullptr;
-	TObjPtr<DACSThinker*> ACSThinker = nullptr;
+	TObjPtr<DFraggleThinker *> FraggleScriptThinker = MakeObjPtr<DFraggleThinker*>(nullptr);
+	TObjPtr<DACSThinker*> ACSThinker = MakeObjPtr<DACSThinker*>(nullptr);
 
-	TObjPtr<DSpotState *> SpotState = nullptr;
+	TObjPtr<DSpotState *> SpotState = MakeObjPtr<DSpotState*>(nullptr);
 
 	//==========================================================================
 	//
@@ -821,9 +845,29 @@ inline line_t *line_t::getPortalDestination() const
 	return portalindex >= GetLevel()->linePortals.Size() ? (line_t*)nullptr : GetLevel()->linePortals[portalindex].mDestination;
 }
 
+inline int line_t::getPortalFlags() const
+{
+	return portalindex >= GetLevel()->linePortals.Size() ? 0 : GetLevel()->linePortals[portalindex].mFlags;
+}
+
 inline int line_t::getPortalAlignment() const
 {
 	return portalindex >= GetLevel()->linePortals.Size() ? 0 : GetLevel()->linePortals[portalindex].mAlign;
+}
+
+inline int line_t::getPortalType() const
+{
+	return portalindex >= GetLevel()->linePortals.Size() ? 0 : GetLevel()->linePortals[portalindex].mType;
+}
+
+inline DVector2 line_t::getPortalDisplacement() const
+{
+	return portalindex >= GetLevel()->linePortals.Size() ? DVector2(0., 0.) : GetLevel()->linePortals[portalindex].mDisplacement;
+}
+
+inline DAngle line_t::getPortalAngleDiff() const
+{
+	return portalindex >= GetLevel()->linePortals.Size() ? DAngle::fromDeg(0.) : GetLevel()->linePortals[portalindex].mAngleDiff;
 }
 
 inline bool line_t::hitSkyWall(AActor* mo) const

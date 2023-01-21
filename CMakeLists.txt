@@ -139,12 +139,12 @@ else()
 endif()
 
 if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" )
-	set( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE TRUE )
+	set( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE TRUE )
 else()
-	set( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE FALSE )
+	set( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE FALSE )
 endif()
 
-if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
+if( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	set( PROFILE 0 CACHE BOOL "Enable profiling with gprof for Debug and RelWithDebInfo build types." )
 
 	if( CMAKE_CXX_STANDARD )
@@ -157,7 +157,7 @@ endif()
 
 # Fast math flags, required by some subprojects
 set( ZD_FASTMATH_FLAG "" )
-if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
+if( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	set( ZD_FASTMATH_FLAG "-ffast-math -ffp-contract=fast" )
 elseif( MSVC )
 	set( ZD_FASTMATH_FLAG "/fp:fast" )
@@ -189,13 +189,14 @@ option( NO_OPENAL "Disable OpenAL sound support" OFF )
 
 find_package( BZip2 )
 find_package( JPEG )
+find_package( VPX )
 find_package( ZLIB )
 
 include( TargetArch )
 
-target_architecture(ZDOOM_TARGET_ARCH)
+target_architecture(TARGET_ARCHITECTURE)
 
-if( ${ZDOOM_TARGET_ARCH} MATCHES "x86_64" )
+if( ${TARGET_ARCHITECTURE} MATCHES "x86_64" )
 	set( HAVE_VM_JIT ON )
 endif()
 
@@ -217,7 +218,7 @@ if( MSVC )
 	# String pooling
 	# Function-level linking
 	# Disable run-time type information
-	set( ALL_C_FLAGS "/GF /Gy /permissive- /DHAVE_SOFTPOLY" )
+	set( ALL_C_FLAGS "/GF /Gy /permissive-" )
 
 	if ( HAVE_VULKAN )
 		set( ALL_C_FLAGS "${ALL_C_FLAGS} /DHAVE_VULKAN" )
@@ -245,7 +246,7 @@ if( MSVC )
 	set( DEB_C_FLAGS "/D _CRTDBG_MAP_ALLOC /MTd" )
 
 	# Disable warnings for unsecure CRT functions from VC8+
-	set( ALL_C_FLAGS "${ALL_C_FLAGS} /wd4996 /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0600" )
+	set( ALL_C_FLAGS "${ALL_C_FLAGS} /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0600 /D_CRT_SECURE_NO_DEPRECATE /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_WARNINGS" )
 
 	# The CMake configurations set /GR and /MD by default, which conflict with our settings.
 	string(REPLACE "/MD " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} )
@@ -259,7 +260,7 @@ if( MSVC )
 	string(REPLACE "/MDd " " " CMAKE_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG} )
 else()
 	set( REL_LINKER_FLAGS "" )
-	set( ALL_C_FLAGS "-ffp-contract=off -DHAVE_SOFTPOLY" )
+	set( ALL_C_FLAGS "-ffp-contract=off" )
 
 	if ( HAVE_VULKAN )
 		set( ALL_C_FLAGS "${ALL_C_FLAGS} -DHAVE_VULKAN" )
@@ -323,10 +324,13 @@ option(FORCE_INTERNAL_ASMJIT "Use internal asmjit" ON)
 mark_as_advanced( FORCE_INTERNAL_ASMJIT )
 
 if (HAVE_VULKAN)
-	add_subdirectory( libraries/glslang/glslang)
-	add_subdirectory( libraries/glslang/spirv )
-	add_subdirectory( libraries/glslang/OGLCompilersDLL )
+	add_subdirectory( libraries/ZVulkan )
 endif()
+
+add_subdirectory( libraries/discordrpc EXCLUDE_FROM_ALL )
+set( DRPC_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries/discordrpc/include" )
+set( DRPC_LIBRARIES discord-rpc )
+set( DRPC_LIBRARY discord-rpc )
 
 if( ZLIB_FOUND AND NOT FORCE_INTERNAL_ZLIB )
 	message( STATUS "Using system zlib, includes found at ${ZLIB_INCLUDE_DIR}" )
@@ -385,7 +389,6 @@ else()
 	set( BZIP2_LIBRARIES bz2 )
 	set( BZIP2_LIBRARY bz2 )
 endif()
-
 
 set( LZMA_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries/lzma/C" )
 

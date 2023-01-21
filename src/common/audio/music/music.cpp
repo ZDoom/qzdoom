@@ -51,8 +51,8 @@
 #include <zmusic.h>
 #include "md5.h"
 #include "gain_analysis.h"
-#include "gameconfigfile.h"
 #include "i_specialpaths.h"
+#include "configfile.h"
 
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
 
@@ -117,10 +117,11 @@ int MusicEnabled() // int return is for scripting
 static std::unique_ptr<SoundStream> musicStream;
 static TArray<SoundStream*> customStreams;
 
-SoundStream *S_CreateCustomStream(size_t size, int samplerate, int numchannels, StreamCallback cb, void *userdata)
+SoundStream *S_CreateCustomStream(size_t size, int samplerate, int numchannels, MusicCustomStreamType sampletype, StreamCallback cb, void *userdata)
 {
 	int flags = 0;
 	if (numchannels < 2) flags |= SoundStream::Mono;
+	if (sampletype == MusicSamplesFloat) flags |= SoundStream::Float;
 	auto stream = GSnd->CreateStream(cb, int(size), flags, samplerate, userdata);
 	if (stream)
 	{
@@ -180,7 +181,7 @@ static bool FillStream(SoundStream* stream, void* buff, int len, void* userdata)
 			fbuf[i] = convert[i] * mus_playing.replayGainFactor * (1.f/32768.f);
 		}
 	}
-	
+
 	if (!written)
 	{
 		memset((char*)buff, 0, len);
@@ -240,15 +241,15 @@ static bool S_StartMusicPlaying(ZMusic_MusicStream song, bool loop, float rel_vo
 	}
 	ZMusic_Stop(song);
 	// make sure the volume modifiers update properly in case replay gain settings have changed.
-	fluid_gain.Callback();
-	mod_dumb_mastervolume.Callback();
+	fluid_gain->Callback();
+	mod_dumb_mastervolume->Callback();
 	if (!ZMusic_Start(song, subsong, loop))
 	{
 		return false;
 	}
 
 	// Notify the sound system of the changed relative volume
-	snd_musicvolume.Callback();
+	snd_musicvolume->Callback();
 	return true;
 }
 
@@ -298,7 +299,7 @@ void S_UpdateMusic ()
 	if (mus_playing.handle != nullptr)
 	{
 		ZMusic_Update(mus_playing.handle);
-		
+
 		// [RH] Update music and/or playlist. IsPlaying() must be called
 		// to attempt to reconnect to broken net streams and to advance the
 		// playlist when the current song finishes.
@@ -516,8 +517,8 @@ static void CheckReplayGain(const char *musicname, EMidiDevice playertype, const
 {
 	mus_playing.replayGain = 0.f;
 	mus_playing.replayGainFactor = dBToAmplitude(mus_gainoffset);
-	fluid_gain.Callback();
-	mod_dumb_mastervolume.Callback();
+	fluid_gain->Callback();
+	mod_dumb_mastervolume->Callback();
 	if (!mus_usereplaygain) return;
 
 	FileReader reader = mus_cb.OpenMusic(musicname);
@@ -603,13 +604,13 @@ static void CheckReplayGain(const char *musicname, EMidiDevice playertype, const
 		{
 			float* sbuf = (float*)readbuffer.Data();
 			int numsamples = fmt.mBufferSize / 8;
-			auto index = lbuffer.Reserve(numsamples);
+			auto addr = lbuffer.Reserve(numsamples);
 			rbuffer.Reserve(numsamples);
 
 			for (int i = 0; i < numsamples; i++)
 			{
-				lbuffer[index + i] = sbuf[i * 2] * 32768.f;
-				rbuffer[index + i] = sbuf[i * 2 + 1] * 32768.f;
+				lbuffer[addr + i] = sbuf[i * 2] * 32768.f;
+				rbuffer[addr + i] = sbuf[i * 2 + 1] * 32768.f;
 			}
 		}
 		float accTime = lbuffer.Size() / (float)fmt.mSampleRate;
@@ -684,8 +685,6 @@ bool S_ChangeMusic(const char* musicname, int order, bool looping, bool force)
 		return true;
 	}
 
-	int lumpnum = -1;
-	int length = 0;
 	ZMusic_MusicStream handle = nullptr;
 	MidiDeviceSetting* devp = MidiDevices.CheckKey(musicname);
 

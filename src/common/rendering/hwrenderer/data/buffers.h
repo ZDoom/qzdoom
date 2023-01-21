@@ -24,7 +24,9 @@ enum
 	VATTR_VERTEX2,
 	VATTR_NORMAL,
 	VATTR_NORMAL2,
-	
+	VATTR_LIGHTMAP,	
+	VATTR_BONEWEIGHT,
+	VATTR_BONESELECTOR,
 	VATTR_MAX
 };
 
@@ -36,6 +38,7 @@ enum EVertexAttributeFormat
 	VFmt_Float,
 	VFmt_Byte4,
 	VFmt_Packed_A2R10G10B10,
+	VFmt_Byte4_UInt
 };
 
 struct FVertexBufferAttribute

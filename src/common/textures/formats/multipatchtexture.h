@@ -75,7 +75,7 @@ protected:
 
 	// The getters must optionally redirect if it's a simple one-patch texture.
 	int CopyPixels(FBitmap *bmp, int conversion) override;
-	TArray<uint8_t> CreatePalettedPixels(int conversion) override;
+	PalettedPixels CreatePalettedPixels(int conversion) override;
 	void CopyToBlock(uint8_t *dest, int dwidth, int dheight, FImageSource *source, int xpos, int ypos, int rotate, const uint8_t *translation, int style);
 	void CollectForPrecache(PrecacheInfo &info, bool requiretruecolor) override;
 
@@ -120,6 +120,7 @@ struct BuildInfo
 	bool bComplex = false;
 	bool textual = false;
 	bool bNoDecals = false;
+	bool bNoTrim = false;
 	int LeftOffset[2] = {};
 	int TopOffset[2] = {};
 	FGameTexture *texture = nullptr;

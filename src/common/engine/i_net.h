@@ -6,6 +6,11 @@
 // Called by D_DoomMain.
 int I_InitNetwork (void);
 void I_NetCmd (void);
+void I_NetMessage(const char*, ...);
+void I_NetProgress(int val);
+void I_NetInit(const char* msg, int num);
+bool I_NetLoop(bool (*timer_callback)(void*), void* userdata);
+void I_NetDone();
 
 enum ENetConstants
 {
@@ -76,7 +81,7 @@ struct doomcom_t
 
 // packet data to be sent
 	uint8_t	data[MAX_MSGLEN];
-	
+
 }; 
 
 extern doomcom_t doomcom;

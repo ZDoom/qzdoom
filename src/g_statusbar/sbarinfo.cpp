@@ -34,6 +34,7 @@
 */
 
 #include "doomtype.h"
+#include "basics.h"
 #include "doomstat.h"
 #include "v_font.h"
 #include "v_video.h"
@@ -65,7 +66,6 @@ enum
 
 EXTERN_CVAR(Int, fraglimit)
 EXTERN_CVAR(Int, screenblocks)
-EXTERN_CVAR(Bool, vid_fps)
 
 class DSBarInfo;
 static double nulclip[] = { 0,0,0,0 };
@@ -1235,7 +1235,7 @@ public:
 			wrapper->StatusbarToRealCoords(dx, dy, w, h);
 
 			if(clearDontDraw)
-				ClearRect(twod, static_cast<int>(MAX<double>(dx, dcx)), static_cast<int>(MAX<double>(dy, dcy)), static_cast<int>(MIN<double>(dcr,w+MAX<double>(dx, dcx))), static_cast<int>(MIN<double>(dcb,MAX<double>(dy, dcy)+h)), GPalette.BlackIndex, 0);
+				ClearRect(twod, static_cast<int>(max<double>(dx, dcx)), static_cast<int>(max<double>(dy, dcy)), static_cast<int>(min<double>(dcr,w+max<double>(dx, dcx))), static_cast<int>(min<double>(dcb,max<double>(dy, dcy)+h)), GPalette.BlackIndex, 0);
 			else
 			{
 				if(alphaMap)
@@ -1245,8 +1245,8 @@ public:
 						DTA_DestHeightF, h,
 						DTA_ClipLeft, static_cast<int>(dcx),
 						DTA_ClipTop, static_cast<int>(dcy),
-						DTA_ClipRight, static_cast<int>(MIN<double>(INT_MAX, dcr)),
-						DTA_ClipBottom, static_cast<int>(MIN<double>(INT_MAX, dcb)),
+						DTA_ClipRight, static_cast<int>(min<double>(INT_MAX, dcr)),
+						DTA_ClipBottom, static_cast<int>(min<double>(INT_MAX, dcb)),
 						DTA_TranslationIndex, translate ? GetTranslation() : 0,
 						DTA_ColorOverlay, dim ? DIM_OVERLAY : 0,
 						DTA_CenterBottomOffset, (offsetflags & SBarInfoCommand::CENTER_BOTTOM) == SBarInfoCommand::CENTER_BOTTOM,
@@ -1262,8 +1262,8 @@ public:
 						DTA_DestHeightF, h,
 						DTA_ClipLeft, static_cast<int>(dcx),
 						DTA_ClipTop, static_cast<int>(dcy),
-						DTA_ClipRight, static_cast<int>(MIN<double>(INT_MAX, dcr)),
-						DTA_ClipBottom, static_cast<int>(MIN<double>(INT_MAX, dcb)),
+						DTA_ClipRight, static_cast<int>(min<double>(INT_MAX, dcr)),
+						DTA_ClipBottom, static_cast<int>(min<double>(INT_MAX, dcb)),
 						DTA_TranslationIndex, translate ? GetTranslation() : 0,
 						DTA_ColorOverlay, dim ? DIM_OVERLAY : 0,
 						DTA_CenterBottomOffset, (offsetflags & SBarInfoCommand::CENTER_BOTTOM) == SBarInfoCommand::CENTER_BOTTOM,
@@ -1286,8 +1286,6 @@ public:
 
 			w = (forceWidth < 0 ? texture->GetDisplayWidth() : forceWidth);
 			h = (forceHeight < 0 ? texture->GetDisplayHeight() : forceHeight);
-			if(vid_fps && rx < 0 && ry >= 0)
-				ry += 10;
 
 			rx *= Scale.X;
 			ry *= Scale.Y;
@@ -1309,7 +1307,7 @@ public:
 			}
 
 			if(clearDontDraw)
-				ClearRect(twod, static_cast<int>(rcx), static_cast<int>(rcy), static_cast<int>(MIN<double>(rcr, rcx+w)), static_cast<int>(MIN<double>(rcb, rcy+h)), GPalette.BlackIndex, 0);
+				ClearRect(twod, static_cast<int>(rcx), static_cast<int>(rcy), static_cast<int>(min<double>(rcr, rcx+w)), static_cast<int>(min<double>(rcb, rcy+h)), GPalette.BlackIndex, 0);
 			else
 			{
 				if(alphaMap)
@@ -1431,8 +1429,6 @@ public:
 			}
 			else
 			{
-				if(vid_fps && ax < 0 && ay >= 0)
-					ry += 10;
 
 				bool xright = rx < 0;
 				bool ybot = ry < 0;

@@ -114,7 +114,7 @@ template<class T, int fill = 1> void ArrayResize(T *self, int amount)
 	{
 		// This must ensure that all new entries get cleared.
 		const int fillCount = int(self->Size() - oldSize);
-		if (fillCount > 0) memset(&(*self)[oldSize], 0, sizeof(*self)[0] * fillCount);
+		if (fillCount > 0) memset((void*)&(*self)[oldSize], 0, sizeof(*self)[0] * fillCount);
 	}
 }
 
@@ -130,7 +130,7 @@ template<> unsigned int ArrayReserve(TArray<DObject*> *self, int amount)
 
 	if (fillCount > 0)
 		memset(&(*self)[oldSize], 0, sizeof(DObject*) * fillCount);
-	
+
 	return oldSize;
 }
 
@@ -842,27 +842,45 @@ DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_Ptr, Clear, ArrayClear<FDynArray_Ptr>)
 //
 //-----------------------------------------------------
 
-DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_Obj, Copy, ArrayCopy<FDynArray_Obj>)
+void ObjArrayCopy(FDynArray_Obj *self, FDynArray_Obj *other)
 {
-	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_Obj);
-	PARAM_POINTER(other, FDynArray_Obj);
+	for (auto& elem : *other) GC::WriteBarrier(elem);
 	*self = *other;
-	return 0;
 }
 
-DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_Obj, Move, ArrayMove<FDynArray_Obj>)
+DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_Obj, Copy, ObjArrayCopy)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_Obj);
 	PARAM_POINTER(other, FDynArray_Obj);
+	ObjArrayCopy(self, other);
+	return 0;
+}
+
+void ObjArrayMove(FDynArray_Obj *self, FDynArray_Obj *other)
+{
+	for (auto& elem : *other) GC::WriteBarrier(elem);
 	*self = std::move(*other);
-	return 0;
 }
 
-DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_Obj, Append, ArrayAppend<FDynArray_Obj>)
+DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_Obj, Move, ObjArrayMove)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_Obj);
 	PARAM_POINTER(other, FDynArray_Obj);
+	ObjArrayMove(self, other);
+	return 0;
+}
+
+void ObjArrayAppend(FDynArray_Obj *self, FDynArray_Obj *other)
+{
+	for (auto& elem : *other) GC::WriteBarrier(elem);
 	self->Append(*other);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FDynArray_Obj, Append, ObjArrayAppend)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FDynArray_Obj);
+	PARAM_POINTER(other, FDynArray_Obj);
+	ObjArrayAppend(self, other);
 	return 0;
 }
 

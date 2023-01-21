@@ -48,7 +48,7 @@ static PrecacheInfo precacheInfo;
 
 struct PrecacheDataPaletted
 {
-	TArray<uint8_t> Pixels;
+	PalettedPixels Pixels;
 	int RefCount;
 	int ImageID;
 };
@@ -71,9 +71,9 @@ TArray<PrecacheDataRgba> precacheDataRgba;
 //
 //===========================================================================
 
-TArray<uint8_t> FImageSource::CreatePalettedPixels(int conversion)
+PalettedPixels FImageSource::CreatePalettedPixels(int conversion)
 {
-	TArray<uint8_t> Pixels(Width * Height, true);
+	PalettedPixels Pixels(Width * Height);
 	memset(Pixels.Data(), 0, Width * Height);
 	return Pixels;
 }
@@ -82,10 +82,6 @@ PalettedPixels FImageSource::GetCachedPalettedPixels(int conversion)
 {
 	PalettedPixels ret;
 
-	FString name;
-	fileSystem.GetFileShortName(name, SourceLump);
-
-	std::pair<int, int> *info = nullptr;
 	auto imageID = ImageID;
 
 	// Do we have this image in the cache?
@@ -103,8 +99,7 @@ PalettedPixels FImageSource::GetCachedPalettedPixels(int conversion)
 		else if (cache->Pixels.Size() > 0)
 		{
 			//Printf("returning contents of %s, refcount = %d\n", name.GetChars(), cache->RefCount);
-			ret.PixelStore = std::move(cache->Pixels);
-			ret.Pixels.Set(ret.PixelStore.Data(), ret.PixelStore.Size());
+			ret = std::move(cache->Pixels);
 			precacheDataPaletted.Delete(index);
 		}
 		else
@@ -120,8 +115,7 @@ PalettedPixels FImageSource::GetCachedPalettedPixels(int conversion)
 		{
 			// This is either the only copy needed or some access outside the caching block. In these cases create a new one and directly return it.
 			//Printf("returning fresh copy of %s\n", name.GetChars());
-			ret.PixelStore = CreatePalettedPixels(conversion);
-			ret.Pixels.Set(ret.PixelStore.Data(), ret.PixelStore.Size());
+			return CreatePalettedPixels(conversion);
 		}
 		else
 		{
@@ -175,6 +169,7 @@ int FImageSource::CopyPixels(FBitmap *bmp, int conversion)
 {
 	if (conversion == luminance) conversion = normal;	// luminance images have no use as an RGB source.
 	PalEntry *palette = GPalette.BaseColors;
+
 	auto ppix = CreatePalettedPixels(conversion);
 	bmp->CopyPixelData(0, 0, ppix.Data(), Width, Height, Height, 1, 0, palette, nullptr);
 	return 0;
@@ -182,7 +177,7 @@ int FImageSource::CopyPixels(FBitmap *bmp, int conversion)
 
 int FImageSource::CopyTranslatedPixels(FBitmap *bmp, const PalEntry *remap)
 {
-	auto ppix = CreatePalettedPixels(false);
+	auto ppix = CreatePalettedPixels(normal);
 	bmp->CopyPixelData(0, 0, ppix.Data(), Width, Height, Height, 1, 0, remap, nullptr);
 	return 0;
 }
@@ -196,14 +191,10 @@ int FImageSource::CopyTranslatedPixels(FBitmap *bmp, const PalEntry *remap)
 FBitmap FImageSource::GetCachedBitmap(const PalEntry *remap, int conversion, int *ptrans)
 {
 	FBitmap ret;
-	
-	FString name;
+
 	int trans = -1;
-	fileSystem.GetFileShortName(name, SourceLump);
-	
-	std::pair<int, int> *info = nullptr;
 	auto imageID = ImageID;
-	
+
 	if (remap != nullptr)
 	{
 		// Remapped images are never run through the cache because they would complicate matters too much for very little gain.
@@ -220,7 +211,7 @@ FBitmap FImageSource::GetCachedBitmap(const PalEntry *remap, int conversion, int
 		if (index < precacheDataRgba.Size())
 		{
 			auto cache = &precacheDataRgba[index];
-			
+
 			trans = cache->TransInfo;
 			if (cache->RefCount > 1)
 			{
@@ -258,7 +249,7 @@ FBitmap FImageSource::GetCachedBitmap(const PalEntry *remap, int conversion, int
 				//Printf("creating cached entry for %s, refcount = %d\n", name.GetChars(), info->first);
 				// This is the first time it gets accessed and needs to be placed in the cache.
 				PrecacheDataRgba *pdr = &precacheDataRgba[precacheDataRgba.Reserve(1)];
-				
+
 				pdr->ImageID = imageID;
 				pdr->RefCount = info->first - 1;
 				info->first = 0;
@@ -337,6 +328,7 @@ FImageSource *FlatImage_TryCreate(FileReader &, int lumpnum);
 FImageSource *PatchImage_TryCreate(FileReader &, int lumpnum);
 FImageSource *EmptyImage_TryCreate(FileReader &, int lumpnum);
 FImageSource *AutomapImage_TryCreate(FileReader &, int lumpnum);
+FImageSource *StartupPageImage_TryCreate(FileReader &, int lumpnum);
 
 
 // Examines the lump contents to decide what type of texture to create,
@@ -352,6 +344,7 @@ FImageSource * FImageSource::GetImage(int lumpnum, bool isflat)
 		{ StbImage_TryCreate,			false },
 		{ TGAImage_TryCreate,			false },
 		{ AnmImage_TryCreate,			false },
+		{ StartupPageImage_TryCreate,	false },
 		{ RawPageImage_TryCreate,		false },
 		{ FlatImage_TryCreate,			true },	// flat detection is not reliable, so only consider this for real flats.
 		{ PatchImage_TryCreate,			false },

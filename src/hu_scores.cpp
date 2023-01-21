@@ -37,7 +37,7 @@
 
 #include "c_console.h"
 #include "teaminfo.h"
-#include "templates.h"
+
 #include "v_video.h"
 #include "doomstat.h"
 #include "g_level.h"
@@ -149,7 +149,7 @@ static int FontScale;
 void HU_DrawScores (player_t *player)
 {
 	displayFont = NewSmallFont;
-	FontScale = MAX(screen->GetHeight() / 400, 1);
+	FontScale = max(screen->GetHeight() / 400, 1);
 
 	if (deathmatch)
 	{
@@ -273,11 +273,11 @@ static void HU_DoDrawScores (player_t *player, player_t *sortedplayers[MAXPLAYER
 
 	HU_GetPlayerWidths(maxnamewidth, maxscorewidth, maxiconheight);
 	height = displayFont->GetHeight() * FontScale;
-	lineheight = MAX(height, maxiconheight * CleanYfac);
+	lineheight = max(height, maxiconheight * CleanYfac);
 	ypadding = (lineheight - height + 1) / 2;
 
 	bottom = StatusBar->GetTopOfStatusbar();
-	y = MAX(48*CleanYfac, (bottom - MAXPLAYERS * (height + CleanYfac + 1)) / 2);
+	y = max(48*CleanYfac, (bottom - MAXPLAYERS * (height + CleanYfac + 1)) / 2);
 
 	HU_DrawTimeRemaining (bottom - height);
 
@@ -304,7 +304,7 @@ static void HU_DoDrawScores (player_t *player, player_t *sortedplayers[MAXPLAYER
 			}
 		}
 
-		int scorexwidth = twod->GetWidth() / MAX(8, numTeams);
+		int scorexwidth = twod->GetWidth() / max(8, numTeams);
 		int numscores = 0;
 		int scorex;
 
@@ -430,8 +430,7 @@ static void HU_DrawPlayer (player_t *player, bool highlight, int col1, int col2,
 	auto icon = FSetTextureID(player->mo->IntVar(NAME_ScoreIcon));
 	if (icon.isValid())
 	{
-		auto pic = TexMan.GetGameTexture(icon);
-		DrawTexture(twod, pic, col3, y,
+		DrawTexture(twod, icon, false, col3, y,
 			DTA_CleanNoMove, true,
 			TAG_DONE);
 	}

@@ -2,14 +2,18 @@
 
 #include "zstring.h"
 #include "intrect.h"
+#include "name.h"
 
 struct event_t;
 class FRenderState;
 class FGameTexture;
+class FTextureID;
 enum EUpscaleFlags : int;
+class FConfigFile;
 
 struct SystemCallbacks
 {
+	bool (*G_Responder)(event_t* ev);	// this MUST be set, otherwise nothing will work
 	bool (*WantGuiCapture)();
 	bool (*WantLeftButton)();
 	bool (*NetGame)();
@@ -34,6 +38,15 @@ struct SystemCallbacks
 	void (*FontCharCreated)(FGameTexture* base, FGameTexture* untranslated);
 	void (*ToggleFullConsole)();
 	void (*StartCutscene)(bool blockui);
+	void (*SetTransition)(int type);
+	bool (*CheckCheatmode)(bool printmsg, bool sponly);
+	void (*HudScaleChanged)();
+	bool (*SetSpecialMenu)(FName& menu, int param);
+	void (*OnMenuOpen)(bool makesound);
+	void (*LanguageChanged)(const char*);
+	bool (*OkForLocalization)(FTextureID, const char*);
+	FConfigFile* (*GetConfig)();
+	bool (*WantEscape)();
 };
 
 extern SystemCallbacks sysCallbacks;
@@ -49,5 +62,7 @@ extern FString endoomName;
 extern bool batchrun;
 extern float menuBlurAmount;
 extern bool generic_ui;
+extern int 	paused;
+extern bool pauseext;
 
 void UpdateGenericUI(bool cvar);

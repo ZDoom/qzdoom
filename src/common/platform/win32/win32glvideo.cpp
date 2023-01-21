@@ -40,7 +40,7 @@
 
 #include "gl_sysfb.h"
 #include "hardware.h"
-#include "templates.h"
+
 #include "version.h"
 #include "c_console.h"
 #include "v_video.h"
@@ -65,7 +65,6 @@ PROC zd_wglGetProcAddress(LPCSTR name);
 }
 
 EXTERN_CVAR(Int, vid_adapter)
-EXTERN_CVAR(Int, vid_preferbackend)
 EXTERN_CVAR(Bool, vid_hdr)
 
 CUSTOM_CVAR(Bool, gl_debug, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
@@ -110,7 +109,7 @@ DFrameBuffer *Win32GLVideo::CreateFrameBuffer()
 	SystemGLFrameBuffer *fb;
 
 #ifdef HAVE_GLES2
-	if ((Args->CheckParm("-gles2_renderer")) || (vid_preferbackend == 3) )
+	if (V_GetBackend() == 2)
 		fb = new OpenGLESRenderer::OpenGLFrameBuffer(m_hMonitor, vid_fullscreen);
 	else
 #endif
@@ -423,8 +422,6 @@ bool Win32GLVideo::InitHardware(HWND Window, int multisample)
 	}
 
 	int prof = WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
-	const char *version = Args->CheckValue("-glversion");
-
 
 	for (; prof <= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB; prof++)
 	{

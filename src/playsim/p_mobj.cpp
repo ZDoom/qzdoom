@@ -58,7 +58,7 @@
 
 // HEADER FILES ------------------------------------------------------------
 #include <float.h>
-#include "templates.h"
+
 
 #include "m_random.h"
 #include "doomdef.h"
@@ -158,6 +158,7 @@ CVAR (Int, cl_bloodtype, 0, CVAR_ARCHIVE);
 
 // CODE --------------------------------------------------------------------
 
+IMPLEMENT_CLASS(DActorModelData, false, false);
 IMPLEMENT_CLASS(AActor, false, true)
 
 IMPLEMENT_POINTERS_START(AActor)
@@ -171,22 +172,16 @@ IMPLEMENT_POINTERS_START(AActor)
 	IMPLEMENT_POINTER(master)
 	IMPLEMENT_POINTER(Poisoner)
 	IMPLEMENT_POINTER(alternative)
+	IMPLEMENT_POINTER(ViewPos)
+	IMPLEMENT_POINTER(modelData)
+	IMPLEMENT_POINTER(boneComponentData)
 IMPLEMENT_POINTERS_END
-
-AActor::~AActor ()
-{
-	// Please avoid calling the destructor directly (or through delete)!
-	// Use Destroy() instead.
-}
-
 
 //==========================================================================
 //
 // AActor :: Serialize
 //
 //==========================================================================
-
-
 
 #define A(a,b) ((a), (b), def->b)
 
@@ -204,6 +199,7 @@ void AActor::Serialize(FSerializer &arc)
 		A("scale", Scale)
 		A("renderstyle", RenderStyle)
 		A("renderflags", renderflags)
+		A("renderflags2", renderflags2)
 		A("picnum", picnum)
 		A("floorpic", floorpic)
 		A("ceilingpic", ceilingpic)
@@ -328,6 +324,7 @@ void AActor::Serialize(FSerializer &arc)
 		A("damagemultiply", DamageMultiply)
 		A("waveindexxy", WeaveIndexXY)
 		A("weaveindexz", WeaveIndexZ)
+		A("freezetics", freezetics)
 		A("pdmgreceived", PoisonDamageReceived)
 		A("pdurreceived", PoisonDurationReceived)
 		A("ppreceived", PoisonPeriodReceived)
@@ -353,10 +350,10 @@ void AActor::Serialize(FSerializer &arc)
 		A("cameraheight", CameraHeight)
 		A("camerafov", CameraFOV)
 		A("tag", Tag)
-		A("visiblestartangle",VisibleStartAngle)
-		A("visibleendangle",VisibleEndAngle)
-		A("visiblestartpitch",VisibleStartPitch)
-		A("visibleendpitch",VisibleEndPitch)
+		A("visiblestartangle", VisibleStartAngle)
+		A("visibleendangle", VisibleEndAngle)
+		A("visiblestartpitch", VisibleStartPitch)
+		A("visibleendpitch", VisibleEndPitch)
 		A("woundhealth", WoundHealth)
 		A("rdfactor", RadiusDamageFactor)
 		A("selfdamagefactor", SelfDamageFactor)
@@ -369,7 +366,11 @@ void AActor::Serialize(FSerializer &arc)
 		A("spawnorder", SpawnOrder)
 		A("friction", Friction)
 		A("SpriteOffset", SpriteOffset)
-		A("userlights", UserLights);
+		("viewpos", ViewPos)
+		A("lightlevel", LightLevel)
+		A("userlights", UserLights)
+		A("WorldOffset", WorldOffset)
+		("modelData", modelData);
 
 		SerializeTerrain(arc, "floorterrain", floorterrain, &def->floorterrain);
 		SerializeArgs(arc, "args", args, def->args, special);
@@ -406,16 +407,10 @@ void AActor::PostSerialize()
 		}
 	}
 	ClearInterpolation();
+	ClearFOVInterpolation();
 	UpdateWaterLevel(false);
 }
 
-
-
-AActor &AActor::operator= (const AActor &other)
-{
-	memcpy (&snext, &other.snext, (uint8_t *)&this[1] - (uint8_t *)&snext);
-	return *this;
-}
 
 //==========================================================================
 //
@@ -473,14 +468,14 @@ bool AActor::IsMapActor()
 //
 //==========================================================================
 
-int AActor::GetTics(FState * newstate)
+inline int GetTics(AActor* actor, FState * newstate)
 {
 	int tics = newstate->GetTics();
-	if (isFast() && newstate->GetFast())
+	if (actor->isFast() && newstate->GetFast())
 	{
 		return tics - (tics>>1);
 	}
-	else if (isSlow() && newstate->GetSlow())
+	else if (actor->isSlow() && newstate->GetSlow())
 	{
 		return tics<<1;
 	}
@@ -527,7 +522,7 @@ bool AActor::SetState (FState *newstate, bool nofunction)
 			return false;
 		}
 		state = newstate;
-		tics = GetTics(newstate);
+		tics = GetTics(this, newstate);
 		renderflags = (renderflags & ~RF_FULLBRIGHT) | ActorRenderFlags::FromInt (newstate->GetFullbright());
 		newsprite = newstate->sprite;
 		if (newsprite != SPR_FIXED)
@@ -605,13 +600,14 @@ DEFINE_ACTION_FUNCTION(AActor, SetState)
 
 //============================================================================
 //
-// AActor :: DestroyAllInventory
+// DestroyAllInventory
+// Destroys all the inventory the actor is holding.
 //
 //============================================================================
 
-void AActor::DestroyAllInventory ()
+static void DestroyAllInventory(AActor* actor)
 {
-	AActor *inv = Inventory;
+	AActor *inv = PARAM_NULLCHECK(actor, self)->Inventory;
 	if (inv != nullptr)
 	{
 		TArray<AActor *> toDelete;
@@ -638,10 +634,10 @@ void AActor::DestroyAllInventory ()
 	}
 }
 
-DEFINE_ACTION_FUNCTION(AActor, DestroyAllInventory)
+DEFINE_ACTION_FUNCTION_NATIVE(AActor, DestroyAllInventory, DestroyAllInventory)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	self->DestroyAllInventory();
+	DestroyAllInventory(self);
 	return 0;
 }
 //============================================================================
@@ -761,23 +757,6 @@ DEFINE_ACTION_FUNCTION(AActor, GiveInventoryType)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_CLASS(type, AActor);
 	ACTION_RETURN_OBJECT(self->GiveInventoryType(type));
-}
-
-//============================================================================
-//
-// AActor :: ClearInventory
-//
-// Clears the inventory of a single actor.
-//
-//============================================================================
-
-void AActor::ClearInventory()
-{
-	IFVIRTUAL(AActor, ClearInventory)
-	{
-		VMValue params[] = { this };
-		VMCall(func, params, 1, nullptr, 0);
-	}
 }
 
 //============================================================================
@@ -1007,10 +986,10 @@ bool AActor::IsInsideVisibleAngles() const
 	if (p == nullptr || p->camera == nullptr)
 		return true;
 	
-	DAngle anglestart = VisibleStartAngle.Degrees;
-	DAngle angleend = VisibleEndAngle.Degrees;
-	DAngle pitchstart = VisibleStartPitch.Degrees;
-	DAngle pitchend = VisibleEndPitch.Degrees;
+	DAngle anglestart = DAngle::fromDeg(VisibleStartAngle.Degrees());
+	DAngle angleend = DAngle::fromDeg(VisibleEndAngle.Degrees());
+	DAngle pitchstart = DAngle::fromDeg(VisibleStartPitch.Degrees());
+	DAngle pitchend = DAngle::fromDeg(VisibleEndPitch.Degrees());
 	
 	if (anglestart > angleend)
 	{
@@ -1131,18 +1110,6 @@ void AActor::ConversationAnimation (int animnum)
 //
 //============================================================================
 
-void AActor::Touch (AActor *toucher)
-{
-}
-
-DEFINE_ACTION_FUNCTION(AActor, Touch)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_OBJECT_NOT_NULL(toucher, AActor);
-	self->Touch(toucher);
-	return 0;
-}
-
 void AActor::CallTouch(AActor *toucher)
 {
 	IFVIRTUAL(AActor, Touch)
@@ -1150,7 +1117,6 @@ void AActor::CallTouch(AActor *toucher)
 		VMValue params[2] = { (DObject*)this, toucher };
 		VMCall(func, params, 2, nullptr, 0);
 	}
-	else Touch(toucher);
 }
 
 //============================================================================
@@ -1163,20 +1129,22 @@ void AActor::CallTouch(AActor *toucher)
 // Bool items is true if it should destroy() dropped items, false otherwise.
 //============================================================================
 
-bool AActor::Grind(bool items)
+static int Grind(AActor* actor, int items)
 {
+	PARAM_NULLCHECK(actor, actor);
 	// crunch bodies to giblets
-	if ((flags & MF_CORPSE) && !(flags3 & MF3_DONTGIB) && (health <= 0))
+	if ((actor->flags & MF_CORPSE) && !(actor->flags3 & MF3_DONTGIB) && (actor->health <= 0))
 	{
-		FState * state = FindState(NAME_Crush);
+		FState * state = actor->FindState(NAME_Crush);
 
 		// In Heretic and Chex Quest we don't change the actor's sprite, just its size.
 		if (state == NULL && gameinfo.dontcrunchcorpses)
 		{
-			flags &= ~MF_SOLID;
-			flags3 |= MF3_DONTGIB;
-			Height = 0;
-			radius = 0;
+			actor->flags &= ~MF_SOLID;
+			actor->flags3 |= MF3_DONTGIB;
+			actor->Height = 0;
+			actor->radius = 0;
+			actor->Vel.Zero();
 			return false;
 		}
 
@@ -1185,46 +1153,46 @@ bool AActor::Grind(bool items)
 		// The reason for the change was originally because of a problem with players,
 		// see rh_log entry for February 21, 1999. Don't know if it is still relevant.
 		if (state == NULL 									// Only use the default crushed state if:
-			&& !(flags & MF_NOBLOOD)						// 1. the monster bleeeds,
-			&& (Level->i_compatflags & COMPATF_CORPSEGIBS)			// 2. the compat setting is on,
-			&& player == NULL)								// 3. and the thing isn't a player.
+			&& !(actor->flags & MF_NOBLOOD)						// 1. the monster bleeeds,
+			&& actor->player == NULL)								// 3. and the thing isn't a player.
 		{
 			isgeneric = true;
-			state = FindState(NAME_GenericCrush);
+			state = actor->FindState(NAME_GenericCrush);
 			if (state != NULL && (sprites[state->sprite].numframes <= 0))
 				state = NULL; // If one of these tests fails, do not use that state.
 		}
-		if (state != NULL && !(flags & MF_ICECORPSE))
+		if (state != NULL && !(actor->flags & MF_ICECORPSE))
 		{
-			if (this->flags4 & MF4_BOSSDEATH) 
+			if (actor->flags4 & MF4_BOSSDEATH)
 			{
-				A_BossDeath(this);
+				A_BossDeath(actor);
 			}
-			flags &= ~MF_SOLID;
-			flags3 |= MF3_DONTGIB;
-			Height = 0;
-			radius = 0;
-			SetState (state);
+			actor->flags &= ~MF_SOLID;
+			actor->flags3 |= MF3_DONTGIB;
+			actor->Height = 0;
+			actor->radius = 0;
+			actor->Vel.Zero();
+			actor->SetState (state);
 			if (isgeneric)	// Not a custom crush state, so colorize it appropriately.
 			{
-				S_Sound (this, CHAN_BODY, 0, "misc/fallingsplat", 1, ATTN_IDLE);
-				Translation = BloodTranslation;
+				S_Sound (actor, CHAN_BODY, 0, "misc/fallingsplat", 1, ATTN_IDLE);
+				actor->Translation = actor->BloodTranslation;
 			}
-			Level->localEventManager->WorldThingGround(this, state);
+			actor->Level->localEventManager->WorldThingGround(actor, state);
 			return false;
 		}
-		if (!(flags & MF_NOBLOOD))
+		if (!(actor->flags & MF_NOBLOOD))
 		{
-			if (this->flags4 & MF4_BOSSDEATH) 
+			if (actor->flags4 & MF4_BOSSDEATH)
 			{
-				A_BossDeath(this);
+				A_BossDeath(actor);
 			}
 
 			PClassActor *i = PClass::FindActor("RealGibs");
 
 			if (i != NULL)
 			{
-				i = i->GetReplacement(Level);
+				i = i->GetReplacement(actor->Level);
 
 				const AActor *defaults = GetDefaultByType (i);
 				if (defaults->SpawnState == NULL ||
@@ -1236,68 +1204,69 @@ bool AActor::Grind(bool items)
 			if (i == NULL)
 			{
 				// if there's no gib sprite don't crunch it.
-				flags &= ~MF_SOLID;
-				flags3 |= MF3_DONTGIB;
-				Height = 0;
-				radius = 0;
+				actor->flags &= ~MF_SOLID;
+				actor->flags3 |= MF3_DONTGIB;
+				actor->Height = 0;
+				actor->radius = 0;
+				actor->Vel.Zero();
 				return false;
 			}
 
-			AActor *gib = Spawn (Level, i, Pos(), ALLOW_REPLACE);
+			AActor *gib = Spawn (actor->Level, i, actor->Pos(), ALLOW_REPLACE);
 			if (gib != NULL)
 			{
-				gib->RenderStyle = RenderStyle;
-				gib->Alpha = Alpha;
+				gib->RenderStyle = actor->RenderStyle;
+				gib->Alpha = actor->Alpha;
 				gib->Height = 0;
 				gib->radius = 0;
-				gib->Translation = BloodTranslation;
+				gib->Translation = actor->BloodTranslation;
 			}
-			S_Sound (this, CHAN_BODY, 0, "misc/fallingsplat", 1, ATTN_IDLE);
-			Level->localEventManager->WorldThingGround(this, nullptr);
+			S_Sound (actor, CHAN_BODY, 0, "misc/fallingsplat", 1, ATTN_IDLE);
+			actor->Level->localEventManager->WorldThingGround(actor, nullptr);
 		}
-		if (flags & MF_ICECORPSE)
+		if (actor->flags & MF_ICECORPSE)
 		{
-			tics = 1;
-			Vel.Zero();
+			actor->tics = 1;
+			actor->Vel.Zero();
 		}
-		else if (player)
+		else if (actor->player)
 		{
-			flags |= MF_NOCLIP;
-			flags3 |= MF3_DONTGIB;
-			renderflags |= RF_INVISIBLE;
+			actor->flags |= MF_NOCLIP;
+			actor->flags3 |= MF3_DONTGIB;
+			actor->renderflags |= RF_INVISIBLE;
 		}
 		else
 		{
-			Destroy ();
+			actor->Destroy ();
 		}
 		return false;		// keep checking
 	}
 
 	// killough 11/98: kill touchy things immediately
-	if (flags6 & MF6_TOUCHY && (flags6 & MF6_ARMED || IsSentient()))
+	if (actor->flags6 & MF6_TOUCHY && (actor->flags6 & MF6_ARMED || actor->IsSentient()))
     {
-		flags6 &= ~MF6_ARMED; // Disarm
-		P_DamageMobj (this, NULL, NULL, health, NAME_Crush, DMG_FORCED);  // kill object
+		actor->flags6 &= ~MF6_ARMED; // Disarm
+		P_DamageMobj (actor, NULL, NULL, actor->health, NAME_Crush, DMG_FORCED);  // kill object
 		return true;   // keep checking
     }
 
-	if (!(flags & MF_SOLID) || (flags & MF_NOCLIP))
+	if (!(actor->flags & MF_SOLID) || (actor->flags & MF_NOCLIP))
 	{
 		return false;
 	}
 
-	if (!(flags & MF_SHOOTABLE))
+	if (!(actor->flags & MF_SHOOTABLE))
 	{
 		return false;		// assume it is bloody gibs or something
 	}
 	return true;
 }
 
-DEFINE_ACTION_FUNCTION(AActor, Grind)
+DEFINE_ACTION_FUNCTION_NATIVE(AActor, Grind, Grind)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL(items);
-	ACTION_RETURN_BOOL(self->Grind(items));
+	ACTION_RETURN_BOOL(Grind(self, items));
 }
 
 bool AActor::CallGrind(bool items)
@@ -1310,7 +1279,7 @@ bool AActor::CallGrind(bool items)
 		VMCall(func, params, 2, &ret, 1);
 		return !!retv;
 	}
-	return Grind(items);
+	return false;
 }
 
 //============================================================================
@@ -1347,6 +1316,24 @@ bool AActor::Massacre ()
 		return health <= 0;
 	}
 	return false;
+}
+
+//----------------------------------------------------------------------------
+//
+// Serialize DActorModelData
+//
+//----------------------------------------------------------------------------
+
+void DActorModelData::Serialize(FSerializer& arc)
+{
+	Super::Serialize(arc);
+	arc("modelDef", modelDef)
+		("modelIDs", modelIDs)
+		("skinIDs", skinIDs)
+		("surfaceSkinIDs", surfaceSkinIDs)
+		("animationIDs", animationIDs)
+		("modelFrameGenerators", modelFrameGenerators)
+		("hasModel", hasModel);
 }
 
 //----------------------------------------------------------------------------
@@ -1450,7 +1437,7 @@ void P_ExplodeMissile (AActor *mo, line_t *line, AActor *target, bool onsky, FNa
 	}
 
 	// play the sound before changing the state, so that AActor::OnDestroy can call S_RelinkSounds on it and the death state can override it.
-	if (mo->DeathSound)
+	if (mo->DeathSound.isvalid())
 	{
 		S_Sound (mo, CHAN_VOICE, 0, mo->DeathSound, 1,
 			(mo->flags3 & MF3_FULLVOLDEATH) ? ATTN_NONE : ATTN_NORM);
@@ -1518,7 +1505,7 @@ void AActor::PlayBounceSound(bool onfloor)
 		{
 			S_Sound (this, CHAN_VOICE, 0, SeeSound, 1, ATTN_IDLE);
 		}
-		else if (onfloor || WallBounceSound <= 0)
+		else if (onfloor || !WallBounceSound.isvalid())
 		{
 			S_Sound (this, CHAN_VOICE, 0, BounceSound, 1, ATTN_IDLE);
 		}
@@ -1663,12 +1650,12 @@ bool AActor::FloorBounceMissile (secplane_t &plane)
 //
 //----------------------------------------------------------------------------
 
-int P_FaceMobj (AActor *source, AActor *target, DAngle *delta)
+static int P_FaceMobj (AActor *source, AActor *target, DAngle *delta)
 {
 	DAngle diff;
 
 	diff = deltaangle(source->Angles.Yaw, source->AngleTo(target));
-	if (diff > 0)
+	if (diff > nullAngle)
 	{
 		*delta = diff;
 		return 1;
@@ -1716,7 +1703,7 @@ DEFINE_ACTION_FUNCTION(AActor, CanSeek)
 //
 //----------------------------------------------------------------------------
 
-bool P_SeekerMissile (AActor *actor, double thresh, double turnMax, bool precise, bool usecurspeed)
+bool P_SeekerMissile (AActor *actor, DAngle thresh, DAngle turnMax, bool precise, bool usecurspeed)
 {
 	int dir;
 	DAngle delta;
@@ -1771,10 +1758,10 @@ bool P_SeekerMissile (AActor *actor, double thresh, double turnMax, bool precise
 	}
 	else
 	{
-		DAngle pitch = 0.;
+		DAngle pitch = nullAngle;
 		if (!(actor->flags3 & (MF3_FLOORHUGGER|MF3_CEILINGHUGGER)))
 		{ // Need to seek vertically
-			double dist = MAX(1., actor->Distance2D(target));
+			double dist = max(1., actor->Distance2D(target));
 			// Aim at a player's eyes and at the middle of the actor for everything else.
 			double aimheight = target->Height/2;
 			if (target->player)
@@ -1798,7 +1785,7 @@ bool P_SeekerMissile (AActor *actor, double thresh, double turnMax, bool precise
 #define STOPSPEED			(0x1000/65536.)
 #define CARRYSTOPSPEED		((0x1000*32/3)/65536.)
 
-double P_XYMovement (AActor *mo, DVector2 scroll) 
+static double P_XYMovement (AActor *mo, DVector2 scroll) 
 {
 	static int pushtime = 0;
 	bool bForceSlide = !scroll.isZero();
@@ -1821,16 +1808,16 @@ double P_XYMovement (AActor *mo, DVector2 scroll)
 		switch (special)
 		{
 			case 40: case 41: case 42: // Wind_East
-				mo->Thrust(0., windTab[special-40]);
+				mo->Thrust(DAngle::fromDeg(0.), windTab[special-40]);
 				break;
 			case 43: case 44: case 45: // Wind_North
-				mo->Thrust(90., windTab[special-43]);
+				mo->Thrust(DAngle::fromDeg(90.), windTab[special-43]);
 				break;
 			case 46: case 47: case 48: // Wind_South
-				mo->Thrust(270., windTab[special-46]);
+				mo->Thrust(DAngle::fromDeg(270.), windTab[special-46]);
 				break;
 			case 49: case 50: case 51: // Wind_West
-				mo->Thrust(180., windTab[special-49]);
+				mo->Thrust(DAngle::fromDeg(180.), windTab[special-49]);
 				break;
 		}
 	}
@@ -1849,7 +1836,7 @@ double P_XYMovement (AActor *mo, DVector2 scroll)
 		// preserve the direction instead of clamping x and y independently.
 		double cx = mo->Vel.X == 0 ? 1. : clamp(mo->Vel.X, -maxmove, maxmove) / mo->Vel.X;
 		double cy = mo->Vel.Y == 0 ? 1. : clamp(mo->Vel.Y, -maxmove, maxmove) / mo->Vel.Y;
-		double fac = MIN(cx, cy);
+		double fac = min(cx, cy);
 
 		mo->Vel.X *= fac;
 		mo->Vel.Y *= fac;
@@ -2010,7 +1997,9 @@ double P_XYMovement (AActor *mo, DVector2 scroll)
 						(mo->player->cmd.ucmd.forwardmove | mo->player->cmd.ucmd.sidemove) &&
 						mo->BlockingLine->sidedef[1] != NULL)
 					{
-						mo->Vel.Z = WATER_JUMP_SPEED;
+						double spd = mo->FloatVar(NAME_WaterClimbSpeed);
+						if (fabs(spd) >= EQUAL_EPSILON)
+							mo->Vel.Z = spd;
 					}
 					// If the blocked move executed any push specials that changed the
 					// actor's velocity, do not attempt to slide.
@@ -2131,7 +2120,7 @@ double P_XYMovement (AActor *mo, DVector2 scroll)
 							{
 								if ((BlockingMobj->flags7 & MF7_MIRRORREFLECT) && (tg | blockingtg))
 								{
-									mo->Angles.Yaw += 180.;
+									mo->Angles.Yaw += DAngle::fromDeg(180.);
 									mo->Vel *= -.5;
 								}
 								else
@@ -2213,7 +2202,7 @@ explode:
 					// For that we need to adjust the start point, and the movement vector.
 					DAngle anglediff = deltaangle(oldangle, mo->Angles.Yaw);
 
-					if (anglediff != 0)
+					if (anglediff != nullAngle)
 					{
 						move = move.Rotated(anglediff);
 						oldangle = mo->Angles.Yaw;
@@ -2349,8 +2338,8 @@ explode:
 	return Oldfloorz;
 }
 
-// Move this to p_inter ***
-void P_MonsterFallingDamage (AActor *mo)
+
+static void P_MonsterFallingDamage (AActor *mo)
 {
 	int damage;
 	double vel;
@@ -2377,7 +2366,7 @@ void P_MonsterFallingDamage (AActor *mo)
 // P_ZMovement
 //
 
-void P_ZMovement (AActor *mo, double oldfloorz)
+static void P_ZMovement (AActor *mo, double oldfloorz)
 {
 	double dist;
 	double delta;
@@ -2395,84 +2384,7 @@ void P_ZMovement (AActor *mo, double oldfloorz)
 
 	mo->AddZ(mo->Vel.Z);
 
-//
-// apply gravity
-//
-	if (mo->Z() > mo->floorz && !(mo->flags & MF_NOGRAVITY))
-	{
-		double startvelz = mo->Vel.Z;
-
-		if (mo->waterlevel == 0 || (mo->player &&
-			!(mo->player->cmd.ucmd.forwardmove | mo->player->cmd.ucmd.sidemove)))
-		{
-			// [RH] Double gravity only if running off a ledge. Coming down from
-			// an upward thrust (e.g. a jump) should not double it.
-			if (mo->Vel.Z == 0 && oldfloorz > mo->floorz && mo->Z() == oldfloorz)
-			{
-				mo->Vel.Z -= grav + grav;
-			}
-			else
-			{
-				mo->Vel.Z -= grav;
-			}
-		}
-		if (mo->player == NULL)
-		{
-			if (mo->waterlevel >= 1)
-			{
-				double sinkspeed;
-
-				if ((mo->flags & MF_SPECIAL) && !(mo->flags3 & MF3_ISMONSTER))
-				{ // Pickup items don't sink if placed and drop slowly if dropped
-					sinkspeed = (mo->flags & MF_DROPPED) ? -WATER_SINK_SPEED / 8 : 0;
-				}
-				else
-				{
-					sinkspeed = -WATER_SINK_SPEED;
-
-					// If it's not a player, scale sinkspeed by its mass, with
-					// 100 being equivalent to a player.
-					if (mo->player == NULL)
-					{
-						sinkspeed = sinkspeed * clamp(mo->Mass, 1, 4000) / 100;
-					}
-				}
-				if (mo->Vel.Z < sinkspeed)
-				{ // Dropping too fast, so slow down toward sinkspeed.
-					mo->Vel.Z -= MAX(sinkspeed*2, -8.);
-					if (mo->Vel.Z > sinkspeed)
-					{
-						mo->Vel.Z = sinkspeed;
-					}
-				}
-				else if (mo->Vel.Z > sinkspeed)
-				{ // Dropping too slow/going up, so trend toward sinkspeed.
-					mo->Vel.Z = startvelz + MAX(sinkspeed/3, -8.);
-					if (mo->Vel.Z < sinkspeed)
-					{
-						mo->Vel.Z = sinkspeed;
-					}
-				}
-			}
-		}
-		else
-		{
-			if (mo->waterlevel > 1)
-			{
-				double sinkspeed = -WATER_SINK_SPEED;
-
-				if (mo->Vel.Z < sinkspeed)
-				{
-					mo->Vel.Z = (startvelz < sinkspeed) ? startvelz : sinkspeed;
-				}
-				else
-				{
-					mo->Vel.Z = startvelz + ((mo->Vel.Z - startvelz) *
-						(mo->waterlevel == 1 ? WATER_SINK_SMALL_FACTOR : WATER_SINK_FACTOR));
-				}
-			}
-		}
-	}
+	mo->CallFallAndSink(grav, oldfloorz);
 
 	// Hexen compatibility handling for floatbobbing. Ugh...
 	// Hexen yanked all items to the floor, except those being spawned at map start in the air.
@@ -2501,9 +2413,12 @@ void P_ZMovement (AActor *mo, double oldfloorz)
 	}
 	if (mo->player && (mo->flags & MF_NOGRAVITY) && (mo->Z() > mo->floorz))
 	{
-		if (!mo->IsNoClip2())
+		FBaseCVar* const fViewBobCvar = G_GetUserCVar(int(mo->player - players),"FViewBob");
+		bool const fViewBob = fViewBobCvar->GetGenericRep(fViewBobCvar->GetRealType()).Bool;
+
+		if (!mo->IsNoClip2() && fViewBob)
 		{
-			mo->AddZ(DAngle(360 / 80.f * mo->Level->maptime).Sin() / 8);
+			mo->AddZ(DAngle::fromDeg(360 / 80.f * mo->Level->maptime).Sin() / 8 * mo->FloatVar(NAME_FlyBob));
 		}
 
 		if (!(mo->flags8 & MF8_NOFRICTION))
@@ -2777,10 +2692,17 @@ DEFINE_ACTION_FUNCTION(AActor, CheckFakeFloorTriggers)
 //
 //===========================================================================
 
+static void PlayerLandedMakeGruntSound(AActor* self, AActor *onmobj)
+{
+	IFVIRTUALPTR(self, AActor, PlayerLandedMakeGruntSound)
+	{
+		VMValue params[2] = { self, onmobj };
+		VMCall(func, params, 2, nullptr, 0);
+	}
+}
+
 static void PlayerLandedOnThing (AActor *mo, AActor *onmobj)
 {
-	bool grunted;
-
 	if (!mo->player)
 		return;
 
@@ -2794,28 +2716,117 @@ static void PlayerLandedOnThing (AActor *mo, AActor *onmobj)
 
 	P_FallingDamage (mo);
 
-	// [RH] only make noise if alive
-	if (mo->health > 0 && !mo->player->morphTics)
-	{
-		grunted = false;
-		// Why should this number vary by gravity?
-		if (mo->Vel.Z < -mo->player->mo->FloatVar(NAME_GruntSpeed))
-		{
-			S_Sound (mo, CHAN_VOICE, 0, "*grunt", 1, ATTN_NORM);
-			grunted = true;
-		}
-		if (onmobj != NULL || !Terrains[P_GetThingFloorType (mo)].IsLiquid)
-		{
-			if (!grunted || !S_AreSoundsEquivalent (mo, "*grunt", "*land"))
-			{
-				S_Sound (mo, CHAN_AUTO, 0, "*land", 1, ATTN_NORM);
-			}
-		}
-	}
+	PlayerLandedMakeGruntSound(mo, onmobj);
+
 //	mo->player->centering = true;
 }
 
+//==========================================================================
+//
+// AActor :: FallAndSink
+//
+//==========================================================================
 
+void AActor::FallAndSink(double grav, double oldfloorz)
+{
+	if (Z() > floorz && !(flags & MF_NOGRAVITY))
+	{
+		double startvelz = Vel.Z;
+
+		if (waterlevel == 0 || (player &&
+			!(player->cmd.ucmd.forwardmove | player->cmd.ucmd.sidemove)))
+		{
+			// [RH] Double gravity only if running off a ledge. Coming down from
+			// an upward thrust (e.g. a jump) should not double it.
+			if (Vel.Z == 0 && oldfloorz > floorz && Z() == oldfloorz)
+			{
+				Vel.Z -= grav + grav;
+			}
+			else
+			{
+				Vel.Z -= grav;
+			}
+		}
+		if (player == NULL)
+		{
+			if (waterlevel >= 1)
+			{
+				double sinkspeed;
+
+				if ((flags & MF_SPECIAL) && !(flags3 & MF3_ISMONSTER))
+				{ // Pickup items don't sink if placed and drop slowly if dropped
+					sinkspeed = (flags & MF_DROPPED) ? -WATER_SINK_SPEED / 8 : 0;
+				}
+				else
+				{
+					sinkspeed = -WATER_SINK_SPEED;
+
+					// If it's not a player, scale sinkspeed by its mass, with
+					// 100 being equivalent to a player.
+					if (player == NULL)
+					{
+						sinkspeed = sinkspeed * clamp(Mass, 1, 4000) / 100;
+					}
+				}
+				if (Vel.Z < sinkspeed)
+				{ // Dropping too fast, so slow down toward sinkspeed.
+					Vel.Z -= max(sinkspeed * 2, -8.);
+					if (Vel.Z > sinkspeed)
+					{
+						Vel.Z = sinkspeed;
+					}
+				}
+				else if (Vel.Z > sinkspeed)
+				{ // Dropping too slow/going up, so trend toward sinkspeed.
+					Vel.Z = startvelz + max(sinkspeed / 3, -8.);
+					if (Vel.Z < sinkspeed)
+					{
+						Vel.Z = sinkspeed;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (waterlevel > 1)
+			{
+				double sinkspeed = -WATER_SINK_SPEED;
+
+				if (Vel.Z < sinkspeed)
+				{
+					Vel.Z = (startvelz < sinkspeed) ? startvelz : sinkspeed;
+				}
+				else
+				{
+					Vel.Z = startvelz + ((Vel.Z - startvelz) *
+						(waterlevel == 1 ? WATER_SINK_SMALL_FACTOR : WATER_SINK_FACTOR));
+				}
+			}
+		}
+	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, FallAndSink)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(grav);
+	PARAM_FLOAT(oldfloorz);
+	self->FallAndSink(grav, oldfloorz);
+	return 0;
+}
+
+void AActor::CallFallAndSink(double grav, double oldfloorz)
+{
+	IFVIRTUAL(AActor, FallAndSink)
+	{
+		VMValue params[3] = { (DObject*)this, grav, oldfloorz };
+		VMCall(func, params, 3, nullptr, 0);
+	}
+	else
+	{
+	FallAndSink(grav, oldfloorz);
+	}
+}
 
 //
 // P_NightmareRespawn
@@ -2893,7 +2904,7 @@ void P_NightmareRespawn (AActor *mobj)
 	mo->SpawnPoint = mobj->SpawnPoint;
 	mo->SpawnAngle = mobj->SpawnAngle;
 	mo->SpawnFlags = mobj->SpawnFlags & ~MTF_DORMANT;	// It wasn't dormant when it died, so it's not dormant now, either.
-	mo->Angles.Yaw = (double)mobj->SpawnAngle;
+	mo->Angles.Yaw = DAngle::fromDeg(mobj->SpawnAngle);
 
 	mo->HandleSpawnFlags ();
 	mo->reactiontime = 18;
@@ -3135,6 +3146,12 @@ DEFINE_ACTION_FUNCTION(AActor, Howl)
 
 bool AActor::Slam (AActor *thing)
 {
+	if ((flags8 & MF8_ONLYSLAMSOLID)
+		&& !(thing->flags & MF_SOLID) && !(thing->flags & MF_SHOOTABLE))
+	{
+		return true;
+	}
+
 	flags &= ~MF_SKULLFLY;
 	Vel.Zero();
 	if (health > 0)
@@ -3147,8 +3164,13 @@ bool AActor::Slam (AActor *thing)
 			// The charging monster may have died by the target's actions here.
 			if (health > 0)
 			{
-				if (SeeState != NULL && !(flags8 & MF8_RETARGETAFTERSLAM)) SetState (SeeState);
-				else SetIdle();
+				FState *slam = FindState(NAME_Slam);
+				if (slam != NULL)
+					SetState(slam);
+				else if (SeeState != NULL && !(flags8 & MF8_RETARGETAFTERSLAM))
+					SetState (SeeState);
+				else
+					SetIdle();
 			}
 		}
 		else
@@ -3207,28 +3229,28 @@ bool AActor::AdjustReflectionAngle (AActor *thing, DAngle &angle)
 	if (thing->flags4&MF4_SHIELDREFLECT)
 	{
 		// Shield reflection (from the Centaur)
-		if (absangle(angle, thing->Angles.Yaw) > 45)
+		if (absangle(angle, thing->Angles.Yaw) > DAngle::fromDeg(45))
 			return true;	// Let missile explode
 
 		if (thing->flags7 & MF7_NOSHIELDREFLECT) return true;
 
 		if (pr_reflect () < 128)
-			angle += 45;
+			angle += DAngle::fromDeg(45);
 		else
-			angle -= 45;
+			angle -= DAngle::fromDeg(45);
 
 	}
 	else if (thing->flags4&MF4_DEFLECT)
 	{
 		// deflect (like the Heresiarch)
 		if(pr_reflect() < 128) 
-			angle += 45;
+			angle += DAngle::fromDeg(45);
 		else 
-			angle -= 45;
+			angle -= DAngle::fromDeg(45);
 	}
 	else
 	{
-		angle += ((pr_reflect() % 16) - 8);
+		angle += DAngle::fromDeg((pr_reflect() % 16) - 8);
 	}
 	//Always check for AIMREFLECT, no matter what else is checked above.
 	if (thing->flags7 & MF7_AIMREFLECT)
@@ -3283,7 +3305,7 @@ void AActor::AlterWeaponSprite(visstyle_t *vis)
 
 void AActor::PlayActiveSound ()
 {
-	if (ActiveSound && !S_IsActorPlayingSomething (this, CHAN_VOICE, -1))
+	if (ActiveSound.isvalid() && !S_IsActorPlayingSomething(this, CHAN_VOICE))
 	{
 		S_Sound (this, CHAN_VOICE, 0, ActiveSound, 1,
 			(flags3 & MF3_FULLVOLACTIVE) ? ATTN_NONE : ATTN_IDLE);
@@ -3294,6 +3316,22 @@ DEFINE_ACTION_FUNCTION(AActor, PlayActiveSound)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	self->PlayActiveSound();
+	return 0;
+}
+
+void AActor::PlayPushSound()
+{
+	FSoundID push = SoundVar(NAME_PushSound);
+	if (!S_IsActorPlayingSomething(this, CHAN_BODY, push))
+	{
+		S_Sound(this, CHAN_BODY, 0, push, 1, ATTN_NORM);
+	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, PlayPushSound)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->PlayPushSound();
 	return 0;
 }
 
@@ -3331,11 +3369,11 @@ bool AActor::IsOkayToAttack (AActor *link)
 	if (P_CheckSight (this, link))
 	{
 		// AMageStaffFX2::IsOkayToAttack had an extra check here, generalized with a flag,
-		// to only allow the check to succeed if the enemy was in a ~84� FOV of the player
+		// to only allow the check to succeed if the enemy was in a ~84  FOV of the player
 		if (flags3 & MF3_SCREENSEEKER)
 		{
 			DAngle angle = absangle(Friend->AngleTo(link), Friend->Angles.Yaw);
-			if (angle < 30 * (256./360.))
+			if (angle < DAngle::fromDeg(30 * (256./360.)))
 			{
 				return true;
 			}
@@ -3379,8 +3417,8 @@ DAngle AActor::ClampPitch(DAngle p)
 	}
 	else
 	{
-		min = -89.;
-		max = 89.;
+		min = DAngle::fromDeg(-89.);
+		max = DAngle::fromDeg(89.);
 	}
 	p = clamp(p, min, max);
 	return p;
@@ -3395,10 +3433,29 @@ void AActor::SetPitch(DAngle p, int fflags)
 
 	if (p != Angles.Pitch)
 	{
-		Angles.Pitch = p;
-		if (player != nullptr && (fflags & SPF_INTERPOLATE))
+		if (player != nullptr)
 		{
-			player->cheats |= CF_INTERPVIEW;
+			const bool mustLerp = !P_NoInterpolation(player, this);
+
+			if ((fflags & SPF_INTERPOLATE) || ((fflags & SPF_SCALEDNOLERP) && mustLerp))
+			{
+				Angles.Pitch = p;
+				player->cheats |= CF_INTERPVIEW;
+			}
+			else if ((fflags & SPF_SCALEDNOLERP) && !mustLerp)
+			{
+				player->angleTargets.Pitch = deltaangle(Angles.Pitch, p);
+				player->angleAppliedAmounts.Pitch = nullAngle;
+				player->cheats |= CF_SCALEDNOLERP;
+			}
+			else
+			{
+				Angles.Pitch = p;
+			}
+		}
+		else
+		{
+			Angles.Pitch = p;
 		}
 	}
 	
@@ -3408,10 +3465,29 @@ void AActor::SetAngle(DAngle ang, int fflags)
 {
 	if (ang != Angles.Yaw)
 	{
-		Angles.Yaw = ang;
-		if (player != nullptr && (fflags & SPF_INTERPOLATE))
+		if (player != nullptr)
 		{
-			player->cheats |= CF_INTERPVIEW;
+			const bool mustLerp = !P_NoInterpolation(player, this);
+
+			if ((fflags & SPF_INTERPOLATE) || ((fflags & SPF_SCALEDNOLERP) && mustLerp))
+			{
+				Angles.Yaw = ang;
+				player->cheats |= CF_INTERPVIEW;
+			}
+			else if ((fflags & SPF_SCALEDNOLERP) && !mustLerp)
+			{
+				player->angleTargets.Yaw = deltaangle(Angles.Yaw, ang);
+				player->angleAppliedAmounts.Yaw = nullAngle;
+				player->cheats |= CF_SCALEDNOLERP;
+			}
+			else
+			{
+				Angles.Yaw = ang;
+			}
+		}
+		else
+		{
+			Angles.Yaw = ang;
 		}
 	}
 	
@@ -3421,10 +3497,29 @@ void AActor::SetRoll(DAngle r, int fflags)
 {
 	if (r != Angles.Roll)
 	{
-		Angles.Roll = r;
-		if (player != nullptr && (fflags & SPF_INTERPOLATE))
+		if (player != nullptr)
 		{
-			player->cheats |= CF_INTERPVIEW;
+			const bool mustLerp = !P_NoInterpolation(player, this);
+
+			if ((fflags & SPF_INTERPOLATE) || ((fflags & SPF_SCALEDNOLERP) && mustLerp))
+			{
+				Angles.Roll = r;
+				player->cheats |= CF_INTERPVIEW;
+			}
+			else if ((fflags & SPF_SCALEDNOLERP) && !mustLerp)
+			{
+				player->angleTargets.Roll = deltaangle(Angles.Roll, r);
+				player->angleAppliedAmounts.Roll = nullAngle;
+				player->cheats |= CF_SCALEDNOLERP;
+			}
+			else
+			{
+				Angles.Roll = r;
+			}
+		}
+		else
+		{
+			Angles.Roll = r;
 		}
 	}
 }
@@ -3441,7 +3536,7 @@ void AActor::SetViewPitch(DAngle p, int fflags)
 		ViewAngles.Pitch = p;
 		if (player != nullptr && (fflags & SPF_INTERPOLATE))
 		{
-			player->cheats |= CF_INTERPVIEW;
+			player->cheats |= CF_INTERPVIEWANGLES;
 		}
 	}
 
@@ -3454,10 +3549,32 @@ void AActor::SetViewAngle(DAngle ang, int fflags)
 		ViewAngles.Yaw = ang;
 		if (player != nullptr && (fflags & SPF_INTERPOLATE))
 		{
-			player->cheats |= CF_INTERPVIEW;
+			player->cheats |= CF_INTERPVIEWANGLES;
 		}
 	}
 
+}
+
+double AActor::GetFOV(double ticFrac)
+{
+	// [B] Disable interpolation when playing online, otherwise it gets vomit inducing
+	if (netgame)
+		return player ? player->FOV : CameraFOV;
+
+	double fov;
+	if (player)
+	{
+		if (player->cheats & CF_NOFOVINTERP)
+			return player->FOV;
+
+		fov = player->FOV;
+	}
+	else
+	{
+		fov = CameraFOV;
+	}
+
+	return PrevFOV.Degrees() * (1 - ticFrac) + fov * ticFrac;
 }
 
 void AActor::SetViewRoll(DAngle r, int fflags)
@@ -3467,7 +3584,7 @@ void AActor::SetViewRoll(DAngle r, int fflags)
 		ViewAngles.Roll = r;
 		if (player != nullptr && (fflags & SPF_INTERPOLATE))
 		{
-			player->cheats |= CF_INTERPVIEW;
+			player->cheats |= CF_INTERPVIEWANGLES;
 		}
 	}
 }
@@ -3590,6 +3707,11 @@ void AActor::Tick ()
 	static const uint8_t HereticScrollDirs[4] = { 6, 9, 1, 4 };
 	static const uint8_t HereticSpeedMuls[5] = { 5, 10, 25, 30, 35 };
 
+	if (freezetics > 0)
+	{
+		freezetics--;
+		return;
+	}
 
 	AActor *onmo;
 
@@ -3859,7 +3981,7 @@ void AActor::Tick ()
 					{ // Strife scroll special
 						int anglespeed = Level->GetFirstSectorTag(sec) - 100;
 						double carryspeed = (anglespeed % 10) / (16 * CARRYFACTOR);
-						DAngle angle = ((anglespeed / 10) * 45.);
+						DAngle angle = DAngle::fromDeg(((anglespeed / 10) * 45.));
 						scrollv += angle.ToVector(carryspeed);
 					}
 				}
@@ -4240,6 +4362,101 @@ void AActor::CheckSectorTransition(sector_t *oldsec)
 
 //==========================================================================
 //
+// UpdateWaterDepth
+//
+// Updates the actor's current waterlevel and waterdepth.
+// Consolidates common code in UpdateWaterLevel and SplashCheck.
+//
+// Returns the floor height used for the depth check, or -FLT_MAX
+// if the actor wasn't in a sector.
+//
+//==========================================================================
+
+static double UpdateWaterDepth(AActor* actor, bool splash)
+{
+	double fh = -FLT_MAX;
+	bool reset = false;
+
+	actor->waterlevel = 0;
+	actor->waterdepth = 0;
+
+	if (actor->Sector == NULL)
+	{
+		return fh;
+	}
+
+	if (actor->Sector->MoreFlags & SECMF_UNDERWATER)	// intentionally not SECMF_UNDERWATERMASK
+	{
+		actor->waterdepth = actor->Height;
+	}
+	else
+	{
+		const sector_t *hsec = actor->Sector->GetHeightSec();
+		if (hsec != NULL)
+		{
+			fh = hsec->floorplane.ZatPoint(actor);
+
+			// splash checks also check Boom-style non-swimmable sectors
+			//  as well as non-solid, visible 3D floors (below)
+			if (splash || hsec->MoreFlags & SECMF_UNDERWATERMASK)
+			{
+				actor->waterdepth = fh - actor->Z();
+
+				if (actor->waterdepth <= 0 && !(hsec->MoreFlags & SECMF_FAKEFLOORONLY) && (actor->Top() > hsec->ceilingplane.ZatPoint(actor)))
+				{
+					actor->waterdepth = actor->Height;
+				}
+			}
+		}
+		else
+		{
+			// Check 3D floors as well!
+			for (auto rover : actor->Sector->e->XFloor.ffloors)
+			{
+				if (!(rover->flags & FF_EXISTS)) continue;
+				if (rover->flags & FF_SOLID) continue;
+
+				bool reset = !(rover->flags & FF_SWIMMABLE);
+				if (splash) { reset &= rover->alpha == 0; }
+				if (reset) continue;
+
+				double ff_bottom = rover->bottom.plane->ZatPoint(actor);
+				double ff_top = rover->top.plane->ZatPoint(actor);
+
+				if (ff_top <= actor->Z() || ff_bottom > actor->Center()) continue;
+
+				fh = ff_top;
+				actor->waterdepth = ff_top - actor->Z();
+				break;
+			}
+		}
+	}
+
+	if (actor->waterdepth < 0) { actor->waterdepth = 0; }
+
+	if (actor->waterdepth > (actor->Height / 2))
+	{
+		// When noclipping around and going from low to high sector, your view height
+		//  can go negative, which is why this is nested inside here
+		if ((actor->player && (actor->waterdepth >= actor->player->viewheight)) || (actor->waterdepth >= actor->Height))
+		{
+			actor->waterlevel = 3;
+		}
+		else
+		{
+			actor->waterlevel = 2;
+		}
+	}
+	else if (actor->waterdepth > 0)
+	{
+		actor->waterlevel = 1;
+	}
+
+	return fh;
+}
+
+//==========================================================================
+//
 // AActor::SplashCheck
 //
 // Returns true if actor should splash
@@ -4248,85 +4465,7 @@ void AActor::CheckSectorTransition(sector_t *oldsec)
 
 void AActor::SplashCheck()
 {
-	double fh = -FLT_MAX;
-	bool reset = false;
-
-	waterlevel = 0;
-
-	if (Sector == NULL)
-	{
-		return;
-	}
-
-	if (Sector->MoreFlags & SECMF_UNDERWATER)	// intentionally not SECMF_UNDERWATERMASK
-	{
-		waterlevel = 3;
-	}
-	else
-	{
-		const sector_t *hsec = Sector->GetHeightSec();
-		if (hsec != NULL)
-		{
-			fh = hsec->floorplane.ZatPoint(this);
-			//if (hsec->MoreFlags & SECMF_UNDERWATERMASK)	// also check Boom-style non-swimmable sectors
-			{
-				if (Z() < fh)
-				{
-					waterlevel = 1;
-					if (Center() < fh)
-					{
-						waterlevel = 2;
-						if ((player && Z() + player->viewheight <= fh) ||
-							(Top() <= fh))
-						{
-							waterlevel = 3;
-						}
-					}
-				}
-				else if (!(hsec->MoreFlags & SECMF_FAKEFLOORONLY) && (Top() > hsec->ceilingplane.ZatPoint(this)))
-				{
-					waterlevel = 3;
-				}
-				else
-				{
-					waterlevel = 0;
-				}
-			}
-		}
-		else
-		{
-			// Check 3D floors as well!
-			for (auto rover : Sector->e->XFloor.ffloors)
-			{
-				if (!(rover->flags & FF_EXISTS)) continue;
-				if (rover->flags & FF_SOLID) continue;
-
-				bool reset = !(rover->flags & FF_SWIMMABLE);
-				if (reset && rover->alpha == 0) continue;
-				double ff_bottom = rover->bottom.plane->ZatPoint(this);
-				double ff_top = rover->top.plane->ZatPoint(this);
-
-				if (ff_top <= Z() || ff_bottom > (Center())) continue;
-
-				fh = ff_top;
-				if (Z() < fh)
-				{
-					waterlevel = 1;
-					if (Center() < fh)
-					{
-						waterlevel = 2;
-						if ((player && Z() + player->viewheight <= fh) ||
-							(Top() <= fh))
-						{
-							waterlevel = 3;
-						}
-					}
-				}
-
-				break;
-			}
-		}
-	}
+	double fh = UpdateWaterDepth(this, true);
 
 	// some additional checks to make deep sectors like Boom's splash without setting
 	// the water flags. 
@@ -4351,103 +4490,33 @@ bool AActor::UpdateWaterLevel(bool dosplash)
 	int oldlevel = waterlevel;
 
 	if (dosplash) SplashCheck();
+	UpdateWaterDepth(this, false);
 
-	double fh = -FLT_MAX;
-	bool reset = false;
+	// Play surfacing and diving sounds, as appropriate.
+	//
+	// (used to be that this code was wrapped around a "Sector != nullptr" check,
+	//  but actors should always be within a sector, and besides, this is just
+	//  sound stuff)
 
-	waterlevel = 0;
-
-	if (Sector != nullptr)
+	if (player != nullptr)
 	{
-		if (Sector->MoreFlags & SECMF_UNDERWATER)	// intentionally not SECMF_UNDERWATERMASK
+		if (oldlevel < 3 && waterlevel == 3)
 		{
-			waterlevel = 3;
+			// Our head just went under.
+			S_Sound(this, CHAN_VOICE, 0, "*dive", 1, ATTN_NORM);
 		}
-		else
+		else if (oldlevel == 3 && waterlevel < 3)
 		{
-			const sector_t *hsec = Sector->GetHeightSec();
-			if (hsec != NULL)
+			// Our head just came up.
+			if (player->air_finished > Level->maptime)
 			{
-				fh = hsec->floorplane.ZatPoint(this);
-				if (hsec->MoreFlags & SECMF_UNDERWATERMASK)	// also check Boom-style non-swimmable sectors
-				{
-					if (Z() < fh)
-					{
-						waterlevel = 1;
-						if (Center() < fh)
-						{
-							waterlevel = 2;
-							if ((player && Z() + player->viewheight <= fh) ||
-								(Top() <= fh))
-							{
-								waterlevel = 3;
-							}
-						}
-					}
-					else if (!(hsec->MoreFlags & SECMF_FAKEFLOORONLY) && (Top() > hsec->ceilingplane.ZatPoint(this)))
-					{
-						waterlevel = 3;
-					}
-					else
-					{
-						waterlevel = 0;
-					}
-				}
+				// We hadn't run out of air yet.
+				S_Sound(this, CHAN_VOICE, 0, "*surface", 1, ATTN_NORM);
 			}
-			else
-			{
-				// Check 3D floors as well!
-				for (auto rover : Sector->e->XFloor.ffloors)
-				{
-					if (!(rover->flags & FF_EXISTS)) continue;
-					if (rover->flags & FF_SOLID) continue;
-					if (!(rover->flags & FF_SWIMMABLE)) continue;
-
-					double ff_bottom = rover->bottom.plane->ZatPoint(this);
-					double ff_top = rover->top.plane->ZatPoint(this);
-
-					if (ff_top <= Z() || ff_bottom > (Center())) continue;
-
-					fh = ff_top;
-					if (Z() < fh)
-					{
-						waterlevel = 1;
-						if (Center() < fh)
-						{
-							waterlevel = 2;
-							if ((player && Z() + player->viewheight <= fh) ||
-								(Top() <= fh))
-							{
-								waterlevel = 3;
-							}
-						}
-					}
-
-					break;
-				}
-			}
-		}
-
-		// Play surfacing and diving sounds, as appropriate.
-		if (player != nullptr)
-		{
-			if (oldlevel < 3 && waterlevel == 3)
-			{ 
-				// Our head just went under.
-				S_Sound(this, CHAN_VOICE, 0, "*dive", 1, ATTN_NORM);
-			}
-			else if (oldlevel == 3 && waterlevel < 3)
-			{ 
-				// Our head just came up.
-				if (player->air_finished > Level->maptime)
-				{ 
-					// We hadn't run out of air yet.
-					S_Sound(this, CHAN_VOICE, 0, "*surface", 1, ATTN_NORM);
-				}
-				// If we were running out of air, then ResetAirSupply() will play *gasp.
-			}
+			// If we were running out of air, then ResetAirSupply() will play *gasp.
 		}
 	}
+
 	return false;	// we did the splash ourselves
 }
 
@@ -4522,6 +4591,7 @@ void ConstructActor(AActor *actor, const DVector3 &pos, bool SpawningMapThing)
 	// set subsector and/or block links
 	actor->LinkToWorld (nullptr, SpawningMapThing);
 	actor->ClearInterpolation();
+	actor->ClearFOVInterpolation();
 
 	actor->dropoffz = actor->floorz = actor->Sector->floorplane.ZatPoint(pos);
 	actor->ceilingz = actor->Sector->ceilingplane.ZatPoint(pos);
@@ -4943,7 +5013,7 @@ void AActor::OnDestroy ()
 	ClearRenderLineList();
 
 	// [RH] Destroy any inventory this actor is carrying
-	DestroyAllInventory ();
+	DestroyAllInventory (this);
 
 	// [RH] Unlink from tid chain
 	RemoveFromHash ();
@@ -4951,6 +5021,12 @@ void AActor::OnDestroy ()
 	// unlink from sector and block lists
 	UnlinkFromWorld (nullptr);
 	flags |= MF_NOSECTOR|MF_NOBLOCKMAP;
+
+	if (ViewPos != nullptr)
+	{
+		ViewPos->Destroy();
+		ViewPos = nullptr;
+	}
 
 	// Transform any playing sound into positioned, non-actor sounds.
 	S_RelinkSound (this, NULL);
@@ -5176,10 +5252,10 @@ AActor *FLevelLocals::SpawnPlayer (FPlayerStart *mthing, int playernum, int flag
 		spawn.Y = mthing->pos.Y;
 
 		// Allow full angular precision
-		SpawnAngle = (double)mthing->angle;
+		SpawnAngle = DAngle::fromDeg(mthing->angle);
 		if (i_compatflags2 & COMPATF2_BADANGLES)
 		{
-			SpawnAngle += 0.01;
+			SpawnAngle += DAngle::fromDeg(0.01);
 		}
 
 		if (GetDefaultByType(p->cls)->flags & MF_SPAWNCEILING)
@@ -5234,7 +5310,7 @@ AActor *FLevelLocals::SpawnPlayer (FPlayerStart *mthing, int playernum, int flag
 	}
 
 	mobj->Angles.Yaw = SpawnAngle;
-	mobj->Angles.Pitch = mobj->Angles.Roll = 0.;
+	mobj->Angles.Pitch = mobj->Angles.Roll = nullAngle;
 	mobj->health = p->health;
 
 	// [RH] Set player sprite based on skin
@@ -5264,7 +5340,7 @@ AActor *FLevelLocals::SpawnPlayer (FPlayerStart *mthing, int playernum, int flag
 	p->lastkilltime = 0;
 	p->BlendR = p->BlendG = p->BlendB = p->BlendA = 0.f;
 	p->Uncrouch();
-	p->MinPitch = p->MaxPitch = 0.;	// will be filled in by PostBeginPlay()/netcode
+	p->MinPitch = p->MaxPitch = nullAngle;	// will be filled in by PostBeginPlay()/netcode
 	p->MUSINFOactor = nullptr;
 	p->MUSINFOtics = -1;
 	p->Vel.Zero();	// killough 10/98: initialize bobbing to 0.
@@ -5313,7 +5389,7 @@ AActor *FLevelLocals::SpawnPlayer (FPlayerStart *mthing, int playernum, int flag
 	if (oldactor != NULL)
 	{ // Remove any inventory left from the old actor. Coop handles
 	  // it above, but the other modes don't.
-		oldactor->DestroyAllInventory();
+		DestroyAllInventory(oldactor);
 	}
 	// [BC] Handle temporary invulnerability when respawned
 	if (state == PST_REBORN || state == PST_ENTER)
@@ -5700,7 +5776,7 @@ AActor *FLevelLocals::SpawnMapThing (FMapThing *mthing, int position)
 	// [RH] Add ThingID to mobj and link it in with the others
 	mobj->SetTID(mthing->thingid);
 
-	mobj->PrevAngles.Yaw = mobj->Angles.Yaw = (double)mthing->angle;
+	mobj->PrevAngles.Yaw = mobj->Angles.Yaw = DAngle::fromDeg(mthing->angle);
 
 	// Check if this actor's mapthing has a conversation defined
 	if (mthing->Conversation > 0)
@@ -5724,9 +5800,9 @@ AActor *FLevelLocals::SpawnMapThing (FMapThing *mthing, int position)
 	if (mthing->Scale.Y != 0)
 		mobj->Scale.Y = mthing->Scale.Y * mobj->Scale.Y;
 	if (mthing->pitch)
-		mobj->Angles.Pitch = (double)mthing->pitch;
+		mobj->Angles.Pitch = DAngle::fromDeg(mthing->pitch);
 	if (mthing->roll)
-		mobj->Angles.Roll = (double)mthing->roll;
+		mobj->Angles.Roll = DAngle::fromDeg(mthing->roll);
 	if (mthing->score)
 		mobj->Score = mthing->score;
 	if (mthing->fillcolor)
@@ -5752,8 +5828,8 @@ AActor *FLevelLocals::SpawnMapThing (FMapThing *mthing, int position)
 
 		if (mobj->IntVar(NAME_lightflags) & LF_SPOT)
 		{
-			mobj->AngleVar(NAME_SpotInnerAngle) = double(mthing->args[1]);
-			mobj->AngleVar(NAME_SpotOuterAngle) = double(mthing->args[2]);
+			mobj->AngleVar(NAME_SpotInnerAngle) = DAngle::fromDeg(mthing->args[1]);
+			mobj->AngleVar(NAME_SpotOuterAngle) = DAngle::fromDeg(mthing->args[2]);
 		}
 	}
 
@@ -5768,7 +5844,12 @@ AActor *FLevelLocals::SpawnMapThing (FMapThing *mthing, int position)
 	else
 		mobj->health = -int(mthing->Health);
 	if (mthing->Health == 0)
-		mobj->CallDie(NULL, NULL);
+	{
+		// We cannot call 'Die' here directly because the level is not yet fully set up.
+		// This needs to be delayed by one tic.
+		auto state = mobj->FindState(NAME_DieFromSpawn);
+		if (state) mobj->SetState(state, true);
+	}
 	else if (mthing->Health != 1)
 		mobj->StartHealth = mobj->health;
 
@@ -5836,7 +5917,7 @@ AActor *P_SpawnPuff (AActor *source, PClassActor *pufftype, const DVector3 &pos1
 		puff->target = source;
 	
 	// Angle is the opposite of the hit direction (i.e. the puff faces the source.)
-	puff->Angles.Yaw = hitdir + 180;
+	puff->Angles.Yaw = hitdir + DAngle::fromDeg(180);
 
 	// If a puff has a crash state and an actor was not hit,
 	// it will enter the crash state. This is used by the StrifeSpark
@@ -5869,11 +5950,11 @@ AActor *P_SpawnPuff (AActor *source, PClassActor *pufftype, const DVector3 &pos1
 			if (cl_pufftype == 1) puff->renderflags |= RF_INVISIBLE;
 		}
 
-		if ((flags & PF_HITTHING) && puff->SeeSound)
+		if ((flags & PF_HITTHING) && puff->SeeSound.isvalid())
 		{ // Hit thing sound
 			S_Sound (puff, CHAN_BODY, 0, puff->SeeSound, 1, ATTN_NORM);
 		}
-		else if (puff->AttackSound)
+		else if (puff->AttackSound.isvalid())
 		{
 			S_Sound (puff, CHAN_BODY, 0, puff->AttackSound, 1, ATTN_NORM);
 		}
@@ -6040,7 +6121,7 @@ void P_BloodSplatter (const DVector3 &pos, AActor *originator, DAngle hitangle)
 	}
 	if (bloodtype >= 1)
 	{
-		P_DrawSplash2 (originator->Level, 40, pos, hitangle-180., 2, originator->BloodColor);
+		P_DrawSplash2 (originator->Level, 40, pos, hitangle - DAngle::fromDeg(180.), 2, originator->BloodColor);
 	}
 }
 
@@ -6081,7 +6162,7 @@ void P_BloodSplatter2 (const DVector3 &pos, AActor *originator, DAngle hitangle)
 	}
 	if (bloodtype >= 1)
 	{
-		P_DrawSplash2(originator->Level, 40, pos + add, hitangle - 180., 2, originator->BloodColor);
+		P_DrawSplash2(originator->Level, 40, pos + add, hitangle - DAngle::fromDeg(180.), 2, originator->BloodColor);
 	}
 }
 
@@ -6141,7 +6222,7 @@ void P_RipperBlood (AActor *mo, AActor *bleeder)
 	}
 	if (bloodtype >= 1)
 	{
-		P_DrawSplash2(bleeder->Level, 28, pos, bleeder->AngleTo(mo) + 180., 0, bleeder->BloodColor);
+		P_DrawSplash2(bleeder->Level, 28, pos, bleeder->AngleTo(mo) + DAngle::fromDeg(180.), 0, bleeder->BloodColor);
 	}
 }
 
@@ -6273,6 +6354,7 @@ foundone:
 		if (smallsplash && splash->SmallSplash)
 		{
 			mo = Spawn(sec->Level, splash->SmallSplash, pos, ALLOW_REPLACE);
+			mo->target = thing;
 			if (mo) mo->Floorclip += splash->SmallSplashClip;
 		}
 		else
@@ -6294,6 +6376,7 @@ foundone:
 			if (splash->SplashBase)
 			{
 				mo = Spawn(sec->Level, splash->SplashBase, pos, ALLOW_REPLACE);
+				mo->target = thing;
 			}
 			if (thing->player && !splash->NoAlert && alert)
 			{
@@ -6501,7 +6584,7 @@ DEFINE_ACTION_FUNCTION(AActor, CheckMissileSpawn)
 
 void P_PlaySpawnSound(AActor *missile, AActor *spawner)
 {
-	if (missile->SeeSound != 0)
+	if (missile->SeeSound != NO_SOUND)
 	{
 		if (!(missile->flags & MF_SPAWNSOUNDSOURCE))
 		{
@@ -6606,7 +6689,7 @@ AActor *P_SpawnMissileXYZ (DVector3 pos, AActor *source, AActor *dest, PClassAct
 	// [RC] Now monsters can aim at invisible player as if they were fully visible.
 	if (dest->flags & MF_SHADOW && !(source->flags6 & MF6_SEEINVISIBLE))
 	{
-		DAngle an = pr_spawnmissile.Random2() * (22.5 / 256);
+		DAngle an = DAngle::fromDeg(pr_spawnmissile.Random2() * (22.5 / 256));
 		double c = an.Cos();
 		double s = an.Sin();
 		
@@ -6693,7 +6776,7 @@ AActor *P_OldSpawnMissile(AActor *source, AActor *owner, AActor *dest, PClassAct
 	th->VelFromAngle();
 
 
-	double dist = source->DistanceBySpeed(dest, MAX(1., th->Speed));
+	double dist = source->DistanceBySpeed(dest, max(1., th->Speed));
 	th->Vel.Z = (dest->Z() - source->Z()) / dist;
 
 	if (th->flags4 & MF4_SPECTRAL)
@@ -6739,7 +6822,7 @@ AActor *P_SpawnMissileZAimed (AActor *source, double z, AActor *dest, PClassActo
 
 	if (dest->flags & MF_SHADOW)
 	{
-		an += pr_spawnmissile.Random2() * (16. / 360.);
+		an += DAngle::fromDeg(pr_spawnmissile.Random2() * (16. / 360.));
 	}
 	dist = source->Distance2D (dest);
 	speed = GetDefaultSpeed (type);
@@ -6869,13 +6952,14 @@ AActor *P_SpawnPlayerMissile (AActor *source, double x, double y, double z,
 	{
 		return nullptr;
 	}
+	aimflags &= ~ALF_IGNORENOAUTOAIM; // just to be safe.
 
 	static const double angdiff[3] = { -5.625, 5.625, 0 };
 	DAngle an = angle;
 	DAngle pitch;
 	FTranslatedLineTarget scratch;
 	AActor *defaultobject = GetDefaultByType(type);
-	DAngle vrange = nofreeaim ? 35. : 0.;
+	DAngle vrange = DAngle::fromDeg(nofreeaim ? 35. : 0.);
 
 	if (!pLineTarget) pLineTarget = &scratch;
 	if (!(aimflags & ALF_NOWEAPONCHECK) && source->player && source->player->ReadyWeapon && ((source->player->ReadyWeapon->IntVar(NAME_WeaponFlags) & WIF_NOAUTOAIM) || noautoaim))
@@ -6895,7 +6979,7 @@ AActor *P_SpawnPlayerMissile (AActor *source, double x, double y, double z,
 		int i = 2;
 		do
 		{
-			an = angle + angdiff[i];
+			an = angle + DAngle::fromDeg(angdiff[i]);
 			pitch = P_AimLineAttack (source, an, linetargetrange, pLineTarget, vrange, aimflags);
 	
 			if (source->player != NULL &&
@@ -6912,7 +6996,7 @@ AActor *P_SpawnPlayerMissile (AActor *source, double x, double y, double z,
 			an = angle;
 			if (nofreeaim || !source->Level->IsFreelookAllowed())
 			{
-				pitch = 0.;
+				pitch = nullAngle;
 			}
 		}
 	}
@@ -6966,7 +7050,7 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnPlayerMissile)
 	PARAM_BOOL(noautoaim);
 	PARAM_INT(aimflags);
 	AActor *missileactor;
-	if (angle == 1e37) angle = self->Angles.Yaw;
+	if (angle == DAngle::fromDeg(1e37)) angle = self->Angles.Yaw;
 	AActor *misl = P_SpawnPlayerMissile(self, x, y, z, type, angle, lt, &missileactor, nofreeaim, noautoaim, aimflags);
 	if (numret > 0) ret[0].SetObject(misl);
 	if (numret > 1) ret[1].SetObject(missileactor), numret = 2;

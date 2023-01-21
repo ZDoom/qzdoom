@@ -34,7 +34,7 @@
 */
 
 #include <assert.h>
-#include "templates.h"
+
 #include "g_level.h"
 #include "filesystem.h"
 #include "cmdlib.h"
@@ -50,6 +50,7 @@
 #include "g_levellocals.h"
 #include "events.h"
 #include "i_system.h"
+#include "screenjob.h"
 
 static TArray<cluster_info_t> wadclusterinfos;
 TArray<level_info_t> wadlevelinfos;
@@ -301,7 +302,8 @@ void level_info_t::Reset()
 	lightadditivesurfaces = -1;
 	skyrotatevector = FVector3(0, 0, 1);
 	skyrotatevector2 = FVector3(0, 0, 1);
-
+	lightblendmode = ELightBlendMode::DEFAULT;
+	tonemap = ETonemapMode::None;
 }
 
 
@@ -743,6 +745,30 @@ void FMapInfoParser::ParseMusic(FString &name, int &order)
 
 //==========================================================================
 //
+//
+//
+//==========================================================================
+
+void FMapInfoParser::ParseCutscene(CutsceneDef& cdef)
+{
+	FString sound;
+	sc.MustGetStringName("{");
+	while (!sc.CheckString("}"))
+	{
+		sc.MustGetString();
+		if (sc.Compare("video")) { ParseAssign(); sc.MustGetString(); cdef.video = sc.String; cdef.function = ""; }
+		else if (sc.Compare("function")) { ParseAssign(); sc.SetCMode(false); sc.MustGetString(); sc.SetCMode(true); cdef.function = sc.String; cdef.video = ""; }
+		else if (sc.Compare("sound")) { ParseAssign(); sc.MustGetString(); cdef.soundName = sc.String; }
+		else if (sc.Compare("soundid")) { ParseAssign(); sc.MustGetNumber(); cdef.soundID = sc.Number; }
+		else if (sc.Compare("fps")) { ParseAssign();  sc.MustGetNumber();  cdef.framespersec = sc.Number; }
+		//else if (sc.Compare("transitiononly")) cdef.transitiononly = true;
+		else if (sc.Compare("delete")) { cdef.function = "none"; cdef.video = ""; } // this means 'play nothing', not 'not defined'.
+		else if (sc.Compare("clear")) cdef = {};
+	}
+}
+
+//==========================================================================
+//
 // ParseCluster
 // Parses a cluster definition
 //
@@ -844,6 +870,18 @@ void FMapInfoParser::ParseCluster()
 		else if (sc.Compare("exittextislump"))
 		{
 			clusterinfo->flags |= CLUSTER_EXITTEXTINLUMP;
+		}
+		else if (sc.Compare("intro"))
+		{
+			ParseCutscene(clusterinfo->intro);
+		}
+		else if (sc.Compare("outro"))
+		{
+			ParseCutscene(clusterinfo->outro);
+		}
+		else if (sc.Compare("gameover"))
+		{
+			ParseCutscene(clusterinfo->gameover);
 		}
 		else if (!ParseCloseBrace())
 		{
@@ -1205,8 +1243,8 @@ DEFINE_MAP_OPTION(PrecacheSounds, true)
 	do
 	{
 		parse.sc.MustGetString();
-		FSoundID snd = parse.sc.String;
-		if (snd == 0)
+		FSoundID snd = S_FindSound(parse.sc.String);
+		if (snd == NO_SOUND)
 		{
 			parse.sc.ScriptMessage("Unknown sound \"%s\"", parse.sc.String);
 		}
@@ -1459,6 +1497,57 @@ DEFINE_MAP_OPTION(lightmode, false)
 	}
 }
 
+DEFINE_MAP_OPTION(lightblendmode, false)
+{
+	parse.ParseAssign();
+	parse.sc.MustGetString();
+
+	if (parse.sc.Compare("Default") || parse.sc.Compare("Clamp"))
+	{
+		info->lightblendmode = ELightBlendMode::DEFAULT;
+	}
+	else if (parse.sc.Compare("ColoredClamp"))
+	{
+		info->lightblendmode = ELightBlendMode::CLAMP_COLOR;
+	}
+	else if (parse.sc.Compare("Unclamped"))
+	{
+		info->lightblendmode = ELightBlendMode::NOCLAMP;
+		if(parse.sc.CheckString(","))
+		{
+			parse.sc.MustGetString();
+			if (parse.sc.Compare("None"))
+			{
+				info->tonemap = ETonemapMode::None;
+			}
+			else if (parse.sc.Compare("Linear"))
+			{
+				info->tonemap = ETonemapMode::Linear;
+			}
+			else if (parse.sc.Compare("Uncharted2"))
+			{
+				info->tonemap = ETonemapMode::Uncharted2;
+			}
+			else if (parse.sc.Compare("HejlDawson"))
+			{
+				info->tonemap = ETonemapMode::HejlDawson;
+			}
+			else if (parse.sc.Compare("Reinhard"))
+			{
+				info->tonemap = ETonemapMode::Reinhard;
+			}
+			else
+			{
+				parse.sc.ScriptMessage("Invalid tonemap %s", parse.sc.String);
+			}
+		}
+	}
+	else
+	{
+		parse.sc.ScriptMessage("Invalid light blend mode %s", parse.sc.String);
+	}
+}
+
 DEFINE_MAP_OPTION(notexturefill, false)
 {
 	if (parse.CheckAssign())
@@ -1538,6 +1627,16 @@ DEFINE_MAP_OPTION(loadacs, false)
 	parse.ParseAssign();
 	parse.sc.MustGetString();
 	info->acsName = parse.sc.String;
+}
+
+DEFINE_MAP_OPTION(intro, true)
+{
+	parse.ParseCutscene(info->intro);
+}
+
+DEFINE_MAP_OPTION(outro, true)
+{
+	parse.ParseCutscene(info->outro);
 }
 
 
@@ -1663,6 +1762,7 @@ MapFlagHandlers[] =
 	{ "enableskyboxao",					MITYPE_SETFLAG3,	LEVEL3_SKYBOXAO, 0 },
 	{ "disableskyboxao",				MITYPE_CLRFLAG3,	LEVEL3_SKYBOXAO, 0 },
 	{ "avoidmelee",						MITYPE_SETFLAG3,	LEVEL3_AVOIDMELEE, 0 },
+	{ "attenuatelights",				MITYPE_SETFLAG3,	LEVEL3_ATTENUATE, 0 },
 	{ "nobotnodes",						MITYPE_IGNORE,	0, 0 },		// Skulltag option: nobotnodes
 	{ "compat_shorttex",				MITYPE_COMPATFLAG, COMPATF_SHORTTEX, 0 },
 	{ "compat_stairs",					MITYPE_COMPATFLAG, COMPATF_STAIRINDEX, 0 },
@@ -1686,7 +1786,8 @@ MapFlagHandlers[] =
 	{ "compat_minotaur",				MITYPE_COMPATFLAG, COMPATF_MINOTAUR, 0 },
 	{ "compat_mushroom",				MITYPE_COMPATFLAG, COMPATF_MUSHROOM, 0 },
 	{ "compat_mbfmonstermove",			MITYPE_COMPATFLAG, COMPATF_MBFMONSTERMOVE, 0 },
-	{ "compat_corpsegibs",				MITYPE_COMPATFLAG, COMPATF_CORPSEGIBS, 0 },
+	{ "compat_corpsegibs",				MITYPE_COMPATFLAG, 0, 0 },	// this flag no longer exists, but we need it here for old mapinfos.
+	{ "compat_vileghosts",				MITYPE_COMPATFLAG, COMPATF_VILEGHOSTS, 0 },
 	{ "compat_noblockfriends",			MITYPE_COMPATFLAG, COMPATF_NOBLOCKFRIENDS, 0 },
 	{ "compat_spritesort",				MITYPE_COMPATFLAG, COMPATF_SPRITESORT, 0 },
 	{ "compat_light",					MITYPE_COMPATFLAG, COMPATF_LIGHT, 0 },
@@ -1706,6 +1807,7 @@ MapFlagHandlers[] =
 	{ "compat_scriptwait",				MITYPE_COMPATFLAG, 0, COMPATF2_SCRIPTWAIT },
 	{ "compat_avoidhazards",			MITYPE_COMPATFLAG, 0, COMPATF2_AVOID_HAZARDS },
 	{ "compat_stayonlift",				MITYPE_COMPATFLAG, 0, COMPATF2_STAYONLIFT },
+	{ "compat_nombf21",					MITYPE_COMPATFLAG, 0, COMPATF2_NOMBF21 },
 	{ "cd_start_track",					MITYPE_EATNEXT,	0, 0 },
 	{ "cd_end1_track",					MITYPE_EATNEXT,	0, 0 },
 	{ "cd_end2_track",					MITYPE_EATNEXT,	0, 0 },
@@ -2064,6 +2166,7 @@ void FMapInfoParser::ParseEpisodeInfo ()
 	bool noskill = false;
 	bool optional = false;
 	bool extended = false;
+	CutsceneDef introscene;
 
 	// Get map name
 	sc.MustGetString ();
@@ -2120,6 +2223,11 @@ void FMapInfoParser::ParseEpisodeInfo ()
 		{
 			noskill = true;
 		}
+		else if (sc.Compare("intro"))
+		{
+			ParseCutscene(introscene);
+		}
+
 		else if (!ParseCloseBrace())
 		{
 			// Unknown
@@ -2178,6 +2286,7 @@ void FMapInfoParser::ParseEpisodeInfo ()
 		epi->mPicName = pic;
 		epi->mShortcut = tolower(key);
 		epi->mNoSkill = noskill;
+		epi->mIntro = introscene;
 	}
 }
 
@@ -2242,9 +2351,11 @@ void FMapInfoParser::ParseMapInfo (int lump, level_info_t &gamedefaults, level_i
 						fileSystem.GetResourceFileFullName(fileSystem.GetFileContainer(inclump)), sc.String);
 				}
 			}
-			FScanner saved_sc = sc;
-			ParseMapInfo(inclump, gamedefaults, defaultinfo);
-			sc = saved_sc;
+			// use a new parser object to parse the include. Otherwise we'd have to save the entire FScanner in a local variable which is a lot more messy.
+			FMapInfoParser includer(&sc);
+			includer.format_type = format_type;
+			includer.HexenHack = HexenHack;
+			includer.ParseMapInfo(inclump, gamedefaults, defaultinfo);
 		}
 		else if (sc.Compare("gamedefaults"))
 		{

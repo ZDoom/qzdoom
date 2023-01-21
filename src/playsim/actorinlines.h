@@ -34,6 +34,14 @@ inline void AActor::ClearInterpolation()
 	else PrevPortalGroup = 0;
 }
 
+inline void AActor::ClearFOVInterpolation()
+{
+	if (player)
+		PrevFOV = DAngle::fromDeg(player->FOV);
+	else
+		PrevFOV = DAngle::fromDeg(CameraFOV);
+}
+
 inline double secplane_t::ZatPoint(const AActor *ac) const
 {
 	return (D + normal.X*ac->X() + normal.Y*ac->Y()) * negiC;
@@ -47,6 +55,12 @@ inline double sector_t::HighestCeilingAt(AActor *a, sector_t **resultsec)
 inline double sector_t::LowestFloorAt(AActor *a, sector_t **resultsec)
 {
 	return ::LowestFloorAt(this, a->X(), a->Y(), resultsec);
+}
+
+// Emulates the old floatbob offset table with direct calls to trig functions.
+inline double BobSin(double fb)
+{
+	return g_sindeg(double(fb * (180.0 / 32))) * 8;
 }
 
 inline double AActor::GetBobOffset(double ticfrac) const
@@ -159,6 +173,8 @@ inline DVector3 AActor::Vec3Angle(double length, DAngle angle, double dz, bool a
 
 inline bool AActor::isFrozen() const
 {
+	if (freezetics > 0)
+		return true;
 	if (!(flags5 & MF5_NOTIMEFREEZE))
 	{
 		auto state = Level->isFrozen();
@@ -177,6 +193,22 @@ inline bool AActor::isFrozen() const
 	}
 	return false;
 }
+
+inline int AActor::GetLightLevel(sector_t* rendersector)
+{
+	int lightlevel = rendersector->GetSpriteLight();
+
+	if (flags8 & MF8_ADDLIGHTLEVEL)
+	{
+		lightlevel += LightLevel;
+	}
+	else if (LightLevel > -1)
+	{
+		lightlevel = LightLevel;
+	}
+	return lightlevel;
+}
+
 
 // Consolidated from all (incomplete) variants that check if a line should block.
 inline bool P_IsBlockedByLine(AActor* actor, line_t* line)
@@ -197,11 +229,11 @@ inline bool P_IsBlockedByLine(AActor* actor, line_t* line)
 		// the regular 'blockmonsters' flag.
 		if (line->flags & ML_BLOCKMONSTERS) return true;
 		// MBF21's flag for walking monsters
-		if ((line->flags2 & ML2_BLOCKLANDMONSTERS) && !(actor->flags & MF_FLOAT)) return true;
+		if ((line->flags2 & ML2_BLOCKLANDMONSTERS) && actor->Level->MBF21Enabled() && !(actor->flags & MF_FLOAT)) return true;
 	}
 
 	// Blocking players
-	if (((actor->player != nullptr) || (actor->flags8 & MF8_BLOCKASPLAYER)) && (line->flags & ML_BLOCK_PLAYERS)) return true;
+	if ((((actor->player != nullptr) || (actor->flags8 & MF8_BLOCKASPLAYER)) && (line->flags & ML_BLOCK_PLAYERS)) && actor->Level->MBF21Enabled()) return true;
 
 	// Blocking floaters.
 	if ((actor->flags & MF_FLOAT) && (line->flags & ML_BLOCK_FLOATERS)) return true;

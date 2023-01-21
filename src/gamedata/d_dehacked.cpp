@@ -44,7 +44,7 @@
 #include <stddef.h>
 
 #include "doomtype.h"
-#include "templates.h"
+
 #include "doomstat.h"
 #include "info.h"
 #include "d_dehacked.h"
@@ -184,7 +184,7 @@ struct MBFParamState
 	int GetSoundArg(int i, int def = 0)
 	{
 		int num = argsused & (1 << i) ? (int)args[i] : def;
-		if (num > 0 && num < int(SoundMap.Size())) return SoundMap[num];
+		if (num > 0 && num <= int(SoundMap.Size())) return SoundMap[num-1].index();
 		return 0;
 	}
 
@@ -405,7 +405,7 @@ static bool ReadChars (char **stuff, int size);
 static char *igets (void);
 static int GetLine (void);
 
-inline double DEHToDouble(int acsval)
+inline double DEHToDouble(int64_t acsval)
 {
 	return acsval / 65536.;
 }
@@ -724,7 +724,7 @@ static void CreateFaceFunc(FunctionCallEmitter &emitters, int value1, int value2
 static void CreateScratchFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_CustomMeleeAttack
 	emitters.AddParameterIntConst(value1);								// damage
-	emitters.AddParameterIntConst(value2 ? (int)SoundMap[value2 - 1] : 0);	// hit sound
+	emitters.AddParameterIntConst(value2 ? (int)SoundMap[value2 - 1].index() : 0);	// hit sound
 	emitters.AddParameterIntConst(0);									// miss sound
 	emitters.AddParameterIntConst(NAME_None);							// damage type
 	emitters.AddParameterIntConst(true);								// bleed
@@ -733,7 +733,7 @@ static void CreateScratchFunc(FunctionCallEmitter &emitters, int value1, int val
 // misc1 = sound, misc2 = attenuation none (true) or normal (false)
 static void CreatePlaySoundFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_PlaySound
-	emitters.AddParameterIntConst(value1 ? (int)SoundMap[value1 - 1] : 0);	// soundid
+	emitters.AddParameterIntConst(value1 ? (int)SoundMap[value1 - 1].index() : 0);	// soundid
 	emitters.AddParameterIntConst(CHAN_BODY);							// channel
 	emitters.AddParameterFloatConst(1);									// volume
 	emitters.AddParameterIntConst(false);								// looping
@@ -802,7 +802,7 @@ static void CreateMonsterMeleeAttackFunc(FunctionCallEmitter &emitters, int valu
 	state->ValidateArgCount(4, "A_MonsterMeleeAttack");
 	emitters.AddParameterIntConst(state->GetIntArg(0, 3));
 	emitters.AddParameterIntConst(state->GetIntArg(1, 8));
-	emitters.AddParameterIntConst(state->GetIntArg(2, 0));
+	emitters.AddParameterIntConst(state->GetSoundArg(2, 0));
 	emitters.AddParameterFloatConst(state->GetFloatArg(3));
 
 }
@@ -886,12 +886,12 @@ static void CreateWeaponBulletAttackFunc(FunctionCallEmitter &emitters, int valu
 
 static void CreateWeaponMeleeAttackFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
-	state->ValidateArgCount(5, "A_WeaponBulletAttack");
+	state->ValidateArgCount(5, "A_WeaponMeleeAttack");
 	emitters.AddParameterIntConst(state->GetIntArg(0, 2));
 	emitters.AddParameterIntConst(state->GetIntArg(1, 10));
 	emitters.AddParameterFloatConst(state->GetFloatArg(2, 1));
-	emitters.AddParameterIntConst(state->GetIntArg(3));
-	emitters.AddParameterIntConst(state->GetIntArg(4));
+	emitters.AddParameterIntConst(state->GetSoundArg(3));
+	emitters.AddParameterFloatConst(state->GetFloatArg(4));
 }
 
 static void CreateWeaponSoundFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
@@ -1138,16 +1138,21 @@ static int PatchThing (int thingy)
 	while ((result = GetLine ()) == 1)
 	{
 		char *endptr;
-		uint32_t val = (uint32_t)strtoull (Line2, &endptr, 10);
+		int64_t val = (int64_t)strtoll (Line2, &endptr, 10);
 		size_t linelen = strlen (Line1);
 
-		if (linelen == 10 && stricmp (Line1, "Hit points") == 0)
+		// Supported value range is all valid representations of signed int and unsigned int.
+		if (val < INT_MIN || val > UINT_MAX)
 		{
-			info->health = val;
+			Printf("Bad numeric constant %s for %s\n", Line2, Line1);
+		}
+		else if (linelen == 10 && stricmp (Line1, "Hit points") == 0)
+		{
+			info->health = (int)val;
 		}
 		else if (linelen == 13 && stricmp (Line1, "Reaction time") == 0)
 		{
-			info->reactiontime = val;
+			info->reactiontime = (int)val;
 		}
 		else if (linelen == 11 && stricmp (Line1, "Pain chance") == 0)
 		{
@@ -1169,13 +1174,13 @@ static int PatchThing (int thingy)
 		}
 		else if (linelen == 14 && stricmp (Line1, "Missile damage") == 0)
 		{
-			info->SetDamage(val);
+			info->SetDamage((int)val);
 		}
 		else if (linelen == 5)
 		{
 			if (stricmp (Line1, "Speed") == 0)
 			{
-				info->Speed = (signed long)val;	// handle fixed point later.
+				info->Speed = (double)val;	// handle fixed point later.
 			}
 			else if (stricmp (Line1, "Width") == 0)
 			{
@@ -1188,7 +1193,7 @@ static int PatchThing (int thingy)
 			}
 			else if (stricmp (Line1, "Scale") == 0)
 			{
-				info->Scale.Y = info->Scale.X = clamp(atof (Line2), 1./65536, 256.);
+				info->Scale.Y = info->Scale.X = clamp((float)atof (Line2), 1.f/65536, 256.f);
 			}
 			else if (stricmp (Line1, "Decal") == 0)
 			{
@@ -1232,12 +1237,12 @@ static int PatchThing (int thingy)
 				Printf("Infighting groups must be >= 0 (check your dehacked)\n");
 				val = 0;
 			}
-			type->ActorInfo()->infighting_group = val;
+			type->ActorInfo()->infighting_group = (int)val;
 		}
 		else if (linelen == 16 && stricmp(Line1, "projectile group") == 0)
 		{
 			if (val < 0) val = -1;
-			type->ActorInfo()->projectile_group = val;
+			type->ActorInfo()->projectile_group = (int)val;
 		}
 		else if (linelen == 12 && stricmp(Line1, "splash group") == 0)
 		{
@@ -1246,11 +1251,11 @@ static int PatchThing (int thingy)
 				Printf("Splash groups must be >= 0 (check your dehacked)\n");
 				val = 0;
 			}
-			type->ActorInfo()->splash_group = val;
+			type->ActorInfo()->splash_group = (int)val;
 		}
 		else if (linelen == 10 && stricmp(Line1, "fast speed") == 0)
 		{
-			double fval = val >= 256 ? DEHToDouble(val) : val;
+			double fval = val >= 256 ? DEHToDouble(val) : double(val);
 			info->FloatVar(NAME_FastSpeed) = fval;
 		}
 		else if (linelen == 11 && stricmp(Line1, "melee range") == 0)
@@ -1259,14 +1264,20 @@ static int PatchThing (int thingy)
 		}
 		else if (linelen == 12 && stricmp(Line1, "dropped item") == 0)
 		{
+			val--;	// This is 1-based and 0 means 'no drop'.
 			if ((unsigned)val < InfoNames.Size())
 			{
 				FDropItem* di = (FDropItem*)ClassDataAllocator.Alloc(sizeof(FDropItem));
 
+				di->Next = nullptr;
 				di->Name = InfoNames[val]->TypeName.GetChars();
 				di->Probability = 255;
 				di->Amount = -1;
 				info->GetInfo()->DropItems = di;
+			}
+			else if ((int)val == -1)
+			{
+				info->GetInfo()->DropItems = nullptr;
 			}
 		}
 		else if (linelen == 11 && stricmp(Line1, "blood color") == 0)
@@ -1283,7 +1294,7 @@ static int PatchThing (int thingy)
 			  0xffff8000, // 8 - Orange
 			};
 
-			if (val < 0 || val > 8) val = 0;
+			if (val > 8 || val < 0) val = 0;
 			unsigned color = bloodcolor[val];
 			info->BloodColor = color;
 			info->BloodTranslation = val == 0? 0 : TRANSLATION(TRANSLATION_Blood, CreateBloodTranslation(color));
@@ -1337,7 +1348,7 @@ static int PatchThing (int thingy)
 		{
 			if (stricmp (Line1 + linelen - 6, " frame") == 0)
 			{
-				FState *state = FindState (val);
+				FState *state = FindState ((int)val);
 
 				if (type != NULL && !patchedStates)
 				{
@@ -1375,7 +1386,7 @@ static int PatchThing (int thingy)
 			}
 			else if (stricmp (Line1 + linelen - 6, " sound") == 0)
 			{
-				FSoundID snd = 0;
+				FSoundID snd = NO_SOUND;
 				
 				if (val == 0 || val >= SoundMap.Size())
 				{
@@ -1383,7 +1394,7 @@ static int PatchThing (int thingy)
 					{ // Sound was not a (valid) number,
 						// so treat it as an actual sound name.
 						stripwhite (Line2);
-						snd = Line2;
+						snd = S_FindSound(Line2);
 					}
 				}
 				else
@@ -1410,7 +1421,7 @@ static int PatchThing (int thingy)
 		{
 			if (stricmp (Line1, "Mass") == 0)
 			{
-				info->Mass = val;
+				info->Mass = (int)val;
 			}
 			else if (stricmp (Line1, "Bits") == 0)
 			{
@@ -2055,64 +2066,62 @@ static int PatchWeapon (int weapNum)
 		Printf ("Weapon %d out of range.\n", weapNum);
 	}
 
+	FState* readyState = nullptr;
 	while ((result = GetLine ()) == 1)
 	{
 		int val = atoi (Line2);
 
-		if (strlen (Line1) >= 9)
+		size_t len = strlen(Line1);
+		if (len > 6 && stricmp (Line1 + len - 6, " frame") == 0)
 		{
-			if (stricmp (Line1 + strlen (Line1) - 6, " frame") == 0)
+			FState *state = FindState (val);
+
+			if (type != nullptr && !patchedStates)
 			{
-				FState *state = FindState (val);
-
-				if (type != NULL && !patchedStates)
-				{
-					statedef.MakeStateDefines(type);
-					patchedStates = true;
-				}
-
-				if (strnicmp (Line1, "Deselect", 8) == 0)
-					statedef.SetStateLabel("Select", state);
-				else if (strnicmp (Line1, "Select", 6) == 0)
-					statedef.SetStateLabel("Deselect", state);
-				else if (strnicmp (Line1, "Bobbing", 7) == 0)
-					statedef.SetStateLabel("Ready", state);
-				else if (strnicmp (Line1, "Shooting", 8) == 0)
-					statedef.SetStateLabel("Fire", state);
-				else if (strnicmp (Line1, "Firing", 6) == 0)
-					statedef.SetStateLabel("Flash", state);
+				statedef.MakeStateDefines(type);
+				patchedStates = true;
 			}
-			else if (stricmp (Line1, "Ammo type") == 0)
+
+			if (strnicmp (Line1, "Deselect", 8) == 0)
+				statedef.SetStateLabel("Select", state);
+			else if (strnicmp (Line1, "Select", 6) == 0)
+				statedef.SetStateLabel("Deselect", state);
+			else if (strnicmp(Line1, "Bobbing", 7) == 0)
 			{
-				if (val < 0 || val >= 12 || (unsigned)val >= AmmoNames.Size())
+				readyState = state;
+				statedef.SetStateLabel("Ready", state);
+			}
+			else if (strnicmp (Line1, "Shooting", 8) == 0)
+				statedef.SetStateLabel("Fire", state);
+			else if (strnicmp (Line1, "Firing", 6) == 0)
+				statedef.SetStateLabel("Flash", state);
+		}
+		else if (stricmp (Line1, "Ammo type") == 0)
+		{
+			if (val < 0 || val >= 12 || (unsigned)val >= AmmoNames.Size())
+			{
+				val = 5;
+			}
+			if (info)
+			{
+				auto &AmmoType = info->PointerVar<PClassActor>(NAME_AmmoType1);
+				AmmoType = AmmoNames[val];
+				if (AmmoType != nullptr)
 				{
-					val = 5;
-				}
-				if (info)
-				{
-					auto &AmmoType = info->PointerVar<PClassActor>(NAME_AmmoType1);
-					AmmoType = AmmoNames[val];
-					if (AmmoType != nullptr)
+					info->IntVar(NAME_AmmoGive1) = GetDefaultByType(AmmoType)->IntVar(NAME_Amount) * 2;
+					auto &AmmoUse = info->IntVar(NAME_AmmoUse1);
+					if (AmmoUse == 0)
 					{
-						info->IntVar(NAME_AmmoGive1) = GetDefaultByType(AmmoType)->IntVar(NAME_Amount) * 2;
-						auto &AmmoUse = info->IntVar(NAME_AmmoUse1);
-						if (AmmoUse == 0)
-						{
-							AmmoUse = 1;
-						}
+						AmmoUse = 1;
 					}
 				}
-			}
-			else
-			{
-				Printf (unknown_str, Line1, "Weapon", weapNum);
 			}
 		}
 		else if (stricmp (Line1, "Decal") == 0)
 		{
 			stripwhite (Line2);
 			const FDecalTemplate *decal = DecalLibrary.GetDecalByName (Line2);
-			if (decal != NULL)
+			if (decal != nullptr)
 			{
 				if (info) info->DecalGenerator = const_cast <FDecalTemplate *>(decal);
 			}
@@ -2192,6 +2201,20 @@ static int PatchWeapon (int weapNum)
 
 	if (info)
 	{
+		// Emulate the hard coded ready sound of the chainsaw as good as possible.
+		if (readyState)
+		{
+			FState* state = FindState(67); // S_SAW
+			if (readyState == state)
+			{
+				info->IntVar(NAME_ReadySound) = S_FindSound("weapons/sawidle").index();
+			}
+			else
+			{
+				info->IntVar(NAME_ReadySound) = 0;
+			}
+		}
+
 		if (info->PointerVar<PClassActor>(NAME_AmmoType1) == nullptr)
 		{
 			info->IntVar(NAME_AmmoUse1) = 0;
@@ -2587,11 +2610,15 @@ static int PatchCodePtrs (int dummy)
 			{
 				FString symname;
 
-
 				if ((Line2[0] == 'A' || Line2[0] == 'a') && Line2[1] == '_')
 					symname = Line2;
 				else
 					symname.Format("A_%s", Line2);
+
+				// Hack alert: If A_ConsumeAmmo is used we need to handle the ammo use differently.
+				// Since this is a parameterized code pointer the AmmoPerAttack check cannot find it easily without some help.
+				if (symname.CompareNoCase("A_ConsumeAmmo") == 0)
+					state->StateFlags |= STF_CONSUMEAMMO;
 
 				// Let's consider as aliases some redundant MBF pointer
 				bool ismbfcp = false;
@@ -2749,7 +2776,17 @@ static int PatchText (int oldSize)
 
 	// Search through most other texts
 	const char *str;
-	do
+	
+	// hackhack: If the given string is "Doom", only replace "MUSIC_DOOM".
+	// This is the only music or texture name clashing with common words in the string table.
+	if (!stricmp(oldStr, "Doom"))
+	{
+		str = "MUSIC_DOOM";
+		TableElement te = { LumpFileNum, { newStrData, newStrData, newStrData, newStrData } };
+		DehStrings.Insert(str, te);
+		good = true;
+	}
+	else do
 	{
 		oldStrData.MergeChars(' ');
 		str = EnglishStrings.MatchString(oldStr);
@@ -3502,11 +3539,11 @@ void FinishDehPatch ()
 			// Retry until we find a free name. This is unlikely to happen but not impossible.
 			mysnprintf(typeNameBuilder, countof(typeNameBuilder), "DehackedPickup%d", nameindex++);
 			bool newlycreated;
-			subclass = static_cast<PClassActor *>(dehtype->CreateDerivedClass(typeNameBuilder, dehtype->Size, &newlycreated));
+			subclass = static_cast<PClassActor *>(dehtype->CreateDerivedClass(typeNameBuilder, dehtype->Size, &newlycreated, 0));
 			if (newlycreated) subclass->InitializeDefaults();
 		} 
 		while (subclass == nullptr);
-		NewClassType(subclass);	// This needs a VM type to work as intended.
+		NewClassType(subclass, 0);	// This needs a VM type to work as intended.
 
 		AActor *defaults2 = GetDefaultByType (subclass);
 		memcpy ((void *)defaults2, (void *)defaults1, sizeof(AActor));
@@ -3570,8 +3607,8 @@ void FinishDehPatch ()
 		}
 		else
 		{
+			bool handled = false;
 			weap->BoolVar(NAME_bDehAmmo) = true;
-			weap->IntVar(NAME_AmmoUse1) = 0;
 			// to allow proper checks in CheckAmmo we have to find the first attack pointer in the Fire sequence
 			// and set its default ammo use as the weapon's AmmoUse1.
 
@@ -3586,24 +3623,38 @@ void FinishDehPatch ()
 					break;	// State has already been checked so we reached a loop
 				}
 				StateVisited[state] = true;
+				if (state->StateFlags & STF_CONSUMEAMMO)
+				{
+					// If A_ConsumeAmmo is being used we have to rely on the existing AmmoUse1 value.
+					handled = true;
+					state->StateFlags &= ~STF_CONSUMEAMMO;
+					break;
+				}
 				for(unsigned j = 0; AmmoPerAttacks[j].func != NAME_None; j++)
 				{
 					if (AmmoPerAttacks[j].ptr == nullptr)
 					{
 						auto p = dyn_cast<PFunction>(wcls->FindSymbol(AmmoPerAttacks[j].func, true));
 						if (p != nullptr) AmmoPerAttacks[j].ptr = p->Variants[0].Implementation;
+						assert(AmmoPerAttacks[j].ptr);
 					}
-					if (state->ActionFunc == AmmoPerAttacks[j].ptr)
+					if (state->ActionFunc == AmmoPerAttacks[j].ptr && AmmoPerAttacks[j].ptr)
 					{
 						found = true;
 						int use = AmmoPerAttacks[j].ammocount;
 						if (use < 0) use = deh.BFGCells;
 						weap->IntVar(NAME_AmmoUse1) = use;
+						handled = true;
 						break;
 					}
 				}
 				if (found) break;
 				state = state->GetNextState();
+			}
+			if (!handled)
+			{
+				weap->IntVar(NAME_AmmoUse1) = 0;
+
 			}
 		}
 	}
@@ -3838,6 +3889,20 @@ void ClearMissile(AActor* info)
 	if (info->BounceFlags & BOUNCE_DEH) info->BounceFlags = BOUNCE_Grenade | BOUNCE_DEH;
 }
 
+void SetShadow(AActor* info)
+{
+	info->flags |= MF_SHADOW;
+	info->RenderStyle = LegacyRenderStyles[STYLE_OptFuzzy];
+	info->renderflags &= ~RF_ZDOOMTRANS;
+}
+
+void ClearShadow(AActor* info)
+{
+	info->flags &= ~MF_SHADOW;
+	info->RenderStyle = LegacyRenderStyles[info->Alpha >= 1 - FLT_EPSILON? STYLE_Normal : STYLE_Translucent];
+	info->renderflags &= ~RF_ZDOOMTRANS;
+}
+
 static FlagHandler flag1handlers[32] = {
 	F(MF_SPECIAL),
 	F(MF_SOLID),
@@ -3857,7 +3922,7 @@ static FlagHandler flag1handlers[32] = {
 	F(MF_TELEPORT),
 	{ SetMissile, ClearMissile, [](AActor* a)->bool { return a->flags & MF_MISSILE; } },
 	F(MF_DROPPED),
-	F(MF_SHADOW),
+	{ SetShadow, ClearShadow, [](AActor* a)->bool { return a->flags & MF_SHADOW; } },
 	F(MF_NOBLOOD),
 	F(MF_CORPSE),
 	F(MF_INFLOAT),
@@ -3870,7 +3935,7 @@ static FlagHandler flag1handlers[32] = {
 	F6(MF6_TOUCHY),
 	{ SetBounces, ClearBounces, [](AActor* a)->bool { return a->BounceFlags & BOUNCE_DEH; } },
 	F(MF_FRIENDLY),
-	{ SetTranslucent, ClearTranslucent, CheckTranslucent }
+	{ SetTranslucent, ClearTranslucent, CheckTranslucent },
 };
 
 static FlagHandler flag2handlers[32] = {

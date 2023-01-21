@@ -33,6 +33,7 @@
 */
 
 #include <assert.h>
+#include <stdint.h>
 
 #include "actor.h"
 #include "p_conversation.h"
@@ -59,6 +60,7 @@
 #include "actorinlines.h"
 #include "v_draw.h"
 #include "doommenu.h"
+#include "g_game.h"
 
 static FRandom pr_randomspeech("RandomSpeech");
 
@@ -164,7 +166,7 @@ static void ClearConversationStuff(player_t* player)
 	player->ConversationFaceTalker = false;
 	player->ConversationNPC = nullptr;
 	player->ConversationPC = nullptr;
-	player->ConversationNPCAngle = 0.;
+	player->ConversationNPCAngle = nullAngle;
 }
 
 //============================================================================
@@ -393,12 +395,12 @@ void P_StartConversation (AActor *npc, AActor *pc, bool facetalker, bool saveang
 	}
 
 	// [Nash] Play voice clip from the actor so that positional audio can be heard by all players
-	if (CurNode->SpeakerVoice != 0) S_Sound(npc, CHAN_VOICE, CHANF_NOPAUSE, CurNode->SpeakerVoice, 1, ATTN_NORM);
+	if (CurNode->SpeakerVoice != NO_SOUND) S_Sound(npc, CHAN_VOICE, CHANF_NOPAUSE, CurNode->SpeakerVoice, 1, ATTN_NORM);
 
 	// The rest is only done when the conversation is actually displayed.
 	if (pc->player == Level->GetConsolePlayer())
 	{
-		if (CurNode->SpeakerVoice != 0)
+		if (CurNode->SpeakerVoice != NO_SOUND)
 		{
 			I_SetMusicVolume (dlg_musicvolume);
 		}
@@ -489,7 +491,7 @@ static void HandleReply(player_t *player, bool isconsole, int nodenum, int reply
 		if (!(npc->flags8 & MF8_DONTFACETALKER))
 			npc->Angles.Yaw = player->ConversationNPCAngle;
 		npc->flags5 &= ~MF5_INCONVERSATION;
-		if (gameaction != ga_slideshow) ClearConversationStuff(player);
+		if (gameaction != ga_intermission) ClearConversationStuff(player);
 		return;
 	}
 
@@ -507,7 +509,7 @@ static void HandleReply(player_t *player, bool isconsole, int nodenum, int reply
 			if (!(npc->flags8 & MF8_DONTFACETALKER))
 				npc->Angles.Yaw = player->ConversationNPCAngle;
 			npc->flags5 &= ~MF5_INCONVERSATION;
-			if (gameaction != ga_slideshow) ClearConversationStuff(player);
+			if (gameaction != ga_intermission) ClearConversationStuff(player);
 			return;
 		}
 	}
@@ -548,7 +550,7 @@ static void HandleReply(player_t *player, bool isconsole, int nodenum, int reply
 			}
 		
 			if (reply->GiveType->IsDescendantOf("SlideshowStarter"))
-				gameaction = ga_slideshow;
+				G_StartSlideshow(primaryLevel, NAME_None);
 		}
 		else
 		{
@@ -617,7 +619,7 @@ static void HandleReply(player_t *player, bool isconsole, int nodenum, int reply
 
 			if (!(reply->CloseDialog))
 			{
-				if (gameaction != ga_slideshow)
+				if (gameaction != ga_intermission)
 				{
 					P_StartConversation (npc, player->mo, player->ConversationFaceTalker, false);
 					return;
@@ -643,7 +645,7 @@ static void HandleReply(player_t *player, bool isconsole, int nodenum, int reply
 	// [CW] Set these to NULL because we're not using to them
 	// anymore. However, this can interfere with slideshows
 	// so we don't set them to NULL in that case.
-	if (gameaction != ga_slideshow)
+	if (gameaction != ga_intermission)
 	{
 		npc->flags5 &= ~MF5_INCONVERSATION;
 		ClearConversationStuff(player);
@@ -716,7 +718,7 @@ static void TerminalResponse (const char *str)
 
 		if (StatusBar != NULL)
 		{
-			Printf(PRINT_NONOTIFY, "%s\n", str);
+			Printf(PRINT_HIGH | PRINT_NONOTIFY, "%s\n", str);
 			// The message is positioned a bit above the menu choices, because
 			// merchants can tell you something like this but continue to show
 			// their dialogue screen. I think most other conversations use this

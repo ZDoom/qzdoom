@@ -85,6 +85,7 @@ public:
 	void ReadObjects(bool hubtravel);
 	bool BeginObject(const char *name);
 	void EndObject();
+	bool HasObject(const char* name);
 	bool BeginArray(const char *name);
 	void EndArray();
 	unsigned GetSize(const char *group);
@@ -110,7 +111,7 @@ public:
 	{
 		return w != nullptr;
 	}
-	
+
 	bool canSkip() const;
 
 	template<class T>
@@ -158,7 +159,7 @@ public:
 	template<class T>
 	FSerializer &Array(const char *key, T *obj, T *def, int count, bool fullcompare = false)
 	{
-		if (!save_full && fullcompare && isWriting() && def != nullptr && !memcmp(obj, def, count * sizeof(T)))
+		if (!save_full && fullcompare && isWriting() && key != nullptr && def != nullptr && !memcmp(obj, def, count * sizeof(T)))
 		{
 			return *this;
 		}
@@ -234,7 +235,7 @@ FSerializer &Serialize(FSerializer &arc, const char *key, FSoundID &sid, FSoundI
 FSerializer &Serialize(FSerializer &arc, const char *key, FString &sid, FString *def);
 FSerializer &Serialize(FSerializer &arc, const char *key, NumericValue &sid, NumericValue *def);
 
-template<class T>
+template <typename T/*, typename = std::enable_if_t<std::is_base_of_v<DObject, T>>*/>
 FSerializer &Serialize(FSerializer &arc, const char *key, T *&value, T **)
 {
 	DObject *v = static_cast<DObject*>(value);
@@ -301,6 +302,11 @@ FSerializer& Serialize(FSerializer& arc, const char* key, FixedBitArray<size>& v
 	return arc.SerializeMemory(key, value.Storage(), value.StorageSize());
 }
 
+inline FSerializer& Serialize(FSerializer& arc, const char* key, BitArray& value, BitArray* def)
+{
+	return arc.SerializeMemory(key, value.Storage().Data(), value.Storage().Size());
+}
+
 template<> FSerializer& Serialize(FSerializer& arc, const char* key, PClass*& clst, PClass** def);
 template<> FSerializer& Serialize(FSerializer& arc, const char* key, FFont*& font, FFont** def);
 template<> FSerializer &Serialize(FSerializer &arc, const char *key, Dictionary *&dict, Dictionary **def);
@@ -320,10 +326,25 @@ inline FSerializer &Serialize(FSerializer &arc, const char *key, DVector2 &p, DV
 	return arc.Array<double>(key, &p[0], def? &(*def)[0] : nullptr, 2, true);
 }
 
+inline FSerializer& Serialize(FSerializer& arc, const char* key, FVector4& p, FVector4* def)
+{
+	return arc.Array<float>(key, &p[0], def ? &(*def)[0] : nullptr, 4, true);
+}
+
+inline FSerializer& Serialize(FSerializer& arc, const char* key, FVector3& p, FVector3* def)
+{
+	return arc.Array<float>(key, &p[0], def ? &(*def)[0] : nullptr, 3, true);
+}
+
+inline FSerializer& Serialize(FSerializer& arc, const char* key, FVector2& p, FVector2* def)
+{
+	return arc.Array<float>(key, &p[0], def ? &(*def)[0] : nullptr, 2, true);
+}
+
 template<class T>
 inline FSerializer &Serialize(FSerializer &arc, const char *key, TAngle<T> &p, TAngle<T> *def)
 {
-	return Serialize(arc, key, p.Degrees, def? &def->Degrees : nullptr);
+	return Serialize(arc, key, p.Degrees__(), def ? &def->Degrees__() : nullptr);
 }
 
 inline FSerializer &Serialize(FSerializer &arc, const char *key, PalEntry &pe, PalEntry *def)

@@ -35,7 +35,7 @@
 #include <windows.h>
 
 #include "hardware.h"
-#include "templates.h"
+
 #include "version.h"
 #include "c_console.h"
 #include "v_video.h"
@@ -47,6 +47,7 @@
 #include "printf.h"
 #include "win32basevideo.h"
 #include "cmdlib.h"
+#include "i_mainwindow.h"
 
 CVAR(Int, vid_adapter, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
@@ -58,7 +59,7 @@ CVAR(Int, vid_adapter, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 Win32BaseVideo::Win32BaseVideo()
 {
-	I_SetWndProc();
+	mainwindow.ShowGameView();
 
 	GetDisplayDeviceName();
 }

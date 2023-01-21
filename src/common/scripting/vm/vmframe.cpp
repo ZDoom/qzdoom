@@ -37,7 +37,7 @@
 #include "v_text.h"
 #include "stats.h"
 #include "c_dispatch.h"
-#include "templates.h"
+
 #include "vmintern.h"
 #include "types.h"
 #include "jit.h"
@@ -56,7 +56,7 @@ CUSTOM_CVAR(Bool, vm_jit, true, CVAR_NOINITCALL)
 }
 #else
 CVAR(Bool, vm_jit, false, CVAR_NOINITCALL|CVAR_NOSET)
-FString JitCaptureStackTrace(int framesToSkip, bool includeNativeFrames) { return FString(); }
+FString JitCaptureStackTrace(int framesToSkip, bool includeNativeFrames, int maxFrames) { return FString(); }
 void JitRelease() {}
 #endif
 
@@ -682,22 +682,20 @@ void CVMAbortException::MaybePrintMessage()
 	auto m = GetMessage();
 	if (m != nullptr)
 	{
-		Printf(TEXTCOLOR_RED);
-		Printf("%s\n", m);
+		Printf(PRINT_NONOTIFY | PRINT_BOLD, TEXTCOLOR_RED "%s\n", m);
 		SetMessage("");
 	}
 }
 
 
-void ThrowAbortException(EVMAbortException reason, const char *moreinfo, ...)
+[[noreturn]] void ThrowAbortException(EVMAbortException reason, const char *moreinfo, ...)
 {
 	va_list ap;
 	va_start(ap, moreinfo);
 	throw CVMAbortException(reason, moreinfo, ap);
-	va_end(ap);
 }
 
-void ThrowAbortException(VMScriptFunction *sfunc, VMOP *line, EVMAbortException reason, const char *moreinfo, ...)
+[[noreturn]] void ThrowAbortException(VMScriptFunction *sfunc, VMOP *line, EVMAbortException reason, const char *moreinfo, ...)
 {
 	va_list ap;
 	va_start(ap, moreinfo);
@@ -706,7 +704,6 @@ void ThrowAbortException(VMScriptFunction *sfunc, VMOP *line, EVMAbortException 
 
 	err.stacktrace.AppendFormat("Called from %s at %s, line %d\n", sfunc->PrintableName.GetChars(), sfunc->SourceFileName.GetChars(), sfunc->PCToLine(line));
 	throw err;
-	va_end(ap);
 }
 
 DEFINE_ACTION_FUNCTION(DObject, ThrowAbortException)
@@ -714,10 +711,9 @@ DEFINE_ACTION_FUNCTION(DObject, ThrowAbortException)
 	PARAM_PROLOGUE;
 	FString s = FStringFormat(VM_ARGS_NAMES);
 	ThrowAbortException(X_OTHER, s.GetChars());
-	return 0;
 }
 
-void NullParam(const char *varname)
+[[noreturn]] void NullParam(const char *varname)
 {
 	ThrowAbortException(X_READ_NIL, "In function parameter %s", varname);
 }
@@ -746,7 +742,7 @@ ADD_STAT(VM)
 	for (auto d : VMCycles)
 	{
 		added += d.TimeMS();
-		peak = MAX<double>(peak, d.TimeMS());
+		peak = max<double>(peak, d.TimeMS());
 	}
 	for (auto d : VMCalls) addedc += d;
 	memmove(&VMCycles[1], &VMCycles[0], 9 * sizeof(cycle_t));

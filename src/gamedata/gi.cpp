@@ -156,7 +156,7 @@ const char* GameInfoBorders[] =
 			{ \
 				sc.ScriptError("Value for '%s' can not be longer than %d characters.", #key, length); \
 			} \
-			gameinfo.key[gameinfo.key.Reserve(1)] = FSoundID(sc.String); \
+			gameinfo.key[gameinfo.key.Reserve(1)] = S_FindSound(sc.String); \
 		} \
 		while (sc.CheckToken(',')); \
 	}
@@ -274,6 +274,12 @@ void FMapInfoParser::ParseGameInfo()
 		if (sc.TokenType == '}') break;
 
 		sc.TokenMustBe(TK_Identifier);
+		if (sc.Compare("intro"))
+		{
+			ParseCutscene(gameinfo.IntroScene);
+			continue;
+		}
+
 		FString nextKey = sc.String;
 		sc.MustGetToken('=');
 
@@ -362,6 +368,7 @@ void FMapInfoParser::ParseGameInfo()
 			gameinfo.Dialogue = sc.String;
 			gameinfo.AddDialogues.Clear();
 		}
+
 		// Insert valid keys here.
 		GAMEINFOKEY_STRING(mCheatKey, "cheatKey")
 			GAMEINFOKEY_STRING(mEasyKey, "easyKey")
@@ -384,7 +391,7 @@ void FMapInfoParser::ParseGameInfo()
 			GAMEINFOKEY_STRINGARRAY(PrecachedTextures, "precachetextures", 0, false)
 			GAMEINFOKEY_SOUNDARRAY(PrecachedSounds, "precachesounds", 0, false)
 			GAMEINFOKEY_STRINGARRAY(EventHandlers, "addeventhandlers", 0, false)
-			GAMEINFOKEY_STRINGARRAY(EventHandlers, "eventhandlers", 0, true)
+			GAMEINFOKEY_STRINGARRAY(EventHandlers, "eventhandlers", 0, false)
 			GAMEINFOKEY_STRING(PauseSign, "pausesign")
 			GAMEINFOKEY_STRING(quitSound, "quitSound")
 			GAMEINFOKEY_STRING(BorderFlat, "borderFlat")
@@ -463,7 +470,7 @@ void FMapInfoParser::ParseGameInfo()
 			SkipToNext();
 		}
 	}
-	turbo.Callback();
+	turbo->Callback();
 }
 
 const char *gameinfo_t::GetFinalePage(unsigned int num) const

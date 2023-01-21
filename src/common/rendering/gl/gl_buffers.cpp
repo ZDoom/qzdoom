@@ -192,12 +192,12 @@ void GLBuffer::GPUDropSync()
 void GLBuffer::GPUWaitSync()
 {
 	GLenum status = glClientWaitSync(mGLSync, GL_SYNC_FLUSH_COMMANDS_BIT, 1000 * 1000 * 50); // Wait for a max of 50ms...
-	
+
 	if (status != GL_ALREADY_SIGNALED && status != GL_CONDITION_SATISFIED)
 	{
 		//Printf("Error on glClientWaitSync: %d\n", status);
 	}
-	
+
 	glDeleteSync(mGLSync);
 
 	mGLSync = NULL;
@@ -211,12 +211,14 @@ void GLBuffer::GPUWaitSync()
 
 void GLVertexBuffer::SetFormat(int numBindingPoints, int numAttributes, size_t stride, const FVertexBufferAttribute *attrs)
 {
-	static int VFmtToGLFmt[] = { GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_UNSIGNED_BYTE, GL_INT_2_10_10_10_REV };
-	static uint8_t VFmtToSize[] = {4, 3, 2, 1, 4, 4};
-	
+	static int VFmtToGLFmt[] = { GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_UNSIGNED_BYTE, GL_INT_2_10_10_10_REV, GL_UNSIGNED_BYTE };
+	static uint8_t VFmtToSize[] = { 4, 3, 2, 1, 4, 4, 4 };
+	static bool VFmtToNormalize[] = { false, false, false, false, true, true, false };
+	static bool VFmtToIntegerType[] = { false, false, false, false, false, false, true };
+
 	mStride = stride;
 	mNumBindingPoints = numBindingPoints;
-	
+
 	for(int i = 0; i < numAttributes; i++)
 	{
 		if (attrs[i].location >= 0 && attrs[i].location < VATTR_MAX)
@@ -226,6 +228,8 @@ void GLVertexBuffer::SetFormat(int numBindingPoints, int numAttributes, size_t s
 			attrinf.size = VFmtToSize[attrs[i].format];
 			attrinf.offset = attrs[i].offset;
 			attrinf.bindingpoint = attrs[i].binding;
+			attrinf.normalize = VFmtToNormalize[attrs[i].format];
+			attrinf.integerType = VFmtToIntegerType[attrs[i].format];
 		}
 	}
 }
@@ -246,7 +250,10 @@ void GLVertexBuffer::Bind(int *offsets)
 		{
 			glEnableVertexAttribArray(i);
 			size_t ofs = offsets == nullptr ? attrinf.offset : attrinf.offset + mStride * offsets[attrinf.bindingpoint];
-			glVertexAttribPointer(i, attrinf.size, attrinf.format, attrinf.format != GL_FLOAT, (GLsizei)mStride, (void*)(intptr_t)ofs);
+			if (!attrinf.integerType)
+				glVertexAttribPointer(i, attrinf.size, attrinf.format, attrinf.normalize, (GLsizei)mStride, (void*)(intptr_t)ofs);
+			else
+				glVertexAttribIPointer(i, attrinf.size, attrinf.format, (GLsizei)mStride, (void*)(intptr_t)ofs);
 		}
 		i++;
 	}

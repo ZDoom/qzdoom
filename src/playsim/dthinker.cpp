@@ -111,7 +111,7 @@ void FThinkerCollection::RunThinkers(FLevelLocals *Level)
 	bool dolights;
 	if ((gl_lights && vid_rendermode == 4) || (r_dynlights && vid_rendermode != 4))
 	{
-		dolights = Level->lights || (Level->flags3 & LEVEL3_LIGHTCREATED);
+		dolights = true;// Level->lights || (Level->flags3 & LEVEL3_LIGHTCREATED);
 	}
 	else
 	{
@@ -247,7 +247,7 @@ void FThinkerCollection::RunThinkers(FLevelLocals *Level)
 		Printf(TEXTCOLOR_YELLOW "Total, ms   Averg, ms   Calls   Actor class\n");
 		Printf(TEXTCOLOR_YELLOW "----------  ----------  ------  --------------------\n");
 
-		const unsigned count = MIN(profilelimit > 0 ? profilelimit : UINT_MAX, sorted.Size());
+		const unsigned count = min(profilelimit > 0 ? profilelimit : UINT_MAX, sorted.Size());
 
 		for (unsigned i = 0; i < count; ++i)
 		{
@@ -271,7 +271,7 @@ void FThinkerCollection::RunThinkers(FLevelLocals *Level)
 //
 //==========================================================================
 
-void FThinkerCollection::DestroyAllThinkers()
+void FThinkerCollection::DestroyAllThinkers(bool fullgc)
 {
 	int i;
 	bool error = false;
@@ -285,11 +285,12 @@ void FThinkerCollection::DestroyAllThinkers()
 		}
 	}
 	error |= Thinkers[MAX_STATNUM + 1].DoDestroyThinkers();
-	GC::FullGC();
+	if (fullgc) GC::FullGC();
 	if (error)
 	{
 		ClearGlobalVMStack();
-		I_Error("DestroyAllThinkers failed");
+		if (fullgc) I_Error("DestroyAllThinkers failed");
+		else I_FatalError("DestroyAllThinkers failed");
 	}
 }
 
@@ -537,7 +538,7 @@ bool FThinkerList::DoDestroyThinkers()
 			{
 				Printf("VM exception in DestroyThinkers:\n");
 				exception.MaybePrintMessage();
-				Printf("%s", exception.stacktrace.GetChars());
+				Printf(PRINT_NONOTIFY | PRINT_BOLD, "%s", exception.stacktrace.GetChars());
 				// forcibly delete this. Cleanup may be incomplete, though.
 				node->ObjectFlags |= OF_YesReallyDelete;
 				delete node;
@@ -545,7 +546,7 @@ bool FThinkerList::DoDestroyThinkers()
 			}
 			catch (CRecoverableError &exception)
 			{
-				Printf("Error in DestroyThinkers: %s\n", exception.GetMessage());
+				Printf(PRINT_NONOTIFY | PRINT_BOLD, "Error in DestroyThinkers: %s\n", exception.GetMessage());
 				// forcibly delete this. Cleanup may be incomplete, though.
 				node->ObjectFlags |= OF_YesReallyDelete;
 				delete node;
@@ -616,7 +617,6 @@ int FThinkerList::TickThinkers(FThinkerList *dest)
 			ThinkCount++;
 			node->CallTick();
 			node->ObjectFlags &= ~OF_JustSpawned;
-			GC::CheckGC();
 		}
 		node = NextToThink;
 	}
@@ -667,7 +667,6 @@ int FThinkerList::ProfileThinkers(FThinkerList *dest)
 			node->CallTick();
 			prof.timer.Unclock();
 			node->ObjectFlags &= ~OF_JustSpawned;
-			GC::CheckGC();
 		}
 		node = NextToThink;
 	}

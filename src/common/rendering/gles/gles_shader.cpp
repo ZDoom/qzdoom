@@ -6,7 +6,7 @@
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
+// the Free Software Foundation, either version 2 of the License, or
 // (at your option) any later version.
 //
 // This program is distributed in the hope that it will be useful,
@@ -266,7 +266,10 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 
 		// light buffers
 		uniform vec4 lights[MAXIMUM_LIGHT_VECTORS];
-		
+
+		// bone matrix buffers
+		uniform mat4 bones[MAXIMUM_LIGHT_VECTORS];
+
 		uniform	mat4 ProjectionMatrix;
 		uniform	mat4 ViewMatrix;
 		uniform	mat4 NormalViewMatrix;
@@ -321,6 +324,9 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 		// dynamic lights
 		uniform ivec4 uLightRange;
 
+		// bone animation
+		uniform int uBoneIndexBase;
+
 		// Blinn glossiness and specular level
 		uniform vec2 uSpecularMaterial;
 
@@ -370,7 +376,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 		#define glowtexture texture4
 		#endif
 	)";
-	
+
 #ifdef NPOT_EMULATION
 	i_data += "#define NPOT_EMULATION\nuniform vec2 uNpotEmulation;\n";
 #endif
@@ -391,11 +397,11 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 	FString vp_comb;
 
 	assert(screen->mLights != NULL);
+	assert(screen->mBones != NULL);
 
-	bool lightbuffertype = screen->mLights->GetBufferType();
 	unsigned int lightbuffersize = screen->mLights->GetBlockSize();
 
-	vp_comb.Format("#version 100\n#define NUM_UBO_LIGHTS %d\n#define NO_CLIPDISTANCE_SUPPORT\n", lightbuffersize);
+	vp_comb.Format("#version %s\n\n#define NO_CLIPDISTANCE_SUPPORT\n", gles.shaderVersionString);
 
 	FString fp_comb = vp_comb;
 	vp_comb << defines << i_data.GetChars();
@@ -495,7 +501,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 	}
 
 	shaderData->hShader = glCreateProgram();
-	
+
 	uint32_t binaryFormat = 0;
 	TArray<uint8_t> binary;
 	if (IsShaderCacheActive())
@@ -530,6 +536,8 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 		glBindAttribLocation(shaderData->hShader, VATTR_VERTEX2, "aVertex2");
 		glBindAttribLocation(shaderData->hShader, VATTR_NORMAL, "aNormal");
 		glBindAttribLocation(shaderData->hShader, VATTR_NORMAL2, "aNormal2");
+		glBindAttribLocation(shaderData->hShader, VATTR_BONEWEIGHT, "aBoneWeight");
+		glBindAttribLocation(shaderData->hShader, VATTR_BONESELECTOR, "aBoneSelector");
 
 
 		glLinkProgram(shaderData->hShader);
@@ -570,10 +578,6 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 	shaderData->muViewMatrix.Init(shaderData->hShader, "ViewMatrix");
 	shaderData->muNormalViewMatrix.Init(shaderData->hShader, "NormalViewMatrix");
 
-	//shaderData->ProjectionMatrix_index = glGetUniformLocation(shaderData->hShader, "ProjectionMatrix");
-	//shaderData->ViewMatrix_index = glGetUniformLocation(shaderData->hShader, "ViewMatrix");
-	//shaderData->NormalViewMatrix_index = glGetUniformLocation(shaderData->hShader, "NormalViewMatrix");
-
 	shaderData->muCameraPos.Init(shaderData->hShader, "uCameraPos");
 	shaderData->muClipLine.Init(shaderData->hShader, "uClipLine");
 
@@ -592,6 +596,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 	shaderData->muLightParms.Init(shaderData->hShader, "uLightAttr");
 	shaderData->muClipSplit.Init(shaderData->hShader, "uClipSplit");
 	shaderData->muLightRange.Init(shaderData->hShader, "uLightRange");
+	shaderData->muBoneIndexBase.Init(shaderData->hShader, "uBoneIndexBase");
 	shaderData->muFogColor.Init(shaderData->hShader, "uFogColor");
 	shaderData->muDynLightColor.Init(shaderData->hShader, "uDynLightColor");
 	shaderData->muObjectColor.Init(shaderData->hShader, "uObjectColor");
@@ -620,6 +625,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 	shaderData->muFixedColormapRange.Init(shaderData->hShader, "uFixedColormapRange");
 
 	shaderData->lights_index = glGetUniformLocation(shaderData->hShader, "lights");
+	shaderData->bones_index = glGetUniformLocation(shaderData->hShader, "bones");
 	shaderData->modelmatrix_index = glGetUniformLocation(shaderData->hShader, "ModelMatrix");
 	shaderData->texturematrix_index = glGetUniformLocation(shaderData->hShader, "TextureMatrix");
 	shaderData->normalmodelmatrix_index = glGetUniformLocation(shaderData->hShader, "NormalModelMatrix");
@@ -687,7 +693,7 @@ bool FShader::Bind(ShaderFlavourData& flavour)
 		variantConfig.AppendFormat("#define MAXIMUM_LIGHT_VECTORS %d\n", gles.numlightvectors);
 		variantConfig.AppendFormat("#define DEF_TEXTURE_MODE %d\n", flavour.textureMode);
 		variantConfig.AppendFormat("#define DEF_TEXTURE_FLAGS %d\n", flavour.texFlags);
-		variantConfig.AppendFormat("#define DEF_BLEND_FLAGS %d\n", flavour.blendFlags);
+		variantConfig.AppendFormat("#define DEF_BLEND_FLAGS %d\n", flavour.blendFlags & 0x7);
 		variantConfig.AppendFormat("#define DEF_FOG_2D %d\n", flavour.twoDFog);
 		variantConfig.AppendFormat("#define DEF_FOG_ENABLED %d\n", flavour.fogEnabled);
 		variantConfig.AppendFormat("#define DEF_FOG_RADIAL %d\n", flavour.fogEquationRadial);
@@ -695,7 +701,7 @@ bool FShader::Bind(ShaderFlavourData& flavour)
 		variantConfig.AppendFormat("#define DEF_USE_U_LIGHT_LEVEL %d\n", flavour.useULightLevel);
 
 		variantConfig.AppendFormat("#define DEF_DO_DESATURATE %d\n", flavour.doDesaturate);
-		
+
 		variantConfig.AppendFormat("#define DEF_DYNAMIC_LIGHTS_MOD %d\n", flavour.dynLightsMod);
 		variantConfig.AppendFormat("#define DEF_DYNAMIC_LIGHTS_SUB %d\n", flavour.dynLightsSub);
 		variantConfig.AppendFormat("#define DEF_DYNAMIC_LIGHTS_ADD %d\n", flavour.dynLightsAdd);
@@ -703,7 +709,7 @@ bool FShader::Bind(ShaderFlavourData& flavour)
 		variantConfig.AppendFormat("#define DEF_USE_OBJECT_COLOR_2 %d\n", flavour.useObjectColor2);
 		variantConfig.AppendFormat("#define DEF_USE_GLOW_TOP_COLOR %d\n", flavour.useGlowTopColor);
 		variantConfig.AppendFormat("#define DEF_USE_GLOW_BOTTOM_COLOR %d\n", flavour.useGlowBottomColor);
-		
+
 		variantConfig.AppendFormat("#define DEF_USE_COLOR_MAP %d\n", flavour.useColorMap);
 		variantConfig.AppendFormat("#define DEF_BUILD_LIGHTING %d\n", flavour.buildLighting);
 		variantConfig.AppendFormat("#define DEF_BANDED_SW_LIGHTING %d\n", flavour.bandedSwLight);
@@ -715,6 +721,7 @@ bool FShader::Bind(ShaderFlavourData& flavour)
 #endif
 
 		variantConfig.AppendFormat("#define DEF_HAS_SPOTLIGHT %d\n", flavour.hasSpotLight);
+		variantConfig.AppendFormat("#define DEF_PALETTE_INTERPOLATE %d\n", flavour.paletteInterpolate);
 
 		//Printf("Shader: %s, %08x %s", mFragProg2.GetChars(), tag, variantConfig.GetChars());
 
@@ -733,7 +740,7 @@ bool FShader::Bind(ShaderFlavourData& flavour)
 
 //==========================================================================
 //
-// Since all shaders are REQUIRED, any error here needs to be fatal
+//
 //
 //==========================================================================
 
@@ -744,21 +751,8 @@ FShader *FShaderCollection::Compile (const char *ShaderName, const char *ShaderP
 	// this can't be in the shader code due to ATI strangeness.
 	if (!usediscard) defines += "#define NO_ALPHATEST\n";
 
-	FShader *shader = NULL;
-	try
-	{
-		shader = new FShader(ShaderName);
-		if (!shader->Configure(ShaderName, "shaders_gles/glsl/main.vp", "shaders_gles/glsl/main.fp", ShaderPath, LightModePath, defines.GetChars()))
-		{
-			I_FatalError("Unable to load shader %s\n", ShaderName);
-		}
-	}
-	catch(CRecoverableError &err)
-	{
-		if (shader != NULL) delete shader;
-		shader = NULL;
-		I_FatalError("Unable to load shader %s:\n%s\n", ShaderName, err.GetMessage());
-	}
+	FShader *shader = new FShader(ShaderName);
+	shader->Configure(ShaderName, "shaders_gles/glsl/main.vp", "shaders_gles/glsl/main.fp", ShaderPath, LightModePath, defines.GetChars());
 	return shader;
 }
 
@@ -851,7 +845,7 @@ void FShaderCollection::CompileShaders(EPassType passType)
 		mMaterialShaders.Push(shc);
 		if (i < SHADER_NoTexture)
 		{
-			FShader *shc = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, defaultshaders[i].lightfunc, defaultshaders[i].Defines, false, passType);
+			shc = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, defaultshaders[i].lightfunc, defaultshaders[i].Defines, false, passType);
 			mMaterialShadersNAT.Push(shc);
 		}
 	}

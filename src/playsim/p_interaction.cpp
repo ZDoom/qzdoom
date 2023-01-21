@@ -61,6 +61,7 @@
 #include "g_levellocals.h"
 #include "events.h"
 #include "actorinlines.h"
+#include "d_main.h"
 
 static FRandom pr_botrespawn ("BotRespawn");
 static FRandom pr_killmobj ("ActorDie");
@@ -76,6 +77,7 @@ EXTERN_CVAR (Bool, show_obituaries)
 CVAR (Float, sv_damagefactormobj, 1.0, CVAR_SERVERINFO|CVAR_CHEAT)
 CVAR (Float, sv_damagefactorfriendly, 1.0, CVAR_SERVERINFO|CVAR_CHEAT)
 CVAR (Float, sv_damagefactorplayer, 1.0, CVAR_SERVERINFO|CVAR_CHEAT)
+CVAR (Float, sv_ammofactor, 1.0, CVAR_SERVERINFO|CVAR_CHEAT) // used in the zscript ammo code
 
 //
 // GET STUFF
@@ -90,7 +92,7 @@ void P_TouchSpecialThing (AActor *special, AActor *toucher)
 
 	// The pickup is at or above the toucher's feet OR
 	// The pickup is below the toucher.
-	if (delta > toucher->Height || delta < MIN(-32., -special->Height))
+	if (delta > toucher->Height || delta < min(-32., -special->Height))
 	{ // out of reach
 		return;
 	}
@@ -187,7 +189,7 @@ void PronounMessage (const char *from, char *to, int pronoun, const char *victim
 //
 void ClientObituary (AActor *self, AActor *inflictor, AActor *attacker, int dmgflags, FName MeansOfDeath)
 {
-	FString ret;
+	FString ret, lookup;
 	char gendermessage[1024];
 
 	// No obituaries for non-players, voodoo dolls or when not wanted
@@ -238,20 +240,30 @@ void ClientObituary (AActor *self, AActor *inflictor, AActor *attacker, int dmgf
 		messagename = "$OB_VOODOO";
 	}
 
-	if (attacker != NULL && message == NULL)
+	if (attacker != nullptr && message == nullptr)
 	{
 		if (attacker == self)
 		{
 			message = "$OB_KILLEDSELF";
 		}
-		else 
+		else
 		{
-			IFVIRTUALPTR(attacker, AActor, GetObituary)
+			lookup.Format("$Obituary_%s_%s", attacker->GetClass()->TypeName.GetChars(), mod.GetChars());
+			if (GStrings[lookup.GetChars() + 1]) message = lookup;
+			else
 			{
-				VMValue params[] = { attacker, self, inflictor, mod.GetIndex(), !!(dmgflags & DMG_PLAYERATTACK) };
-				VMReturn rett(&ret);
-				VMCall(func, params, countof(params), &rett, 1);
-				if (ret.IsNotEmpty()) message = ret;
+				lookup.Format("$Obituary_%s", attacker->GetClass()->TypeName.GetChars());
+				if (GStrings[lookup.GetChars() + 1]) message = lookup;
+				else
+				{
+					IFVIRTUALPTR(attacker, AActor, GetObituary)
+					{
+						VMValue params[] = { attacker, self, inflictor, mod.GetIndex(), !!(dmgflags & DMG_PLAYERATTACK) };
+						VMReturn rett(&ret);
+						VMCall(func, params, countof(params), &rett, 1);
+						if (ret.IsNotEmpty()) message = ret;
+					}
+				}
 			}
 		}
 	}
@@ -1242,7 +1254,7 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 	{
 		IFVIRTUALPTR(target, AActor, ApplyKickback)
 		{
-			VMValue params[] = { target, inflictor, source, damage, angle.Degrees, mod.GetIndex(), flags };
+			VMValue params[] = { target, inflictor, source, damage, angle.Degrees(), mod.GetIndex(), flags };
 			VMCall(func, params, countof(params), nullptr, 0);
 		}
 	}
@@ -1467,7 +1479,7 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 				}
 			}
 
-			const int realdamage = MAX(0, damage);
+			const int realdamage = max(0, damage);
 			target->Level->localEventManager->WorldThingDamaged(target, inflictor, source, realdamage, mod, flags, angle);
 			needevent = false;
 
@@ -1475,7 +1487,7 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 			return realdamage;
 		}
 	}
-	return MAX(0, damage);
+	return max(0, damage);
 }
 
 static int DoDamageMobj(AActor *target, AActor *inflictor, AActor *source, int damage, FName mod, int flags, DAngle angle)
@@ -1492,7 +1504,7 @@ static int DoDamageMobj(AActor *target, AActor *inflictor, AActor *source, int d
 		target->Level->localEventManager->WorldThingDamaged(target, inflictor, source, realdamage, mod, flags, angle);
 	}
 
-	return MAX(0, realdamage);
+	return max(0, realdamage);
 }
 
 DEFINE_ACTION_FUNCTION(AActor, DamageMobj)
@@ -1503,7 +1515,7 @@ DEFINE_ACTION_FUNCTION(AActor, DamageMobj)
 	PARAM_INT(damage);
 	PARAM_NAME(mod);
 	PARAM_INT(flags);
-	PARAM_FLOAT(angle);
+	PARAM_ANGLE(angle);
 	ACTION_RETURN_INT(DoDamageMobj(self, inflictor, source, damage, mod, flags, angle));
 }
 
@@ -1511,7 +1523,7 @@ int P_DamageMobj(AActor *target, AActor *inflictor, AActor *source, int damage, 
 {
 	IFVIRTUALPTR(target, AActor, DamageMobj)
 	{
-		VMValue params[7] = { target, inflictor, source, damage, mod.GetIndex(), flags, angle.Degrees };
+		VMValue params[7] = { target, inflictor, source, damage, mod.GetIndex(), flags, angle.Degrees() };
 		VMReturn ret;
 		int retval;
 		ret.IntAt(&retval);

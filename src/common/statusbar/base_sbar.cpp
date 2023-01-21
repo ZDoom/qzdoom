@@ -35,7 +35,7 @@
 
 #include <assert.h>
 
-#include "templates.h"
+
 #include "base_sbar.h"
 #include "printf.h"
 #include "v_draw.h"
@@ -46,6 +46,8 @@
 #include "utf8.h"
 #include "v_text.h"
 #include "vm.h"
+#include "i_interface.h"
+#include "r_videoscale.h"
 
 FGameTexture* CrosshairImage;
 static int CrosshairNum;
@@ -59,9 +61,19 @@ CVAR(Color, crosshaircolor, 0xff0000, CVAR_ARCHIVE);
 CVAR(Int, crosshairhealth, 2, CVAR_ARCHIVE);
 CVARD(Float, crosshairscale, 0.5, CVAR_ARCHIVE, "changes the size of the crosshair");
 CVAR(Bool, crosshairgrow, false, CVAR_ARCHIVE);
-EXTERN_CVAR(Bool, vid_fps)
 
-EXTERN_CVAR(Float, hud_scalefactor)
+CUSTOM_CVARD(Float, hud_scalefactor, 1.f, CVAR_ARCHIVE, "changes the hud scale")
+{
+	if (self < 0.36f) self = 0.36f;
+	else if (self > 1) self = 1;
+	else if (sysCallbacks.HudScaleChanged) sysCallbacks.HudScaleChanged();
+}
+
+CUSTOM_CVARD(Bool, hud_aspectscale, true, CVAR_ARCHIVE, "enables aspect ratio correction for the status bar")
+{
+	if (sysCallbacks.HudScaleChanged) sysCallbacks.HudScaleChanged();
+}
+
 
 void ST_LoadCrosshair(int num, bool alwaysload)
 {
@@ -113,7 +125,7 @@ void ST_UnloadCrosshair()
 //
 //---------------------------------------------------------------------------
 
-void ST_DrawCrosshair(int phealth, double xpos, double ypos, double scale)
+void ST_DrawCrosshair(int phealth, double xpos, double ypos, double scale, DAngle angle)
 {
 	uint32_t color;
 	double size;
@@ -196,6 +208,7 @@ void ST_DrawCrosshair(int phealth, double xpos, double ypos, double scale)
 		xpos, ypos,
 		DTA_DestWidth, w,
 		DTA_DestHeight, h,
+		DTA_Rotate, angle.Degrees(),
 		DTA_AlphaChannel, true,
 		DTA_FillColor, color & 0xFFFFFF,
 		TAG_DONE);
@@ -293,11 +306,11 @@ static void ST_CalcCleanFacs(int designwidth, int designheight, int realwidth, i
 	}
 	// Use whichever pair of cwidth/cheight or width/height that produces less difference
 	// between CleanXfac and CleanYfac.
-	cx1 = MAX(cwidth / designwidth, 1);
-	cy1 = MAX(cheight / designheight, 1);
-	cx2 = MAX(realwidth / designwidth, 1);
-	cy2 = MAX(realheight / designheight, 1);
-	if (abs(cx1 - cy1) <= abs(cx2 - cy2) || MAX(cx1, cx2) >= 4)
+	cx1 = max(cwidth / designwidth, 1);
+	cy1 = max(cheight / designheight, 1);
+	cx2 = max(realwidth / designwidth, 1);
+	cy2 = max(realheight / designheight, 1);
+	if (abs(cx1 - cy1) <= abs(cx2 - cy2) || max(cx1, cx2) >= 4)
 	{ // e.g. 640x360 looks better with this.
 		*cleanx = cx1;
 		*cleany = cy1;
@@ -353,10 +366,14 @@ void DStatusBarCore::SetScale()
 	int vert = VerticalResolution;
 	double refaspect = horz / double(vert);
 	double screenaspect = w / double(h);
+	double aspectscale = 1.0;
+
+	double ViewportAspect = ViewportPixelAspect();
 
 	if ((horz == 320 && vert == 200) || (horz == 640 && vert == 400))
 	{
-		refaspect = 1.333;
+		refaspect = (4. / 3.);
+		if (!hud_aspectscale) aspectscale = 1 / 1.2;
 	}
 
 	if (screenaspect < refaspect)
@@ -370,14 +387,14 @@ void DStatusBarCore::SetScale()
 		refw = h * refaspect;
 	}
 	refw *= hud_scalefactor;
-	refh *= hud_scalefactor;
+	refh *= hud_scalefactor * aspectscale / ViewportAspect;
 
-	int sby = VerticalResolution - RelTop;
+	int sby = vert - int(RelTop * hud_scalefactor * aspectscale / ViewportAspect);
 	// Use full pixels for destination size.
 
 	ST_X = xs_CRoundToInt((w - refw) / 2);
 	ST_Y = xs_CRoundToInt(h - refh);
-	SBarTop = Scale(sby, h, VerticalResolution);
+	SBarTop = Scale(sby, h, vert);
 	SBarScale.X = refw / horz;
 	SBarScale.Y = refh / vert;
 }
@@ -467,7 +484,7 @@ void DStatusBarCore::DrawGraphic(FGameTexture* tex, double x, double y, int flag
 	double texheight = tex->GetDisplayHeight() * scaleY;
 	double texleftoffs = tex->GetDisplayLeftOffset() * scaleY;
 	double textopoffs = tex->GetDisplayTopOffset() * scaleY;
-	double boxleftoffs, boxtopoffs;
+	double boxleftoffs = 0, boxtopoffs = 0;
 
 	if (boxwidth > 0 || boxheight > 0)
 	{
@@ -489,7 +506,7 @@ void DStatusBarCore::DrawGraphic(FGameTexture* tex, double x, double y, int flag
 				if (boxwidth <= 0 || (boxheight > 0 && scale2 < scale1))
 					scale1 = scale2;
 			}
-			else scale1 = MIN(scale1, scale2);
+			else scale1 = min(scale1, scale2);
 
 			boxwidth = texwidth * scale1;
 			boxheight = texheight * scale1;
@@ -565,9 +582,6 @@ void DStatusBarCore::DrawGraphic(FGameTexture* tex, double x, double y, int flag
 		case DI_SCREEN_BOTTOM: orgy = twod->GetHeight(); break;
 		}
 
-		// move stuff in the top right corner a bit down if the fps counter is on.
-		if ((flags & (DI_SCREEN_HMASK | DI_SCREEN_VMASK)) == DI_SCREEN_RIGHT_TOP && vid_fps) y += 10;
-
 		DVector2 Scale = GetHUDScale();
 
 		x *= Scale.X;
@@ -618,8 +632,6 @@ void DStatusBarCore::DrawRotated(FGameTexture* tex, double x, double y, int flag
 {
 	double texwidth = tex->GetDisplayWidth() * scaleX;
 	double texheight = tex->GetDisplayHeight() * scaleY;
-	double texleftoffs = tex->GetDisplayLeftOffset() * scaleY;
-	double textopoffs = tex->GetDisplayTopOffset() * scaleY;
 
 	// resolve auto-alignment before making any adjustments to the position values.
 	if (!(flags & DI_SCREEN_MANUAL_ALIGN))
@@ -660,9 +672,6 @@ void DStatusBarCore::DrawRotated(FGameTexture* tex, double x, double y, int flag
 		case DI_SCREEN_VCENTER: orgy = twod->GetHeight() / 2; break;
 		case DI_SCREEN_BOTTOM: orgy = twod->GetHeight(); break;
 		}
-
-		// move stuff in the top right corner a bit down if the fps counter is on.
-		if ((flags & (DI_SCREEN_HMASK | DI_SCREEN_VMASK)) == DI_SCREEN_RIGHT_TOP && vid_fps) y += 10;
 
 		x *= Scale.X;
 		y *= Scale.Y;
@@ -741,9 +750,6 @@ void DStatusBarCore::DrawString(FFont* font, const FString& cstring, double x, d
 		case DI_SCREEN_VCENTER: orgy = twod->GetHeight() / 2; break;
 		case DI_SCREEN_BOTTOM: orgy = twod->GetHeight(); break;
 		}
-
-		// move stuff in the top right corner a bit down if the fps counter is on.
-		if ((flags & (DI_SCREEN_HMASK | DI_SCREEN_VMASK)) == DI_SCREEN_RIGHT_TOP && vid_fps) y += 10;
 	}
 	else
 	{
@@ -754,7 +760,7 @@ void DStatusBarCore::DrawString(FFont* font, const FString& cstring, double x, d
 	{
 		if (ch == ' ')
 		{
-			x += monospaced ? spacing : font->GetSpaceWidth() + spacing;
+			x += (monospaced ? spacing : font->GetSpaceWidth() + spacing) * scaleX;
 			continue;
 		}
 		else if (ch == TEXTCOLOR_ESCAPE)
@@ -774,7 +780,7 @@ void DStatusBarCore::DrawString(FFont* font, const FString& cstring, double x, d
 		width += font->GetDefaultKerning();
 
 		if (!monospaced) //If we are monospaced lets use the offset
-			x += (c->GetDisplayLeftOffset() + 1); //ignore x offsets since we adapt to character size
+			x += (c->GetDisplayLeftOffset() * scaleX + 1); //ignore x offsets since we adapt to character size
 
 		double rx, ry, rw, rh;
 		rx = x + drawOffset.X;
@@ -825,12 +831,12 @@ void DStatusBarCore::DrawString(FFont* font, const FString& cstring, double x, d
 			DTA_LegacyRenderStyle, ERenderStyle(style),
 			TAG_DONE);
 
-		dx = monospaced
-			? spacing
-			: width + spacing - (c->GetDisplayLeftOffset() + 1);
-
 		// Take text scale into account
-		x += dx * scaleX;
+		dx = monospaced
+			? spacing * scaleX
+			: (double(width) + spacing - c->GetDisplayLeftOffset()) * scaleX - 1;
+
+		x += dx;
 	}
 }
 
@@ -905,9 +911,6 @@ void DStatusBarCore::TransformRect(double& x, double& y, double& w, double& h, i
 		case DI_SCREEN_VCENTER: orgy = twod->GetHeight() / 2; break;
 		case DI_SCREEN_BOTTOM: orgy = twod->GetHeight(); break;
 		}
-
-		// move stuff in the top right corner a bit down if the fps counter is on.
-		if ((flags & (DI_SCREEN_HMASK | DI_SCREEN_VMASK)) == DI_SCREEN_RIGHT_TOP && vid_fps) y += 10;
 
 		DVector2 Scale = GetHUDScale();
 

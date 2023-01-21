@@ -53,6 +53,7 @@
 #include "filesystem.h"
 #include "g_levellocals.h"
 #include "texturemanager.h"
+#include "d_main.h"
 
 extern void LoadActors ();
 extern void InitBotStuff();
@@ -730,7 +731,7 @@ void PClassActor::SetPainChance(FName type, int chance)
 
 	if (chance >= 0) 
 	{
-		ActorInfo()->PainChances.Push({ type, MIN(chance, 256) });
+		ActorInfo()->PainChances.Push({ type, min(chance, 256) });
 	}
 }
 

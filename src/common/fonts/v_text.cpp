@@ -88,7 +88,6 @@ TArray<FBrokenLines> V_BreakLines (FFont *font, int maxwidth, const uint8_t *str
 			{
 				if (*string == '[')
 				{
-					const uint8_t* start = string;
 					while (*string != ']' && *string != '\0')
 					{
 						string++;
@@ -266,7 +265,6 @@ DEFINE_ACTION_FUNCTION(FFont, BreakLines)
 
 
 bool generic_ui;
-EXTERN_CVAR(String, language)
 
 bool CheckFontComplete(FFont* font)
 {

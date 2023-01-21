@@ -964,6 +964,14 @@ class LevelCompatibility : LevelPostProcessor
 				break;
 			}
 			
+			case 'FAA0550BE9923B3A3332B4F7DB897A4A': // heretic.wad e2m7
+			{
+				// missing texture
+				TextureID looserck = TexMan.CheckForTexture("LOOSERCK", TexMan.Type_Wall);
+				SetWallTextureID( 629, Line.back,  Side.top, looserck);				
+				break;
+			}
+			
 			case 'CA3773ED313E8899311F3DD0CA195A68': // heretic.wad e3m6
 			{
 				// Quartz flask outside of map
@@ -984,6 +992,13 @@ class LevelCompatibility : LevelPostProcessor
 				SetWallTextureID(1274, Line.front, Side.top, cstlrck);
 				SetWallTextureID(1277, Line.back,  Side.top, cstlrck);
 				SetWallTextureID(1278, Line.front, Side.top, cstlrck);
+				break;
+			}
+
+			case '30D1480A6D4F3A3153739D4CCF659C4E': // heretic.wad E4M8
+			{
+				// multiplayer teleporter prevents exit on cooperative
+				SetThingFlags(78,MTF_DEATHMATCH);
 				break;
 			}
 
@@ -2134,6 +2149,13 @@ class LevelCompatibility : LevelPostProcessor
 			{
 				// Fix impassable exit line
 				SetLineFlags(6842, 0, Line.ML_BLOCKING); 
+				break;
+			}
+			
+			case '50E394239FF64264950D11883E933553': // 1024.wad map05
+			{
+				// Change duplicate player 2 start to player 3 start
+				SetThingEdNum(59, 3);
 				break;
 			}
 		}

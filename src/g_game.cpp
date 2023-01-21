@@ -29,7 +29,7 @@
 #include <memory>
 
 #include "i_time.h"
-#include "templates.h"
+
 #include "version.h"
 #include "doomdef.h" 
 #include "doomstat.h"
@@ -77,6 +77,8 @@
 #include "v_palette.h"
 #include "s_music.h"
 #include "p_setup.h"
+#include "d_event.h"
+#include "model.h"
 
 #include "v_video.h"
 #include "g_hub.h"
@@ -86,6 +88,8 @@
 #include "d_buttons.h"
 #include "hwrenderer/scene/hw_drawinfo.h"
 #include "doommenu.h"
+#include "screenjob.h"
+#include "i_interface.h"
 
 
 static FRandom pr_dmspawn ("DMSpawn");
@@ -109,13 +113,12 @@ void	G_DoQuickSave ();
 void STAT_Serialize(FSerializer &file);
 bool WriteZip(const char *filename, TArray<FString> &filenames, TArray<FCompressedBuffer> &content);
 
-FIntCVar gameskill ("skill", 2, CVAR_SERVERINFO|CVAR_LATCH);
+CVARD_NAMED(Int, gameskill, skill, 2, CVAR_SERVERINFO|CVAR_LATCH, "sets the skill for the next newly started game")
 CVAR(Bool, save_formatted, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)	// use formatted JSON for saves (more readable but a larger files and a bit slower.
 CVAR (Int, deathmatch, 0, CVAR_SERVERINFO|CVAR_LATCH);
 CVAR (Bool, chasedemo, false, 0);
 CVAR (Bool, storesavepic, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
-CVAR (Bool, longsavemessages, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
-CVAR (String, save_dir, "", CVAR_ARCHIVE|CVAR_GLOBALCONFIG);
+CVAR (Bool, longsavemessages, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 CVAR (Bool, cl_waitforsave, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 CVAR (Bool, enablescriptscreenshot, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 EXTERN_CVAR (Float, con_midtime);
@@ -141,11 +144,7 @@ CVAR(Int, nametagcolor, CR_GOLD, CVAR_ARCHIVE)
 extern bool playedtitlemusic;
 
 gameaction_t	gameaction;
-gamestate_t 	gamestate = GS_STARTUP;
-FName			SelectedSlideshow;		// what to start when ga_slideshow
 
-int 			paused;
-bool			pauseext;
 bool 			sendpause;				// send a pause event next tic 
 bool			sendsave;				// send a save event next tic 
 bool			sendturn180;			// [RH] send a 180 degree turn next tic
@@ -196,7 +195,7 @@ EXTERN_CVAR (Int, turnspeedwalkslow)
 EXTERN_CVAR (Int, turnspeedsprintslow)
 
 int				forwardmove[2], sidemove[2];
-FIntCVar		*angleturn[4] = {&turnspeedwalkfast, &turnspeedsprintfast, &turnspeedwalkslow, &turnspeedsprintslow};
+FIntCVarRef		*angleturn[4] = {&turnspeedwalkfast, &turnspeedsprintfast, &turnspeedwalkslow, &turnspeedsprintslow};
 int				flyspeed[2] = {1*256, 3*256};
 int				lookspeed[2] = {450, 512};
 
@@ -837,7 +836,7 @@ void G_AddViewPitch (int look, bool mouse)
 		}
 		else
 		{
-			LocalViewPitch = MIN(LocalViewPitch + look, 0x78000000);
+			LocalViewPitch = min(LocalViewPitch + look, 0x78000000);
 		}
 	}
 	else if (look < 0)
@@ -849,7 +848,7 @@ void G_AddViewPitch (int look, bool mouse)
 		}
 		else
 		{
-			LocalViewPitch = MAX(LocalViewPitch + look, -0x78000000);
+			LocalViewPitch = max(LocalViewPitch + look, -0x78000000);
 		}
 	}
 	if (look != 0)
@@ -969,6 +968,11 @@ bool G_Responder (event_t *ev)
 	if (ev->type != EV_Mouse && primaryLevel->localEventManager->Responder(ev)) // [ZZ] ZScript ate the event // update 07.03.17: mouse events are handled directly
 		return true;
 	
+	if (gamestate == GS_INTRO || gamestate == GS_CUTSCENE)
+	{
+		return ScreenJobResponder(ev);
+	}
+	
 	// any other key pops up menu if in demos
 	// [RH] But only if the key isn't bound to a "special" command
 	if (gameaction == ga_nothing && 
@@ -1017,11 +1021,6 @@ bool G_Responder (event_t *ev)
 		if (!viewactive && primaryLevel->automap && primaryLevel->automap->Responder (ev, false))
 			return true;		// automap ate it
 	}
-	else if (gamestate == GS_FINALE)
-	{
-		if (F_Responder (ev))
-			return true;		// finale ate the event
-	}
 
 	switch (ev->type)
 	{
@@ -1069,7 +1068,7 @@ static void G_FullConsole()
 		primaryLevel->Music = "";
 		S_Start();
 		S_StopMusic(true);
-		P_FreeLevelData();
+		P_FreeLevelData(false);
 	}
 
 }
@@ -1173,9 +1172,6 @@ void G_Ticker ()
 		case ga_completed:
 			G_DoCompleted ();
 			break;
-		case ga_slideshow:
-			if (gamestate == GS_LEVEL) F_StartIntermission(SelectedSlideshow, FSTATE_InLevel);
-			break;
 		case ga_worlddone:
 			G_DoWorldDone ();
 			break;
@@ -1196,19 +1192,25 @@ void G_Ticker ()
 			P_ResumeConversation ();
 			gameaction = ga_nothing;
 			break;
+		case ga_intermission:
+			gamestate = GS_CUTSCENE;
+			gameaction = ga_nothing;
+			break;
+		case ga_titleloop:
+			D_StartTitle();
+			break;
+		case ga_intro:
+			gamestate = GS_INTRO;
+			gameaction = ga_nothing;
+			break;
+
+
+
 		default:
 		case ga_nothing:
 			break;
 		}
 		C_AdjustBottom ();
-	}
-
-	if (oldgamestate != gamestate)
-	{
-		if (oldgamestate == GS_FINALE)
-		{
-			F_EndFinale ();
-		}
 	}
 
 	// get commands, check consistancy, and build new consistancy check
@@ -1293,14 +1295,6 @@ void G_Ticker ()
 		P_Ticker ();
 		break;
 
-	case GS_INTERMISSION:
-		WI_Ticker ();
-		break;
-
-	case GS_FINALE:
-		F_Ticker ();
-		break;
-
 	case GS_DEMOSCREEN:
 		D_PageTicker ();
 		break;
@@ -1313,17 +1307,17 @@ void G_Ticker ()
 		}
 		break;
 
+	case GS_CUTSCENE:
+	case GS_INTRO:
+		if (ScreenJobTick())
+		{
+			// synchronize termination with the playsim.
+			Net_WriteByte(DEM_ENDSCREENJOB);
+		}
+		break;
+
 	default:
 		break;
-	}
-	// Do some more aggressive GC maintenance when the game ticker is inactive. 
-	if ((gamestate != GS_LEVEL && gamestate != GS_TITLELEVEL) || paused || P_CheckTickerPaused())
-	{
-		size_t ac = std::max<size_t>(10, GC::AllocCount);
-		for (size_t i = 0; i < ac; i++)
-		{
-			if (!GC::CheckGC()) break;
-		}
 	}
 
 	// [MK] Additional ticker for UI events right after all others
@@ -1923,15 +1917,18 @@ static void LoadGameError(const char *label, const char *append = "")
 
 void C_SerializeCVars(FSerializer& arc, const char* label, uint32_t filter)
 {
-	FBaseCVar* cvar;
 	FString dump;
 
 	if (arc.BeginObject(label))
 	{
 		if (arc.isWriting())
 		{
-			for (cvar = CVars; cvar != NULL; cvar = cvar->m_Next)
+			decltype(cvarMap)::Iterator it(cvarMap);
+			decltype(cvarMap)::Pair *pair;
+			while (it.NextPair(pair))
 			{
+				auto cvar = pair->Value;
+				
 				if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE | CVAR_IGNORE | CVAR_CONFIG_ONLY)))
 				{
 					UCVarValue val = cvar->GetGenericRep(CVAR_String);
@@ -1942,8 +1939,11 @@ void C_SerializeCVars(FSerializer& arc, const char* label, uint32_t filter)
 		}
 		else
 		{
-			for (cvar = CVars; cvar != NULL; cvar = cvar->m_Next)
+			decltype(cvarMap)::Iterator it(cvarMap);
+			decltype(cvarMap)::Pair *pair;
+			while (it.NextPair(pair))
 			{
+				auto cvar = pair->Value;
 				if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE | CVAR_IGNORE | CVAR_CONFIG_ONLY)))
 				{
 					UCVarValue val;
@@ -2123,6 +2123,14 @@ void G_DoLoadGame ()
 
 	BackupSaveName = savename;
 
+	//Push any added models from A_ChangeModel
+	for (auto& smf : savedModelFiles)
+	{
+		FString modelFilePath = smf.Left(smf.LastIndexOf("/")+1);
+		FString modelFileName = smf.Right(smf.Len() - smf.Left(smf.LastIndexOf("/") + 1).Len());
+		FindModel(modelFilePath, modelFileName);
+	}
+
 	// At this point, the GC threshold is likely a lot higher than the
 	// amount of memory in use, so bring it down now by starting a
 	// collection.
@@ -2161,35 +2169,11 @@ void G_SaveGame (const char *filename, const char *description)
 	}
 }
 
-FString G_BuildSaveName (const char *prefix, int slot)
+CCMD(opensaves)
 {
-	FString name;
-	FString leader;
-	const char *slash = "";
-
-	leader = Args->CheckValue ("-savedir");
-	if (leader.IsEmpty())
-	{
-		leader = save_dir;
-		if (leader.IsEmpty())
-		{
-			leader = M_GetSavegamesPath();
-		}
-	}
-	size_t len = leader.Len();
-	if (leader[0] != '\0' && leader[len-1] != '\\' && leader[len-1] != '/')
-	{
-		slash = "/";
-	}
-	name << leader << slash;
-	name = NicePath(name);
+	FString name = G_GetSavegamesFolder();
 	CreatePath(name);
-	name << prefix;
-	if (slot >= 0)
-	{
-		name.AppendFormat("%d." SAVEGAME_EXT, slot);
-	}
-	return name;
+	I_OpenShellFolder(name);
 }
 
 CVAR (Int, autosavenum, 0, CVAR_NOSET|CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
@@ -2225,9 +2209,9 @@ void G_DoAutoSave ()
 	}
 
 	num.Int = nextautosave;
-	autosavenum.ForceSet (num, CVAR_Int);
+	autosavenum->ForceSet (num, CVAR_Int);
 
-	file = G_BuildSaveName ("auto", nextautosave);
+	file = G_BuildSaveName(FStringf("auto%02d", nextautosave));
 
 	// The hint flag is only relevant on the primary level.
 	if (!(primaryLevel->flags2 & LEVEL2_NOAUTOSAVEHINT))
@@ -2264,9 +2248,9 @@ void G_DoQuickSave ()
 	}
 
 	num.Int = lastquicksave;
-	quicksavenum.ForceSet (num, CVAR_Int);
+	quicksavenum->ForceSet (num, CVAR_Int);
 
-	file = G_BuildSaveName ("quick", lastquicksave);
+	file = G_BuildSaveName(FStringf("quick%02d", lastquicksave));
 
 	readableTime = myasctime ();
 	description.Format("Quicksave %s", readableTime);
@@ -2341,7 +2325,7 @@ void G_DoSaveGame (bool okForQuicksave, bool forceQuicksave, FString filename, c
 
 	if (demoplayback)
 	{
-		filename = G_BuildSaveName ("demosave." SAVEGAME_EXT, -1);
+		filename = G_BuildSaveName ("demosave");
 	}
 
 	if (cl_waitforsave)
@@ -3087,8 +3071,16 @@ bool G_CheckDemoStatus (void)
 
 void G_StartSlideshow(FLevelLocals *Level, FName whichone)
 {
-	gameaction = ga_slideshow;
-	SelectedSlideshow = whichone == NAME_None ? Level->info->slideshow : whichone;
+	auto SelectedSlideshow = whichone == NAME_None ? Level->info->slideshow : whichone;
+	auto slide = F_StartIntermission(SelectedSlideshow);
+	RunIntermission(nullptr, nullptr, slide, nullptr, [](bool)
+	{
+		primaryLevel->SetMusic();
+		gamestate = GS_LEVEL;
+		wipegamestate = GS_LEVEL;
+		gameaction = ga_resumeconversation;
+
+	});
 }
 
 DEFINE_ACTION_FUNCTION(FLevelLocals, StartSlideshow)
@@ -3140,3 +3132,5 @@ DEFINE_GLOBAL(demoplayback)
 DEFINE_GLOBAL(automapactive);
 DEFINE_GLOBAL(Net_Arbitrator);
 DEFINE_GLOBAL(netgame);
+DEFINE_GLOBAL(paused);
+DEFINE_GLOBAL(Terrains);

@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "templates.h"
+
 #include "doomdef.h"
 #include "d_net.h"
 #include "doomstat.h"
@@ -65,6 +65,7 @@
 #include "g_game.h"
 #include "i_system.h"
 #include "v_draw.h"
+#include "i_interface.h"
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
@@ -79,6 +80,7 @@ struct InterpolationViewer
 	{
 		DVector3 Pos;
 		DRotator Angles;
+		DRotator ViewAngles;
 	};
 
 	AActor *ViewActor;
@@ -130,7 +132,7 @@ FRenderViewpoint::FRenderViewpoint()
 	player = nullptr;
 	Pos = { 0.0, 0.0, 0.0 };
 	ActorPos = { 0.0, 0.0, 0.0 };
-	Angles = { 0.0, 0.0, 0.0 };
+	Angles = { nullAngle, nullAngle, nullAngle };
 	Path[0] = { 0.0, 0.0, 0.0 };
 	Path[1] = { 0.0, 0.0, 0.0 };
 	Cos = 0.0;
@@ -139,7 +141,7 @@ FRenderViewpoint::FRenderViewpoint()
 	TanSin = 0.0;
 	camera = nullptr;
 	sector = nullptr;
-	FieldOfView = 90.; // Angles in the SCREENWIDTH wide window
+	FieldOfView =  DAngle::fromDeg(90.); // Angles in the SCREENWIDTH wide window
 	TicFrac = 0.0;
 	FrameTime = 0;
 	extralight = 0;
@@ -180,8 +182,8 @@ DEFINE_GLOBAL(LocalViewPitch);
 void R_SetFOV (FRenderViewpoint &viewpoint, DAngle fov)
 {
 
-	if (fov < 5.) fov = 5.;
-	else if (fov > 170.) fov = 170.;
+	if (fov < DAngle::fromDeg(5.)) fov =  DAngle::fromDeg(5.);
+	else if (fov > DAngle::fromDeg(170.)) fov = DAngle::fromDeg(170.);
 	if (fov != viewpoint.FieldOfView)
 	{
 		viewpoint.FieldOfView = fov;
@@ -262,8 +264,8 @@ void R_SetWindow (FRenderViewpoint &viewpoint, FViewWindow &viewwindow, int wind
 	// screen that would be visible on a 4:3 display has the requested FOV.
 	if (viewwindow.centerxwide != viewwindow.centerx)
 	{ // centerxwide is what centerx would be if the display was not widescreen
-		fov = DAngle::ToDegrees(2 * atan(viewwindow.centerx * tan(fov.Radians()/2) / double(viewwindow.centerxwide)));
-		if (fov > 170.) fov = 170.;
+		fov = DAngle::fromRad(2 * atan(viewwindow.centerx * tan(fov.Radians()/2) / double(viewwindow.centerxwide)));
+		if (fov > DAngle::fromDeg(170.)) fov =  DAngle::fromDeg(170.);
 	}
 	viewwindow.FocalTangent = tan(fov.Radians() / 2);
 }
@@ -393,7 +395,6 @@ FRenderer* SWRenderer;
 
 void R_Init ()
 {
-	StartScreen->Progress();
 	R_InitTranslationTables ();
 	R_SetViewSize (screenblocks);
 
@@ -419,12 +420,34 @@ void R_Shutdown ()
 
 //==========================================================================
 //
-// R_InterpolateView
+// P_NoInterpolation
 //
 //==========================================================================
 
 //CVAR (Int, tf, 0, 0)
 EXTERN_CVAR (Bool, cl_noprediction)
+
+bool P_NoInterpolation(player_t const *player, AActor const *actor)
+{
+	return player != NULL &&
+		!(player->cheats & CF_INTERPVIEW) &&
+		player - players == consoleplayer &&
+		actor == player->mo &&
+		!demoplayback &&
+		!(player->cheats & (CF_TOTALLYFROZEN | CF_FROZEN)) &&
+		player->playerstate == PST_LIVE &&
+		player->mo->reactiontime == 0 &&
+		!NoInterpolateView &&
+		!paused &&
+		(!netgame || !cl_noprediction) &&
+		!LocalKeyboardTurner;
+}
+
+//==========================================================================
+//
+// R_InterpolateView
+//
+//==========================================================================
 
 void R_InterpolateView (FRenderViewpoint &viewpoint, player_t *player, double Frac, InterpolationViewer *iview)
 {
@@ -449,18 +472,18 @@ void R_InterpolateView (FRenderViewpoint &viewpoint, player_t *player, double Fr
 			// Interpolating through line portals is a messy affair.
 			// What needs be done is to store the portal transitions of the camera actor as waypoints
 			// and then find out on which part of the path the current view lies.
-			// Needless to say, this doesn't work for chasecam mode.
-			if (!viewpoint.showviewer)
+			// Needless to say, this doesn't work for chasecam mode or viewpos.
+			if (!viewpoint.showviewer && !viewpoint.NoPortalPath)
 			{
 				double pathlen = 0;
 				double zdiff = 0;
 				double totalzdiff = 0;
-				DAngle adiff = 0.;
-				DAngle totaladiff = 0.;
+				DAngle adiff = nullAngle;
+				DAngle totaladiff = nullAngle;
 				double oviewz = iview->Old.Pos.Z;
 				double nviewz = iview->New.Pos.Z;
-				DVector3a oldpos = { { iview->Old.Pos.X, iview->Old.Pos.Y, 0 }, 0. };
-				DVector3a newpos = { { iview->New.Pos.X, iview->New.Pos.Y, 0 }, 0. };
+				DVector3a oldpos = { { iview->Old.Pos.X, iview->Old.Pos.Y, 0 }, nullAngle };
+				DVector3a newpos = { { iview->New.Pos.X, iview->New.Pos.Y, 0 }, nullAngle };
 				InterpolationPath.Push(newpos);	// add this to  the array to simplify the loops below
 
 				for (unsigned i = 0; i < InterpolationPath.Size(); i += 2)
@@ -513,23 +536,12 @@ void R_InterpolateView (FRenderViewpoint &viewpoint, player_t *player, double Fr
 		viewpoint.Pos = iview->New.Pos;
 		viewpoint.Path[0] = viewpoint.Path[1] = iview->New.Pos;
 	}
-	if (player != NULL &&
-		!(player->cheats & CF_INTERPVIEW) &&
-		player - players == consoleplayer &&
-		viewpoint.camera == player->mo &&
-		!demoplayback &&
+	if (P_NoInterpolation(player, viewpoint.camera) &&
 		iview->New.Pos.X == viewpoint.camera->X() &&
-		iview->New.Pos.Y == viewpoint.camera->Y() && 
-		!(player->cheats & (CF_TOTALLYFROZEN|CF_FROZEN)) &&
-		player->playerstate == PST_LIVE &&
-		player->mo->reactiontime == 0 &&
-		!NoInterpolateView &&
-		!paused &&
-		(!netgame || !cl_noprediction) &&
-		!LocalKeyboardTurner)
+		iview->New.Pos.Y == viewpoint.camera->Y())
 	{
-		viewpoint.Angles.Yaw = (nviewangle + AngleToFloat(LocalViewAngle & 0xFFFF0000)).Normalized180();
-		DAngle delta = player->centering ? DAngle(0.) : AngleToFloat(int(LocalViewPitch & 0xFFFF0000));
+		viewpoint.Angles.Yaw = (nviewangle + DAngle::fromBam(LocalViewAngle)).Normalized180();
+		DAngle delta = player->centering ? nullAngle : DAngle::fromBam(LocalViewPitch);
 		viewpoint.Angles.Pitch = clamp<DAngle>((iview->New.Angles.Pitch - delta).Normalized180(), player->MinPitch, player->MaxPitch);
 		viewpoint.Angles.Roll = iview->New.Angles.Roll.Normalized180();
 	}
@@ -539,7 +551,13 @@ void R_InterpolateView (FRenderViewpoint &viewpoint, player_t *player, double Fr
 		viewpoint.Angles.Yaw = (oviewangle + deltaangle(oviewangle, nviewangle) * Frac).Normalized180();
 		viewpoint.Angles.Roll = (iview->Old.Angles.Roll + deltaangle(iview->Old.Angles.Roll, iview->New.Angles.Roll) * Frac).Normalized180();
 	}
-	
+
+	// [MR] Apply the view angles as an offset if ABSVIEWANGLES isn't specified.
+	if (!(viewpoint.camera->flags8 & MF8_ABSVIEWANGLES))
+	{
+		viewpoint.Angles += (!player || (player->cheats & CF_INTERPVIEWANGLES)) ? interpolatedvalue(iview->Old.ViewAngles, iview->New.ViewAngles, Frac) : iview->New.ViewAngles;
+	}
+
 	// Due to interpolation this is not necessarily the same as the sector the camera is in.
 	viewpoint.sector = Level->PointInRenderSubsector(viewpoint.Pos)->sector;
 	bool moved = false;
@@ -600,7 +618,7 @@ void FRenderViewpoint::SetViewAngle (const FViewWindow &viewwindow)
 	DVector2 v = Angles.Yaw.ToVector();
 	ViewVector.X = v.X;
 	ViewVector.Y = v.Y;
-	HWAngles.Yaw = float(270.0 - Angles.Yaw.Degrees);
+	HWAngles.Yaw = FAngle::fromDeg(270.0 - Angles.Yaw.Degrees());
 
 }
 
@@ -746,6 +764,35 @@ static double QuakePower(double factor, double intensity, double offset)
 
 //==========================================================================
 //
+// R_DoActorTickerAngleChanges
+//
+//==========================================================================
+
+static void R_DoActorTickerAngleChanges(player_t* const player, AActor* const actor, const double scale)
+{
+	for (unsigned i = 0; i < 3; i++)
+	{
+		if (player->angleTargets[i].Sgn())
+		{
+			// Calculate scaled amount of target and add to the accumlation buffer.
+			DAngle addition = player->angleTargets[i] * scale;
+			player->angleAppliedAmounts[i] += addition;
+
+			// Test whether we're now reached/exceeded our target.
+			if (abs(player->angleAppliedAmounts[i]) >= abs(player->angleTargets[i]))
+			{
+				addition -= player->angleAppliedAmounts[i] - player->angleTargets[i];
+				player->angleTargets[i] = player->angleAppliedAmounts[i] = nullAngle;
+			}
+
+			// Apply the scaled addition to the angle.
+			actor->Angles[i] += addition;
+		}
+	}
+}
+
+//==========================================================================
+//
 // R_SetupFrame
 //
 //==========================================================================
@@ -781,6 +828,15 @@ void R_SetupFrame (FRenderViewpoint &viewpoint, FViewWindow &viewwindow, AActor 
 		I_Error ("You lost your body. Bad dehacked work is likely to blame.");
 	}
 
+	// [MR] Get the input fraction, even if we don't need it this frame. Must run every frame.
+	const auto scaleAdjust = I_GetInputFrac(false);
+
+	// [MR] Process player angle changes if permitted to do so.
+	if (player && (player->cheats & CF_SCALEDNOLERP) && P_NoInterpolation(player, viewpoint.camera))
+	{
+		R_DoActorTickerAngleChanges(player, viewpoint.camera, scaleAdjust);
+	}
+
 	iview = FindPastViewer (viewpoint.camera);
 
 	int nowtic = I_GetTime ();
@@ -789,47 +845,119 @@ void R_SetupFrame (FRenderViewpoint &viewpoint, FViewWindow &viewwindow, AActor 
 		iview->otic = nowtic;
 		iview->Old = iview->New;
 	}
-
-	if (player != NULL && gamestate != GS_TITLELEVEL &&
-		((player->cheats & CF_CHASECAM) || (r_deathcamera && viewpoint.camera->health <= 0)))
+	//==============================================================================================
+	// Handles offsetting the camera with ChaseCam and/or viewpos.
 	{
+		AActor *mo = viewpoint.camera;
+		DViewPosition *VP = mo->ViewPos;
+		const DVector3 orig = { mo->Pos().XY(), mo->player ? mo->player->viewz : mo->Z() + mo->GetCameraHeight() };
+		viewpoint.ActorPos = orig;
+
+		bool DefaultDraw = true;
+
 		sector_t *oldsector = viewpoint.ViewLevel->PointInRenderSubsector(iview->Old.Pos)->sector;
-		// [RH] Use chasecam view
-		DVector3 campos;
-		DAngle camangle;
-		P_AimCamera (viewpoint.camera, campos, camangle, viewpoint.sector, unlinked);	// fixme: This needs to translate the angle, too.
-		iview->New.Pos = campos;
-		iview->New.Angles.Yaw = camangle;
-		
-		viewpoint.showviewer = true;
-		// Interpolating this is a very complicated thing because nothing keeps track of the aim camera's movement, so whenever we detect a portal transition
-		// it's probably best to just reset the interpolation for this move.
-		// Note that this can still cause problems with unusually linked portals
-		if (viewpoint.sector->PortalGroup != oldsector->PortalGroup || (unlinked && ((iview->New.Pos.XY() - iview->Old.Pos.XY()).LengthSquared()) > 256*256))
+		if (gamestate != GS_TITLELEVEL &&
+			((player && (player->cheats & CF_CHASECAM)) || (r_deathcamera && viewpoint.camera->health <= 0)))
 		{
-			iview->otic = nowtic;
-			iview->Old = iview->New;
-			r_NoInterpolate = true;
+			// [RH] Use chasecam view
+			DefaultDraw = false;
+			DVector3 campos;
+			DAngle camangle;
+			P_AimCamera(viewpoint.camera, campos, camangle, viewpoint.sector, unlinked);	// fixme: This needs to translate the angle, too.
+			iview->New.Pos = campos;
+			iview->New.Angles.Yaw = camangle;
+
+			viewpoint.showviewer = true;
+			// Interpolating this is a very complicated thing because nothing keeps track of the aim camera's movement, so whenever we detect a portal transition
+			// it's probably best to just reset the interpolation for this move.
+			// Note that this can still cause problems with unusually linked portals
+			if (viewpoint.sector->PortalGroup != oldsector->PortalGroup || (unlinked && ((iview->New.Pos.XY() - iview->Old.Pos.XY()).LengthSquared()) > 256 * 256))
+			{
+				iview->otic = nowtic;
+				iview->Old = iview->New;
+				r_NoInterpolate = true;
+			}
+			viewpoint.ActorPos = campos;
 		}
-		viewpoint.ActorPos = campos;
-	}
-	else
-	{
-		viewpoint.ActorPos = iview->New.Pos = { viewpoint.camera->Pos().XY(), viewpoint.camera->player ? viewpoint.camera->player->viewz : viewpoint.camera->Z() + viewpoint.camera->GetCameraHeight() };
-		viewpoint.sector = viewpoint.camera->Sector;
-		viewpoint.showviewer = false;
+		else if (VP) // No chase/death cam and player is alive, wants viewpos.
+		{
+			viewpoint.sector = viewpoint.ViewLevel->PointInRenderSubsector(iview->New.Pos.XY())->sector;
+			viewpoint.showviewer = false;
+
+			// [MC] Ignores all portal portal transitions since it's meant to be absolute.
+			// Modders must handle performing offsetting with the appropriate functions to get it to work.
+			// Hint: Check P_AdjustViewPos.
+			if (VP->Flags & VPSF_ABSOLUTEPOS)
+			{
+				iview->New.Pos = VP->Offset;
+			}
+			else
+			{
+				DVector3 next = orig;
+
+				if (VP->isZero())
+				{
+					// Since viewpos isn't being used, it's safe to enable path interpolation
+					viewpoint.NoPortalPath = false;
+				}
+				else if (VP->Flags & VPSF_ABSOLUTEOFFSET)
+				{
+					// No relativity added from angles.
+					next += VP->Offset;
+				}
+				else
+				{
+					// [MC] Do NOT handle portals here! Trace must have the unportaled (absolute) position to
+					// get the correct angle and distance. Trace automatically handles portals by itself.
+					// Note: viewpos does not include view angles, and ViewZ/CameraHeight are applied before this.
+
+					DAngle yaw = mo->Angles.Yaw;
+					DAngle pitch = mo->Angles.Pitch;
+					DAngle roll = mo->Angles.Roll;
+					DVector3 relx, rely, relz, Off = VP->Offset;
+					DMatrix3x3 rot =
+						DMatrix3x3(DVector3(0., 0., 1.), yaw.Cos(), yaw.Sin()) *
+						DMatrix3x3(DVector3(0., 1., 0.), pitch.Cos(), pitch.Sin()) *
+						DMatrix3x3(DVector3(1., 0., 0.), roll.Cos(), roll.Sin());
+					relx = DVector3(1., 0., 0.)*rot;
+					rely = DVector3(0., 1., 0.)*rot;
+					relz = DVector3(0., 0., 1.)*rot;
+					next += relx * Off.X + rely * Off.Y + relz * Off.Z;
+				}
+
+				if (next != orig)
+				{
+					// [MC] Disable interpolation if the camera view is crossing through a portal. Sometimes 
+					// the player is made visible when crossing a portal and it's extremely jarring.
+					// Also, disable the portal interpolation pathing entirely when using the viewpos feature.
+					// Interpolation still happens with everything else though and seems to work fine.
+					DefaultDraw = false;
+					viewpoint.NoPortalPath = true;
+					P_AdjustViewPos(mo, orig, next, viewpoint.sector, unlinked, VP);
+					
+					if (viewpoint.sector->PortalGroup != oldsector->PortalGroup || (unlinked && ((iview->New.Pos.XY() - iview->Old.Pos.XY()).LengthSquared()) > 256 * 256))
+					{
+						iview->otic = nowtic;
+						iview->Old = iview->New;
+						r_NoInterpolate = true;
+					}
+					iview->New.Pos = next;
+				}
+			}
+		}
+		
+		if (DefaultDraw)
+		{
+			iview->New.Pos = orig;
+			viewpoint.sector = viewpoint.camera->Sector;
+			viewpoint.showviewer = viewpoint.NoPortalPath = false;
+		}
 	}
 
-	// [MC] Apply the view angles first, which is the offsets. If the absolute isn't desired,
-	// add the standard angles on top of it.
-	viewpoint.Angles = viewpoint.camera->ViewAngles;
+	// [MR] Apply view angles as the viewpoint angles if asked to do so.
+	iview->New.Angles = !(viewpoint.camera->flags8 & MF8_ABSVIEWANGLES) ? viewpoint.camera->Angles : viewpoint.camera->ViewAngles;
+	iview->New.ViewAngles = viewpoint.camera->ViewAngles;
 
-	if (!(viewpoint.camera->flags8 & MF8_ABSVIEWANGLES))
-	{
-		viewpoint.Angles += viewpoint.camera->Angles;
-	}
-
-	iview->New.Angles = viewpoint.Angles;
 	if (viewpoint.camera->player != 0)
 	{
 		player = viewpoint.camera->player;
@@ -881,7 +1009,7 @@ void R_SetupFrame (FRenderViewpoint &viewpoint, FViewWindow &viewwindow, AActor 
 			DVector3 pos; pos.Zero();
 			if (jiggers.RollIntensity != 0 || jiggers.RollWave != 0)
 			{
-				viewpoint.Angles.Roll += QuakePower(quakefactor, jiggers.RollIntensity, jiggers.RollWave);
+				viewpoint.Angles.Roll += DAngle::fromDeg(QuakePower(quakefactor, jiggers.RollIntensity, jiggers.RollWave));
 			}
 			if (jiggers.RelIntensity.X != 0 || jiggers.RelOffset.X != 0)
 			{
@@ -980,18 +1108,6 @@ void R_SetupFrame (FRenderViewpoint &viewpoint, FViewWindow &viewwindow, AActor 
 	if (R_OldBlend != newblend)
 	{
 		R_OldBlend = newblend;
-		if (APART(newblend))
-		{
-			BaseBlendR = RPART(newblend);
-			BaseBlendG = GPART(newblend);
-			BaseBlendB = BPART(newblend);
-			BaseBlendA = APART(newblend) / 255.f;
-		}
-		else
-		{
-			BaseBlendR = BaseBlendG = BaseBlendB = 0;
-			BaseBlendA = 0.f;
-		}
 	}
 
 	validcount++;
@@ -1038,9 +1154,9 @@ void R_SetupFrame (FRenderViewpoint &viewpoint, FViewWindow &viewwindow, AActor 
 	double angx = cos(radPitch);
 	double angy = sin(radPitch) * actor->Level->info->pixelstretch;
 	double alen = sqrt(angx*angx + angy*angy);
-	viewpoint.HWAngles.Pitch = RAD2DEG((float)asin(angy / alen));
+	viewpoint.HWAngles.Pitch = FAngle::fromRad((float)asin(angy / alen));
 	
-	viewpoint.HWAngles.Roll.Degrees = (float)viewpoint.Angles.Roll.Degrees;    // copied for convenience.
+	viewpoint.HWAngles.Roll = FAngle::fromDeg(viewpoint.Angles.Roll.Degrees());    // copied for convenience.
 	
 	// ViewActor only gets set, if the camera actor should not be rendered
 	if (actor->player && actor->player - players == consoleplayer &&

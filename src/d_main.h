@@ -90,6 +90,11 @@ struct FIWADInfo
 	TArray<FString> Lumps;	// Lump names for identification
 	TArray<FString> DeleteLumps;	// Lumps which must be deleted from the directory.
 	int flags = 0;
+	int LoadWidescreen = -1;
+	int LoadBrightmaps = -1;
+	int LoadLights = -1;
+	FString DiscordAppId = nullptr;
+	FString SteamAppId = nullptr;
 };
 
 struct FFoundWadInfo
@@ -144,7 +149,11 @@ public:
 
 };
 
+#ifndef NO_SWRENDERER
 EXTERN_CVAR(Int, vid_rendermode)
+#else
+constexpr int vid_rendermode = 4;
+#endif
 
 inline bool V_IsHardwareRenderer()
 {
@@ -155,5 +164,7 @@ inline bool V_IsTrueColor()
 {
 	return vid_rendermode == 1 || vid_rendermode == 4;
 }
+
+bool CheckCheatmode(bool printmsg = true, bool sponly = false);
 
 #endif

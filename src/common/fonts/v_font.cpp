@@ -39,7 +39,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "templates.h"
+
 #include "m_swap.h"
 #include "v_font.h"
 #include "filesystem.h"
@@ -73,6 +73,7 @@ static int TranslationMapCompare (const void *a, const void *b);
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
 extern int PrintColors[];
+extern TArray<FBitmap> sheetBitmaps;
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
 FFont* SmallFont, * SmallFont2, * BigFont, * BigUpper, * ConFont, * IntermissionFont, * NewConsoleFont, * NewSmallFont, 
@@ -92,6 +93,7 @@ TArray<PalEntry> TranslationColors;
 
 FFont *V_GetFont(const char *name, const char *fontlumpname)
 {
+	if (name == nullptr) return nullptr;
 	if (!stricmp(name, "DBIGFONT")) name = "BigFont";
 	else if (!stricmp(name, "CONFONT")) name = "ConsoleFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
 	else if (!stricmp(name, "INDEXFON")) name = "IndexFont";	// Same here - for whatever reason some people had to use its 8 character name...
@@ -106,10 +108,10 @@ FFont *V_GetFont(const char *name, const char *fontlumpname)
 
 		int lump = -1;
 		int folderfile = -1;
-		
+
 		TArray<FolderEntry> folderdata;
 		FStringf path("fonts/%s/", name);
-		
+
 		// Use a folder-based font only if it comes from a later file than the single lump version.
 		if (fileSystem.GetFilesInFolder(path, folderdata, true))
 		{
@@ -119,7 +121,7 @@ FFont *V_GetFont(const char *name, const char *fontlumpname)
 
 
 		lump = fileSystem.CheckNumForFullName(fontlumpname? fontlumpname : name, true);
-		
+
 		if (lump != -1 && fileSystem.GetFileContainer(lump) >= folderfile)
 		{
 			uint32_t head;
@@ -725,9 +727,9 @@ static void CalcDefaultTranslation(FFont* base, int index)
 		auto lum = otherluminosity[i];
 		if (lum >= 0 && lum <= 1)
 		{
-			int index = int(lum * 255);
-			remap[index] = GPalette.BaseColors[i];
-			remap[index].a = 255;
+			int lumidx = int(lum * 255);
+			remap[lumidx] = GPalette.BaseColors[i];
+			remap[lumidx].a = 255;
 		}
 	}
 
@@ -769,7 +771,7 @@ static void CalcDefaultTranslation(FFont* base, int index)
 			lowindex = highindex++;
 		}
 	}
-	
+
 }
 
 //==========================================================================
@@ -862,6 +864,7 @@ EColorRange V_ParseFontColor (const uint8_t *&color_value, int normalcolor, int 
 
 void V_InitFonts()
 {
+	sheetBitmaps.Clear();
 	CreateLuminosityTranslationRanges();
 	V_InitCustomFonts();
 
@@ -928,6 +931,7 @@ void V_ClearFonts()
 	}
 	FFont::FirstFont = nullptr;
 	AlternativeSmallFont = OriginalSmallFont = CurrentConsoleFont = NewSmallFont = NewConsoleFont = SmallFont = SmallFont2 = BigFont = ConFont = IntermissionFont = nullptr;
+	sheetBitmaps.Clear();
 }
 
 //==========================================================================

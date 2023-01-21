@@ -42,6 +42,7 @@
 #include "types.h"
 #include "i_time.h"
 #include "printf.h"
+#include "maps.h"
 
 //==========================================================================
 //
@@ -229,7 +230,6 @@ DObject::DObject ()
 	ObjNext = GC::Root;
 	GCNext = nullptr;
 	GC::Root = this;
-	GC::AllocCount++;
 }
 
 DObject::DObject (PClass *inClass)
@@ -239,7 +239,6 @@ DObject::DObject (PClass *inClass)
 	ObjNext = GC::Root;
 	GCNext = nullptr;
 	GC::Root = this;
-	GC::AllocCount++;
 }
 
 //==========================================================================
@@ -267,7 +266,7 @@ DObject::~DObject ()
 				Release();
 			}
 		}
-		
+
 		if (nullptr != type)
 		{
 			type->DestroySpecials(this);
@@ -277,7 +276,6 @@ DObject::~DObject ()
 
 void DObject::Release()
 {
-	if (GC::AllocCount > 0) GC::AllocCount--;
 	DObject **probe;
 
 	// Unlink this object from the GC list.
@@ -345,6 +343,17 @@ DEFINE_ACTION_FUNCTION(DObject, Destroy)
 //
 //==========================================================================
 
+template<typename M>
+static void PropagateMarkMap(M *map)
+{
+	TMapIterator<typename M::KeyType,DObject*> it(*map);
+	typename M::Pair * p;
+	while(it.NextPair(p))
+	{
+		GC::Mark(&p->Value);
+	}
+}
+
 size_t DObject::PropagateMark()
 {
 	const PClass *info = GetClass();
@@ -378,6 +387,27 @@ size_t DObject::PropagateMark()
 			offsets++;
 		}
 
+		{
+			const std::pair<size_t,PType *> *maps = info->MapPointers;
+			if (maps == NULL)
+			{
+				const_cast<PClass *>(info)->BuildMapPointers();
+				maps = info->MapPointers;
+			}
+			while (maps->first != ~(size_t)0)
+			{
+				if(maps->second->RegType == REGT_STRING)
+				{ // FString,DObject*
+					PropagateMarkMap((ZSMap<FString,DObject*>*)((uint8_t *)this + maps->first));
+				}
+				else
+				{ // uint32_t,DObject*
+					PropagateMarkMap((ZSMap<uint32_t,DObject*>*)((uint8_t *)this + maps->first));
+				}
+				maps++;
+			}
+
+		}
 		return info->Size;
 	}
 	return 0;
@@ -496,6 +526,11 @@ DEFINE_ACTION_FUNCTION(DObject, MSTime)
 	ACTION_RETURN_INT((uint32_t)I_msTime());
 }
 
+DEFINE_ACTION_FUNCTION_NATIVE(DObject, MSTimef, I_msTimeF)
+{
+	ACTION_RETURN_FLOAT(I_msTimeF());
+}
+
 void *DObject::ScriptVar(FName field, PType *type)
 {
 	auto cls = GetClass();
@@ -513,5 +548,4 @@ void *DObject::ScriptVar(FName field, PType *type)
 	}
 	// This is only for internal use so I_Error is fine.
 	I_Error("Variable %s not found in %s\n", field.GetChars(), cls->TypeName.GetChars());
-	return nullptr;
 }

@@ -21,20 +21,14 @@
 */
 
 #include <stddef.h>
-#include "templates.h"
+
 #include "i_system.h"
 #include "filesystem.h"
 #include "v_video.h"
 #include "r_thread.h"
 #include "r_memory.h"
-#include "poly_thread.h"
 #include "printf.h"
-#include "polyrenderer/drawers/poly_triangle.h"
 #include <chrono>
-
-#ifdef WIN32
-void PeekThreadedErrorPane();
-#endif
 
 CVAR(Int, r_multithreaded, 1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 CVAR(Int, r_debug_draw, 0, 0);
@@ -60,7 +54,7 @@ void DrawerThreads::Execute(DrawerCommandQueuePtr commands)
 {
 	if (!commands || commands->commands.empty())
 		return;
-	
+
 	auto queue = Instance();
 
 	queue->StartThreads();
@@ -101,12 +95,7 @@ void DrawerThreads::WaitForWorkers()
 	std::unique_lock<std::mutex> end_lock(queue->end_mutex);
 	if (!queue->end_condition.wait_for(end_lock, 5s, [&]() { return queue->tasks_left == 0; }))
 	{
-#ifdef WIN32
-		PeekThreadedErrorPane();
-#endif
-		// Invoke the crash reporter so that we can capture the call stack of whatever the hung worker thread is doing
-		int *threadCrashed = nullptr;
-		*threadCrashed = 0xdeadbeef;
+		I_FatalError("Drawer threads did not finish within 5 seconds!");
 	}
 	end_lock.unlock();
 
@@ -139,11 +128,6 @@ void DrawerThreads::WorkerMain(DrawerThread *thread)
 		thread->current_queue++;
 		thread->numa_start_y = thread->numa_node * screen->GetHeight() / thread->num_numa_nodes;
 		thread->numa_end_y = (thread->numa_node + 1) * screen->GetHeight() / thread->num_numa_nodes;
-		if (thread->poly)
-		{
-			thread->poly->numa_start_y = thread->numa_start_y;
-			thread->poly->numa_end_y = thread->numa_end_y;
-		}
 		start_lock.unlock();
 
 		// Do the work:

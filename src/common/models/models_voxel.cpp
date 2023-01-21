@@ -6,7 +6,7 @@
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
+// the Free Software Foundation, either version 2 of the License, or
 // (at your option) any later version.
 //
 // This program is distributed in the hope that it will be useful,
@@ -58,7 +58,7 @@ public:
 	FVoxelTexture(FVoxel *voxel);
 
 	int CopyPixels(FBitmap *bmp, int conversion) override;
-	TArray<uint8_t> CreatePalettedPixels(int conversion) override;
+	PalettedPixels CreatePalettedPixels(int conversion) override;
 
 protected:
 	FVoxel *SourceVox;
@@ -84,10 +84,10 @@ FVoxelTexture::FVoxelTexture(FVoxel *vox)
 //
 //===========================================================================
 
-TArray<uint8_t> FVoxelTexture::CreatePalettedPixels(int conversion)
+PalettedPixels FVoxelTexture::CreatePalettedPixels(int conversion)
 {
 	// GetPixels gets called when a translated palette is used so we still need to implement it here.
-	TArray<uint8_t> Pixels(256, true);
+	PalettedPixels Pixels(256);
 	uint8_t *pp = SourceVox->Palette.Data();
 
 	if(pp != NULL)
@@ -100,7 +100,7 @@ TArray<uint8_t> FVoxelTexture::CreatePalettedPixels(int conversion)
 			pe.b = (pp[2] << 2) | (pp[2] >> 4);
 			// Alphatexture handling is just for completeness, but rather unlikely to be used ever.
 			Pixels[i] = conversion == luminance ? pe.r : ColorMatcher.Pick(pe);
-			
+
 		}
 	}
 	else 
@@ -205,13 +205,12 @@ void FVoxelModel::AddFace(int x1, int y1, int z1, int x2, int y2, int z2, int x3
 	float PivotX = mVoxel->Mips[0].Pivot.X;
 	float PivotY = mVoxel->Mips[0].Pivot.Y;
 	float PivotZ = mVoxel->Mips[0].Pivot.Z;
-	int h = mVoxel->Mips[0].SizeZ;
 	FModelVertex vert;
 	unsigned int indx[4];
 
 	vert.packedNormal = 0;	// currently this is not being used for voxels.
-	vert.u = (((col & 15) * 255 / 16) + 7) / 255.f;
-	vert.v = (((col / 16) * 255 / 16) + 7) / 255.f;
+	vert.u = (((col & 15) + 0.5f) / 16.f);
+	vert.v = (((col / 16) + 0.5f) / 16.f);
 
 	vert.x =  x1 - PivotX;
 	vert.z = -y1 + PivotY;
@@ -286,8 +285,8 @@ void FVoxelModel::MakeSlabPolys(int x, int y, kvxslab_t *voxptr, FVoxelMap &chec
 	}
 	if (cull & 32)
 	{
-		int z = ztop+zleng-1;
-		AddFace(x+1, y, z+1, x, y, z+1, x+1, y+1, z+1, x, y+1, z+1, voxptr->col[zleng-1], check);
+		int zz = ztop+zleng-1;
+		AddFace(x+1, y, zz+1, x, y, zz+1, x+1, y+1, zz+1, x, y+1, zz+1, voxptr->col[zleng-1], check);
 	}
 }
 
@@ -357,7 +356,7 @@ void FVoxelModel::BuildVertexBuffer(FModelRenderer *renderer)
 //
 //===========================================================================
 
-void FVoxelModel::AddSkins(uint8_t *hitlist)
+void FVoxelModel::AddSkins(uint8_t *hitlist, const FTextureID*)
 {
 	hitlist[mPalette.GetIndex()] |= FTextureManager::HIT_Flat;
 }
@@ -379,9 +378,9 @@ bool FVoxelModel::Load(const char * fn, int lumpnum, const char * buffer, int le
 //
 //===========================================================================
 
-int FVoxelModel::FindFrame(const char * name)
+int FVoxelModel::FindFrame(const char* name, bool nodefault)
 {
-	return 0;
+	return nodefault ? FErr_Voxel : 0; // -2, not -1 because voxels are special.
 }
 
 //===========================================================================
@@ -401,10 +400,9 @@ float FVoxelModel::getAspectFactor(float stretch)
 //
 //===========================================================================
 
-void FVoxelModel::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frame, int frame2, double inter, int translation)
+void FVoxelModel::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frame, int frame2, double inter, int translation, const FTextureID*, const TArray<VSMatrix>& boneData, int boneStartPosition)
 {
 	renderer->SetMaterial(skin, true, translation);
-	renderer->SetupFrame(this, 0, 0, 0);
+	renderer->SetupFrame(this, 0, 0, 0, {}, -1);
 	renderer->DrawElements(mNumIndices, 0);
 }
-

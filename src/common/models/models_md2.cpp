@@ -6,7 +6,7 @@
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
+// the Free Software Foundation, either version 2 of the License, or
 // (at your option) any later version.
 //
 // This program is distributed in the hope that it will be useful,
@@ -217,10 +217,10 @@ void FDMDModel::LoadGeometry()
 			memcpy(lods[i].triangles, buffer + lodInfo[i].offsetTriangles, lodInfo[i].numTriangles * sizeof(FTriangle));
 			for (int j = 0; j < lodInfo[i].numTriangles; j++)
 			{
-				for (int k = 0; k < 3; k++)
+				for (int kk = 0; kk < 3; kk++)
 				{
-					lods[i].triangles[j].textureIndices[k] = LittleShort(lods[i].triangles[j].textureIndices[k]);
-					lods[i].triangles[j].vertexIndices[k] = LittleShort(lods[i].triangles[j].vertexIndices[k]);
+					lods[i].triangles[j].textureIndices[kk] = LittleShort(lods[i].triangles[j].textureIndices[kk]);
+					lods[i].triangles[j].vertexIndices[kk] = LittleShort(lods[i].triangles[j].vertexIndices[kk]);
 				}
 			}
 		}
@@ -306,7 +306,7 @@ void FDMDModel::BuildVertexBuffer(FModelRenderer *renderer)
 
 			FTriangle *tri = lods[0].triangles;
 
-			for (int i = 0; i < lodInfo[0].numTriangles; i++)
+			for (int ii = 0; ii < lodInfo[0].numTriangles; ii++)
 			{
 				for (int j = 0; j < 3; j++)
 				{
@@ -332,7 +332,7 @@ void FDMDModel::BuildVertexBuffer(FModelRenderer *renderer)
 //
 //===========================================================================
 
-void FDMDModel::AddSkins(uint8_t *hitlist)
+void FDMDModel::AddSkins(uint8_t *hitlist, const FTextureID*)
 {
 	for (int i = 0; i < info.numSkins; i++)
 	{
@@ -348,13 +348,13 @@ void FDMDModel::AddSkins(uint8_t *hitlist)
 // FDMDModel::FindFrame
 //
 //===========================================================================
-int FDMDModel::FindFrame(const char * name)
+int FDMDModel::FindFrame(const char* name, bool nodefault)
 {
 	for (int i=0;i<info.numFrames;i++)
 	{
 		if (!stricmp(name, frames[i].name)) return i;
 	}
-	return -1;
+	return FErr_NotFound;
 }
 
 //===========================================================================
@@ -363,7 +363,7 @@ int FDMDModel::FindFrame(const char * name)
 //
 //===========================================================================
 
-void FDMDModel::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frameno, int frameno2, double inter, int translation)
+void FDMDModel::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frameno, int frameno2, double inter, int translation, const FTextureID*, const TArray<VSMatrix>& boneData, int boneStartPosition)
 {
 	if (frameno >= info.numFrames || frameno2 >= info.numFrames) return;
 
@@ -376,12 +376,10 @@ void FDMDModel::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int f
 
 	renderer->SetInterpolation(inter);
 	renderer->SetMaterial(skin, false, translation);
-	renderer->SetupFrame(this, frames[frameno].vindex, frames[frameno2].vindex, lodInfo[0].numTriangles * 3);
+	renderer->SetupFrame(this, frames[frameno].vindex, frames[frameno2].vindex, lodInfo[0].numTriangles * 3, {}, -1);
 	renderer->DrawArrays(0, lodInfo[0].numTriangles * 3);
 	renderer->SetInterpolation(0.f);
 }
-
-
 
 //===========================================================================
 //
@@ -536,15 +534,15 @@ void FMD2Model::LoadGeometry()
 	}
 
 	lods[0].triangles = new FTriangle[lodInfo[0].numTriangles];
-		
+
 	int cnt = lodInfo[0].numTriangles;
 	memcpy(lods[0].triangles, buffer + lodInfo[0].offsetTriangles, sizeof(FTriangle) * cnt);
 	for (int j = 0; j < cnt; j++)
 	{
-		for (int k = 0; k < 3; k++)
+		for (int kk = 0; kk < 3; kk++)
 		{
-			lods[0].triangles[j].textureIndices[k] = LittleShort(lods[0].triangles[j].textureIndices[k]);
-			lods[0].triangles[j].vertexIndices[k] = LittleShort(lods[0].triangles[j].vertexIndices[k]);
+			lods[0].triangles[j].textureIndices[kk] = LittleShort(lods[0].triangles[j].textureIndices[kk]);
+			lods[0].triangles[j].vertexIndices[kk] = LittleShort(lods[0].triangles[j].vertexIndices[kk]);
 		}
 	}
 }
@@ -552,4 +550,3 @@ void FMD2Model::LoadGeometry()
 FMD2Model::~FMD2Model()
 {
 }
-

@@ -55,7 +55,6 @@
 // ---------------------------------------------------------------------------
 
 
-CVAR (Bool, i_soundinbackground, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 EXTERN_CVAR(Int,  vid_defwidth )
 EXTERN_CVAR(Int,  vid_defheight)
 EXTERN_CVAR(Bool, vid_vsync    )
@@ -90,10 +89,10 @@ static bool ReadSystemVersionFromPlist(NSOperatingSystemVersion& version)
 
 	if (stat(plistPath, &dummy) != 0)
 		return false;
-	
+
 	char commandLine[1024] = {};
 	snprintf(commandLine, sizeof commandLine, "defaults read %s ProductVersion", plistPath);
-	
+
 	FILE *const versionFile = popen(commandLine, "r");
 
 	if (versionFile == nullptr)
@@ -146,7 +145,7 @@ void I_DetectOS()
 	}
 
 	const char* name = "Unknown version";
-	
+
 	switch (version.majorVersion)
 	{
 	case 10:
@@ -164,6 +163,9 @@ void I_DetectOS()
 		break;
 	case 12:
 		name = "macOS Monterey";
+		break;
+	case 13:
+		name = "macOS Ventura";
 		break;
 	}
 
@@ -183,7 +185,7 @@ void I_DetectOS()
 #else
 		"Unknown";
 #endif
-	
+
 	Printf("%s running %s %d.%d.%d (%s) %s\n", model, name,
 		   int(version.majorVersion), int(version.minorVersion), int(version.patchVersion),
 		   release, architecture);
@@ -210,13 +212,6 @@ int DoMain(int argc, char** argv)
 	// Note that the LANG environment variable is overridden by LC_*
 	setenv("LC_NUMERIC", "C", 1);
 	setlocale(LC_ALL, "C");
-
-	// Set reasonable default values for video settings
-
-	const NSSize screenSize = [[NSScreen mainScreen] frame].size;
-	vid_defwidth  = static_cast<int>(screenSize.width);
-	vid_defheight = static_cast<int>(screenSize.height);
-	vid_vsync     = true;
 
 	Args = new FArgs(argc, argv);
 
@@ -266,14 +261,14 @@ ApplicationController* appCtrl;
 - (void)keyDown:(NSEvent*)theEvent
 {
 	// Empty but present to avoid playing of 'beep' alert sound
-	
+
 	ZD_UNUSED(theEvent);
 }
 
 - (void)keyUp:(NSEvent*)theEvent
 {
 	// Empty but present to avoid playing of 'beep' alert sound
-	
+
 	ZD_UNUSED(theEvent);
 }
 
@@ -283,7 +278,7 @@ extern bool AppActive;
 - (void)applicationDidBecomeActive:(NSNotification*)aNotification
 {
 	ZD_UNUSED(aNotification);
-	
+
 	S_SetSoundPaused(1);
 
 	AppActive = true;
@@ -292,8 +287,8 @@ extern bool AppActive;
 - (void)applicationWillResignActive:(NSNotification*)aNotification
 {
 	ZD_UNUSED(aNotification);
-	
-	S_SetSoundPaused(i_soundinbackground);
+
+	S_SetSoundPaused(0);
 
 	AppActive = false;
 }

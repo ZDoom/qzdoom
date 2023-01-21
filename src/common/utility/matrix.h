@@ -34,7 +34,7 @@ class VSMatrix {
 	public:
 
 		VSMatrix() = default;
-		
+
 		VSMatrix(int)
 		{
 			loadIdentity();
@@ -53,6 +53,7 @@ class VSMatrix {
 		{
 			multMatrix(aMatrix.mMatrix);
 		}
+		void multQuaternion(const TVector4<FLOATTYPE>& q);
 		void loadMatrix(const FLOATTYPE *aMatrix);
 #ifdef USE_DOUBLE
 		void loadMatrix(const float *aMatrix);
@@ -135,11 +136,11 @@ public:
 		m[0][0] *=x;
 		m[1][0] *=x;
 		m[2][0] *=x;
-			
+
 		m[0][1] *=y;
 		m[1][1] *=y;
 		m[2][1] *=y;
-			
+
 		m[0][2] *=z;
 		m[1][2] *=z;
 		m[2][2] *=z;

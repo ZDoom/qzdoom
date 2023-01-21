@@ -33,7 +33,7 @@
 
 #include "dobject.h"
 #include "c_console.h"
-#include "templates.h"
+
 #include "vmintern.h"
 #include "printf.h"
 
@@ -265,7 +265,7 @@ void VMDumpConstants(FILE *out, const VMScriptFunction *func)
 
 void VMDisasm(FILE *out, const VMOP *code, int codesize, const VMScriptFunction *func)
 {
-	VMFunction *callfunc;
+	VMFunction *callfunc = nullptr;
 	const char *name;
 	int col;
 	int mode;
@@ -526,7 +526,7 @@ void VMDisasm(FILE *out, const VMOP *code, int codesize, const VMScriptFunction 
 			{
 				printf_wrapper(out, ",%d\n", code[++i].i24);
 			}
-			else if (code[i].op == OP_CALL_K)
+			else if (code[i].op == OP_CALL_K && callfunc)
 			{
 				printf_wrapper(out, "  [%s]\n", callfunc->PrintableName.GetChars());
 			}
@@ -639,6 +639,8 @@ static int print_reg(FILE *out, int col, int arg, int mode, int immshift, const 
 				return col+printf_wrapper(out, "v%d.2", regnum);
 			case REGT_FLOAT | REGT_MULTIREG3:
 				return col+printf_wrapper(out, "v%d.3", regnum);
+			case REGT_FLOAT | REGT_MULTIREG4:
+				return col+printf_wrapper(out, "v%d.4", regnum);
 			case REGT_INT | REGT_KONST:
 				return col+print_reg(out, 0, regnum, MODE_KI, 0, func);
 			case REGT_FLOAT | REGT_KONST:
@@ -665,7 +667,6 @@ static int print_reg(FILE *out, int col, int arg, int mode, int immshift, const 
 	default:
 		return col+printf_wrapper(out, "$%d", arg);
 	}
-	return col;
 }
 
 //==========================================================================
@@ -677,7 +678,7 @@ static int print_reg(FILE *out, int col, int arg, int mode, int immshift, const 
 void DumpFunction(FILE *dump, VMScriptFunction *sfunc, const char *label, int labellen)
 {
 	const char *marks = "=======================================================";
-	fprintf(dump, "\n%.*s %s %.*s", MAX(3, 38 - labellen / 2), marks, label, MAX(3, 38 - labellen / 2), marks);
+	fprintf(dump, "\n%.*s %s %.*s", max(3, 38 - labellen / 2), marks, label, max(3, 38 - labellen / 2), marks);
 	fprintf(dump, "\nInteger regs: %-3d  Float regs: %-3d  Address regs: %-3d  String regs: %-3d\nStack size: %d\n",
 		sfunc->NumRegD, sfunc->NumRegF, sfunc->NumRegA, sfunc->NumRegS, sfunc->MaxParam);
 	VMDumpConstants(dump, sfunc);

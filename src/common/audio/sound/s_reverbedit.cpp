@@ -36,7 +36,7 @@
 #include "s_soundinternal.h"
 #include "sc_man.h"
 #include "cmdlib.h"
-#include "templates.h"
+
 #include "filesystem.h"
 #include "i_system.h"
 #include "printf.h"
@@ -309,7 +309,6 @@ DEFINE_ACTION_FUNCTION(DReverbEdit, GetValue)
 		}
 	}
 	ACTION_RETURN_FLOAT(v);
-	return 1;
 }
 
 DEFINE_ACTION_FUNCTION(DReverbEdit, SetValue)
@@ -337,14 +336,12 @@ DEFINE_ACTION_FUNCTION(DReverbEdit, SetValue)
 	}
 
 	ACTION_RETURN_FLOAT(v);
-	return 1;
 }
 
 DEFINE_ACTION_FUNCTION(DReverbEdit, GrayCheck)
 {
 	PARAM_PROLOGUE;
 	ACTION_RETURN_BOOL(CurrentEnv->Builtin);
-	return 1;
 }
 
 DEFINE_ACTION_FUNCTION(DReverbEdit, GetSelectedEnvironment)
@@ -472,12 +469,12 @@ static void SelectEnvironment(const char *envname)
 			int newid = FirstFreeID(env->ID, env->Builtin);
 			UCVarValue cv;
 			cv.Int = HIBYTE(newid);
-			reverbedit_id1.ForceSet(cv, CVAR_Int);
+			reverbedit_id1->ForceSet(cv, CVAR_Int);
 			cv.Int = LOBYTE(newid);
-			reverbedit_id2.ForceSet(cv, CVAR_Int);
+			reverbedit_id2->ForceSet(cv, CVAR_Int);
 			FString selectname = SuggestNewName(env);
 			cv.String = selectname.GetChars();
-			reverbedit_name.ForceSet(cv, CVAR_String);
+			reverbedit_name->ForceSet(cv, CVAR_String);
 			return;
 		}
 	}

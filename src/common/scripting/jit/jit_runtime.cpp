@@ -5,6 +5,7 @@
 
 #ifdef WIN32
 #include <DbgHelp.h>
+#include <psapi.h>
 #else
 #include <execinfo.h>
 #include <cxxabi.h>
@@ -56,7 +57,7 @@ static void *AllocJitMemory(size_t size)
 	}
 	else
 	{
-		const size_t bytesToAllocate = std::max(size_t(1024 * 1024), size);
+		const size_t bytesToAllocate = max(size_t(1024 * 1024), size);
 		size_t allocatedSize = 0;
 		void *p = OSUtils::allocVirtualMemory(bytesToAllocate, &allocatedSize, OSUtils::kVMWritable | OSUtils::kVMExecutable);
 		if (!p)
@@ -403,7 +404,7 @@ static void WriteCIE(TArray<uint8_t> &stream, const TArray<uint8_t> &cieInstruct
 	unsigned int lengthPos = stream.Size();
 	WriteUInt32(stream, 0); // Length
 	WriteUInt32(stream, 0); // CIE ID
-	
+
 	WriteUInt8(stream, 1); // CIE Version
 	WriteUInt8(stream, 'z');
 	WriteUInt8(stream, 'R'); // fde encoding
@@ -428,7 +429,7 @@ static void WriteFDE(TArray<uint8_t> &stream, const TArray<uint8_t> &fdeInstruct
 	WriteUInt32(stream, 0); // Length
 	uint32_t offsetToCIE = stream.Size() - cieLocation;
 	WriteUInt32(stream, offsetToCIE);
-	
+
 	functionStart = stream.Size();
 	WriteUInt64(stream, 0); // func start
 	WriteUInt64(stream, 0); // func size
@@ -499,7 +500,7 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 	//
 	// The CFI_Parser<A>::decodeFDE parser on the other side..
 	// https://github.com/llvm-mirror/libunwind/blob/master/src/DwarfParser.hpp
-	
+
 	// Asmjit -> DWARF register id
 	int dwarfRegId[16];
 	dwarfRegId[X86Gp::kIdAx] = 0;
@@ -520,7 +521,7 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 	dwarfRegId[X86Gp::kIdR15] = 15;
 	int dwarfRegRAId = 16;
 	int dwarfRegXmmId = 17;
-	
+
 	TArray<uint8_t> cieInstructions;
 	TArray<uint8_t> fdeInstructions;
 
@@ -529,7 +530,7 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 
 	WriteDefineCFA(cieInstructions, dwarfRegId[X86Gp::kIdSp], stackOffset);
 	WriteRegisterStackLocation(cieInstructions, returnAddressReg, stackOffset);
-	
+
 	FuncFrameLayout layout;
 	Error error = layout.init(func->getDetail(), func->getFrameInfo());
 	if (error != kErrorOk)
@@ -702,7 +703,7 @@ void *AddJitFunction(asmjit::CodeHolder* code, JitCompiler *compiler)
 				uint64_t length64 = *((uint64_t *)(entry + 4));
 				if (length64 == 0)
 					break;
-				
+
 				uint64_t offset = *((uint64_t *)(entry + 12));
 				if (offset != 0)
 				{
@@ -803,7 +804,7 @@ static int CaptureStackTrace(int max_frames, void **out_frames)
 
 #elif defined(WIN32)
 	// JIT isn't supported here, so just do nothing.
-	return 0;//return RtlCaptureStackBackTrace(0, MIN(max_frames, 32), out_frames, nullptr);
+	return 0;//return RtlCaptureStackBackTrace(0, min(max_frames, 32), out_frames, nullptr);
 #else
 	return backtrace(out_frames, max_frames);
 #endif
@@ -813,8 +814,16 @@ static int CaptureStackTrace(int max_frames, void **out_frames)
 class NativeSymbolResolver
 {
 public:
-	NativeSymbolResolver() { SymInitialize(GetCurrentProcess(), nullptr, TRUE); }
-	~NativeSymbolResolver() { SymCleanup(GetCurrentProcess()); }
+	NativeSymbolResolver()
+	{
+		SymInitialize(GetCurrentProcess(), nullptr, TRUE);
+		GetModuleInformation(GetCurrentProcess(), GetModuleHandle(0), &moduleInfo, sizeof(MODULEINFO));
+	}
+
+	~NativeSymbolResolver()
+	{
+		SymCleanup(GetCurrentProcess());
+	}
 
 	FString GetName(void *frame)
 	{
@@ -830,11 +839,14 @@ public:
 		BOOL result = SymGetSymFromAddr64(GetCurrentProcess(), (DWORD64)frame, &displacement, symbol64);
 		if (result)
 		{
+			if ((DWORD64)frame < (DWORD64)moduleInfo.lpBaseOfDll || (DWORD64)frame >= ((DWORD64)moduleInfo.lpBaseOfDll + moduleInfo.SizeOfImage))
+				return s; // Ignore anything not from the exe itself
+
 			IMAGEHLP_LINE64 line64;
-			DWORD displacement = 0;
+			DWORD displacement1 = 0;
 			memset(&line64, 0, sizeof(IMAGEHLP_LINE64));
 			line64.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-			result = SymGetLineFromAddr64(GetCurrentProcess(), (DWORD64)frame, &displacement, &line64);
+			result = SymGetLineFromAddr64(GetCurrentProcess(), (DWORD64)frame, &displacement1, &line64);
 			if (result)
 			{
 				s.Format("Called from %s at %s, line %d\n", symbol64->Name, line64.FileName, (int)line64.LineNumber);
@@ -847,6 +859,8 @@ public:
 
 		return s;
 	}
+
+	MODULEINFO moduleInfo = {};
 };
 #else
 class NativeSymbolResolver
@@ -952,7 +966,7 @@ FString JitGetStackFrameName(NativeSymbolResolver *nativeSymbols, void *pc)
 	return nativeSymbols ? nativeSymbols->GetName(pc) : FString();
 }
 
-FString JitCaptureStackTrace(int framesToSkip, bool includeNativeFrames)
+FString JitCaptureStackTrace(int framesToSkip, bool includeNativeFrames, int maxFrames)
 {
 	void *frames[32];
 	int numframes = CaptureStackTrace(32, frames);
@@ -961,10 +975,18 @@ FString JitCaptureStackTrace(int framesToSkip, bool includeNativeFrames)
 	if (includeNativeFrames)
 		nativeSymbols.reset(new NativeSymbolResolver());
 
+	int total = 0;
 	FString s;
 	for (int i = framesToSkip + 1; i < numframes; i++)
 	{
-		s += JitGetStackFrameName(nativeSymbols.get(), frames[i]);
+		FString name = JitGetStackFrameName(nativeSymbols.get(), frames[i]);
+		if (!name.IsEmpty())
+		{
+			s += name;
+			total++;
+			if (maxFrames != -1 && maxFrames == total)
+				break;
+		}
 	}
 	return s;
 }

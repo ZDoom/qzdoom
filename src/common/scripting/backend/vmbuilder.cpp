@@ -398,7 +398,7 @@ int VMFunctionBuilder::RegAvailability::Get(int count)
 	{
 		return -1;
 	}
-	
+
 	mask = count == 32 ? ~0u : (1 << count) - 1;
 
 	for (i = 0; i < 256 / 32; ++i)
@@ -637,6 +637,7 @@ size_t VMFunctionBuilder::Emit(int opcode, int opa, VM_SHALF opbc)
 		int chg;
 		if (opa & REGT_MULTIREG2) chg = 2;
 		else if (opa & REGT_MULTIREG3) chg = 3;
+		else if (opa & REGT_MULTIREG4) chg = 4;
 		else chg = 1;
 		ParamChange(chg);
 	}

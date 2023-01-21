@@ -2,7 +2,7 @@ default,Identifier,Remarks,Filter,eng enc ena enz eni ens enj enb enl ent enw,cs
 Picked up a blue flemkey.,GOTBLUEFLEM,Flem = phlegm,,,Sebrán modrý slizoklíč.,Blauen Flemschlüssel genommen,,Prenis bluan mukŝlosilon.,Recogiste una flemllave azul.,,Poimit sinisen lima-avaimen,Flemclé bleue récupérée.,Kék slejmkulcs felvéve.,Raccolta una chiave-flem blu.,ブルー フレムキー をみつけた,청색 플렘열쇠 획득.,Je hebt een blauwe flemsleutel opgehaald.,Zebrano niebieski flemowy klucz,Pegou uma flemchave azul.,,Ai ridicat flemcheia albastră.,Получен синий флемключ.,
 Picked up a yellow flemkey.,GOTYELLOWFLEM,,,,Sebrán žlutý slizoklíč.,Gelben Flemschlüssel genommen,,Prenis flavan mukŝlosilon.,Recogiste una flemllave amarilla.,,Poimit keltaisen lima-avaimen,Flemclé jaune récupérée.,Sárga slejmkulcs felvéve.,Raccolta una chiave-flem gialla.,イエローフレムキー をみつけた,황색 플렘열쇠 획득.,Je hebt een gele flemsleutel opgehaald.,Zebrano żółty flemowy klucz,Pegou uma flemchave amarela.,,Ai ridicat flemcheia galbenă.,Получен жёлтый флемключ.,
 Picked up a red flemkey.,GOTREDFLEM,,,,Sebrán červený slizoklíč.,Roten Flemschlüssel genommen.,,Prenis ruĝan mukŝlosilon.,Recogiste una flemllave roja.,,Poimit punaisen lima-avaimen,Flemclé rouge récupérée.,Piros slejmkulcs felvéve.,Raccolta una chiave-flem rossa.,レッド フレムキー をみつけた,적색 플렘열쇠 획득.,Je hebt een rode flemsleutel opgehaald.,Zebrano czerwony flemowy klucz,Pegou uma flemchave vermelha.,,Ai ridicat flemcheia roșie.,Получен красный флемключ.,
-Found Ultra Goggles,GOTGOGGLES,,,,Nalezeny ultrabrýle.,Ultrasichtbrille gefunden,,Trovis Plejajn Okulvitrojn.,Ultra Gafas encontradas,,Löysit ultralasit,Ultra-lunettes récupérées.,Ultraszemüveg felvéve.,,ウルトラゴーグル をみつけた,울트라 고글 사용.,Ultraroggles gevonden,Znaleziono Ultra Gogle,Achou um Ultra Óculos.,,Ai găsit Ultra Ochelarii,Получены Ультра-очки,
+Found Ultra Goggles,GOTGOGGLES,,,,Nalezeny ultrabrýle.,Ultrasichtbrille gefunden,,Trovis Plejajn Okulvitrojn.,Ultra Gafas encontradas,,Löysit ultralasit,Ultra-lunettes récupérées.,Ultraszemüveg felvéve.,,ウルトラゴーグル をみつけた,울트라 고글 사용.,Ultraroggles gevonden,Znaleziono Ultra Gogle,Achou um Ultra Óculos.,,Ai găsit Ultra Ochelarii,Получены ультра-очки,
 You need a blue key to activate this object,PD_BLUECO,,,,Potřebuješ modrý klíč pro aktivaci tohoto objektu,"Du brauchst einen blauen Schlüssel, um dieses Objekt zu aktivieren.",,Vi bezonas bluan ŝlosilon por aktivigi tion objekton.,Necesitas una llave azul para activar este objeto,,Tarvitset sinisen avaimen aktivoidaksesi tämän kappaleen,Il vous faut une clé bleue pour activer cet objet.,Egy kék kulcs szükséges az objektum aktiválásához.,Ti serve una chiave blu per attivare questo oggetto,このそうちは ブルー キー がひつようだ,이걸 작동하려면 청색 열쇠가 필요합니다,Je hebt een blauwe sleutel nodig om dit object te activeren.,"Potrzebujesz niebieskiego klucza, aby aktywować ten przedmiot",Você precisa de uma chave azul para ativar este objeto,,Ai nevoie de o cheie albastră pentru a activa acest obiect,Для активации нужен синий ключ,Треба вам плави кључ да бисте активирали овај предмет
 You need a red key to activate this object,PD_REDCO,,,,Potřebuješ červený klíč pro aktivaci tohoto objektu,"Du brauchst einen roten Schlüssel, um dieses Objekt zu aktivieren.",,Vi bezonas ruĝan ŝlosilon por aktivigi tion objekton.,Necesitas una llave roja para activar este objeto,,Tarvitset punaisen avaimen aktivoidaksesi tämän kappaleen,Il vous faut une clé rouge pour activer cet objet.,Egy piros kulcs szükséges az objektum aktiválásához.,Ti serve una chiave rossa per attivare questo oggetto,このそうちは レッド キー がひつようだ,이걸 작동하려면 적색 열쇠가 필요합니다,Je hebt een rode sleutel nodig om dit object te activeren.,"Potrzebujesz czerwonego klucza, aby aktywować ten przedmiot",Você precisa de uma chave vermelha para ativar este objeto,,Ai nevoie de o cheie roșie pentru a activa acest obiect,Для активации нужен красный ключ,Треба вам црвени кључ да бисте активирали овај предмет
 You need a yellow key to activate this object,PD_YELLOWCO,,,,Potřebuješ žlutý klíč pro aktivaci tohoto objektu,"Du brauchst einen gelben Schlüssel, um dieses Objekt zu aktivieren.",,Vi bezonas flavan ŝlosilon por aktivigi tion objekton.,Necesitas una llave amarilla para activar este objeto,,Tarvitset keltaisen avaimen aktivoidaksesi tämän kappaleen,Il vous faut une clé jaune pour activer cet objet.,Egy sárga kulcs szükséges az objektum aktiválásához.,Ti serve una chiave gialla per attivare questo oggetto,このそうちは イエローキー がひつようだ,이걸 작동하려면 황색 열쇠가 필요합니다,Je hebt een gele sleutel nodig om dit object te activeren.,"Potrzebujesz żółtego klucza, aby aktywować ten przedmiot",Você precisa de uma chave amarela para ativar este objeto,,Ai nevoie de o cheie galbenă pentru a activa acest obiect,Для активации нужен жёлтый ключ,Треба вам жути кључ да бисте активирали овај предмет
@@ -13,7 +13,7 @@ Picked up a zorcher.,PICKUP_PISTOL_DROPPED,,,,Sebrán bzukr.,Zorcher genommen.,,
 Zorch and keys added,STSTR_KFAADDED,,,,Bzukr a klíče přidány,Zorch und Schlüssel hinzugefügt.,,Zorĉaĵo kaj ŝlosiloj aldonitaj.,Zorch y llaves añadidas,,Zorch ja avaimet lisätty,Zorch et clés ajoutées.,Szörcs és kulcsok hozzáadva.,Zorch e chiavi aggiunte,ゾーチ と キーがとどいた,저치와 열쇠,Zorch en sleutels toegevoegd,Dodano amunicję Zorch i klucze,Zorch e chaves adicionadas,,Zorcher și chei adăugate,Зорч и ключи получены,
 E1M1: Landing Zone,HUSTR_E1M1,,,,E1M1: Přistávací zóna,E1M1: Landezone,,E1M1: Surterejo,E1M1: Zona de Aterrizaje,,E1M1: Laskeutumisalue,E1M1: Zone D'Atterissage,E1M1: Leszállópálya,E1M1: Zona di Atterraggio,E1M1: ちゃくち ちてん,E1M1: 착륙 지점,E1M1: Landingzone,E1M1: Strefa Lądowania,E1M1: Zona de Pouso,,E1M1: Zona de Aterizare,E1M1: Зона высадки,
 E1M2: Storage Facility,HUSTR_E1M2,,,,E1M2: Skladiště,E1M2: Lagerhalle,,E1M2: Stokejo,E1M2: Instalación de Almacenamiento,,E1M2: Varastolaitos,E1M2: Centre de Stockage,E1M2: Raktárépület,E1M2: Struttura di Immagazzinamento,E1M2: ちょぞう しせつ,E1M2: 저장 시설,E1M2: Opslagfaciliteit,E1M2: Magazyn,E1M2: Depósito,,E1M2: Depozitul,E1M2: Хранилище,
-E1M3: Laboratory,HUSTR_E1M3,,,,E1M3: Testovací laboratoř,E1M3: Labor,,E1M3: Laboratorio,E1M3: Laboratorio,,E1M3: Laboratorio,E1M3: Laboratoire,E1M3: Laboratórium,E1M3: Laboratorio,E1M3: ラボラトリー,E1M3: 연구소,E1M3: Laboratorium,E1M3: Laboratorium Eksperymentalne,E1M3: Laboratório de Experimentos,,E1M3: Laboratorul,E1M3: Лаборатория,
+E1M3: Laboratory,HUSTR_E1M3,,,,E1M3: Testovací laboratoř,E1M3: Labor,,E1M3: Laboratorio,E1M3: Laboratorio,,E1M3: Laboratorio,E1M3: Laboratoire,E1M3: Laboratórium,E1M3: Laboratorio,E1M3: ラボラトリー,E1M3: 연구소,E1M3: Laboratorium,E1M3: Laboratorium,E1M3: Laboratório de Experimentos,,E1M3: Laboratorul,E1M3: Лаборатория,
 E1M4: Arboretum,HUSTR_E1M4,,,,,,,E1M4: Arbejo,E1M4: Arboreto,,,E1M4: Arboretum,E1M4: Arborétum,E1M4: Arboreto,E1M4: じゅもく園,E1M4: 수목원,,E1M4: Arboretum,E1M4: Arvoredo,,E1M4: Arboretum,E1M4: Дендрарий,
 E1M5: Caverns of Bazoik,HUSTR_E1M5,,,,E1M5: Bazoikské jeskyně,E1M5: Die Höhlen von Bazoik,,E1M5: Kavernoj de Bazojko,E1M5: Cavernas de Bazoik,,E1M5: Bazoikin luolastot,E1M5: Cavernes de Bazoik,E1M5: Bazoik barlangjai,E1M5: Caverne di Bazoik,E1M5: バゾイクのどうくつ,E1M5: 바조이크의 대동굴,E1M5: Grotten van Bazoik,E1M5: Jaskinie Bazoik,E1M5: Cavernas de Bazoik,,E1M5: Cavernele lui Bazoik,E1M5: Пещеры Базоика,
 E2M1: Spaceport,HUSTR_E2M1,,,,E2M1: Kosmodrom,E2M1: Raumhafen,,E2M1: Kosmo-haveno,E2M1: Puerto Espacial,,E2M1: Avaruussatama,E2M1: Spatioport,E2M1: Űrkikötő,E2M1: Spazioporto,E2M1: スペースポート,E2M1: 우주공항,E2M1: Ruimtehaven,E2M1: Port Kosmiczny,E2M1: Espaçoporto,,E2M1: Portul Spațial,E2M1: Космодром,
@@ -25,7 +25,7 @@ E3M1: Central Command,HUSTR_E3M1,,,,E3M1: Centrální velení,E3M1: Kommandozent
 E3M2: United Cereals,HUSTR_E3M2,,,,E3M2: Spojené cereálie,E3M2: Vereinigte Zerealien,,E3M2: Uniaj Cerealoj,E3M2: Cereales unidos,,E3M2: Yhdistyneet murot,E3M2: Céréales Unies,E3M2: Egyesült Gabonapelyhek,E3M2: Cereali uniti,E3M2: ユナイテッド シリアル,E3M2: 시리얼 연합,E3M2: Verenigde granen,E3M2: Zjednoczone Płatki,E3M2: Cereais Unidos,,E3M2: Cereale Unite,E3M2: Организация Объединённых Хлопьев,
 E3M3: Villa Chex,HUSTR_E3M3,,,,,,,E3M3: Vilao Chex,,,,E3M3: Villa Chex,,,E3M3: チェックスのべっそう,E3M3: 책스 주택,,E3M3: Willa Chex,E3M3: Villa Chex,,E3M3: Vila Chex,E3M3: Вилла Chex,
 E3M4: Provincial Park,HUSTR_E3M4,,,,E3M4: Provinciální park,E3M4: Provinzpark,,E3M4: Provinca Parko,E3M4: Parque provincial,,E3M4: Provinssipuisto,E3M4: Parc Naturel,E3M4: Tartományi park,E3M4: Parco provinciale,E3M4: 州立公園,E3M4: 주립공원,E3M4: Provinciaal Park,E3M4: Prowincjonalny Park,E3M4: Parque Natural,,E3M4: Parcul Provincial,E3M4: Провинциальный парк,
-E3M5: Meteor Spaceship,HUSTR_E3M5,,,,E3M5: Meteorová vesmírná loď,E3M5: Meteor-Raumschiff,,E3M5: Meteor-kosmoŝipo,E3M5: Nave Meteoro,,E3M5: Meteoriavaruusalus,E3M5: Vaisseau Météore,E3M5: Meteor űrhajó,E2M5: Astronave meteorica,E3M5: メテオスペースシップ,E3M5: 거대 유성호,E3M5: Ruimteschip,"E3M5: Statek Kosmiczny ""Meteor""",E3M5: Espaçonave Meteoro,,E3M5: Nava Spațială Meteor,E3M5: Космический корабль “Метеор”,
+E3M5: Meteor Spaceship,HUSTR_E3M5,,,,E3M5: Meteorová vesmírná loď,E3M5: Meteor-Raumschiff,,E3M5: Meteor-kosmoŝipo,E3M5: Nave Meteoro,,E3M5: Meteoriavaruusalus,E3M5: Vaisseau Météore,E3M5: Meteor űrhajó,E2M5: Astronave meteorica,E3M5: メテオスペースシップ,E3M5: 거대 유성호,E3M5: Ruimteschip,"E3M5: Statek Kosmiczny ""Meteor""",E3M5: Espaçonave Meteoro,,E3M5: Nava Spațială Meteor,E3M5: Космический корабль «Метеор»,
 Commonus,CC_ZOMBIE,,,,Obecnýs,,,Oftmukulo,,,,,Általánusz,,コモンズ,커머누스,,Pospolitus,,,Comun,Обыкновеннус,
 Bipedicus,CC_SHOTGUN,,,,Dvojnožus,,,Dupiedmukulo,,,,,Kétlábusz,,バイピディクス,바이피디쿠스,,,,,Biped,Двуножка,
 Bipedicus with Armor,CC_IMP,,,,Dvojnožus s brněním,Bipedicus mit Panzerung,,Kirasa Dupiedmukulo,Bipedicus con Armadura,,Panssaroitu bipedicus,Bipedicus avec Armure,Páncélozott kétlábusz,Bipedicus corazzato,アーマードバイピディクス,정예 바이피디쿠스,Bipedicus met harnas,Opancerzony Bipedicus,Bipedicus de Armadura,,Biped cu Armură,Бронированная двуножка,
@@ -47,7 +47,7 @@ You need a yellow flemkey to open this door,PD_YELLOWF,,,,Potřebuješ žlutý s
 %o was hit by inter-dimensional slime!,OB_POWERSTRAND,,,,%o byl@[ao_cs] zasažen@[ao_cs] mezidimenzionálním slizem!,%o wurde von interdimensionalem Schleim getroffen,,%o estas trafita de interdimensia ŝlimo!,¡%o fue alcanzad@[ao_esp] por baba interdimensional!,,%o parkaan osui interdimensionaalista limaa!,%o s'est fait@[e_fr] toucher par de la morve interdimensionelle!,%o interdimenzionális trutyi áldozata lett!,%o è stato colpito da melma interdimensionale!,%o は いじげんスライムまみれになった!,%o 는(은) 차원균열 점액에 맞았습니다!,%o werd geraakt door interdimensionaal slijm!,%o został@[ao_pl] uderzon@[adj_pl] przez międzywymiarowy szlam!,%o foi atingid@[ao_ptb] por gosma interdimensional!,,%o a fost lovit de mâzgă interdimensională!,В игрока %o попала межпространственная слизь!,
 %o was hit by inter-dimensional slime!,OB_KILLEDSELF,,,,%o byl@[ao_cs] zasažen@[ao_cs] mezidimenzionálním slizem!,%o wurde von interdimensionalem Schleim getroffen,,%o estas trafita de interdimensia ŝlimo!,¡%o fue alcanzad@[ao_esp] por baba interdimensional!,,%o parkaan osui interdimensionaalista limaa!,%o s'est fait@[e_fr] toucher par de la morve interdimensionelle!,%o interdimenzionális trutyi áldozata lett!,%o è stato colpito da melma interdimensionale!,%o は いじげんスライムまみれになった!,%o 는(은) 모르는 사이에 점액에 당했습니다!,%o werd geraakt door interdimensionaal slijm!,%o został@[ao_pl] uderzon@[adj_pl] przez międzywymiarowy szlam!,%o foi atingid@[ao_ptb] por gosma interdimensional!,,%o a fost lovit de mâzgă interdimensională!,В игрока %o попала межпространственная слизь!,
 %o was boogered by a stridicus.,OB_STRIDICUS,,,,%o dostal@[ao_cs] holuby od běhakem.,%o wurde von einem Stridicus bepopelt.,,%o estas mukiga de paŝmukulo.,%o fue moquead@[ao_esp] por un stridicus.,,%o joutui stridicuksen räkäämäksi.,%o s'est fait@[e_fr] engluer par un stridicus.,%o taknyos lett egy lépkedüsztől.,%o è stato colpito da uno Stridicus.,%o は ステュリクスに おびやかされた。,%o 는(은) 스트리디쿠스의 코딱지에 당했습니다.,%o werd door een stridicus gezoomd.,%o został@[ao_pl] zaglutowan@[adj_pl] przez stridicusa.,%o foi melecad@[ao_ptb] por um stridicus.,,%o a fost speriat de către un picioare-lungi.,Игрока %o облепила соплями длинноножка. ,
-%o was gooed by a flem mine.,OB_FLEMMINE,,,,%o byl@[ao_cs] zablácen@[ao_cs] sliznou minou.,%o wurde von einer Flem-Mine beschmiert.,,%o estas ŝlimiga de muksentinelo.,%o fue pegotead@[ao_esp] por una flem-mina.,,%o joutui limamiinan mönjäämäksi.,%o s'est fait@[e_fr] éclabousser par une flem mine.,%o-t összenyálkázta egy slejmakna.,%o è stata colpita da una bomba a flem.,%o はフレムマインに ヒドいめにあった。,%o 는(은) 플렘 지뢰에 의해 점액 범벅이 됐습니다.,%o werd door een Flemmijn getreiterd.,"%o został@[ao_pl] zabrejowan@[adj_pl] przez flemową minę.
+%o was gooed by a flem mine.,OB_FLEMMINE,,,,%o byl@[ao_cs] zablácen@[ao_cs] sliznou minou.,%o wurde von einer Flem-Mine beschmiert.,,%o estas ŝlimiga de muksentinelo.,%o fue pegotead@[ao_esp] por una flem-mina.,,%o joutui limamiinan mönjäämäksi.,%o s'est fait@[e_fr] éclabousser par une flem mine.,%o-t összenyálkázta egy slejmakna.,%o è stato colpito da una bomba a flem.,%o はフレムマインに ヒドいめにあった。,%o 는(은) 플렘 지뢰에 의해 점액 범벅이 됐습니다.,%o werd door een Flemmijn getreiterd.,"%o został@[ao_pl] zabrejowan@[adj_pl] przez flemową minę.
 ",%o foi engosmad@[ao_ptb] por uma mina flem.,,%o a fost lovit de mâzga unei flem mine.,Игрока %o забрызгала флем-мина.,
 %o was slimed by a super cycloptis.,OB_SUPERCYCLOPTIS,,,,%o byl@[ao_cs] osliznut@[ao_cs] superkykloptem.,%o wurde von einem Super Cycloptis vollgeschleimt.,,%o estas ŝlimiga de supera ciklopmukulo.,%o fue enlodad@[ao_esp] por un super cycloptis.,,%o joutui supercycloptiksen limaamaksi.,%o s'est fait@[e_fr] gélifier par un super cycloptis.,%o-t összenyálkázta egy Szuper Kükloptisz.,%o è stato snellito da una Super Ciyloptis.,%o はスーパーサイクロプティスに とかされた。,%o 는(은) 슈퍼 사이클롭티스의 점액에 당했습니다.,%o werd afgeslankt door een Super Cycloptis.,%o został@[ao_pl] oszlamion@[adj_pl] przez super cykloptisa.,%o foi lambuzad@[ao_ptb] por um super cyclóptis.,,%o a fost transformat în mâzgă de către un super cicloptic.,Игрока %o обслюнявил супер-циклоптис.,
 %o was defeated by a Maximus.,OB_MAXIMUS,,,,%o byl@[ao_cs] poražen@[ao_cs] Maximem.,%o wurde von einem Maximus besiegt.,,%o estas venkita de ĉefmukulo.,%o fue derrotad@[ao_esp] por un Maximus.,,%o joutui Maximuksen päihittämäksi.,%o s'est fait@[e_fr] battre par un Maximus.,%o-t legyőzte egy Maximusz.,%o è stato sconfitto da un Maximus.,%o はマクシムスに 敗北した。,%o 는(은) 맥시무스에게 패배했습니다.,%o werd verslagen door een Maximus.,%o został@[ao_pl] pokonan@[adj_pl] przez Maximusa.,%o foi derrotad@[ao_ptb] por um Maximus.,,%o a fost înfrânt de către un Maxim.,Игрок %o проиграл Максимусу.,
@@ -55,7 +55,7 @@ You need a yellow flemkey to open this door,PD_YELLOWF,,,,Potřebuješ žlutý s
 %o was slimed by a Quadrumpus.,OB_QUADRUMPUS,,,,%o byl@[ao_cs] zahleněn@[ao_cs] Čtyřzadkem.,%o wurde von einem Quadrumpus vollgeschleimt.,,%o estas ŝlimiga de kvarbrakmukulo.,%o fue enlodad@[ao_esp] por un Quadrumpus.,,%o joutui Neliperän limaamaksi.,%o s'est fait@[e_fr] morver par un quadrumpus.,%o-t összenyálkázta egy Négylábusz.,%o è stato ridotto da un Quadrumpus.,%o はクワッドロンプスに スライムにされた。,%o 는(은) 쿼드럼푸스의 점액에 당했습니다.,%o werd afgeslankt door een Quadrumpus.,%o został@[ao_pl] oszlamion@[adj_pl] przez Quadrumpusa.,%o foi melecad@[ao_ptb] por um Quadrumpus.,,%o a fost transformat în mâzgă de către o creatură cu patru mâini,Игрока %o обслюнявила многоручка. ,
 %o was defeated by the Flembomination.,OB_FLEMBOMINATION,,,,%o byl@[ao_cs] poražen@[ao_cs] Slizavností.,%o wurde von der Flembomination besiegt.,,%o estas venkita de la Mukabomeno.,%o fue derrotad@[ao_esp] por la Flembominación.,,%o joutui Limaoikun päihittämäksi.,%o s'est fait@[e_fr] éliminer par la Flembomination.,%o-t legyőzte a Slejmdormány.,%o è stato sconfitto dalla Flembomination.,%o はフレンボミネーションに敗北した。,%o 는(은) 플렘보미네이션으로부터 벗어날 수 없었습니다.,%o werd verslagen door de Flembominatie.,%o został@[ao_pl] pokonan@[adj_pl] przez Flembominację.,%o foi derrotad@[ao_ptb] pela Flembominação.,,%o a fost învins de către Flembominație.,Игрока %o победила Флемомерзость.,
 %o was defeated by Lord Snotfolus.,OB_SNOTFOLUS,,,,%o byl@[ao_cs] poražen@[ao_cs] Lordem Hlenfujem.,%o wurde von Lord Snotfolus besiegt.,,%o estas venkita de Lordo Mukplenulo.,%o fue derrotad@[ao_esp] por Lord Mocofolus.,,%o joutui herra Räkänokan päihittämäksi.,%o est tombé@[e_fr] face au Seigneur Morvator.,%o legyőzetett Lord Takony által.,%o è stato sconfitto da Lord Snotfolus.,%o はロード スノフォールスに敗北した。,%o 는(은) 스놋폴러스 마왕과 싸울 준비를 제대로 하지 못했습니다.,%o werd verslagen door Lord Snotfolus.,%o został@[ao_pl] pokonan@[adj_pl] przez Lorda Smarkofolusa.,%o foi derrotad@[ao_ptb] pelo Lorde Snotfolus.,,%o a fost pus la pământ de către Lordul Snotfolus.,Игрока %o победил лорд Соплезелёнус.,
-%o was hit by %k's propulsor.,OB_MPR_SPLASH,,,,%o byl@[ao_cs] zasažen@[ao_cs] propulzorem hráče %k.,%o wurde von %ks Propeller getroffen,,%o estas trafita de la propulsilo de %k.,%o fue alcanzad@[ao_esp] por el propulsor de %k.,,%k osui %o parkaan työntimellään.,%o s'est fait@[e_fr] propulser par %k.,%o-t eltalálta %k hajtóműve.,%o è stato colpito dal propulsore di %k.,%o に %k のロケットゾーチがとどいた。,%o 는(은) %k 의 추진력에 휘말렸습니다.,%o werd geraakt door %k's propulsor.,%o został@[ao_pl] uderzon@[adj_pl] przez pędnik %k.,%o foi atingid@[ao_ptb] pelo propulsor de %k.,,%o a fost lovit de către propulsorul lui %k.,Игрок %o подстрелен из Ускорителя Зорча %k.,
+%o was hit by %k's propulsor.,OB_MPR_SPLASH,,,,%o byl@[ao_cs] zasažen@[ao_cs] propulzorem hráče %k.,%o wurde von %ks Propeller getroffen,,%o estas trafita de la propulsilo de %k.,%o fue alcanzad@[ao_esp] por el propulsor de %k.,,%k osui %o parkaan työntimellään.,%o s'est fait@[e_fr] propulser par %k.,%o-t eltalálta %k hajtóműve.,%o è stato colpito dal propulsore di %k.,%o に %k のロケットゾーチがとどいた。,%o 는(은) %k 의 추진력에 휘말렸습니다.,%o werd geraakt door %k's propulsor.,%o został@[ao_pl] uderzon@[adj_pl] przez pędnik %k.,%o foi atingid@[ao_ptb] pelo propulsor de %k.,,%o a fost lovit de către propulsorul lui %k.,Игрок %o подстрелен из ускорителя Зорча %k.,
 %o was lazzed by %k.,OB_MPBFG_SPLASH,,,,%o byl@[ao_cs] odlazován@[ao_cs] hráčem %k.,%o wurde von %o weggezorcht.,,%o estas LAZ-ita de %k.,%o fue lazead@[ao_esp] por %k.,,%k sazzasi pelaajaan %o.,%o est entré@[e_fr] dans la zone de zorchage large de %k.,%o-t szörcsölődött %k által.,%o è stato lazzato da %k.,%o は %k にとかされた。,%o 는(은) %k 에게 레이져를 쐬였습니다.,%o werd gelazzed door %k.,%o został@[ao_pl] zLAZowan@[adj_pl] przez %k.,%o foi LAZead@[ao_ptb] por %k.,,%k a folosit dispozitivul LAZ pe %o.,Игрок %o получил заряд из «ЗБР» игрока %k.,
 "After sending the monstrous Flembrane
 back to his own dimension, you free the
@@ -114,7 +114,7 @@ de vuelta a su dimensión, liberas a los
 rehenes. ¡Pero los flemoides están por
 todas partes! Tú y los rehenes escapais
 hacia tu nave. Los flemoides cubren de
-lodo tu nave, pero escapas en órbita por
+babas tu nave, pero escapas en órbita por
 los pelos. Durante el regreso eres
 felicitad@[ao_esp] por tu valiente
 rescate, pero mandas una advertencia...
@@ -179,20 +179,20 @@ azonban figyelmeztetsz mindenkit: nem utoljára láttuk a slejmoidokat.
 Sajnos igazad lett. Amint megérkeztél, szembesülsz azzal, 
 hogy a slejmoidok valahogy hazáig követtek.
 Készülj fel a terrorra Chexvárosban, jön a Chex Quest 2!","Dopo aver rispedito il mostruoso Flembrane
-nella sua dimensione, si liberano i prigionieri.
+nella sua dimensione, puoi liberare i prigionieri.
 Eppure i flemoidi sono ovunque! Tu e i
-prigionieri fare una pausa per la vostra
-astronave. I flemoidi melma la vostra nave,
-ma si fuggire di poco in orbita.
-Durante il ritorno ci si congratula per
-l'audace salvataggio, ma si emette un
+prigionieri vi avviate per la tua astronave.
+I flemoidi coprono di melma la tua astronave,
+ma riuscite per poco a scappare in orbita.
+Dopo il vostro ritorno vieni congratulato per
+l'audace salvataggio, ma comunicate un
 avvertimento...
-Non abbiamo visto l'ultimo dei Flemoidi.
+Troveremo ancora i Flemoidi...
 
-Purtroppo hai ragione. Infatti, al vostro
-ritorno a casa, vi accorgerete che le
-flotte vi hanno in qualche modo seguito qui.
-Preparatevi per 
+Purtroppo hai ragione. Infatti, al tuo
+ritorno a casa, ti accorgi che le loro
+flotte ti hanno in qualche modo seguito qui.
+Preparati per 
 Chex Quest 2: Terrore a Chex City!","巨大なフレムブレンを元の次元に送り ほりょを解放した。
 けれども、フレモイドはまだまだいる!
 フレモイドは 君の宇宙船を スライムまみれにしたため、
@@ -366,8 +366,8 @@ cereales ricos en nutrientes no ha
 disminuido. ¡Han reunido todas sus
 fuerzas, abierto un gigantesco túnel
 interdimensional en el espacio y ahora
-una gran bola de lodo se dirige derecha
-al planeta de los cereales!
+una gran bola de baba se dirige hacia
+el planeta de los cereales!
 
 Prepárate para
 Chex Quest 3: ¡Invasión!",,"Zorchaat jäljelle jääneet viemäreihin
@@ -413,9 +413,9 @@ mit sem csökkent.
 Összegyűlt erőik gigantikus interdimenzionális rést ütöttek az űrben, 
 és most egy óriási trutyilabda száguld egyenesen a gabonapelyhek bolygója felé!
 
-Készülj fel az invázióra a Chex Quest 3-ban!","Hai zorch il restante flemoidi che si erano
+Készülj fel az invázióra a Chex Quest 3-ban!","Hai neutralizzato restante flemoidi che si erano
 riuniti nelle fogne. Chex City è stata
-salvata. Sembra che la minaccia Flemoid è
+salvata. Sembra che la minaccia Flemoid sia
 finalmente finita.
 
 Dieci anni passano in pace e prosperità.
@@ -428,8 +428,7 @@ spaccatura interdimensionale nello spazio
 e ora una grande palla di melma è diretta
 direttamente verso il pianeta dei cereali!
 Preparati per
-Chex Quest 3: Invasione!
-","君は 下水道に集まっていたフレモイドを
+Chex Quest 3: Invasione!","君は 下水道に集まっていたフレモイドを
 ぶっとばして、チェックス シティーを守った。
 フレモイドの きょういはようやく なくなったようだ。
 
@@ -514,10 +513,10 @@ planeta cerealelor!
 Pregătește-te pentru Chex Quest 3: Invazia!","С помощью Зорчера, ты освободил@[ao_rus]
 канализацию от оставшихся флемоидов.
 Город Chex спасён. Казалось, что с
-угрозой Флемоидов наконец-то покончено.
+угрозой флемоидов наконец-то покончено.
 
 Десять лет прошли в мире и процветании.
-Но Флемоиды не были побеждены, им всё
+Но флемоиды не были побеждены, им всё
 ещё хотелось править измерением
 полезных и питательных хлопьев.
 Они собрали все силы и открыли
@@ -621,18 +620,16 @@ dimenziójába.
 
 
 De ha mégis visszatérnek, te készen állsz majd!
-","Con un ultimo colpo, hai zorch Lord Snotfolus
-torna alla sua dimensione! contro tutte
-le probabilità che hai sventato
-l'invasione con una sola mano!
+","Con un ultimo colpo, hai neutralizzato Lord
+Snotfolus, che ritorna alla sua dimensione!
+Contro tutte le probabilità hai sventato
+l'invasione tutto da solo!
 
-Speri davvero che i flemoidi hanno
+Speri davvero che i flemoidi abbiano
 finalmente imparato la lezione e non
-torneranno mai più alla dimensione dei cereali.
+torneranno mai più nella dimensione dei cereali.
 
-Ma se lo sai che sarai pronto per loro!
-
-","さいごのいちげきで、ロード スノフォールスを元の次元に
+Ma se lo faranno, sai che sarai pronto per loro!","さいごのいちげきで、ロード スノフォールスを元の次元に
 もどした。君一人で全てのオーズのしゅうげきを 阻止した!
 
 君は フレモイド達のことを みんなに教え、再び

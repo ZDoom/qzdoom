@@ -140,6 +140,7 @@ enum EChaseFlags
 	CHF_NODIRECTIONTURN =				64,
 	CHF_NOPOSTATTACKTURN =				128,
 	CHF_STOPIFBLOCKED =					256,
+	CHF_DONTIDLE =						512,
 
 	CHF_DONTTURN = CHF_NORANDOMTURN | CHF_NOPOSTATTACKTURN | CHF_STOPIFBLOCKED
 };
@@ -364,6 +365,14 @@ enum ERadiusGiveFlags
 	RGF_EITHER		=	1 << 17,
 };
 
+// Change model flags
+enum ChangeModelFlags
+{
+	CMDL_WEAPONTOPLAYER = 1,
+	CMDL_HIDEMODEL = 1 << 1,
+	CMDL_USESURFACESKIN = 1 << 2,
+};
+
 // Activation flags
 enum EActivationFlags
 {
@@ -396,6 +405,13 @@ enum EActivationFlags
 	
 };
 
+// [MC] Flags for SetViewPos.
+enum EViewPosFlags
+{
+	VPSF_ABSOLUTEOFFSET =	1 << 1,			// Don't include angles.
+	VPSF_ABSOLUTEPOS =		1 << 2,			// Use absolute position.
+};
+
 // Flags for A_TakeInventory and A_TakeFromTarget
 enum ETakeFlags
 {
@@ -419,6 +435,12 @@ enum EPlayerProperties
 	PROP_FLIGHT = 12, // (Deprecated)
 	PROP_SPEED = 15, // (Deprecated)
 	PROP_BUDDHA = 16,
+	PROP_BUDDHA2 = 17,
+	PROP_FRIGHTENING = 18,
+	PROP_NOCLIP = 19,
+	PROP_NOCLIP2 = 20,
+	PROP_GODMODE = 21,
+	PROP_GODMODE2 = 22,
 }
 
 // Line_SetBlocking
@@ -432,6 +454,10 @@ enum EBlockFlags
 	BLOCKF_EVERYTHING = 32,
 	BLOCKF_RAILING = 64,
 	BLOCKF_USE = 128,
+	BLOCKF_SIGHT = 256,
+	BLOCKF_HITSCAN = 512,
+	BLOCKF_SOUND = 1024,
+	BLOCKF_LANDMONSTERS = 2048,
 };
 
 // Pointer constants, bitfield-enabled
@@ -504,6 +530,7 @@ enum EAngleFlags
 {
 	SPF_FORCECLAMP = 1,
 	SPF_INTERPOLATE = 2,
+	SPF_SCALEDNOLERP = 4,
 };
 
 // flags for A_CheckLOF
@@ -622,6 +649,10 @@ enum EQuakeFlags
 	QF_MAX =			1 << 3,
 	QF_FULLINTENSITY =	1 << 4,
 	QF_WAVE =			1 << 5,
+	QF_3D =				1 << 6,
+	QF_GROUNDONLY =		1 << 7,
+	QF_AFFECTACTORS =	1 << 8,
+	QF_SHAKEONLY =		1 << 9,
 };
 
 // A_CheckProximity flags
@@ -659,12 +690,15 @@ enum ECheckBlockFlags
 
 enum EParticleFlags
 {
-	SPF_FULLBRIGHT =	1,
-	SPF_RELPOS =		1 << 1,
-	SPF_RELVEL =		1 << 2,
-	SPF_RELACCEL =		1 << 3,
-	SPF_RELANG =		1 << 4,
-	SPF_NOTIMEFREEZE =	1 << 5,
+	SPF_FULLBRIGHT =	    1,
+	SPF_RELPOS =		    1 << 1,
+	SPF_RELVEL =		    1 << 2,
+	SPF_RELACCEL =		    1 << 3,
+	SPF_RELANG =		    1 << 4,
+	SPF_NOTIMEFREEZE =	    1 << 5,
+	SPF_ROLL =			    1 << 6,
+	SPF_REPLACE =		    1 << 7,
+	SPF_NO_XY_BILLBOARD =	1 << 8,
 
 	SPF_RELATIVE =	SPF_RELPOS|SPF_RELVEL|SPF_RELACCEL|SPF_RELANG
 };
@@ -1110,6 +1144,9 @@ enum EPlayerCheats
 	CF_TOTALLYFROZEN	= 1 << 12,		// [RH] All players can do is press +use
 	CF_PREDICTING		= 1 << 13,		// [RH] Player movement is being predicted
 	CF_INTERPVIEW		= 1 << 14,		// [RH] view was changed outside of input, so interpolate one frame
+	CF_INTERPVIEWANGLES	= 1 << 15,		// [MR] flag for interpolating view angles without interpolating the entire frame
+	CF_SCALEDNOLERP		= 1 << 15,		// [MR] flag for applying angles changes in the ticrate without interpolating the frame
+	CF_NOFOVINTERP		= 1 << 16,		// [B] Disable FOV interpolation when instantly zooming
 
 	CF_EXTREMELYDEAD	= 1 << 22,		// [RH] Reliably let the status bar know about extreme deaths.
 
@@ -1372,7 +1409,8 @@ enum ECompatFlags
 	COMPATF_MINOTAUR		= 1 << 22,	// Minotaur's floor flame is exploded immediately when feet are clipped
 	COMPATF_MUSHROOM		= 1 << 23,	// Force original velocity calculations for A_Mushroom in Dehacked mods.
 	COMPATF_MBFMONSTERMOVE	= 1 << 24,	// Monsters are affected by friction and pushers/pullers.
-	COMPATF_CORPSEGIBS		= 1 << 25,	// Crushed monsters are turned into gibs, rather than replaced by gibs.
+	COMPATF_CORPSEGIBS		= 1 << 25,	// only needed for some hypothetical mod checking this flag.
+	COMPATF_VILEGHOSTS		= 1 << 25,	// Crushed monsters are resurrected as ghosts.
 	COMPATF_NOBLOCKFRIENDS	= 1 << 26,	// Friendly monsters aren't blocked by monster-blocking lines.
 	COMPATF_SPRITESORT		= 1 << 27,	// Invert sprite sorting order for sprites of equal distance
 	COMPATF_HITSCAN			= 1 << 28,	// Hitscans use original blockmap anf hit check code.

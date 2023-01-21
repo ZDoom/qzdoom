@@ -185,7 +185,7 @@ public:
 	FJPEGTexture (int lumpnum, int width, int height);
 
 	int CopyPixels(FBitmap *bmp, int conversion) override;
-	TArray<uint8_t> CreatePalettedPixels(int conversion) override;
+	PalettedPixels CreatePalettedPixels(int conversion) override;
 };
 
 //==========================================================================
@@ -259,7 +259,7 @@ FJPEGTexture::FJPEGTexture (int lumpnum, int width, int height)
 //
 //==========================================================================
 
-TArray<uint8_t> FJPEGTexture::CreatePalettedPixels(int conversion)
+PalettedPixels FJPEGTexture::CreatePalettedPixels(int conversion)
 {
 	auto lump = fileSystem.OpenFileReader (SourceLump);
 	JSAMPLE *buff = NULL;
@@ -267,7 +267,7 @@ TArray<uint8_t> FJPEGTexture::CreatePalettedPixels(int conversion)
 	jpeg_decompress_struct cinfo;
 	jpeg_error_mgr jerr;
 
-	TArray<uint8_t> Pixels(Width * Height, true);
+	PalettedPixels Pixels(Width * Height);
 	memset (Pixels.Data(), 0xBA, Width * Height);
 
 	cinfo.err = jpeg_std_error(&jerr);
@@ -282,6 +282,7 @@ TArray<uint8_t> FJPEGTexture::CreatePalettedPixels(int conversion)
 		jpeg_read_header(&cinfo, TRUE);
 		if (!((cinfo.out_color_space == JCS_RGB && cinfo.num_components == 3) ||
 			(cinfo.out_color_space == JCS_CMYK && cinfo.num_components == 4) ||
+			(cinfo.out_color_space == JCS_YCCK && cinfo.num_components == 4) ||
 			(cinfo.out_color_space == JCS_YCbCr && cinfo.num_components == 3) ||
 			(cinfo.out_color_space == JCS_GRAYSCALE && cinfo.num_components == 1)))
 		{
@@ -296,7 +297,7 @@ TArray<uint8_t> FJPEGTexture::CreatePalettedPixels(int conversion)
 
 			while (cinfo.output_scanline < cinfo.output_height)
 			{
-				int num_scanlines = jpeg_read_scanlines(&cinfo, &buff, 1);
+				jpeg_read_scanlines(&cinfo, &buff, 1);
 				uint8_t *in = buff;
 				uint8_t *out = Pixels.Data() + y;
 				switch (cinfo.out_color_space)
@@ -344,6 +345,24 @@ TArray<uint8_t> FJPEGTexture::CreatePalettedPixels(int conversion)
 						int r = clamp((int)(Y + 1.40200 * (Cr - 0x80)), 0, 255);
 						int g = clamp((int)(Y - 0.34414 * (Cb - 0x80) - 0.71414 * (Cr - 0x80)), 0, 255);
 						int b = clamp((int)(Y + 1.77200 * (Cb - 0x80)), 0, 255);
+						*out = ImageHelpers::RGBToPalette(doalpha, r, g, b);
+						out += Height;
+						in += 4;
+					}
+					break;
+
+				case JCS_YCCK:
+					// Probably useless but since I had the formula available...
+					for (int x = Width; x > 0; --x)
+					{
+						double Y = in[0], Cb = in[1], Cr = in[2];
+						int K = in[3];
+						int r = clamp((int)(Y + 1.40200 * (Cr - 0x80)), 0, 255);
+						int g = clamp((int)(Y - 0.34414 * (Cb - 0x80) - 0.71414 * (Cr - 0x80)), 0, 255);
+						int b = clamp((int)(Y + 1.77200 * (Cb - 0x80)), 0, 255);
+						r = r - ((r * K) >> 8);
+						g = g - ((g * K) >> 8);
+						b = b - ((b * K) >> 8);
 						*out = ImageHelpers::RGBToPalette(doalpha, r, g, b);
 						out += Height;
 						in += 4;
@@ -402,6 +421,7 @@ int FJPEGTexture::CopyPixels(FBitmap *bmp, int conversion)
 
 		if (!((cinfo.out_color_space == JCS_RGB && cinfo.num_components == 3) ||
 			(cinfo.out_color_space == JCS_CMYK && cinfo.num_components == 4) ||
+			(cinfo.out_color_space == JCS_YCCK && cinfo.num_components == 4) ||
 			(cinfo.out_color_space == JCS_YCbCr && cinfo.num_components == 3) ||
 			(cinfo.out_color_space == JCS_GRAYSCALE && cinfo.num_components == 1)))
 		{
@@ -437,6 +457,11 @@ int FJPEGTexture::CopyPixels(FBitmap *bmp, int conversion)
 			case JCS_CMYK:
 				bmp->CopyPixelDataRGB(0, 0, buff.Data(), cinfo.output_width, cinfo.output_height,
 					4, cinfo.output_width * cinfo.output_components, 0, CF_CMYK);
+				break;
+
+			case JCS_YCCK:
+				bmp->CopyPixelDataRGB(0, 0, buff.Data(), cinfo.output_width, cinfo.output_height,
+					4, cinfo.output_width * cinfo.output_components, 0, CF_YCCK);
 				break;
 
 			case JCS_YCbCr:

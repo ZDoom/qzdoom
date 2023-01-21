@@ -51,6 +51,7 @@
 #include "filesystem.h"
 #include "vm.h"
 #include "g_levellocals.h"
+#include "d_main.h"
 
 IMPLEMENT_CLASS(DBot, false, true)
 
@@ -73,7 +74,7 @@ void DBot::Construct()
 void DBot::Clear ()
 {
 	player = nullptr;
-	Angle = 0.;
+	Angle = nullAngle;
 	dest = nullptr;
 	prev = nullptr;
 	enemy = nullptr;
@@ -155,7 +156,7 @@ CVAR (Int, bot_next_color, 11, 0)
 
 CCMD (addbot)
 {
-	if (gamestate != GS_LEVEL && gamestate != GS_INTERMISSION)
+	if (gamestate != GS_LEVEL)
 	{
 		Printf ("Bots cannot be added when not in a game!\n");
 		return;

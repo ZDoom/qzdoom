@@ -5,6 +5,7 @@ extend struct _
 	native readonly Array<@PlayerClass> PlayerClasses;
 	native readonly Array<@PlayerSkin> PlayerSkins;
 	native readonly Array<@Team> Teams;
+	native readonly Array<@TerrainDef> Terrains;
 	native int validcount;
 	native play @DehInfo deh;
 	native readonly bool automapactive;
@@ -26,6 +27,7 @@ extend struct _
 extend struct TexMan
 {
 	native static void SetCameraToTexture(Actor viewpoint, String texture, double fov);
+	native static void SetCameraTextureAspectRatio(String texture, double aspectScale, bool useTextureRatio = true);
 	deprecated("3.8", "Use Level.ReplaceTextures() instead") static void ReplaceTextures(String from, String to, int flags)
 	{
 		level.ReplaceTextures(from, to, flags);
@@ -297,7 +299,7 @@ struct TraceResults native
 class LineTracer : Object native
 {
 	native @TraceResults Results;
-	native bool Trace(vector3 start, Sector sec, vector3 direction, double maxDist, ETraceFlags traceFlags);
+	native bool Trace(vector3 start, Sector sec, vector3 direction, double maxDist, ETraceFlags traceFlags, /* Line::ELineFlags */ uint wallMask = 0xFFFFFFFF, bool ignoreAllActors = false, Actor ignore = null);
 
 	virtual ETraceStatus TraceCallback()
 	{
@@ -367,6 +369,29 @@ struct LevelInfo native
 	native static String MapChecksum(String mapname);
 }
 
+struct FSpawnParticleParams
+{
+	native Color color1;
+	native TextureID texture;
+	native int style;
+	native int flags;
+	native int lifetime;
+
+	native double size;
+	native double sizestep;
+
+	native Vector3 pos;
+	native Vector3 vel;
+	native Vector3 accel;
+	
+	native double startalpha;
+	native double fadestep;
+
+	native double startroll;
+	native double rollvel;
+	native double rollacc;
+};
+
 struct LevelLocals native
 {
 	enum EUDMF
@@ -384,6 +409,7 @@ struct LevelLocals native
 	native Array<@Line> Lines;
 	native Array<@Side> Sides;
 	native readonly Array<@Vertex> Vertexes;
+	native readonly Array<@LinePortal> LinePortals;
 	native internal Array<@SectorPortal> SectorPortals;
 	
 	native readonly int time;
@@ -435,6 +461,7 @@ struct LevelLocals native
 	native readonly bool no_dlg_freeze;
 	native readonly bool keepfullinventory;
 	native readonly bool removeitems;
+	native readonly bool useplayerstartz;
 	native readonly int fogdensity;
 	native readonly int outsidefogdensity;
 	native readonly int skyfog;
@@ -471,6 +498,7 @@ struct LevelLocals native
 	native vector3, int PickPlayerStart(int pnum, int flags = 0);
 	native int isFrozen() const;
 	native void setFrozen(bool on);
+	native string LookupString(uint index);
 
 	native clearscope Sector PointInSector(Vector2 pt) const;
 
@@ -487,6 +515,11 @@ struct LevelLocals native
 	native clearscope vector2 Vec2Offset(vector2 pos, vector2 dir, bool absolute = false) const;
 	native clearscope vector3 Vec2OffsetZ(vector2 pos, vector2 dir, double atz, bool absolute = false) const;
 	native clearscope vector3 Vec3Offset(vector3 pos, vector3 dir, bool absolute = false) const;
+	native clearscope Vector2 GetDisplacement(int pg1, int pg2) const;
+	native clearscope int GetPortalGroupCount() const;
+	native clearscope int PointOnLineSide(Vector2 pos, Line l, bool precise = false) const;
+	native clearscope int ActorOnLineSide(Actor mo, Line l) const;
+	native clearscope int BoxOnLineSide(Vector2 pos, double radius, Line l) const;
 
 	native String GetChecksum() const;
 
@@ -508,6 +541,11 @@ struct LevelLocals native
 	native void ExitLevel(int position, bool keepFacing);
 	native void SecretExitLevel(int position);
 	native void ChangeLevel(string levelname, int position = 0, int flags = 0, int skill = -1);
+
+	native String GetClusterName();
+	native String GetEpisodeName();
+
+	native void SpawnParticle(FSpawnParticleParams p);
 }
 
 // a few values of this need to be readable by the play code.
@@ -701,11 +739,31 @@ class Lighting : SectorEffect native
 
 struct Shader native
 {
-	native clearscope static void SetEnabled(PlayerInfo player, string shaderName, bool enable);
-	native clearscope static void SetUniform1f(PlayerInfo player, string shaderName, string uniformName, float value);
-	native clearscope static void SetUniform2f(PlayerInfo player, string shaderName, string uniformName, vector2 value);
-	native clearscope static void SetUniform3f(PlayerInfo player, string shaderName, string uniformName, vector3 value);
-	native clearscope static void SetUniform1i(PlayerInfo player, string shaderName, string uniformName, int value);
+	// This interface was deprecated for the pointless player dependency 
+	private static bool IsConsolePlayer(PlayerInfo player)
+	{
+		return player && player.mo && player == players[consoleplayer];
+	}
+	deprecated("4.8", "Use PPShader.SetEnabled() instead") clearscope static void SetEnabled(PlayerInfo player, string shaderName, bool enable)
+	{
+		if (IsConsolePlayer(player)) PPShader.SetEnabled(shaderName, enable);
+	}
+	deprecated("4.8", "Use PPShader.SetUniform1f() instead") clearscope static void SetUniform1f(PlayerInfo player, string shaderName, string uniformName, float value)
+	{
+		if (IsConsolePlayer(player)) PPShader.SetUniform1f(shaderName, uniformName, value);
+	}
+	deprecated("4.8", "Use PPShader.SetUniform2f() instead") clearscope static void SetUniform2f(PlayerInfo player, string shaderName, string uniformName, vector2 value)
+	{
+		if (IsConsolePlayer(player)) PPShader.SetUniform2f(shaderName, uniformName, value);
+	}
+	deprecated("4.8", "Use PPShader.SetUniform3f() instead") clearscope static void SetUniform3f(PlayerInfo player, string shaderName, string uniformName, vector3 value)
+	{
+		if (IsConsolePlayer(player)) PPShader.SetUniform3f(shaderName, uniformName, value);
+	}
+	deprecated("4.8", "Use PPShader.SetUniform1i() instead") clearscope static void SetUniform1i(PlayerInfo player, string shaderName, string uniformName, int value)
+	{
+		if (IsConsolePlayer(player)) PPShader.SetUniform1i(shaderName, uniformName, value);
+	}
 }
 
 struct FRailParams
@@ -727,4 +785,3 @@ struct FRailParams
 	native int SpiralOffset;
 	native int limit;
 };	// [RH] Shoot a railgun
-

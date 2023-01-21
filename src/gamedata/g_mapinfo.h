@@ -39,6 +39,9 @@
 #include "vectors.h"
 #include "sc_man.h"
 #include "file_zip.h"
+#include "screenjob.h"
+#include "hwrenderer/postprocessing/hw_postprocess.h"
+#include "hw_viewpointuniforms.h"
 
 struct level_info_t;
 struct cluster_info_t;
@@ -73,9 +76,14 @@ FSerializer &Serialize(FSerializer &arc, const char *key, acsdefered_t &defer, a
 
 struct FIntermissionDescriptor;
 struct FIntermissionAction;
+struct CutsceneDef;
 
 struct FMapInfoParser
 {
+	FMapInfoParser(FScanner* parent)
+		: sc(parent ? &parent->GetSymbols() : nullptr)
+	{
+	}
 	enum EFormatType
 	{
 		FMT_Unknown,
@@ -95,6 +103,8 @@ struct FMapInfoParser
 
 	bool ParseLookupName(FString &dest);
 	void ParseMusic(FString &name, int &order);
+	void ParseCutscene(CutsceneDef& cdef);
+
 	//void ParseLumpOrTextureName(char *name);
 	void ParseLumpOrTextureName(FString &name);
 	void ParseExitText(FName formap, level_info_t *info);
@@ -385,7 +395,7 @@ struct level_info_t
 
 	TArray<FSpecialAction> specialactions;
 
-	TArray<int> PrecacheSounds;
+	TArray<FSoundID> PrecacheSounds;
 	TArray<FString> PrecacheTextures;
 	TArray<FName> PrecacheClasses;
 	
@@ -401,6 +411,10 @@ struct level_info_t
 	FString		EDName;
 	FString		acsName;
 	bool		fs_nocheckposition;
+	ELightBlendMode lightblendmode;
+	ETonemapMode tonemap;
+	
+	CutsceneDef intro, outro;
 
 
 	level_info_t() 
@@ -430,6 +444,9 @@ struct cluster_info_t
 	FString		ExitText;
 	FString		EnterText;
 	FString		MessageMusic;
+	CutsceneDef intro;		// plays when entering this cluster, aside from starting a new game
+	CutsceneDef outro;		// plays when leaving this cluster
+	CutsceneDef gameover;	// when defined, plays when the player dies in this cluster
 	int			musicorder;
 	int			flags;
 	int			cdtrack;
@@ -571,6 +588,7 @@ struct FEpisode
 	FString mPicName;
 	char mShortcut;
 	bool mNoSkill;
+	CutsceneDef mIntro;
 };
 
 extern TArray<FEpisode> AllEpisodes;

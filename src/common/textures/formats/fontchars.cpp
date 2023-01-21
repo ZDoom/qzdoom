@@ -66,7 +66,7 @@ FFontChar2::FFontChar2(int sourcelump, int sourcepos, int width, int height, int
 //
 //==========================================================================
 
-TArray<uint8_t> FFontChar2::CreatePalettedPixels(int)
+PalettedPixels FFontChar2::CreatePalettedPixels(int)
 {
 	auto lump = fileSystem.OpenFileReader(SourceLump);
 	int destSize = Width * Height;
@@ -96,7 +96,7 @@ TArray<uint8_t> FFontChar2::CreatePalettedPixels(int)
 		}
 	}
 
-	TArray<uint8_t> Pixels(destSize, true);
+	PalettedPixels Pixels(destSize);
 
 	int runlen = 0, setlen = 0;
 	uint8_t setval = 0;  // Shut up, GCC!
@@ -113,7 +113,7 @@ TArray<uint8_t> FFontChar2::CreatePalettedPixels(int)
 				if (runlen != 0)
 				{
 					uint8_t color = lump.ReadUInt8();
-					color = MIN(color, max);
+					color = min(color, max);
 					*dest_p = color;
 					dest_p += dest_adv;
 					x--;
@@ -137,7 +137,7 @@ TArray<uint8_t> FFontChar2::CreatePalettedPixels(int)
 					{
 						uint8_t color = lump.ReadUInt8();
 						setlen = (-code) + 1;
-						setval = MIN(color, max);
+						setval = min(color, max);
 					}
 				}
 			}

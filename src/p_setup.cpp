@@ -30,7 +30,7 @@
 #include <malloc.h>		// for alloca()
 #endif
 
-#include "templates.h"
+
 #include "d_player.h"
 #include "m_argv.h"
 #include "g_game.h"
@@ -102,11 +102,11 @@ static void AddToList(uint8_t *hitlist, FTextureID texid, int bitmask)
 
 	const auto addAnimations = [hitlist, bitmask](const FTextureID texid)
 	{
-		for (auto anim : TexAnim.GetAnimations())
+		for (auto& anim : TexAnim.GetAnimations())
 		{
-			if (texid == anim->BasePic || (!anim->bDiscrete && anim->BasePic < texid && texid < anim->BasePic + anim->NumFrames))
+			if (texid == anim.BasePic || (!anim.bDiscrete && anim.BasePic < texid && texid < anim.BasePic + anim.NumFrames))
 			{
-				for (int i = anim->BasePic.GetIndex(); i < anim->BasePic.GetIndex() + anim->NumFrames; i++)
+				for (int i = anim.BasePic.GetIndex(); i < anim.BasePic.GetIndex() + anim.NumFrames; i++)
 				{
 					hitlist[i] |= (uint8_t)bitmask;
 				}
@@ -279,7 +279,7 @@ void FLevelLocals::ClearPortals()
 //
 //==========================================================================
 
-void FLevelLocals::ClearLevelData()
+void FLevelLocals::ClearLevelData(bool fullgc)
 {
 	{
 		auto it = GetThinkerIterator<AActor>(NAME_None, STAT_TRAVELLING);
@@ -291,7 +291,7 @@ void FLevelLocals::ClearLevelData()
 	}
 	
 	interpolator.ClearInterpolations();	// [RH] Nothing to interpolate on a fresh level.
-	Thinkers.DestroyAllThinkers();
+	Thinkers.DestroyAllThinkers(fullgc);
 	ClearAllSubsectorLinks(); // can't be done as part of the polyobj deletion process.
 
 	total_monsters = total_items = total_secrets =
@@ -372,7 +372,9 @@ void FLevelLocals::ClearLevelData()
 	Behaviors.UnloadModules();
 	localEventManager->Shutdown();
 	if (aabbTree) delete aabbTree;
+	if (levelMesh) delete levelMesh;
 	aabbTree = nullptr;
+	levelMesh = nullptr;
 	if (screen)
 		screen->SetAABBTree(nullptr);
 }
@@ -383,13 +385,13 @@ void FLevelLocals::ClearLevelData()
 //
 //==========================================================================
 
-void P_FreeLevelData ()
+void P_FreeLevelData (bool fullgc)
 {
 	R_FreePastViewers();
 
 	for (auto Level : AllLevels())
 	{
-		Level->ClearLevelData();
+		Level->ClearLevelData(fullgc);
 	}
 	// primaryLevel->FreeSecondaryLevels();
 }

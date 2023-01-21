@@ -54,6 +54,7 @@
 #include "a_morph.h"
 #include "g_levellocals.h"
 #include "vm.h"
+#include "d_main.h"
 
 uint8_t globalfreeze, globalchangefreeze;	// user's freeze state.
 
@@ -165,7 +166,7 @@ void cht_DoCheat (player_t *player, int cheat)
 		else
 		{
 			player->cheats &= ~CF_NOCLIP;
-			msg = GStrings("STSTR_NCOFF");
+			msg = GStrings("STSTR_NC2OFF");
 		}
 		if (player->mo->Vel.X == 0) player->mo->Vel.X = MinVel;	// force some lateral movement so that internal variables are up to date
 		break;

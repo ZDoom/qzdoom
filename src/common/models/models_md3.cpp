@@ -6,7 +6,7 @@
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
+// the Free Software Foundation, either version 2 of the License, or
 // (at your option) any later version.
 //
 // This program is distributed in the hope that it will be useful,
@@ -133,7 +133,8 @@ bool FMD3Model::Load(const char * path, int lumpnum, const char * buffer, int le
 
 	auto numFrames = LittleLong(hdr->Num_Frames);
 	auto numSurfaces = LittleLong(hdr->Num_Surfaces);
-	
+	hasSurfaces = numSurfaces > 1;
+
 	numTags = LittleLong(hdr->Num_Tags);
 
 	md3_frame_t * frm = (md3_frame_t*)(buffer + LittleLong(hdr->Ofs_Frames));
@@ -141,7 +142,7 @@ bool FMD3Model::Load(const char * path, int lumpnum, const char * buffer, int le
 	Frames.Resize(numFrames);
 	for (unsigned i = 0; i < numFrames; i++)
 	{
-		strncpy(Frames[i].Name, frm[i].Name, 16);
+		strncpy(Frames[i].Name, frm[i].Name, 15);
 		for (int j = 0; j < 3; j++) Frames[i].origin[j] = frm[i].localorigin[j];
 	}
 
@@ -164,15 +165,15 @@ bool FMD3Model::Load(const char * path, int lumpnum, const char * buffer, int le
 		md3_shader_t * shader = (md3_shader_t*)(((char*)ss) + LittleLong(ss->Ofs_Shaders));
 		s->Skins.Resize(s->numSkins);
 
-		for (unsigned i = 0; i < s->numSkins; i++)
+		for (unsigned ii = 0; ii < s->numSkins; ii++)
 		{
 			// [BB] According to the MD3 spec, Name is supposed to include the full path.
 			// ... and since some tools seem to output backslashes, these need to be replaced with forward slashes to work.
-			FixPathSeperator(shader[i].Name);
-			s->Skins[i] = LoadSkin("", shader[i].Name);
+			FixPathSeperator(shader[ii].Name);
+			s->Skins[ii] = LoadSkin("", shader[ii].Name);
 			// [BB] Fall back and check if Name is relative.
-			if (!s->Skins[i].isValid())
-				s->Skins[i] = LoadSkin(path, shader[i].Name);
+			if (!s->Skins[ii].isValid())
+				s->Skins[ii] = LoadSkin(path, shader[ii].Name);
 		}
 	}
 	mLumpNum = lumpnum;
@@ -203,31 +204,31 @@ void FMD3Model::LoadGeometry()
 		md3_triangle_t * tris = (md3_triangle_t*)(((char*)ss) + LittleLong(ss->Ofs_Triangles));
 		s->Tris.Resize(s->numTriangles);
 
-		for (unsigned i = 0; i < s->numTriangles; i++) for (int j = 0; j < 3; j++)
+		for (unsigned ii = 0; ii < s->numTriangles; ii++) for (int j = 0; j < 3; j++)
 		{
-			s->Tris[i].VertIndex[j] = LittleLong(tris[i].vt_index[j]);
+			s->Tris[ii].VertIndex[j] = LittleLong(tris[ii].vt_index[j]);
 		}
 
 		// Load texture coordinates
 		md3_texcoord_t * tc = (md3_texcoord_t*)(((char*)ss) + LittleLong(ss->Ofs_Texcoord));
 		s->Texcoords.Resize(s->numVertices);
 
-		for (unsigned i = 0; i < s->numVertices; i++)
+		for (unsigned ii = 0; ii < s->numVertices; ii++)
 		{
-			s->Texcoords[i].s = tc[i].s;
-			s->Texcoords[i].t = tc[i].t;
+			s->Texcoords[ii].s = tc[ii].s;
+			s->Texcoords[ii].t = tc[ii].t;
 		}
 
 		// Load vertices and texture coordinates
 		md3_vertex_t * vt = (md3_vertex_t*)(((char*)ss) + LittleLong(ss->Ofs_XYZNormal));
 		s->Vertices.Resize(s->numVertices * Frames.Size());
 
-		for (unsigned i = 0; i < s->numVertices * Frames.Size(); i++)
+		for (unsigned ii = 0; ii < s->numVertices * Frames.Size(); ii++)
 		{
-			s->Vertices[i].x = LittleShort(vt[i].x) / 64.f;
-			s->Vertices[i].y = LittleShort(vt[i].y) / 64.f;
-			s->Vertices[i].z = LittleShort(vt[i].z) / 64.f;
-			UnpackVector(LittleShort(vt[i].n), s->Vertices[i].nx, s->Vertices[i].ny, s->Vertices[i].nz);
+			s->Vertices[ii].x = LittleShort(vt[ii].x) / 64.f;
+			s->Vertices[ii].y = LittleShort(vt[ii].y) / 64.f;
+			s->Vertices[ii].z = LittleShort(vt[ii].z) / 64.f;
+			UnpackVector(LittleShort(vt[ii].n), s->Vertices[ii].nx, s->Vertices[ii].ny, s->Vertices[ii].nz);
 		}
 	}
 }
@@ -302,14 +303,13 @@ void FMD3Model::BuildVertexBuffer(FModelRenderer *renderer)
 //
 //===========================================================================
 
-void FMD3Model::AddSkins(uint8_t *hitlist)
+void FMD3Model::AddSkins(uint8_t *hitlist, const FTextureID* surfaceskinids)
 {
 	for (unsigned i = 0; i < Surfaces.Size(); i++)
 	{
-		int ssIndex = i + curMDLIndex * MD3_MAX_SURFACES;
-		if (curSpriteMDLFrame && curSpriteMDLFrame->surfaceskinIDs[ssIndex].isValid())
+		if (surfaceskinids && surfaceskinids[i].isValid())
 		{
-			hitlist[curSpriteMDLFrame->surfaceskinIDs[ssIndex].GetIndex()] |= FTextureManager::HIT_Flat;
+			hitlist[surfaceskinids[i].GetIndex()] |= FTextureManager::HIT_Flat;
 		}
 
 		MD3Surface * surf = &Surfaces[i];
@@ -329,13 +329,13 @@ void FMD3Model::AddSkins(uint8_t *hitlist)
 //
 //===========================================================================
 
-int FMD3Model::FindFrame(const char * name)
+int FMD3Model::FindFrame(const char* name, bool nodefault)
 {
 	for (unsigned i = 0; i < Frames.Size(); i++)
 	{
 		if (!stricmp(name, Frames[i].Name)) return i;
 	}
-	return -1;
+	return FErr_NotFound;
 }
 
 //===========================================================================
@@ -344,7 +344,7 @@ int FMD3Model::FindFrame(const char * name)
 //
 //===========================================================================
 
-void FMD3Model::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frameno, int frameno2, double inter, int translation)
+void FMD3Model::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frameno, int frameno2, double inter, int translation, const FTextureID* surfaceskinids, const TArray<VSMatrix>& boneData, int boneStartPosition)
 {
 	if ((unsigned)frameno >= Frames.Size() || (unsigned)frameno2 >= Frames.Size()) return;
 
@@ -358,17 +358,13 @@ void FMD3Model::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int f
 		FGameTexture *surfaceSkin = skin;
 		if (!surfaceSkin)
 		{
-			if (curSpriteMDLFrame)
+			if (surfaceskinids && surfaceskinids[i].isValid())
 			{
-				int ssIndex = i + curMDLIndex * MD3_MAX_SURFACES;
-				if (curSpriteMDLFrame->surfaceskinIDs[ssIndex].isValid())
-				{
-					surfaceSkin = TexMan.GetGameTexture(curSpriteMDLFrame->surfaceskinIDs[ssIndex], true);
-				}
-				else if (surf->numSkins > 0 && surf->Skins[0].isValid())
-				{
-					surfaceSkin = TexMan.GetGameTexture(surf->Skins[0], true);
-				}
+				surfaceSkin = TexMan.GetGameTexture(surfaceskinids[i], true);
+			}
+			else if (surf->numSkins > 0 && surf->Skins[0].isValid())
+			{
+				surfaceSkin = TexMan.GetGameTexture(surf->Skins[0], true);
 			}
 
 			if (!surfaceSkin)
@@ -378,7 +374,7 @@ void FMD3Model::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int f
 		}
 
 		renderer->SetMaterial(surfaceSkin, false, translation);
-		renderer->SetupFrame(this, surf->vindex + frameno * surf->numVertices, surf->vindex + frameno2 * surf->numVertices, surf->numVertices);
+		renderer->SetupFrame(this, surf->vindex + frameno * surf->numVertices, surf->vindex + frameno2 * surf->numVertices, surf->numVertices, {}, -1);
 		renderer->DrawElements(surf->numTriangles * 3, surf->iindex * sizeof(unsigned int));
 	}
 	renderer->SetInterpolation(0.f);

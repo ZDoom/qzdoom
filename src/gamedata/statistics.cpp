@@ -561,6 +561,12 @@ void STAT_Serialize(FSerializer &arc)
 }
 
 
+FString STAT_EpisodeName()
+{
+	if (StartEpisode == nullptr) return "";
+	return StartEpisode->mEpisodeName;
+}
+
 //==========================================================================
 //
 // show statistics
@@ -589,7 +595,7 @@ CCMD(printstats)
 
 CCMD(finishgame)
 {
-	bool gamestatecheck = gamestate == GS_LEVEL || gamestate == GS_INTERMISSION || gamestate == GS_FINALE;
+	bool gamestatecheck = gamestate == GS_LEVEL || gamestate == GS_CUTSCENE;
 	if (!gamestatecheck)
 	{
 		Printf("Cannot use 'finishgame' while not in a game!\n");

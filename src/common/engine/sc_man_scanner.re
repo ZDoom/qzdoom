@@ -102,14 +102,14 @@ std2:
 		":"							{ RET(':'); }
 		";"							{ RET(';'); }
 		"}"							{ StateMode = 0; StateOptions = false; RET('}'); }
-		
+
 		WSP+						{ goto std1; }
 		"\n"						{ goto newline; }
-		
+
 		TOKS = (NWS\[/":;}]);
 		TOKS* ([/] (TOKS\[*]) TOKS*)*
 									{ RET(TK_NonWhitespace); }
-		
+
 	*/
 	}
 	else if (tokens)	// A well-defined scanner, based on the c.re example.
@@ -167,6 +167,7 @@ std2:
 		'vector2'					{ RET(TK_Vector2); }
 		'vector3'					{ RET(TK_Vector3); }
 		'map'						{ RET(TK_Map); }
+		'mapiterator'				{ RET(TK_MapIterator); }
 		'array'						{ RET(TK_Array); }
 		'in'						{ RET(TK_In); }
 		'sizeof'					{ RET(TK_SizeOf); }
@@ -174,7 +175,7 @@ std2:
 
 		/* Other keywords from UnrealScript */
 		'abstract'					{ RET(TK_Abstract); }
-		'foreach'					{ RET(TK_ForEach); }
+		'foreach'					{ RET(ParseVersion >= MakeVersion(4, 10, 0)? TK_ForEach : TK_Identifier); }
 		'true'						{ RET(TK_True); }
 		'false'						{ RET(TK_False); }
 		'none'						{ RET(TK_None); }
@@ -202,6 +203,7 @@ std2:
 		'super'						{ RET(ParseVersion >= MakeVersion(1, 0, 0)? TK_Super : TK_Identifier); }
 		'stop'						{ RET(TK_Stop); }
 		'null'						{ RET(TK_Null); }
+		'nullptr'					{ RET(ParseVersion >= MakeVersion(4, 9, 0)? TK_Null : TK_Identifier); }
 
 		'is'						{ RET(ParseVersion >= MakeVersion(1, 0, 0)? TK_Is : TK_Identifier); }
 		'replaces'					{ RET(ParseVersion >= MakeVersion(1, 0, 0)? TK_Replaces : TK_Identifier); }
@@ -222,7 +224,7 @@ std2:
 		'canraise'					{ RET(StateOptions ? TK_CanRaise : TK_Identifier); }
 		'offset'					{ RET(StateOptions ? TK_Offset : TK_Identifier); }
 		'light'						{ RET(StateOptions ? TK_Light : TK_Identifier); }
-		
+
 		/* other DECORATE top level keywords */
 		'#include'					{ RET(TK_Include); }
 

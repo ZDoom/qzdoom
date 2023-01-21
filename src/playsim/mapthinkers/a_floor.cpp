@@ -40,6 +40,8 @@
 #include "r_data/r_interpolate.h"
 #include "g_levellocals.h"
 #include "vm.h"
+#include "r_utility.h"
+#include "actorinlines.h"
 
 //==========================================================================
 //
@@ -661,6 +663,8 @@ bool FLevelLocals::EV_BuildStairs (int tag, DFloor::EStair type, line_t *line, d
 		// 1. Find 2-sided line with same sector side[0] (lowest numbered)
 		// 2. Other side is the next sector to raise
 		// 3. Unless already moving, or different texture, then stop building
+		validcount++;
+		sec->validcount = validcount;
 		do
 		{
 			ok = 0;
@@ -668,12 +672,13 @@ bool FLevelLocals::EV_BuildStairs (int tag, DFloor::EStair type, line_t *line, d
 			if (usespecials & DFloor::stairUseSpecials)
 			{
 				// [RH] Find the next sector by scanning for Stairs_Special?
-				tsec = sec->NextSpecialSector (
+				tsec = P_NextSpecialSectorVC(sec,
 						sec->special == Stairs_Special1 ?
-							Stairs_Special2 : Stairs_Special1, prev);
+							Stairs_Special2 : Stairs_Special1);
 
-				if ( (ok = (tsec != NULL)) )
+				if ( (ok = (tsec != nullptr)) )
 				{
+					tsec->validcount = validcount;
 					height += stairstep;
 
 					// if sector's floor already moving, look for another
@@ -806,13 +811,12 @@ bool FLevelLocals::EV_DoDonut (int tag, line_t *line, double pillarspeed, double
 		if (!s2)								// note lowest numbered line around
 			continue;							// pillar must be two-sided
 
-		if (s2->PlaneMoving(sector_t::floor))
+		if (!(compatflags2 & COMPATF2_FLOORMOVE) && s2->PlaneMoving(sector_t::floor))
 			continue;
 
 		for (auto ln : s2->Lines)
 		{
-			if (!(ln->flags & ML_TWOSIDED) ||
-				(ln->backsector == s1))
+			if (ln->backsector == nullptr || ln->backsector == s1)
 				continue;
 			s3 = ln->backsector;
 			

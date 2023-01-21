@@ -41,15 +41,13 @@
 #include "c_dispatch.h"
 #include "configfile.h"
 #include "filesystem.h"
-#include "templates.h"
+
 #include "i_time.h"
 #include "printf.h"
 #include "sc_man.h"
 #include "c_cvars.h"
 
 #include "d_eventbase.h"
-
-extern int chatmodeon;
 
 const char *KeyNames[NUM_KEYS] =
 {
@@ -69,7 +67,7 @@ const char *KeyNames[NUM_KEYS] =
 	"KP2",		"KP3",		"KP0",		"KP.",		nullptr,	nullptr,	"OEM102",	"F11",		//50
 	"F12",		nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	//58
 	nullptr,	nullptr,	nullptr,	nullptr,	"F13",		"F14",		"F15",		"F16",		//60
-	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	//68
+	"F17",	  "F18",  	"F19",  	"F20",	  "F21",	  "F22",	  "F23",	  "F24",  	//68
 	"Kana",		nullptr,	nullptr,	"Abnt_C1",	nullptr,	nullptr,	nullptr,	nullptr,	//70
 	nullptr,	"Convert",	nullptr,	"NoConvert",nullptr,	"Yen",		"Abnt_C2",	nullptr,	//78
 	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	nullptr,	//80
@@ -393,7 +391,7 @@ void FKeyBindings::PerformBind(FCommandLine &argv, const char *msg)
 	else
 	{
 		Printf ("%s:\n", msg);
-		
+
 		for (i = 0; i < NUM_KEYS; i++)
 		{
 			if (!Binds[i].IsEmpty())
@@ -686,6 +684,17 @@ void ReadBindings(int lump, bool override)
 		FKeyBindings* dest = &Bindings;
 		int key;
 
+		if (sc.Compare("unbind"))
+		{
+			sc.MustGetString();
+			if (override)
+			{
+				// This is only for games to clear unsuitable base defaults, not for mods.
+				dest->UnbindKey(sc.String);
+			}
+			continue;
+		}
+
 		// bind destination is optional and is the same as the console command
 		if (sc.Compare("bind"))
 		{
@@ -722,7 +731,18 @@ void ReadBindings(int lump, bool override)
 void C_SetDefaultKeys(const char* baseconfig)
 {
 	auto lump = fileSystem.CheckNumForFullName("engine/commonbinds.txt");
-	if (lump >= 0) ReadBindings(lump, true);
+	if (lump >= 0)
+	{
+		// Bail out if a mod tries to override this. Main game resources are allowed to do this, though.
+		auto fileno2 = fileSystem.GetFileContainer(lump);
+		if (fileno2 > fileSystem.GetMaxIwadNum())
+		{
+			I_FatalError("File %s is overriding core lump %s.",
+				fileSystem.GetResourceFileFullName(fileno2), "engine/commonbinds.txt");
+		}
+
+		ReadBindings(lump, true);
+	}
 	int lastlump = 0;
 
 	while ((lump = fileSystem.FindLumpFullName(baseconfig, &lastlump)) != -1)

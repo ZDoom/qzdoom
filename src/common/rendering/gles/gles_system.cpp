@@ -9,12 +9,14 @@ CVAR(Bool, gles_use_mapped_buffer, false, 0);
 CVAR(Bool, gles_force_glsl_v100, false, 0);
 CVAR(Int, gles_max_lights_per_surface, 32, 0);
 EXTERN_CVAR(Bool, gl_customshader);
+void setGlVersion(double glv);
 
 
 #if USE_GLES2
 
 PFNGLMAPBUFFERRANGEEXTPROC glMapBufferRange = NULL;
 PFNGLUNMAPBUFFEROESPROC glUnmapBuffer = NULL;
+PFNGLVERTEXATTRIBIPOINTERPROC glVertexAttribIPointer = NULL;
 
 #ifdef __ANDROID__
 #include <dlfcn.h>
@@ -62,15 +64,15 @@ static PROC(WINAPI* getprocaddress)(LPCSTR name);
 
 static void* LoadGLES2Proc(const char* name)
 {
-
 	HINSTANCE hGetProcIDDLL = LoadLibraryA("libGLESv2.dll");
-	
+
 	int error =	GetLastError();
 
 	void* addr = GetProcAddress(hGetProcIDDLL, name);
 	if (!addr)
 	{
 		//exit(1);
+		return nullptr;
 	}
 	else
 	{
@@ -133,7 +135,7 @@ namespace OpenGLESRenderer
 
 		glMapBufferRange = (PFNGLMAPBUFFERRANGEEXTPROC)LoadGLES2Proc("glMapBufferRange");
 		glUnmapBuffer = (PFNGLUNMAPBUFFEROESPROC)LoadGLES2Proc("glUnmapBuffer");
-
+		glVertexAttribIPointer = (PFNGLVERTEXATTRIBIPOINTERPROC)LoadGLES2Proc("glVertexAttribIPointer");
 #else
 		static bool first = true;
 
@@ -169,25 +171,38 @@ namespace OpenGLESRenderer
 
 		gles.modelstring = (char*)glGetString(GL_RENDERER);
 		gles.vendorstring = (char*)glGetString(GL_VENDOR);
-	
+
 		gl_customshader = false;
 
 		GLint maxTextureSize[1];
 		glGetIntegerv(GL_MAX_TEXTURE_SIZE, maxTextureSize);
 
 		gles.max_texturesize = maxTextureSize[0];
-		
+
 		Printf("GL_MAX_TEXTURE_SIZE: %d\n", gles.max_texturesize);
 
 #if USE_GLES2
+		gles.gles3Features = false; // Enales IQM bones
+		gles.shaderVersionString = "100";
+
 		gles.depthStencilAvailable = CheckExtension("GL_OES_packed_depth_stencil");
 		gles.npotAvailable = CheckExtension("GL_OES_texture_npot");
+		gles.depthClampAvailable = CheckExtension("GL_EXT_depth_clamp");
+		gles.anistropicFilterAvailable = CheckExtension("GL_EXT_texture_filter_anisotropic");
 #else
+		gles.gles3Features = true;
+		gles.shaderVersionString = "330";
 		gles.depthStencilAvailable = true;
 		gles.npotAvailable = true;
 		gles.useMappedBuffers = true;
+		gles.depthClampAvailable = true;
+		gles.anistropicFilterAvailable = true;
 #endif
-		
+
 		gles.numlightvectors = (gles.maxlights * LIGHT_VEC4_NUM);
+
+		const char* glversion = (const char*)glGetString(GL_VERSION);
+		setGlVersion( strtod(glversion, NULL));
+
 	}
 }

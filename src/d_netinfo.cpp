@@ -63,11 +63,13 @@ CVAR (Int,		team,					TEAM_NONE,	CVAR_USERINFO | CVAR_ARCHIVE);
 CVAR (String,	gender,					"male",		CVAR_USERINFO | CVAR_ARCHIVE);
 CVAR (Bool,		neverswitchonpickup,	false,		CVAR_USERINFO | CVAR_ARCHIVE);
 CVAR (Float,	movebob,				0.25f,		CVAR_USERINFO | CVAR_ARCHIVE);
+CVAR (Bool,		fviewbob,               true,       CVAR_USERINFO | CVAR_ARCHIVE);
 CVAR (Float,	stillbob,				0.f,		CVAR_USERINFO | CVAR_ARCHIVE);
 CVAR (Float,	wbobspeed,				1.f,		CVAR_USERINFO | CVAR_ARCHIVE);
 CVAR (Float,	wbobfire,				0.f,		CVAR_USERINFO | CVAR_ARCHIVE);
 CVAR (String,	playerclass,			"Fighter",	CVAR_USERINFO | CVAR_ARCHIVE);
 CVAR (Bool,		classicflight,			false,		CVAR_USERINFO | CVAR_ARCHIVE);
+CVAR (Bool,		vertspread,				false,		CVAR_USERINFO | CVAR_ARCHIVE);
 
 enum
 {
@@ -79,12 +81,14 @@ enum
 	INFO_Gender,
 	INFO_NeverSwitchOnPickup,
 	INFO_MoveBob,
+	INFO_FViewBob,
 	INFO_StillBob,
 	INFO_WBobSpeed,
 	INFO_WBobFire,
 	INFO_PlayerClass,
 	INFO_ColorSet,
 	INFO_ClassicFlight,
+	INFO_VertSpread,
 };
 
 const char *GenderNames[GENDER_MAX] = { "male", "female", "neutral", "other" };
@@ -394,8 +398,11 @@ void D_SetupUserInfo ()
 	// Initialize the console player's user info
 	coninfo = &players[consoleplayer].userinfo;
 
-	for (FBaseCVar *cvar = CVars; cvar != NULL; cvar = cvar->GetNext())
+	decltype(cvarMap)::Iterator it(cvarMap);
+	decltype(cvarMap)::Pair *pair;
+	while (it.NextPair(pair))
 	{
+		auto cvar = pair->Value;
 		if ((cvar->GetFlags() & (CVAR_USERINFO|CVAR_IGNORE)) == CVAR_USERINFO)
 		{
 			FBaseCVar **newcvar;
@@ -432,8 +439,11 @@ void userinfo_t::Reset()
 	Clear();
 
 	// Create userinfo vars for this player, initialized to their defaults.
-	for (FBaseCVar *cvar = CVars; cvar != NULL; cvar = cvar->GetNext())
+	decltype(cvarMap)::Iterator it2(cvarMap);
+	decltype(cvarMap)::Pair *pair2;
+	while (it2.NextPair(pair2))
 	{
+		auto cvar = pair2->Value;
 		if ((cvar->GetFlags() & (CVAR_USERINFO|CVAR_IGNORE)) == CVAR_USERINFO)
 		{
 			ECVarType type;
@@ -526,7 +536,8 @@ void D_UserInfoChanged (FBaseCVar *cvar)
 	FString escaped_val;
 	char foo[256];
 
-	if (cvar == &autoaim)
+#if 0
+	if (cvar == autoaim->get())
 	{
 		if (autoaim < 0.0f)
 		{
@@ -539,6 +550,7 @@ void D_UserInfoChanged (FBaseCVar *cvar)
 			return;
 		}
 	}
+#endif
 
 	val = cvar->GetGenericRep (CVAR_String);
 	escaped_val = D_EscapeUserInfo(val.String);
@@ -602,7 +614,8 @@ static const char *SetServerVar (char *name, ECVarType type, uint8_t **stream, b
 		delete[] value.String;
 	}
 
-	if (var == &teamplay)
+#if 0
+	if (var == teamplay->get())
 	{
 		// Put players on teams if teamplay turned on
 		for (int i = 0; i < MAXPLAYERS; ++i)
@@ -613,6 +626,7 @@ static const char *SetServerVar (char *name, ECVarType type, uint8_t **stream, b
 			}
 		}
 	}
+#endif
 
 	if (var)
 	{

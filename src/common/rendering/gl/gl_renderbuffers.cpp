@@ -30,7 +30,7 @@
 #include "gl_postprocessstate.h"
 #include "gl_shaderprogram.h"
 #include "gl_buffers.h"
-#include "templates.h"
+
 #include <random>
 
 EXTERN_CVAR(Int, gl_debug_level)
@@ -87,6 +87,7 @@ void FGLRenderBuffers::ClearScene()
 
 void FGLRenderBuffers::ClearPipeline()
 {
+	DeleteRenderBuffer(mPipelineDepthStencilBuf);
 	for (int i = 0; i < NumPipelineTextures; i++)
 	{
 		DeleteFrameBuffer(mPipelineFB[i]);
@@ -239,10 +240,11 @@ void FGLRenderBuffers::CreatePipeline(int width, int height)
 	ClearPipeline();
 	ClearEyeBuffers();
 
+	mPipelineDepthStencilBuf = CreateRenderBuffer("PipelineDepthStencil", GL_DEPTH24_STENCIL8, width, height);
 	for (int i = 0; i < NumPipelineTextures; i++)
 	{
 		mPipelineTexture[i] = Create2DTexture("PipelineTexture", GL_RGBA16F, width, height);
-		mPipelineFB[i] = CreateFrameBuffer("PipelineFB", mPipelineTexture[i]);
+		mPipelineFB[i] = CreateFrameBuffer("PipelineFB", mPipelineTexture[i], mPipelineDepthStencilBuf);
 	}
 }
 
@@ -443,8 +445,6 @@ bool FGLRenderBuffers::CheckFrameBufferCompleteness()
 	GLenum result = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (result == GL_FRAMEBUFFER_COMPLETE)
 		return true;
-
-	bool FailedCreate = true;
 
 	if (gl_debug_level > 0)
 	{

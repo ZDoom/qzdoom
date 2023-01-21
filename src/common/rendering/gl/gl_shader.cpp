@@ -6,7 +6,7 @@
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
+// the Free Software Foundation, either version 2 of the License, or
 // (at your option) any later version.
 //
 // This program is distributed in the hope that it will be useful,
@@ -38,6 +38,7 @@
 #include "shaderuniforms.h"
 #include "hw_viewpointuniforms.h"
 #include "hw_lightbuffer.h"
+#include "hw_bonebuffer.h"
 #include "i_specialpaths.h"
 #include "printf.h"
 #include "version.h"
@@ -234,6 +235,8 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 			float uClipHeight;
 			float uClipHeightDirection;
 			int uShadowmapFilter;
+			
+			int uLightBlendMode;
 		};
 
 		uniform int uTextureMode;
@@ -276,6 +279,9 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 		// dynamic lights
 		uniform int uLightIndex;
 
+		// bone animation
+		uniform int uBoneIndexBase;
+
 		// Blinn glossiness and specular level
 		uniform vec2 uSpecularMaterial;
 
@@ -297,9 +303,23 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 		};
 		#endif
 
+		// bone matrix buffers
+		#ifdef SHADER_STORAGE_BONES
+		layout(std430, binding = 7) buffer BoneBufferSSO
+		{
+			mat4 bones[];
+		};
+		#elif defined NUM_UBO_BONES
+		uniform BoneBufferUBO
+		{
+			mat4 bones[NUM_UBO_BONES];
+		};
+		#endif
+
 		// textures
 		uniform sampler2D tex;
 		uniform sampler2D ShadowMap;
+		uniform sampler2DArray LightMap;
 		uniform sampler2D texture2;
 		uniform sampler2D texture3;
 		uniform sampler2D texture4;
@@ -310,6 +330,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 		uniform sampler2D texture9;
 		uniform sampler2D texture10;
 		uniform sampler2D texture11;
+		uniform sampler2D texture12;
 
 		// timer data
 		uniform float timer;
@@ -336,7 +357,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 		#endif
 
 	)";
-	
+
 
 #ifdef __APPLE__
 	// The noise functions are completely broken in macOS OpenGL drivers
@@ -368,20 +389,21 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	FString vp_comb;
 
 	assert(screen->mLights != NULL);
+	assert(screen->mBones != NULL);
 
 	bool lightbuffertype = screen->mLights->GetBufferType();
 	unsigned int lightbuffersize = screen->mLights->GetBlockSize();
 	if (!lightbuffertype)
 	{
-		vp_comb.Format("#version 330 core\n#define NUM_UBO_LIGHTS %d\n", lightbuffersize);
+		vp_comb.Format("#version 330 core\n#define NUM_UBO_LIGHTS %d\n#define NUM_UBO_BONES %d\n", lightbuffersize, screen->mBones->GetBlockSize());
 	}
 	else
 	{
 		// This differentiation is for Intel which do not seem to expose the full extension, even if marked as required.
 		if (gl.glslversion < 4.3f)
-			vp_comb = "#version 400 core\n#extension GL_ARB_shader_storage_buffer_object : require\n#define SHADER_STORAGE_LIGHTS\n";
+			vp_comb = "#version 400 core\n#extension GL_ARB_shader_storage_buffer_object : require\n#define SHADER_STORAGE_LIGHTS\n#define SHADER_STORAGE_BONES\n";
 		else
-			vp_comb = "#version 430 core\n#define SHADER_STORAGE_LIGHTS\n";
+			vp_comb = "#version 430 core\n#define SHADER_STORAGE_LIGHTS\n#define SHADER_STORAGE_BONES\n";
 	}
 
 	if ((gl.flags & RFL_SHADER_STORAGE_BUFFER) && screen->allowSSBO())
@@ -575,6 +597,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	muLightParms.Init(hShader, "uLightAttr");
 	muClipSplit.Init(hShader, "uClipSplit");
 	muLightIndex.Init(hShader, "uLightIndex");
+	muBoneIndexBase.Init(hShader, "uBoneIndexBase");
 	muFogColor.Init(hShader, "uFogColor");
 	muDynLightColor.Init(hShader, "uDynLightColor");
 	muObjectColor.Init(hShader, "uObjectColor");
@@ -609,6 +632,9 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	{
 		int tempindex = glGetUniformBlockIndex(hShader, "LightBufferUBO");
 		if (tempindex != -1) glUniformBlockBinding(hShader, tempindex, LIGHTBUF_BINDINGPOINT);
+
+		tempindex = glGetUniformBlockIndex(hShader, "BoneBufferUBO");
+		if (tempindex != -1) glUniformBlockBinding(hShader, tempindex, BONEBUF_BINDINGPOINT);
 	}
 	int tempindex = glGetUniformBlockIndex(hShader, "ViewpointUBO");
 	if (tempindex != -1) glUniformBlockBinding(hShader, tempindex, VIEWPOINT_BINDINGPOINT);
@@ -620,12 +646,15 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	{
 		char stringbuf[20];
 		mysnprintf(stringbuf, 20, "texture%d", i);
-		int tempindex = glGetUniformLocation(hShader, stringbuf);
-		if (tempindex > 0) glUniform1i(tempindex, i - 1);
+		tempindex = glGetUniformLocation(hShader, stringbuf);
+		if (tempindex != -1) glUniform1i(tempindex, i - 1);
 	}
 
 	int shadowmapindex = glGetUniformLocation(hShader, "ShadowMap");
-	if (shadowmapindex > 0) glUniform1i(shadowmapindex, 16);
+	if (shadowmapindex != -1) glUniform1i(shadowmapindex, 16);
+
+	int lightmapindex = glGetUniformLocation(hShader, "LightMap");
+	if (lightmapindex != -1) glUniform1i(lightmapindex, 17);
 
 	glUseProgram(0);
 	return linked;
@@ -668,7 +697,7 @@ bool FShader::Bind()
 FShader *FShaderCollection::Compile (const char *ShaderName, const char *ShaderPath, const char *LightModePath, const char *shaderdefines, bool usediscard, EPassType passType)
 {
 	FString defines;
-	defines += shaderdefines;
+	if (shaderdefines) defines += shaderdefines;
 	// this can't be in the shader code due to ATI strangeness.
 	if (!usediscard) defines += "#define NO_ALPHATEST\n";
 	if (passType == GBUFFER_PASS) defines += "#define GBUFFER_PASS\n";
@@ -703,6 +732,20 @@ FShaderManager::FShaderManager()
 		mPassShaders.Push(new FShaderCollection((EPassType)passType));
 }
 
+bool FShaderManager::CompileNextShader()
+{
+	if (mPassShaders[mCompilePass]->CompileNextShader())
+	{
+		mCompilePass++;
+		if (mCompilePass >= MAX_PASS_TYPES)
+		{
+			mCompilePass = -1;
+			return true;
+		}
+	}
+	return false;
+}
+
 FShaderManager::~FShaderManager()
 {
 	glUseProgram(0);
@@ -723,7 +766,7 @@ void FShaderManager::SetActiveShader(FShader *sh)
 
 FShader *FShaderManager::BindEffect(int effect, EPassType passType)
 {
-	if (passType < mPassShaders.Size())
+	if (passType < mPassShaders.Size() && mCompilePass == -1)
 		return mPassShaders[passType]->BindEffect(effect);
 	else
 		return nullptr;
@@ -731,7 +774,11 @@ FShader *FShaderManager::BindEffect(int effect, EPassType passType)
 
 FShader *FShaderManager::Get(unsigned int eff, bool alphateston, EPassType passType)
 {
-	if (r_skipmats && eff >= 3 && eff <= 4)
+	if (mCompilePass > -1)
+	{
+		return mPassShaders[0]->Get(0, false);
+	}
+	if ((r_skipmats && eff >= 3 && eff <= 4))
 		eff = 0;
 
 	if (passType < mPassShaders.Size())
@@ -748,7 +795,14 @@ FShader *FShaderManager::Get(unsigned int eff, bool alphateston, EPassType passT
 
 FShaderCollection::FShaderCollection(EPassType passType)
 {
-	CompileShaders(passType);
+	mPassType = passType;
+	mMaterialShaders.Clear();
+	mMaterialShadersNAT.Clear();
+	for (int i = 0; i < MAX_EFFECTS; i++)
+	{
+		mEffectShaders[i] = NULL;
+	}
+	CompileNextShader();
 }
 
 //==========================================================================
@@ -768,35 +822,47 @@ FShaderCollection::~FShaderCollection()
 //
 //==========================================================================
 
-void FShaderCollection::CompileShaders(EPassType passType)
+bool FShaderCollection::CompileNextShader()
 {
-	mMaterialShaders.Clear();
-	mMaterialShadersNAT.Clear();
-	for (int i = 0; i < MAX_EFFECTS; i++)
+	int i = mCompileIndex;
+	if (mCompileState == 0)
 	{
-		mEffectShaders[i] = NULL;
-	}
-
-	for(int i=0;defaultshaders[i].ShaderName != NULL;i++)
-	{
-		FShader *shc = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, defaultshaders[i].lightfunc, defaultshaders[i].Defines, true, passType);
+		FShader *shc = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, defaultshaders[i].lightfunc, defaultshaders[i].Defines, true, mPassType);
 		mMaterialShaders.Push(shc);
-		if (i < SHADER_NoTexture)
+		mCompileIndex++;
+		if (defaultshaders[mCompileIndex].ShaderName == nullptr)
 		{
-			FShader *shc = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, defaultshaders[i].lightfunc, defaultshaders[i].Defines, false, passType);
-			mMaterialShadersNAT.Push(shc);
+			mCompileIndex = 0;
+			mCompileState++;
+			
 		}
 	}
-
-	for(unsigned i = 0; i < usershaders.Size(); i++)
+	else if (mCompileState == 1)
+	{
+		FShader *shc1 = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, defaultshaders[i].lightfunc, defaultshaders[i].Defines, false, mPassType);
+		mMaterialShadersNAT.Push(shc1);
+		mCompileIndex++;
+		if (mCompileIndex >= SHADER_NoTexture)
+		{
+			mCompileIndex = 0;
+			mCompileState++;
+			if (usershaders.Size() == 0) mCompileState++;
+		}
+	}
+	else if (mCompileState == 2)
 	{
 		FString name = ExtractFileBase(usershaders[i].shader);
 		FString defines = defaultshaders[usershaders[i].shaderType].Defines + usershaders[i].defines;
-		FShader *shc = Compile(name, usershaders[i].shader, defaultshaders[usershaders[i].shaderType].lightfunc, defines, true, passType);
+		FShader *shc = Compile(name, usershaders[i].shader, defaultshaders[usershaders[i].shaderType].lightfunc, defines, true, mPassType);
 		mMaterialShaders.Push(shc);
+		mCompileIndex++;
+		if (mCompileIndex >= (int)usershaders.Size())
+		{
+			mCompileIndex = 0;
+			mCompileState++;
+		}
 	}
-
-	for(int i=0;i<MAX_EFFECTS;i++)
+	else if (mCompileState == 3)
 	{
 		FShader *eff = new FShader(effectshaders[i].ShaderName);
 		if (!eff->Load(effectshaders[i].ShaderName, effectshaders[i].vp, effectshaders[i].fp1,
@@ -805,7 +871,13 @@ void FShaderCollection::CompileShaders(EPassType passType)
 			delete eff;
 		}
 		else mEffectShaders[i] = eff;
+		mCompileIndex++;
+		if (mCompileIndex >= MAX_EFFECTS)
+		{
+			return true;
+		}
 	}
+	return false;
 }
 
 //==========================================================================

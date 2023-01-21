@@ -38,12 +38,13 @@
 #include "i_soundinternal.h"
 #include "cmdlib.h"
 #include "i_system.h"
-#include "gameconfigfile.h"
 #include "filereadermusicinterface.h"
 #include <zmusic.h>
 #include "resourcefile.h"
 #include "version.h"
 #include "findfile.h"
+#include "i_interface.h"
+#include "configfile.h"
 
 //==========================================================================
 //
@@ -140,7 +141,7 @@ FileReader FSoundFontReader::Open(const char *name, std::string& filename)
 ZMusicCustomReader* FSoundFontReader::open_interface(const char* name)
 {
 	std::string filename;
-	
+
 	FileReader fr = Open(name, filename);
 	if (!fr.isOpen()) return nullptr;
 	auto fri = GetMusicReader(fr);
@@ -194,6 +195,7 @@ FileReader FSF2Reader::OpenFile(const char *name)
 
 FZipPatReader::FZipPatReader(const char *filename)
 {
+	mAllowAbsolutePaths = true;
 	resf = FResourceFile::OpenResourceFile(filename, true);
 }
 
@@ -218,6 +220,7 @@ FileReader FZipPatReader::OpenFile(const char *name)
 			return lump->NewReader();
 		}
 	}
+	fr.OpenFile(name);
 	return fr;
 }
 
@@ -336,7 +339,7 @@ void FSoundFontManager::ProcessOneFile(const FString &fn)
 		// We already got a soundfont with this name. Do not add again.
 		if (!sfi.mName.CompareNoCase(fb)) return;
 	}
-	
+
 	FileReader fr;
 	if (fr.OpenFile(fn))
 	{
@@ -390,6 +393,7 @@ void FSoundFontManager::CollectSoundfonts()
 	findstate_t c_file;
 	void *file;
 
+	FConfigFile* GameConfig = sysCallbacks.GetConfig ? sysCallbacks.GetConfig() : nullptr;
 	if (GameConfig != NULL && GameConfig->SetSection ("SoundfontSearch.Directories"))
 	{
 		const char *key;
@@ -478,13 +482,6 @@ FSoundFontReader *FSoundFontManager::OpenSoundFont(const char *name, int allowed
 		}
 	}
 
-	auto sfi = FindSoundFont(name, allowed);
-	if (sfi != nullptr)
-	{
-		if (sfi->type == SF_SF2) return new FSF2Reader(sfi->mFilename);
-		else return new FZipPatReader(sfi->mFilename);
-	}
-	// The sound font collection did not yield any good results.
 	// Next check if the file is a .sf file
 	if (allowed & SF_SF2)
 	{
@@ -500,6 +497,7 @@ FSoundFontReader *FSoundFontManager::OpenSoundFont(const char *name, int allowed
 			}
 		}
 	}
+	// Next check if the file is a resource file (it should contains gus patches and a timidity.cfg file)
 	if (allowed & SF_GUS)
 	{
 		FileReader fr;
@@ -522,6 +520,13 @@ FSoundFontReader *FSoundFontManager::OpenSoundFont(const char *name, int allowed
 		{
 			return new FPatchSetReader(name);
 		}
+	}
+	// Lastly check in the sound font collection for a specific item or pick the first valid item available.
+	auto sfi = FindSoundFont(name, allowed);
+	if (sfi != nullptr)
+	{
+		if (sfi->type == SF_SF2) return new FSF2Reader(sfi->mFilename);
+		else return new FZipPatReader(sfi->mFilename);
 	}
 	return nullptr;
 

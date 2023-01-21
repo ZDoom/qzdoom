@@ -6,18 +6,16 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#include "volk/volk.h"
-
-
-extern HWND Window;
+#include <zvulkan/vulkansurface.h>
+#include "i_mainwindow.h"
 
 void I_GetVulkanDrawableSize(int *width, int *height)
 {
-	assert(Window);
+	assert(mainwindow.GetHandle());
 
 	RECT clientRect = { 0 };
-	GetClientRect(Window, &clientRect);
-	
+	GetClientRect(mainwindow.GetHandle(), &clientRect);
+
 	if (width != nullptr)
 	{
 		*width = clientRect.right;
@@ -67,7 +65,7 @@ bool I_CreateVulkanSurface(VkInstance instance, VkSurfaceKHR *surface)
 	windowCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	windowCreateInfo.pNext = nullptr;
 	windowCreateInfo.flags = 0;
-	windowCreateInfo.hwnd = Window;
+	windowCreateInfo.hwnd = mainwindow.GetHandle();
 	windowCreateInfo.hinstance = GetModuleHandle(nullptr);
 
 	const VkResult result = vkCreateWin32SurfaceKHR(instance, &windowCreateInfo, nullptr, surface);

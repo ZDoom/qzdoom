@@ -37,6 +37,7 @@
 #include "basics.h"
 #include "zstring.h"
 #include "name.h"
+#include "screenjob.h"
 
 // Flags are not user configurable and only depend on the standard IWADs
 enum
@@ -130,7 +131,7 @@ struct gameinfo_t
 
 	TArray<FName> PrecachedClasses;
 	TArray<FString> PrecachedTextures;
-	TArray<int> PrecachedSounds;
+	TArray<FSoundID> PrecachedSounds;
 	TArray<FString> EventHandlers;
 
 	FString titleMusic;
@@ -212,6 +213,7 @@ struct gameinfo_t
 	int fullscreenautoaspect = 3;
 	bool nomergepickupmsg;
 	bool mHideParTimes;
+	CutsceneDef IntroScene;
 
 	const char *GetFinalePage(unsigned int num) const;
 };

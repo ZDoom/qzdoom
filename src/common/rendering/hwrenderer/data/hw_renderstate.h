@@ -217,6 +217,7 @@ protected:
 	uint8_t mBrightmapEnabled : 1;
 
 	int mLightIndex;
+	int mBoneIndexBase;
 	int mSpecialEffect;
 	int mTextureMode;
 	int mTextureClamp;
@@ -278,6 +279,7 @@ public:
 		mLightParms[3] = -1.f;
 		mSpecialEffect = EFF_NONE;
 		mLightIndex = -1;
+		mBoneIndexBase = -1;
 		mStreamData.uInterpolationFactor = 0;
 		mRenderStyle = DefaultRenderStyle();
 		mMaterial.Reset();
@@ -568,6 +570,11 @@ public:
 		mLightIndex = index;
 	}
 
+	void SetBoneIndexBase(int index)
+	{
+		mBoneIndexBase = index;
+	}
+
 	void SetRenderStyle(FRenderStyle rs)
 	{
 		mRenderStyle = rs;
@@ -585,7 +592,7 @@ public:
 
 	void SetDepthBias(float a, float b)
 	{
-		mBias.mChanged = mBias.mFactor != a || mBias.mUnits != b;
+		mBias.mChanged |= mBias.mFactor != a || mBias.mUnits != b;
 		mBias.mFactor = a;
 		mBias.mUnits = b;
 	}
@@ -597,7 +604,7 @@ public:
 
 	void ClearDepthBias()
 	{
-		mBias.mChanged = mBias.mFactor != 0 || mBias.mUnits != 0;
+		mBias.mChanged |= mBias.mFactor != 0 || mBias.mUnits != 0;
 		mBias.mFactor = 0;
 		mBias.mUnits = 0;
 	}
@@ -618,6 +625,7 @@ private:
 public:
 	void SetMaterial(FGameTexture* tex, EUpscaleFlags upscalemask, int scaleflags, int clampmode, int translation, int overrideshader)
 	{
+		tex->setSeen();
 		if (!sysCallbacks.PreBindTexture || !sysCallbacks.PreBindTexture(this, tex, upscalemask, scaleflags, clampmode, translation, overrideshader))
 		{
 			if (shouldUpscale(tex, upscalemask)) scaleflags |= CTF_Upscale;

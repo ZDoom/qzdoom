@@ -23,7 +23,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define USE_GLES2 0
+#define USE_GLES2 0 // For Desktop PC leave as 0, it will use the exisiting OpenGL context creationg code but run with the GLES2 renderer
+                    // Set to 1 for when comipling for a real GLES device
 
 #if (USE_GLES2)
 	#include "glad/glad.h"
@@ -35,6 +36,9 @@ GLAPI PFNGLMAPBUFFERRANGEEXTPROC glMapBufferRange;
 typedef GLboolean(APIENTRYP PFNGLUNMAPBUFFEROESPROC)(GLenum target);
 GLAPI PFNGLUNMAPBUFFEROESPROC glUnmapBuffer;
 
+typedef void (APIENTRYP PFNGLVERTEXATTRIBIPOINTERPROC) (GLuint index, GLint size, GLenum type, GLsizei stride, const void* pointer);
+GLAPI PFNGLVERTEXATTRIBIPOINTERPROC glVertexAttribIPointer;
+
 #define GL_DEPTH24_STENCIL8               0x88F0
 #define GL_MAP_PERSISTENT_BIT             0x0040
 #define GL_MAP_READ_BIT                   0x0001
@@ -42,7 +46,9 @@ GLAPI PFNGLUNMAPBUFFEROESPROC glUnmapBuffer;
 #define GL_MAP_UNSYNCHRONIZED_BIT         0x0020
 #define GL_MAP_INVALIDATE_BUFFER_BIT      0x0008
 #define GL_BGRA                           0x80E1
-
+#define GL_DEPTH_CLAMP                    0x864F
+#define GL_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
+#define GL_INT_2_10_10_10_REV             0x8D9F
 #else
 	#include "gl_load/gl_load.h"
 #endif
@@ -69,6 +75,10 @@ namespace OpenGLESRenderer
 		bool depthStencilAvailable;
 		bool npotAvailable;
 		bool forceGLSLv100;
+		bool depthClampAvailable;
+		bool anistropicFilterAvailable;
+		bool gles3Features;
+		const char* shaderVersionString;
 		int max_texturesize;
 		char* vendorstring;
 		char* modelstring;

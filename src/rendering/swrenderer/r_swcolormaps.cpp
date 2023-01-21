@@ -45,14 +45,13 @@
 #include "c_dispatch.h"
 #include "sc_man.h"
 #include "v_text.h"
-#include "st_start.h"
 #include "doomstat.h"
 #include "v_palette.h"
 #include "colormatcher.h"
 #include "r_data/colormaps.h"
 #include "r_swcolormaps.h"
 #include "v_video.h"
-#include "templates.h"
+
 #include "r_utility.h"
 #include "swrenderer/r_renderer.h"
 #include <atomic>
@@ -354,7 +353,7 @@ void SetDefaultColormap (const char *name)
 		// [RH] If using BUILD's palette, generate the colormap
 		if (lump == -1 || fileSystem.CheckNumForFullName("palette.dat") >= 0 || fileSystem.CheckNumForFullName("blood.pal") >= 0)
 		{
-			Printf ("Make colormap\n");
+			DPrintf (DMSG_NOTIFY, "Make colormap\n");
 			FDynamicColormap foo;
 
 			foo.Color = 0xFFFFFF;
