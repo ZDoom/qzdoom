@@ -406,9 +406,12 @@ enum
 	RADF_SOURCEISSPOT = 4,
 	RADF_NODAMAGE = 8,
 	RADF_THRUSTZ = 16,
-	RADF_OLDRADIUSDAMAGE = 32
+	RADF_OLDRADIUSDAMAGE = 32,
+	RADF_THRUSTLESS = 64,
+	RADF_NOALLIES = 128,
+	RADF_CIRCULAR = 256
 };
-int P_GetRadiusDamage(AActor *self, AActor *thing, int damage, int distance, int fulldmgdistance, bool oldradiusdmg);
+int P_GetRadiusDamage(AActor *self, AActor *thing, int damage, int distance, int fulldmgdistance, bool oldradiusdmg, bool circular);
 int	P_RadiusAttack (AActor *spot, AActor *source, int damage, int distance, 
 						FName damageType, int flags, int fulldamagedistance=0, FName species = NAME_None);
 
