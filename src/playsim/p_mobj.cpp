@@ -310,6 +310,7 @@ void AActor::Serialize(FSerializer &arc)
 		A("smokecounter", smokecounter)
 		("blockingmobj", BlockingMobj)
 		A("blockingline", BlockingLine)
+		A("movementblockingline", MovementBlockingLine)
 		A("blocking3dfloor", Blocking3DFloor)
 		A("blockingceiling", BlockingCeiling)
 		A("blockingfloor", BlockingFloor)
@@ -1967,7 +1968,7 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 		{
 			// blocked move
 			AActor *BlockingMobj = mo->BlockingMobj;
-			line_t *BlockingLine = mo->BlockingLine;
+			line_t *BlockingLine = mo->MovementBlockingLine = mo->BlockingLine;
 
 			// [ZZ] 
 			if (!BlockingLine && !BlockingMobj) // hit floor or ceiling while XY movement - sector actions
@@ -4038,6 +4039,7 @@ void AActor::Tick ()
 
 		// Handle X and Y velocities
 		BlockingMobj = nullptr;
+		MovementBlockingLine = nullptr;
 		sector_t* oldBlockingCeiling = BlockingCeiling;
 		sector_t* oldBlockingFloor = BlockingFloor;
 		Blocking3DFloor = nullptr;
