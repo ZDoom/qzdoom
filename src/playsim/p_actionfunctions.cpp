@@ -3367,8 +3367,11 @@ DEFINE_ACTION_FUNCTION(AActor, A_QuakeEx)
 	PARAM_INT(highpoint);
 	PARAM_FLOAT(rollIntensity);
 	PARAM_FLOAT(rollWave);
+	PARAM_FLOAT(damageMultiplier);
+	PARAM_FLOAT(thrustMultiplier);
+	PARAM_INT(damage);
 	P_StartQuakeXYZ(self->Level, self, 0, intensityX, intensityY, intensityZ, duration, damrad, tremrad, sound, flags, mulWaveX, mulWaveY, mulWaveZ, falloff, highpoint, 
-		rollIntensity, rollWave);
+		rollIntensity, rollWave, damageMultiplier, thrustMultiplier, damage);
 	return 0;
 }
 
